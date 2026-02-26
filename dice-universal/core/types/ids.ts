@@ -1,5 +1,5 @@
-import { v4 as uuidv4 } from "uuid";
+import * as Crypto from "expo-crypto";
 
-export function newId(): string {
-    return uuidv4();
+export async function newId(): Promise<string> {
+  return await Crypto.randomUUID();
 }

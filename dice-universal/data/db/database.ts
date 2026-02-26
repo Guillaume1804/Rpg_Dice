@@ -1,21 +1,46 @@
-import * as SQlite from "expo-sqlite";
+import * as SQLite from "expo-sqlite";
 
-export type Db = SQlite.SQLiteDatabase;
+export type Db = SQLite.SQLiteDatabase;
 
 export async function openDb(): Promise<Db> {
-    // "dice_universal.db" sera créé localement sur l'appareil si absent
-    const db = await SQlite.openDatabaseAsync("dice_universal.db");
-    
-    // Active les clés étrangères si on les utilise plus tards
-    await db.execAsync("PRAGMA foreign_keys = ON;");
-    return db;
-};
+  const db = await SQLite.openDatabaseAsync("dice_universal_V1.db");
+  await db.execAsync("PRAGMA foreign_keys = ON;");
+  return db;
+}
 
-export async function getUserVersion(db: Db): Promise<number> {
-    const rows = await db.getAllAsync<{ user_version: number }>("PRAGMA user_version;");
-    return rows?.[0]?.user_version ?? 0;
-};
+// --- Meta helpers (schema/content/flags) ---
+export async function ensureMetaTable(db: Db): Promise<void> {
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS meta (
+      key TEXT PRIMARY KEY NOT NULL,
+      value TEXT NOT NULL
+    );
+  `);
+}
 
-export async function setUserVersion(db :Db, version: number): Promise<void> {
-    await db.execAsync(`PRAGMA user_version = ${version};`);
-};
+export async function getMeta(db: Db, key: string): Promise<string | null> {
+  const rows = await db.getAllAsync<{ value: string }>(
+    "SELECT value FROM meta WHERE key = ? LIMIT 1;",
+    [key]
+  );
+  return rows.length ? rows[0].value : null;
+}
+
+export async function setMeta(db: Db, key: string, value: string): Promise<void> {
+  await db.runAsync(
+    "INSERT OR REPLACE INTO meta(key, value) VALUES(?, ?);",
+    [key, value]
+  );
+}
+
+export async function getSchemaVersion(db: Db): Promise<number> {
+  await ensureMetaTable(db);
+  const v = await getMeta(db, "schema_version");
+  const n = Number(v ?? "0");
+  return Number.isFinite(n) ? n : 0;
+}
+
+export async function setSchemaVersion(db: Db, version: number): Promise<void> {
+  await ensureMetaTable(db);
+  await setMeta(db, "schema_version", String(version));
+}

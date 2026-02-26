@@ -1,10 +1,51 @@
-import { View, Text} from "react-native";
- 
+import { useEffect, useState } from "react";
+import { View, Text, FlatList } from "react-native";
+import { listProfiles, ProfileRow } from "../data/repositories/profilesRepo";
+import { initDb } from "../data/db/init";
+
 export default function TablesScreen() {
+  const [profiles, setProfiles] = useState<ProfileRow[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const db = await initDb();
+        const rows = await listProfiles(db);
+        setProfiles(rows);
+      } catch (e: any) {
+        setError(e?.message ?? String(e));
+      }
+    })();
+  }, []);
+
+  if (error) {
     return (
-        <View style={{flex: 1, padding: 16}}>
-            <Text style={{fontSize: 18, fontWeight: "600"}}>Mes Tables (à construire)</Text>
-            <Text style={{marginTop: 8}}>Ici : listes des tables/profils + créations/duplications + éditios des groupes et régles</Text>
-        </View>
+      <View style={{ flex: 1, padding: 16 }}>
+        <Text style={{ fontSize: 18, fontWeight: "600" }}>Erreur</Text>
+        <Text style={{ marginTop: 8 }}>{error}</Text>
+      </View>
     );
+  }
+
+  return (
+    <View style={{ flex: 1, padding: 16 }}>
+      <Text style={{ fontSize: 18, fontWeight: "600" }}>Mes tables</Text>
+
+      <FlatList
+        style={{ marginTop: 12 }}
+        data={profiles}
+        keyExtractor={(item) => item.id}
+        ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+        renderItem={({ item }) => (
+          <View style={{ padding: 12, borderWidth: 1, borderRadius: 12 }}>
+            <Text style={{ fontSize: 16, fontWeight: "600" }}>{item.name}</Text>
+            <Text style={{ marginTop: 4, opacity: 0.7 }}>
+              ruleset: {item.ruleset_id}
+            </Text>
+          </View>
+        )}
+      />
+    </View>
+  );
 }
