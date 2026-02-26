@@ -13,3 +13,11 @@ export async function listProfiles(db: Db): Promise<ProfileRow[]> {
     "SELECT * FROM profiles ORDER BY created_at ASC;"
   );
 }
+
+export async function getProfileById(db: Db, id: string): Promise<ProfileRow | null> {
+  const rows = await db.getAllAsync<ProfileRow>(
+    "SELECT * FROM profiles WHERE id = ? LIMIT 1;",
+    [id]
+  );
+  return rows.length ? rows[0] : null;
+}

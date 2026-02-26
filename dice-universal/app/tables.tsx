@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { View, Text, FlatList } from "react-native";
+import { View, Text, FlatList, Pressable } from "react-native";
+import { useRouter } from "expo-router";
 import { listProfiles, ProfileRow } from "../data/repositories/profilesRepo";
 import { useDb } from "../data/db/DbProvider";
 
 export default function TablesScreen() {
   const db = useDb();
+  const router = useRouter();
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,12 +40,15 @@ export default function TablesScreen() {
         keyExtractor={(item) => item.id}
         ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
         renderItem={({ item }) => (
-          <View style={{ padding: 12, borderWidth: 1, borderRadius: 12 }}>
+          <Pressable
+            onPress={() => router.push(`/tables/${item.id}` as any)}
+            style={{ padding: 12, borderWidth: 1, borderRadius: 12 }}
+          >
             <Text style={{ fontSize: 16, fontWeight: "600" }}>{item.name}</Text>
             <Text style={{ marginTop: 4, opacity: 0.7 }}>
               ruleset: {item.ruleset_id}
             </Text>
-          </View>
+          </Pressable>
         )}
       />
     </View>
