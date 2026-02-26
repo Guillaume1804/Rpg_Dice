@@ -3,12 +3,14 @@ import { View, Text, FlatList, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { listProfiles, ProfileRow } from "../data/repositories/profilesRepo";
 import { useDb } from "../data/db/DbProvider";
+import { useActiveProfile } from "../data/state/ActiveProfileProvider";
 
 export default function TablesScreen() {
   const db = useDb();
   const router = useRouter();
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const { setActiveProfileId, activeProfileId } = useActiveProfile();
 
   useEffect(() => {
     (async () => {
@@ -41,9 +43,15 @@ export default function TablesScreen() {
         ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
         renderItem={({ item }) => (
           <Pressable
-            onPress={() => router.push(`/tables/${item.id}` as any)}
+            onPress={async () => {
+              await setActiveProfileId(item.id);
+              router.push(`/tables/${item.id}` as any);
+            }}
             style={{ padding: 12, borderWidth: 1, borderRadius: 12 }}
           >
+            {activeProfileId === item.id ? (
+              <Text style={{ marginTop: 6, fontWeight: "600" }}>✅ Active</Text>
+            ) : null}
             <Text style={{ fontSize: 16, fontWeight: "600" }}>{item.name}</Text>
             <Text style={{ marginTop: 4, opacity: 0.7 }}>
               ruleset: {item.ruleset_id}
