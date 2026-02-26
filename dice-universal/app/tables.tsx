@@ -1,23 +1,23 @@
 import { useEffect, useState } from "react";
 import { View, Text, FlatList } from "react-native";
 import { listProfiles, ProfileRow } from "../data/repositories/profilesRepo";
-import { initDb } from "../data/db/init";
+import { useDb } from "../data/db/DbProvider";
 
 export default function TablesScreen() {
+  const db = useDb();
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
-        const db = await initDb();
         const rows = await listProfiles(db);
         setProfiles(rows);
       } catch (e: any) {
         setError(e?.message ?? String(e));
       }
     })();
-  }, []);
+  }, [db]);
 
   if (error) {
     return (
