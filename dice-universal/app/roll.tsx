@@ -5,6 +5,8 @@ import { useActiveProfile } from "../data/state/ActiveProfileProvider";
 import { getProfileById, ProfileRow } from "../data/repositories/profilesRepo";
 import { listGroupsByProfileId, listDiceByGroupId, GroupRow, GroupDieRow } from "../data/repositories/groupsRepo";
 import { rollGroup, GroupRollResult } from "../core/roll/roll";
+import { getRulesetById, RulesetRow } from "../data/repositories/rulesetsRepo";
+import { evaluateRoll } from "../core/rules/evaluate";
 
 type GroupWithDice = {
   group: GroupRow;
@@ -18,6 +20,9 @@ export default function RollScreen() {
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [groups, setGroups] = useState<GroupWithDice[]>([]);
   const [results, setResults] = useState<GroupRollResult[]>([]);
+  const [ruleset, setRuleset] = useState<RulesetRow | null>(null);
+  const [ignoreRules, setIgnoreRules] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
 
   const pid = useMemo(
@@ -44,6 +49,9 @@ export default function RollScreen() {
           setGroups([]);
           return;
         }
+
+        const r = await getRulesetById(db, p.ruleset_id);
+        setRuleset(r);
 
         const gs = await listGroupsByProfileId(db, pid);
         const withDice: GroupWithDice[] = [];
@@ -110,6 +118,15 @@ export default function RollScreen() {
         <Text style={{ fontSize: 16, fontWeight: "600" }}>Lancer</Text>
       </Pressable>
 
+      <Pressable
+        onPress={() => setIgnoreRules((v) => !v)}
+        style={{ padding: 12, borderWidth: 1, borderRadius: 12 }}
+      >
+        <Text style={{ fontWeight: "600" }}>
+          {ignoreRules ? "✅ Ignorer les règles" : "⬜ Ignorer les règles"}
+        </Text>
+      </Pressable>
+
       <ScrollView style={{ flex: 1 }}>
         <Text style={{ fontWeight: "600", marginTop: 8 }}>Groupes :</Text>
         {groups.map(({ group, dice }) => (
@@ -122,14 +139,63 @@ export default function RollScreen() {
             {results.find((r) => r.groupId === group.id) ? (
               (() => {
                 const r = results.find((x) => x.groupId === group.id)!;
+              
                 return (
                   <View style={{ marginTop: 10 }}>
                     <Text>Résultats : {r.dice.map((d) => d.value).join(", ")}</Text>
-                    <Text style={{ marginTop: 4, opacity: 0.8 }}>Total : {r.total}</Text>
+                    <Text style={{ marginTop: 4, opacity: 0.8 }}>
+                      Total : {r.total}
+                    </Text>
+                
+                    {/* ÉVALUATION DES RÈGLES */}
+                    {!ignoreRules && ruleset ? (() => {
+                      const values = r.dice.map((d) => d.value);
+                      const params = JSON.parse(ruleset.params_json);
+                      const ev = evaluateRoll(ruleset.mode as any, params, values);
+                    
+                      if (ev.kind === "d20") {
+                        const label =
+                          ev.outcome === "crit_success"
+                            ? "Réussite critique"
+                            : ev.outcome === "crit_failure"
+                            ? "Échec critique"
+                            : ev.outcome === "success"
+                            ? ev.threshold == null
+                              ? "Résultat (pas de seuil)"
+                              : "Réussite"
+                            : "Échec";
+                      
+                        return (
+                          <Text style={{ marginTop: 6, fontWeight: "600" }}>
+                            {label}
+                          </Text>
+                        );
+                      }
+                    
+                      if (ev.kind === "pool") {
+                        const label =
+                          ev.outcome === "crit_glitch"
+                            ? "Échec critique (glitch)"
+                            : ev.outcome === "glitch"
+                            ? "Glitch"
+                            : ev.outcome === "success"
+                            ? "Réussite"
+                            : "Échec";
+                      
+                        return (
+                          <Text style={{ marginTop: 6, fontWeight: "600" }}>
+                            {label} — succès: {ev.successes} / ones: {ev.ones}
+                          </Text>
+                        );
+                      }
+                    
+                      return null;
+                    })() : null}
                   </View>
-                );
+                );            
               })()
             ) : null}
+
           </View>
         ))}
       </ScrollView>
