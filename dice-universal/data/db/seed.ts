@@ -27,6 +27,12 @@ export async function runSeedIfNeeded(db: Db): Promise<void> {
   // S'assure que la table meta existe avant toute lecture/écriture
   await ensureMetaTable(db);
 
+  // Patch: s'assure que les profils système sont bien marqués, même si seed déjà fait
+  await db.runAsync(`UPDATE profiles SET is_system = 1 WHERE name IN (?, ?);`, [
+    "Table par défaut (D20)",
+    "Exemple Pool D6",
+  ]);
+
   const done = await getMeta(db, "seed_done");
   if (done === "true") return;
 
@@ -76,9 +82,9 @@ let profileD20Id = await findIdByName(db, "profiles", profileD20Name);
 if (!profileD20Id) {
   profileD20Id = await newId();
   await db.runAsync(
-    `INSERT INTO profiles(id, name, ruleset_id, created_at, updated_at)
-     VALUES(?, ?, ?, ?, ?);`,
-    [profileD20Id, profileD20Name, rulesetD20Id, createdAt, createdAt]
+    `INSERT INTO profiles(id, name, ruleset_id, is_system, created_at, updated_at)
+    VALUES(?, ?, ?, ?, ?, ?);`,
+    [profileD20Id, profileD20Name, rulesetD20Id, 1, createdAt, createdAt]
   );
 }
 
@@ -87,9 +93,9 @@ let profilePoolId = await findIdByName(db, "profiles", profilePoolName);
 if (!profilePoolId) {
   profilePoolId = await newId();
   await db.runAsync(
-    `INSERT INTO profiles(id, name, ruleset_id, created_at, updated_at)
-     VALUES(?, ?, ?, ?, ?);`,
-    [profilePoolId, profilePoolName, rulesetPoolId, createdAt, createdAt]
+    `INSERT INTO profiles(id, name, ruleset_id, is_system, created_at, updated_at)
+    VALUES(?, ?, ?, ?, ?, ?);`,
+    [profilePoolId, profilePoolName, rulesetPoolId, 1, createdAt, createdAt]
   );
 }
 

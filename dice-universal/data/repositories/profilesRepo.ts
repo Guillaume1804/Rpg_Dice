@@ -4,6 +4,7 @@ export type ProfileRow = {
   id: string;
   name: string;
   ruleset_id: string;
+  is_system: number; // 0 ou 1
   created_at: string;
   updated_at: string;
 };

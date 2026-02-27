@@ -99,7 +99,47 @@ async function migrateToV2_fixGroupDice(db: Db) {
   }
 }
 
+async function migrateToV3_addProfilesIsSystem(db: Db) {
+  const cols = await db.getAllAsync<{ name: string }>("PRAGMA table_info(profiles);");
+  const colNames = new Set(cols.map((c) => c.name));
 
+  if (cols.length === 0) return;
+
+  if (!colNames.has("is_system")) {
+    await db.execAsync(
+      `ALTER TABLE profiles ADD COLUMN is_system INTEGER NOT NULL DEFAULT 0;`
+    );
+  }
+}
+
+async function migrateToV4_fixProfilesFK(db: Db) {
+  await db.execAsync(`PRAGMA foreign_keys=OFF;`);
+
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS profiles_new (
+      id TEXT PRIMARY KEY NOT NULL,
+      name TEXT NOT NULL,
+      ruleset_id TEXT NOT NULL,
+      is_system INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (ruleset_id) REFERENCES rulesets(id) ON DELETE CASCADE
+    );
+  `);
+
+  await db.execAsync(`
+    INSERT INTO profiles_new (id, name, ruleset_id, is_system, created_at, updated_at)
+    SELECT id, name, ruleset_id,
+           COALESCE(is_system, 0),
+           created_at, updated_at
+    FROM profiles;
+  `);
+
+  await db.execAsync(`DROP TABLE profiles;`);
+  await db.execAsync(`ALTER TABLE profiles_new RENAME TO profiles;`);
+
+  await db.execAsync(`PRAGMA foreign_keys=ON;`);
+}
 
 export async function runMigrations(db: Db): Promise<void> {
   const version = await getSchemaVersion(db);
@@ -114,6 +154,18 @@ export async function runMigrations(db: Db): Promise<void> {
   if (vAfter < 2) {
     await migrateToV2_fixGroupDice(db);
     await setSchemaVersion(db, 2);
+  }
+
+  const vAfter2 = await getSchemaVersion(db);
+  if (vAfter2 < 3) {
+    await migrateToV3_addProfilesIsSystem(db);
+    await setSchemaVersion(db, 3);
+  }
+
+  const vAfter3 = await getSchemaVersion(db);
+  if (vAfter3 < 4) {
+    await migrateToV4_fixProfilesFK(db);
+    await setSchemaVersion(db, 4);
   }
 }
 
