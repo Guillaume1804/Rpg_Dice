@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { View, Text, Pressable, ScrollView } from "react-native";
+import { View, Text, Pressable, ScrollView, TextInput, Modal } from "react-native";
 import { useDb } from "../data/db/DbProvider";
 import { useActiveProfile } from "../data/state/ActiveProfileProvider";
-import { getProfileById, ProfileRow } from "../data/repositories/profilesRepo";
+import { getProfileById, ProfileRow  } from "../data/repositories/profilesRepo";
 import { listGroupsByProfileId, listDiceByGroupId, GroupRow, GroupDieRow } from "../data/repositories/groupsRepo";
 import { rollGroup, GroupRollResult } from "../core/roll/roll";
 import { getRulesetById, RulesetRow } from "../data/repositories/rulesetsRepo";
@@ -28,6 +28,8 @@ export default function RollScreen() {
   const [draftDice, setDraftDice] = useState<{ sides: number; qty: number }[]>([]);
   const [draftResult, setDraftResult] = useState<GroupRollResult | null>(null);
   const [showSaveOptions, setShowSaveOptions] = useState(false);
+  const [showNameModal, setShowNameModal] = useState(false);
+  const [newTableName, setNewTableName] = useState("");
 
   const STANDARD_DICE = [4, 6, 8, 10, 12, 20];
 
@@ -156,6 +158,7 @@ export default function RollScreen() {
     setDraftDice([]);
     setDraftResult(null);
     setShowSaveOptions(false);
+    setNewTableName("");
   }
 
   async function rollDraft() {
@@ -370,18 +373,10 @@ export default function RollScreen() {
                 onPress={async () => {
                   if (!profile) return;
                   if (draftDice.length === 0) return;
-                
-                  const name = `Nouvelle table (${new Date().toLocaleDateString()})`;
-                  const newProfileId = await createProfileWithDraft(db, {
-                    name,
-                    rulesetId: profile.ruleset_id,
-                    draftDice,
-                    groupName: "Groupe (depuis Jet rapide)",
-                  });
-                
-                  await setActiveProfileId(newProfileId);
-                
-                  resetDraftState();
+
+                  setNewTableName(`Nouvelle table (${new Date().toLocaleDateString()})`);
+                  setShowSaveOptions(false);
+                  setShowNameModal(true);
                 }}
                 style={{ padding: 10, borderWidth: 1, borderRadius: 8 }}
               >
@@ -389,6 +384,65 @@ export default function RollScreen() {
               </Pressable>
             </View>
           ) : null}
+          <Modal
+            visible={showNameModal}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setShowNameModal(false)}
+          >
+            <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 16 }}>
+              <View style={{ backgroundColor: "white", borderRadius: 12, padding: 16, borderWidth: 1 }}>
+                <Text style={{ fontSize: 16, fontWeight: "700" }}>Nom de la nouvelle table</Text>
+
+                <TextInput
+                  value={newTableName}
+                  onChangeText={setNewTableName}
+                  placeholder="Ex: Donjons & Dragons — Mage"
+                  style={{ marginTop: 12, borderWidth: 1, borderRadius: 10, padding: 10 }}
+                />
+
+                <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 10, marginTop: 12 }}>
+                  <Pressable
+                    onPress={() => {
+                      setShowNameModal(false);
+                      setNewTableName("");
+                    }}
+                    style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
+                  >
+                    <Text>Annuler</Text>
+                  </Pressable>
+
+                  <Pressable
+                    onPress={async () => {
+                      const name = newTableName.trim();
+                      if (!name) return;
+                    
+                      // --- CRÉER NOUVELLE TABLE ---
+                      if (!profile) return;
+                      if (draftDice.length === 0) return;
+                    
+                      const newProfileId = await createProfileWithDraft(db, {
+                        name,
+                        rulesetId: profile.ruleset_id,
+                        draftDice,
+                        groupName: "Groupe (depuis Jet rapide)",
+                      });
+                    
+                      await setActiveProfileId(newProfileId);
+                    
+                      setShowNameModal(false);
+                      resetDraftState();
+                    }}
+                    style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
+                  >
+                    <Text style={{ fontWeight: "700" }}>
+                      Créer
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            </View>
+          </Modal>
           {draftResult ? (
             <View style={{ marginTop: 10 }}>
               <Text>Résultats : {draftResult.dice.map((d) => d.value).join(", ")}</Text>

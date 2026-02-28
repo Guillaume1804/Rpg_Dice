@@ -22,3 +22,15 @@ export async function getProfileById(db: Db, id: string): Promise<ProfileRow | n
   );
   return rows.length ? rows[0] : null;
 }
+
+export async function updateProfileName(
+  db: Db,
+  id: string,
+  name: string
+): Promise<void> {
+  const now = new Date().toISOString();
+  await db.runAsync(
+    `UPDATE profiles SET name = ?, updated_at = ? WHERE id = ?;`,
+    [name, now, id]
+  );
+}

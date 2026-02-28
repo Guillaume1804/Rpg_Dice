@@ -1,8 +1,8 @@
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { View, Text } from "react-native";
+import { View, Text, Pressable, TextInput, Modal } from "react-native";
 import { useDb } from "../../data/db/DbProvider";
-import { getProfileById, ProfileRow } from "../../data/repositories/profilesRepo";
+import { getProfileById, ProfileRow, updateProfileName  } from "../../data/repositories/profilesRepo";
 import { getRulesetById, RulesetRow } from "../../data/repositories/rulesetsRepo";
 import { listGroupsByProfileId, listDiceByGroupId, GroupRow, GroupDieRow } from "../../data/repositories/groupsRepo";
 
@@ -20,6 +20,9 @@ export default function TableDetailScreen() {
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [ruleset, setRuleset] = useState<RulesetRow | null>(null);
   const [groups, setGroups] = useState<GroupWithDice[]>([]);
+  const [renameValue, setRenameValue] = useState("");
+  const [showRenameModal, setShowRenameModal] = useState(false);
+  
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -75,6 +78,71 @@ export default function TableDetailScreen() {
   return (
     <View style={{ flex: 1, padding: 16, gap: 12 }}>
       <Text style={{ fontSize: 20, fontWeight: "700" }}>{profile.name}</Text>
+
+      {profile.is_system !== 1 ? (
+        <Pressable
+          onPress={() => {
+            setRenameValue(profile.name);
+            setShowRenameModal(true);
+          }}
+          style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
+        >
+          <Text>Renommer</Text>
+        </Pressable>
+      ) : (
+        <Text style={{ opacity: 0.7 }}>
+          Table système : renommage interdit
+        </Text>
+      )}
+
+      <Modal
+        visible={showRenameModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowRenameModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 16 }}>
+          <View style={{ backgroundColor: "white", borderRadius: 12, padding: 16, borderWidth: 1 }}>
+            <Text style={{ fontSize: 16, fontWeight: "700" }}>Renommer la table</Text>
+          
+            <TextInput
+              value={renameValue}
+              onChangeText={setRenameValue}
+              placeholder="Nouveau nom..."
+              style={{ marginTop: 12, borderWidth: 1, borderRadius: 10, padding: 10 }}
+            />
+      
+            <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 12 }}>
+              <Pressable
+                onPress={() => setShowRenameModal(false)}
+                style={{ padding: 10, borderWidth: 1, borderRadius: 10, marginRight: 10 }}
+              >
+                <Text>Annuler</Text>
+              </Pressable>
+          
+              <Pressable
+                onPress={async () => {
+                  const name = renameValue.trim();
+                  if (!name) return;
+                  if (!profile) return;
+                  if (profile.is_system === 1) return;
+                
+                  await updateProfileName(db, profile.id, name);
+                
+                  // refresh local
+                  const refreshed = await getProfileById(db, profile.id);
+                  setProfile(refreshed);
+                
+                  setShowRenameModal(false);
+                }}
+                style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
+              >
+                <Text style={{ fontWeight: "700" }}>Renommer</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <View style={{ padding: 12, borderWidth: 1, borderRadius: 12 }}>
         <Text style={{ fontWeight: "600" }}>Ruleset</Text>

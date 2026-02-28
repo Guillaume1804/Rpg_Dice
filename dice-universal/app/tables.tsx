@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { View, Text, FlatList, Pressable } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { listProfiles, ProfileRow } from "../data/repositories/profilesRepo";
 import { useDb } from "../data/db/DbProvider";
@@ -12,16 +13,28 @@ export default function TablesScreen() {
   const [error, setError] = useState<string | null>(null);
   const { setActiveProfileId, activeProfileId } = useActiveProfile();
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const rows = await listProfiles(db);
-        setProfiles(rows);
-      } catch (e: any) {
-        setError(e?.message ?? String(e));
-      }
-    })();
-  }, [db]);
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+    
+      (async () => {
+        try {
+          const rows = await listProfiles(db);
+          if (isActive) {
+            setProfiles(rows);
+          }
+        } catch (e: any) {
+          if (isActive) {
+            setError(e?.message ?? String(e));
+          }
+        }
+      })();
+    
+      return () => {
+        isActive = false;
+      };
+    }, [db])
+  );
 
   if (error) {
     return (
