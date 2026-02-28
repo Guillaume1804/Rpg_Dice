@@ -1,19 +1,28 @@
 import type { Db } from "../db/database";
 import { newId } from "../../core/types/ids";
 
-export type DraftDie = { sides: number; qty: number; modifier?: number };
+export type DraftDie = {
+  sides: number;
+  qty: number;
+  modifier?: number;
+
+  // ✅ règles V2 (optionnelles)
+  rule_mode?: string;         // ex: "sum" | "d20" | "pool" ...
+  rule_params_json?: string;  // JSON string
+};
 
 function nowIso() {
   return new Date().toISOString();
 }
 
-export async function deleteAllGroupsForProfile(db: Db, profileId: string): Promise<void> {
-  // cascade -> group_dice supprimé automatiquement
-  await db.runAsync("DELETE FROM groups WHERE profile_id = ?;", [profileId]);
+/** Supprime tous les groupes d'une table (cascade -> group_dice) */
+export async function deleteAllGroupsForTable(db: Db, tableId: string): Promise<void> {
+  await db.runAsync("DELETE FROM groups WHERE table_id = ?;", [tableId]);
 }
 
+/** Crée un groupe + ses dés dans une table */
 export async function createGroupFromDraft(db: Db, params: {
-  profileId: string;
+  tableId: string;
   groupName: string;
   draftDice: DraftDie[];
 }): Promise<string> {
@@ -21,44 +30,61 @@ export async function createGroupFromDraft(db: Db, params: {
   const groupId = await newId();
 
   await db.runAsync(
-    `INSERT INTO groups(id, profile_id, name, sort_order, created_at, updated_at)
+    `INSERT INTO groups(id, table_id, name, sort_order, created_at, updated_at)
      VALUES(?, ?, ?, ?, ?, ?);`,
-    [groupId, params.profileId, params.groupName, 0, createdAt, createdAt]
+    [groupId, params.tableId, params.groupName, 0, createdAt, createdAt]
   );
 
   let sort = 0;
   for (const d of params.draftDice) {
-    const id = await newId();
+    const dieId = await newId();
+
     await db.runAsync(
-      `INSERT INTO group_dice(id, group_id, sides, qty, modifier, sort_order, created_at, updated_at)
-       VALUES(?, ?, ?, ?, ?, ?, ?, ?);`,
-      [id, groupId, d.sides, d.qty, d.modifier ?? 0, sort++, createdAt, createdAt]
+      `INSERT INTO group_dice(
+        id, group_id, sides, qty, modifier, sort_order,
+        rule_mode, rule_params_json,
+        created_at, updated_at
+      ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      [
+        dieId,
+        groupId,
+        d.sides,
+        d.qty,
+        d.modifier ?? 0,
+        sort++,
+        d.rule_mode ?? "sum",
+        d.rule_params_json ?? "{}",
+        createdAt,
+        createdAt,
+      ]
     );
   }
 
   return groupId;
 }
 
-export async function createProfileWithDraft(db: Db, params: {
+/** Crée une nouvelle table + (optionnel) un groupe créé depuis draft */
+export async function createTableWithDraft(db: Db, params: {
   name: string;
-  rulesetId: string;
   draftDice: DraftDie[];
   groupName: string;
 }): Promise<string> {
   const createdAt = nowIso();
-  const profileId = await newId();
+  const tableId = await newId();
 
   await db.runAsync(
-    `INSERT INTO profiles(id, name, ruleset_id, is_system, created_at, updated_at)
-     VALUES(?, ?, ?, ?, ?, ?);`,
-    [profileId, params.name, params.rulesetId, 0, createdAt, createdAt]
+    `INSERT INTO tables(id, name, is_system, created_at, updated_at)
+     VALUES(?, ?, ?, ?, ?);`,
+    [tableId, params.name, 0, createdAt, createdAt]
   );
 
-  await createGroupFromDraft(db, {
-    profileId,
-    groupName: params.groupName,
-    draftDice: params.draftDice,
-  });
+  if (params.draftDice.length > 0) {
+    await createGroupFromDraft(db, {
+      tableId,
+      groupName: params.groupName,
+      draftDice: params.draftDice,
+    });
+  }
 
-  return profileId;
+  return tableId;
 }

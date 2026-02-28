@@ -4,7 +4,18 @@ import { useDb } from "../data/db/DbProvider";
 import { useActiveTable } from "../data/state/ActiveTableProvider";
 
 import { getTableById, TableRow } from "../data/repositories/tablesRepo";
-import { listGroupsByTableId, listDiceByGroupId, GroupRow, GroupDieRow } from "../data/repositories/groupsRepo";
+import {
+  listGroupsByTableId,
+  listDiceByGroupId,
+  GroupRow,
+  GroupDieRow,
+} from "../data/repositories/groupsRepo";
+
+import {
+  deleteAllGroupsForTable,
+  createGroupFromDraft,
+  createTableWithDraft,
+} from "../data/repositories/draftSaveRepo";
 
 import { rollGroup, GroupRollResult } from "../core/roll/roll";
 import { insertRollEvent } from "../data/repositories/rollEventsRepo";
@@ -18,20 +29,21 @@ type GroupWithDice = {
 export default function RollScreen() {
   const db = useDb();
   const { activeTableId, setActiveTableId } = useActiveTable();
-
+  
   const [table, setTable] = useState<TableRow | null>(null);
   const [groups, setGroups] = useState<GroupWithDice[]>([]);
   const [results, setResults] = useState<GroupRollResult[]>([]);
-  const [ignoreRules, setIgnoreRules] = useState(false);
+
   const [draftDice, setDraftDice] = useState<{ sides: number; qty: number }[]>([]);
   const [draftResult, setDraftResult] = useState<GroupRollResult | null>(null);
+
   const [showSaveOptions, setShowSaveOptions] = useState(false);
   const [showNameModal, setShowNameModal] = useState(false);
   const [newTableName, setNewTableName] = useState("");
 
-  const STANDARD_DICE = [4, 6, 8, 10, 12, 20];
-
   const [error, setError] = useState<string | null>(null);
+
+  const STANDARD_DICE = [4, 6, 8, 10, 12, 20];
 
   const tableId = useMemo(
     () => (typeof activeTableId === "string" && activeTableId.length > 0 ? activeTableId : ""),
@@ -79,9 +91,18 @@ export default function RollScreen() {
 
   function summarizeGroup(r: GroupRollResult) {
     const values = r.dice.map((d) => d.value);
-    const short =
-      values.length === 1 ? String(values[0]) : `${values.join(", ")} (total ${r.total})`;
+    const short = values.length === 1 ? String(values[0]) : `${values.join(", ")} (total ${r.total})`;
     return `${r.label}: ${short}`;
+  }
+
+  async function reloadGroups(tid: string) {
+    const gs = await listGroupsByTableId(db, tid);
+    const withDice: GroupWithDice[] = [];
+    for (const g of gs) {
+      const dice = await listDiceByGroupId(db, g.id);
+      withDice.push({ group: g, dice });
+    }
+    setGroups(withDice);
   }
 
   async function onRoll() {
@@ -95,10 +116,8 @@ export default function RollScreen() {
       })
     );
 
-    // UI immédiate
     setResults(rolled);
 
-    // Persistance robuste
     try {
       const eventId = await newId();
       const createdAt = nowIso();
@@ -130,15 +149,13 @@ export default function RollScreen() {
     } catch (e) {
       console.warn("insertRollEvent (groups) failed", e);
     }
-  } 
+  }
 
   function addDieToDraft(sides: number) {
     setDraftDice((prev) => {
       const existing = prev.find((d) => d.sides === sides);
       if (existing) {
-        return prev.map((d) =>
-          d.sides === sides ? { ...d, qty: d.qty + 1 } : d
-        );
+        return prev.map((d) => (d.sides === sides ? { ...d, qty: d.qty + 1 } : d));
       }
       return [...prev, { sides, qty: 1 }];
     });
@@ -149,13 +166,6 @@ export default function RollScreen() {
     setDraftResult(null);
   }
 
-  function resetDraftState() {
-    setDraftDice([]);
-    setDraftResult(null);
-    setShowSaveOptions(false);
-    setNewTableName("");
-  }
-
   async function rollDraft() {
     if (draftDice.length === 0) return;
     if (!table) return;
@@ -163,16 +173,11 @@ export default function RollScreen() {
     const result = rollGroup({
       groupId: "draft",
       label: "Jet rapide",
-      dice: draftDice.map((d) => ({
-        sides: d.sides,
-        qty: d.qty, // important : tu as bien le draft en qty maintenant
-      })),
+      dice: draftDice.map((d) => ({ sides: d.sides, qty: d.qty })),
     });
 
-    // UI immédiate
     setDraftResult(result);
 
-    // Persistance robuste
     try {
       const eventId = await newId();
       const createdAt = nowIso();
@@ -217,7 +222,7 @@ export default function RollScreen() {
     );
   }
 
-  if (!pid) {
+  if (!tableId) {
     return (
       <View style={{ flex: 1, padding: 16, gap: 12 }}>
         <Text style={{ fontSize: 18, fontWeight: "700" }}>Jet</Text>
@@ -232,7 +237,7 @@ export default function RollScreen() {
     return (
       <View style={{ flex: 1, padding: 16, gap: 12 }}>
         <Text style={{ fontSize: 18, fontWeight: "700" }}>Jet</Text>
-        <Text style={{ opacity: 0.7 }}>Table active introuvable (id: {pid}).</Text>
+        <Text style={{ opacity: 0.7 }}>Table active introuvable (id: {tableId}).</Text>
       </View>
     );
   }
@@ -248,67 +253,36 @@ export default function RollScreen() {
         <Text style={{ fontSize: 16, fontWeight: "600" }}>Lancer</Text>
       </Pressable>
 
-      <Pressable
-        onPress={() => setIgnoreRules((v) => !v)}
-        style={{ padding: 12, borderWidth: 1, borderRadius: 12 }}
-      >
-        <Text style={{ fontWeight: "600" }}>
-          {ignoreRules ? "✅ Ignorer les règles" : "⬜ Ignorer les règles"}
-        </Text>
-      </Pressable>
-
       <ScrollView style={{ flex: 1 }}>
         <View style={{ marginTop: 16, padding: 12, borderWidth: 1, borderRadius: 12 }}>
           <Text style={{ fontSize: 16, fontWeight: "600" }}>Jet rapide</Text>
 
-          {/* Dés standards */}
           <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 10 }}>
             {STANDARD_DICE.map((s) => (
               <Pressable
                 key={s}
                 onPress={() => addDieToDraft(s)}
-                style={{
-                  padding: 10,
-                  borderWidth: 1,
-                  borderRadius: 8,
-                  marginRight: 8,
-                  marginBottom: 8,
-                }}
+                style={{ padding: 10, borderWidth: 1, borderRadius: 8, marginRight: 8, marginBottom: 8 }}
               >
                 <Text>d{s}</Text>
               </Pressable>
             ))}
           </View>
-          
-          {/* Draft actuel */}
+
           <Text style={{ marginTop: 10, opacity: 0.7 }}>
             Draft :{" "}
-            {draftDice.length === 0
-              ? "—"
-              : draftDice.map((d) => `${d.qty}d${d.sides}`).join(" + ")}
+            {draftDice.length === 0 ? "—" : draftDice.map((d) => `${d.qty}d${d.sides}`).join(" + ")}
           </Text>
-            
+
           <View style={{ flexDirection: "row", marginTop: 10 }}>
             <Pressable
               onPress={rollDraft}
-              style={{
-                padding: 10,
-                borderWidth: 1,
-                borderRadius: 8,
-                marginRight: 10,
-              }}
+              style={{ padding: 10, borderWidth: 1, borderRadius: 8, marginRight: 10 }}
             >
               <Text>Lancer draft</Text>
             </Pressable>
-            
-            <Pressable
-              onPress={clearDraft}
-              style={{
-                padding: 10,
-                borderWidth: 1,
-                borderRadius: 8,
-              }}
-            >
+
+            <Pressable onPress={clearDraft} style={{ padding: 10, borderWidth: 1, borderRadius: 8 }}>
               <Text>Reset</Text>
             </Pressable>
 
@@ -320,55 +294,62 @@ export default function RollScreen() {
             </Pressable>
 
           </View>
+
+          {draftResult ? (
+            <View style={{ marginTop: 10 }}>
+              <Text>Résultats : {draftResult.dice.map((d) => d.value).join(", ")}</Text>
+              <Text style={{ marginTop: 4, opacity: 0.8 }}>Total : {draftResult.total}</Text>
+            </View>
+          ) : null}
+
           {showSaveOptions ? (
             <View style={{ marginTop: 10, gap: 8 }}>
               <Text style={{ fontWeight: "600" }}>Enregistrer le draft</Text>
 
+              {/* Remplacer table */}
               <Pressable
                 onPress={async () => {
                   if (!table) return;
-                  if (table.is_system === 1) return; // sécurité
+                  if (table.is_system === 1) return;
                   if (draftDice.length === 0) return;
                 
-                  await deleteAllGroupsForProfile(db, table.id);
+                  await deleteAllGroupsForTable(db, table.id);
+                
                   await createGroupFromDraft(db, {
                     tableId: table.id,
                     groupName: "Groupe (depuis Jet rapide)",
-                    draftDice,
+                    draftDice: draftDice.map((d) => ({
+                      sides: d.sides,
+                      qty: d.qty,
+                      // règles par défaut pour l’instant
+                      rule_mode: "sum",
+                      rule_params_json: "{}",
+                    })),
                   });
                 
-                  // recharge les groupes (simple: relance ton loader en changeant un state ou rappelle la fonction de load)
-                  // pour V1 : on force un refresh en rappelant la logique de load
-                  const gs = await listGroupsByProfileId(db, table.id);
-                  const withDice: GroupWithDice[] = [];
-                  for (const g of gs) {
-                    const dice = await listDiceByGroupId(db, g.id);
-                    withDice.push({ group: g, dice });
-                  }
-                  setGroups(withDice);
+                  await reloadGroups(table.id);
                 
-                  resetDraftState();
+                  setShowSaveOptions(false);
                 }}
                 style={{
                   padding: 10,
                   borderWidth: 1,
                   borderRadius: 8,
-                  opacity: table.is_system === 1 ? 0.4 : 1,
+                  opacity: table?.is_system === 1 ? 0.4 : 1,
                 }}
               >
                 <Text>Remplacer la table actuelle</Text>
-                {table.is_system === 1 ? (
+                {table?.is_system === 1 ? (
                   <Text style={{ opacity: 0.7, marginTop: 4 }}>
                     Table système : remplacement interdit
                   </Text>
                 ) : null}
               </Pressable>
               
+              {/* Créer nouvelle table */}
               <Pressable
-                onPress={async () => {
-                  if (!table) return;
+                onPress={() => {
                   if (draftDice.length === 0) return;
-
                   setNewTableName(`Nouvelle table (${new Date().toLocaleDateString()})`);
                   setShowSaveOptions(false);
                   setShowNameModal(true);
@@ -379,180 +360,94 @@ export default function RollScreen() {
               </Pressable>
             </View>
           ) : null}
-          <Modal
-            visible={showNameModal}
-            transparent
-            animationType="fade"
-            onRequestClose={() => setShowNameModal(false)}
-          >
-            <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 16 }}>
-              <View style={{ backgroundColor: "white", borderRadius: 12, padding: 16, borderWidth: 1 }}>
-                <Text style={{ fontSize: 16, fontWeight: "700" }}>Nom de la nouvelle table</Text>
 
-                <TextInput
-                  value={newTableName}
-                  onChangeText={setNewTableName}
-                  placeholder="Ex: Donjons & Dragons — Mage"
-                  style={{ marginTop: 12, borderWidth: 1, borderRadius: 10, padding: 10 }}
-                />
+        </View>
 
-                <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 10, marginTop: 12 }}>
-                  <Pressable
-                    onPress={() => {
-                      setShowNameModal(false);
-                      setNewTableName("");
-                    }}
-                    style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
-                  >
-                    <Text>Annuler</Text>
-                  </Pressable>
+        <Text style={{ fontWeight: "600", marginTop: 8 }}>Groupes :</Text>
 
-                  <Pressable
-                    onPress={async () => {
-                      const name = newTableName.trim();
-                      if (!name) return;
-                    
-                      // --- CRÉER NOUVELLE TABLE ---
-                      if (!table) return;
-                      if (draftDice.length === 0) return;
-                    
-                      const newTableId = await createProfileWithDraft(db, {
-                        name,
-                        rulesetId: table.ruleset_id,
-                        draftDice,
-                        groupName: "Groupe (depuis Jet rapide)",
-                      });
-                    
-                      await setActiveProfileId(newProfileId);
-                    
-                      setShowNameModal(false);
-                      resetDraftState();
-                    }}
-                    style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
-                  >
-                    <Text style={{ fontWeight: "700" }}>
-                      Créer
-                    </Text>
-                  </Pressable>
+        {groups.map(({ group, dice }) => {
+          const r = results.find((x) => x.groupId === group.id);
+          return (
+            <View key={group.id} style={{ marginTop: 10, padding: 12, borderWidth: 1, borderRadius: 12 }}>
+              <Text style={{ fontSize: 16, fontWeight: "600" }}>{group.name}</Text>
+              <Text style={{ marginTop: 6, opacity: 0.7 }}>
+                {dice.map((d) => `${d.qty}d${d.sides}`).join(" + ")}
+              </Text>
+
+              {r ? (
+                <View style={{ marginTop: 10 }}>
+                  <Text>Résultats : {r.dice.map((d) => d.value).join(", ")}</Text>
+                  <Text style={{ marginTop: 4, opacity: 0.8 }}>Total : {r.total}</Text>
                 </View>
+              ) : null}
+            </View>
+          );
+        })}
+
+        <Modal
+          visible={showNameModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowNameModal(false)}
+        >
+          <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 16 }}>
+            <View style={{ backgroundColor: "white", borderRadius: 12, padding: 16, borderWidth: 1 }}>
+              <Text style={{ fontSize: 16, fontWeight: "700" }}>Nom de la nouvelle table</Text>
+              
+              <TextInput
+                value={newTableName}
+                onChangeText={setNewTableName}
+                placeholder="Ex: Donjons & Dragons — Mage"
+                style={{ marginTop: 12, borderWidth: 1, borderRadius: 10, padding: 10 }}
+              />
+        
+              <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 10, marginTop: 12 }}>
+                <Pressable
+                  onPress={() => {
+                    setShowNameModal(false);
+                    setNewTableName("");
+                  }}
+                  style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
+                >
+                  <Text>Annuler</Text>
+                </Pressable>
+                
+                <Pressable
+                  onPress={async () => {
+                    const name = newTableName.trim();
+                    if (!name) return;
+                    if (draftDice.length === 0) return;
+                  
+                    const newTableId = await createTableWithDraft(db, {
+                      name,
+                      groupName: "Groupe (depuis Jet rapide)",
+                      draftDice: draftDice.map((d) => ({
+                        sides: d.sides,
+                        qty: d.qty,
+                        rule_mode: "sum",
+                        rule_params_json: "{}",
+                      })),
+                    });
+                  
+                    // ✅ active + refresh UI
+                    await setActiveTableId(newTableId);
+                  
+                    setShowNameModal(false);
+                    setNewTableName("");
+                    setDraftDice([]);
+                    setDraftResult(null);
+                  
+                    // le useEffect va reload automatiquement car activeTableId change
+                  }}
+                  style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
+                >
+                  <Text style={{ fontWeight: "700" }}>Créer</Text>
+                </Pressable>
               </View>
             </View>
-          </Modal>
-          {draftResult ? (
-            <View style={{ marginTop: 10 }}>
-              <Text>Résultats : {draftResult.dice.map((d) => d.value).join(", ")}</Text>
-              <Text style={{ marginTop: 4, opacity: 0.8 }}>Total : {draftResult.total}</Text>
-
-              {!ignoreRules && ruleset ? (() => {
-                const values = draftResult.dice.map((d) => d.value);
-                const params = JSON.parse(ruleset.params_json);
-                const ev = evaluateRoll(ruleset.mode as any, params, values);
-              
-                if (ev.kind === "d20") {
-                  const label =
-                    ev.outcome === "crit_success"
-                      ? "Réussite critique"
-                      : ev.outcome === "crit_failure"
-                      ? "Échec critique"
-                      : ev.outcome === "success"
-                      ? ev.threshold == null
-                        ? "Résultat (pas de seuil)"
-                        : "Réussite"
-                      : "Échec";
-                  return <Text style={{ marginTop: 6, fontWeight: "600" }}>{label}</Text>;
-                }
-              
-                if (ev.kind === "pool") {
-                  const label =
-                    ev.outcome === "crit_glitch"
-                      ? "Échec critique (glitch)"
-                      : ev.outcome === "glitch"
-                      ? "Glitch"
-                      : ev.outcome === "success"
-                      ? "Réussite"
-                      : "Échec";
-                  return (
-                    <Text style={{ marginTop: 6, fontWeight: "600" }}>
-                      {label} — succès: {ev.successes} / ones: {ev.ones}
-                    </Text>
-                  );
-                }
-              
-                return null;
-              })() : null}
-            </View>
-          ) : null}
-        </View>
-        <Text style={{ fontWeight: "600", marginTop: 8 }}>Groupes :</Text>
-        {groups.map(({ group, dice }) => (
-          <View key={group.id} style={{ marginTop: 10, padding: 12, borderWidth: 1, borderRadius: 12 }}>
-            <Text style={{ fontSize: 16, fontWeight: "600" }}>{group.name}</Text>
-            <Text style={{ marginTop: 6, opacity: 0.7 }}>
-              {dice.map((d) => `${d.qty}d${d.sides}`).join(" + ")}
-            </Text>
-
-            {results.find((r) => r.groupId === group.id) ? (
-              (() => {
-                const r = results.find((x) => x.groupId === group.id)!;
-              
-                return (
-                  <View style={{ marginTop: 10 }}>
-                    <Text>Résultats : {r.dice.map((d) => d.value).join(", ")}</Text>
-                    <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                      Total : {r.total}
-                    </Text>
-                
-                    {/* ÉVALUATION DES RÈGLES */}
-                    {!ignoreRules && ruleset ? (() => {
-                      const values = r.dice.map((d) => d.value);
-                      const params = JSON.parse(ruleset.params_json);
-                      const ev = evaluateRoll(ruleset.mode as any, params, values);
-                    
-                      if (ev.kind === "d20") {
-                        const label =
-                          ev.outcome === "crit_success"
-                            ? "Réussite critique"
-                            : ev.outcome === "crit_failure"
-                            ? "Échec critique"
-                            : ev.outcome === "success"
-                            ? ev.threshold == null
-                              ? "Résultat (pas de seuil)"
-                              : "Réussite"
-                            : "Échec";
-                      
-                        return (
-                          <Text style={{ marginTop: 6, fontWeight: "600" }}>
-                            {label}
-                          </Text>
-                        );
-                      }
-                    
-                      if (ev.kind === "pool") {
-                        const label =
-                          ev.outcome === "crit_glitch"
-                            ? "Échec critique (glitch)"
-                            : ev.outcome === "glitch"
-                            ? "Glitch"
-                            : ev.outcome === "success"
-                            ? "Réussite"
-                            : "Échec";
-                      
-                        return (
-                          <Text style={{ marginTop: 6, fontWeight: "600" }}>
-                            {label} — succès: {ev.successes} / ones: {ev.ones}
-                          </Text>
-                        );
-                      }
-                    
-                      return null;
-                    })() : null}
-                  </View>
-                );            
-              })()
-            ) : null}
-
           </View>
-        ))}
+        </Modal>
+        
       </ScrollView>
     </View>
   );
