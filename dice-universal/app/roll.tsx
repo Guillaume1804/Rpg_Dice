@@ -1,15 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { View, Text, Pressable, ScrollView, TextInput, Modal } from "react-native";
 import { useDb } from "../data/db/DbProvider";
-import { useActiveProfile } from "../data/state/ActiveProfileProvider";
-import { getProfileById, ProfileRow  } from "../data/repositories/profilesRepo";
-import { listGroupsByProfileId, listDiceByGroupId, GroupRow, GroupDieRow } from "../data/repositories/groupsRepo";
+import { useActiveTable } from "../data/state/ActiveTableProvider";
+
+import { getTableById, TableRow } from "../data/repositories/tablesRepo";
+import { listGroupsByTableId, listDiceByGroupId, GroupRow, GroupDieRow } from "../data/repositories/groupsRepo";
+
 import { rollGroup, GroupRollResult } from "../core/roll/roll";
-import { getRulesetById, RulesetRow } from "../data/repositories/rulesetsRepo";
-import { evaluateRoll } from "../core/rules/evaluate";
 import { insertRollEvent } from "../data/repositories/rollEventsRepo";
 import { newId } from "../core/types/ids";
-import { createGroupFromDraft, createProfileWithDraft, deleteAllGroupsForProfile } from "../data/repositories/draftSaveRepo";
 
 type GroupWithDice = {
   group: GroupRow;
@@ -18,12 +17,11 @@ type GroupWithDice = {
 
 export default function RollScreen() {
   const db = useDb();
-  const { activeProfileId, setActiveProfileId } = useActiveProfile();
+  const { activeTableId, setActiveTableId } = useActiveTable();
 
-  const [profile, setProfile] = useState<ProfileRow | null>(null);
+  const [table, setTable] = useState<TableRow | null>(null);
   const [groups, setGroups] = useState<GroupWithDice[]>([]);
   const [results, setResults] = useState<GroupRollResult[]>([]);
-  const [ruleset, setRuleset] = useState<RulesetRow | null>(null);
   const [ignoreRules, setIgnoreRules] = useState(false);
   const [draftDice, setDraftDice] = useState<{ sides: number; qty: number }[]>([]);
   const [draftResult, setDraftResult] = useState<GroupRollResult | null>(null);
@@ -35,9 +33,9 @@ export default function RollScreen() {
 
   const [error, setError] = useState<string | null>(null);
 
-  const pid = useMemo(
-    () => (typeof activeProfileId === "string" && activeProfileId.length > 0 ? activeProfileId : ""),
-    [activeProfileId]
+  const tableId = useMemo(
+    () => (typeof activeTableId === "string" && activeTableId.length > 0 ? activeTableId : ""),
+    [activeTableId]
   );
 
   useEffect(() => {
@@ -48,24 +46,21 @@ export default function RollScreen() {
         setDraftDice([]);
         setDraftResult(null);
 
-        if (!pid) {
-          setProfile(null);
+        if (!tableId) {
+          setTable(null);
           setGroups([]);
           return;
         }
 
-        const p = await getProfileById(db, pid);
-        setProfile(p);
+        const t = await getTableById(db, tableId);
+        setTable(t);
 
-        if (!p) {
+        if (!t) {
           setGroups([]);
           return;
         }
 
-        const r = await getRulesetById(db, p.ruleset_id);
-        setRuleset(r);
-
-        const gs = await listGroupsByProfileId(db, pid);
+        const gs = await listGroupsByTableId(db, tableId);
         const withDice: GroupWithDice[] = [];
         for (const g of gs) {
           const dice = await listDiceByGroupId(db, g.id);
@@ -76,7 +71,7 @@ export default function RollScreen() {
         setError(e?.message ?? String(e));
       }
     })();
-  }, [db, pid]);
+  }, [db, tableId]);
 
   function nowIso() {
     return new Date().toISOString();
@@ -90,7 +85,7 @@ export default function RollScreen() {
   }
 
   async function onRoll() {
-    if (!profile) return;
+    if (!table) return;
 
     const rolled: GroupRollResult[] = groups.map(({ group, dice }) =>
       rollGroup({
@@ -110,8 +105,8 @@ export default function RollScreen() {
 
       const payload = {
         type: "groups",
-        profileId: profile.id,
-        profileName: profile.name,
+        tableId: table.id,
+        tableName: table.name,
         groups: rolled.map((r) => ({
           groupId: r.groupId,
           label: r.label,
@@ -121,13 +116,13 @@ export default function RollScreen() {
       };
 
       const summary = {
-        title: `Jet — ${profile.name}`,
+        title: `Jet — ${table.name}`,
         lines: rolled.map(summarizeGroup),
       };
 
       await insertRollEvent(db, {
         id: eventId,
-        profile_id: profile.id,
+        table_id: table.id,
         created_at: createdAt,
         payload_json: JSON.stringify(payload),
         summary_json: JSON.stringify(summary),
@@ -163,7 +158,7 @@ export default function RollScreen() {
 
   async function rollDraft() {
     if (draftDice.length === 0) return;
-    if (!profile) return;
+    if (!table) return;
 
     const result = rollGroup({
       groupId: "draft",
@@ -184,8 +179,8 @@ export default function RollScreen() {
 
       const payload = {
         type: "draft",
-        profileId: profile.id,
-        profileName: profile.name,
+        tableId: table.id,
+        tableName: table.name,
         groups: [
           {
             groupId: "draft",
@@ -197,13 +192,13 @@ export default function RollScreen() {
       };
 
       const summary = {
-        title: `Jet rapide — ${profile.name}`,
+        title: `Jet rapide — ${table.name}`,
         lines: [summarizeGroup(result)],
       };
 
       await insertRollEvent(db, {
         id: eventId,
-        profile_id: profile.id,
+        table_id: table.id,
         created_at: createdAt,
         payload_json: JSON.stringify(payload),
         summary_json: JSON.stringify(summary),
@@ -233,7 +228,7 @@ export default function RollScreen() {
     );
   }
 
-  if (!profile) {
+  if (!table) {
     return (
       <View style={{ flex: 1, padding: 16, gap: 12 }}>
         <Text style={{ fontSize: 18, fontWeight: "700" }}>Jet</Text>
@@ -244,7 +239,7 @@ export default function RollScreen() {
 
   return (
     <View style={{ flex: 1, padding: 16, gap: 12 }}>
-      <Text style={{ fontSize: 18, fontWeight: "700" }}>Jet — {profile.name}</Text>
+      <Text style={{ fontSize: 18, fontWeight: "700" }}>Jet — {table.name}</Text>
 
       <Pressable
         onPress={onRoll}
@@ -331,20 +326,20 @@ export default function RollScreen() {
 
               <Pressable
                 onPress={async () => {
-                  if (!profile) return;
-                  if (profile.is_system === 1) return; // sécurité
+                  if (!table) return;
+                  if (table.is_system === 1) return; // sécurité
                   if (draftDice.length === 0) return;
                 
-                  await deleteAllGroupsForProfile(db, profile.id);
+                  await deleteAllGroupsForProfile(db, table.id);
                   await createGroupFromDraft(db, {
-                    profileId: profile.id,
+                    tableId: table.id,
                     groupName: "Groupe (depuis Jet rapide)",
                     draftDice,
                   });
                 
                   // recharge les groupes (simple: relance ton loader en changeant un state ou rappelle la fonction de load)
                   // pour V1 : on force un refresh en rappelant la logique de load
-                  const gs = await listGroupsByProfileId(db, profile.id);
+                  const gs = await listGroupsByProfileId(db, table.id);
                   const withDice: GroupWithDice[] = [];
                   for (const g of gs) {
                     const dice = await listDiceByGroupId(db, g.id);
@@ -358,11 +353,11 @@ export default function RollScreen() {
                   padding: 10,
                   borderWidth: 1,
                   borderRadius: 8,
-                  opacity: profile.is_system === 1 ? 0.4 : 1,
+                  opacity: table.is_system === 1 ? 0.4 : 1,
                 }}
               >
                 <Text>Remplacer la table actuelle</Text>
-                {profile.is_system === 1 ? (
+                {table.is_system === 1 ? (
                   <Text style={{ opacity: 0.7, marginTop: 4 }}>
                     Table système : remplacement interdit
                   </Text>
@@ -371,7 +366,7 @@ export default function RollScreen() {
               
               <Pressable
                 onPress={async () => {
-                  if (!profile) return;
+                  if (!table) return;
                   if (draftDice.length === 0) return;
 
                   setNewTableName(`Nouvelle table (${new Date().toLocaleDateString()})`);
@@ -418,12 +413,12 @@ export default function RollScreen() {
                       if (!name) return;
                     
                       // --- CRÉER NOUVELLE TABLE ---
-                      if (!profile) return;
+                      if (!table) return;
                       if (draftDice.length === 0) return;
                     
-                      const newProfileId = await createProfileWithDraft(db, {
+                      const newTableId = await createProfileWithDraft(db, {
                         name,
-                        rulesetId: profile.ruleset_id,
+                        rulesetId: table.ruleset_id,
                         draftDice,
                         groupName: "Groupe (depuis Jet rapide)",
                       });

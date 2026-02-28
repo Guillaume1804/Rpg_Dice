@@ -1,5 +1,4 @@
 import { openDb } from "./database";
-import { runMigrations } from "./migrations";
 import { runSeedIfNeeded } from "./seed";
 import type { Db } from "./database";
 
@@ -9,7 +8,7 @@ export function initDb(): Promise<Db> {
   if (!initPromise) {
     initPromise = (async () => {
       const db = await openDb();
-      await runMigrations(db);
+      // ✅ openDb() appelle déjà initSchema(db)
       await runSeedIfNeeded(db);
       return db;
     })();

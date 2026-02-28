@@ -1,35 +1,31 @@
-import { useEffect, useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { View, Text, FlatList, Pressable } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
-import { listProfiles, ProfileRow } from "../data/repositories/profilesRepo";
 import { useDb } from "../data/db/DbProvider";
-import { useActiveProfile } from "../data/state/ActiveProfileProvider";
+import { useActiveTable } from "../data/state/ActiveTableProvider";
+import { listTables, TableRow } from "../data/repositories/tablesRepo";
 
 export default function TablesScreen() {
   const db = useDb();
   const router = useRouter();
-  const [profiles, setProfiles] = useState<ProfileRow[]>([]);
+  const [tables, setTables] = useState<TableRow[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const { setActiveProfileId, activeProfileId } = useActiveProfile();
+  const { setActiveTableId, activeTableId } = useActiveTable();
 
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
-    
+
       (async () => {
         try {
-          const rows = await listProfiles(db);
-          if (isActive) {
-            setProfiles(rows);
-          }
+          const rows = await listTables(db);
+          if (isActive) setTables(rows);
         } catch (e: any) {
-          if (isActive) {
-            setError(e?.message ?? String(e));
-          }
+          if (isActive) setError(e?.message ?? String(e));
         }
       })();
-    
+
       return () => {
         isActive = false;
       };
@@ -51,23 +47,25 @@ export default function TablesScreen() {
 
       <FlatList
         style={{ marginTop: 12 }}
-        data={profiles}
+        data={tables}
         keyExtractor={(item) => item.id}
         ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
         renderItem={({ item }) => (
           <Pressable
             onPress={async () => {
-              await setActiveProfileId(item.id);
+              await setActiveTableId(item.id);
               router.push(`/tables/${item.id}` as any);
             }}
             style={{ padding: 12, borderWidth: 1, borderRadius: 12 }}
           >
-            {activeProfileId === item.id ? (
-              <Text style={{ marginTop: 6, fontWeight: "600" }}>✅ Active</Text>
+            {activeTableId === item.id ? (
+              <Text style={{ marginBottom: 6, fontWeight: "600" }}>✅ Active</Text>
             ) : null}
+
             <Text style={{ fontSize: 16, fontWeight: "600" }}>{item.name}</Text>
+
             <Text style={{ marginTop: 4, opacity: 0.7 }}>
-              ruleset: {item.ruleset_id}
+              {item.is_system === 1 ? "Table système" : "Table perso"}
             </Text>
           </Pressable>
         )}
