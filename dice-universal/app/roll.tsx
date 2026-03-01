@@ -145,6 +145,16 @@ export default function RollScreen() {
       withDice.push({ group: g, dice });
     }
     setGroups(withDice);
+    // Recharge aussi les règles liées aux dés
+    const ruleIds = new Set<string>();
+    withDice.forEach(g => g.dice.forEach(d => { if (d.rule_id) ruleIds.add(d.rule_id); }));
+    
+    const map: Record<string, any> = {};
+    for (const id of ruleIds) {
+      const rule = await getRuleById(db, id);
+      if (rule) map[id] = rule;
+    }
+    setRulesMap(map);
   }
 
   async function onRoll() {
