@@ -21,6 +21,9 @@ import { rollGroup, GroupRollResult } from "../core/roll/roll";
 import { insertRollEvent } from "../data/repositories/rollEventsRepo";
 import { newId } from "../core/types/ids";
 
+import { evaluateRule } from "../core/rules/evaluate";
+import { getRuleById } from "../data/repositories/rulesRepo";
+
 type GroupWithDice = {
   group: GroupRow;
   dice: GroupDieRow[];
@@ -40,6 +43,8 @@ export default function RollScreen() {
   const [showSaveOptions, setShowSaveOptions] = useState(false);
   const [showNameModal, setShowNameModal] = useState(false);
   const [newTableName, setNewTableName] = useState("");
+
+  const [rulesMap, setRulesMap] = useState<Record<string, any>>({});
 
   const [error, setError] = useState<string | null>(null);
 
@@ -79,6 +84,22 @@ export default function RollScreen() {
           withDice.push({ group: g, dice });
         }
         setGroups(withDice);
+        // Charger toutes les règles liées
+        const ruleIds = new Set<string>();
+        withDice.forEach(g =>
+          g.dice.forEach(d => {
+            if (d.rule_id) ruleIds.add(d.rule_id);
+          })
+        );
+        
+        const map: Record<string, any> = {};
+        
+        for (const id of ruleIds) {
+          const rule = await getRuleById(db, id);
+          if (rule) map[id] = rule;
+        }
+        
+        setRulesMap(map);
       } catch (e: any) {
         setError(e?.message ?? String(e));
       }
@@ -93,6 +114,27 @@ export default function RollScreen() {
     const values = r.dice.map((d) => d.value);
     const short = values.length === 1 ? String(values[0]) : `${values.join(", ")} (total ${r.total})`;
     return `${r.label}: ${short}`;
+  }
+
+  function formatRuleResult(res: any): string {
+    if (!res) return "";
+    if (res.kind === "sum") return `Somme = ${res.total}`;
+    if (res.kind === "d20") {
+      if (res.outcome === "crit_success") return "Réussite critique";
+      if (res.outcome === "crit_failure") return "Échec critique";
+      if (res.threshold == null) return "Résultat";
+      return res.outcome === "success" ? "Réussite" : "Échec";
+    }
+    if (res.kind === "pool") {
+      const label =
+        res.outcome === "crit_glitch" ? "Échec critique (glitch)" :
+        res.outcome === "glitch" ? "Glitch" :
+        res.outcome === "success" ? "Réussite" : "Échec";
+      return `${label} — succès: ${res.successes} / ones: ${res.ones}`;
+    }
+    if (res.kind === "table_lookup") return res.label;
+    if (res.kind === "unknown") return res.message;
+    return "";
   }
 
   async function reloadGroups(tid: string) {
@@ -321,9 +363,7 @@ export default function RollScreen() {
                     draftDice: draftDice.map((d) => ({
                       sides: d.sides,
                       qty: d.qty,
-                      // règles par défaut pour l’instant
-                      rule_mode: "sum",
-                      rule_params_json: "{}",
+                      rule_id: null, // fallback sum
                     })),
                   });
                 
@@ -373,6 +413,31 @@ export default function RollScreen() {
               <Text style={{ marginTop: 6, opacity: 0.7 }}>
                 {dice.map((d) => `${d.qty}d${d.sides}`).join(" + ")}
               </Text>
+
+              {dice.map((d) => {
+                // ⚠️ Ici on évalue sur les valeurs rollées correspondantes.
+                // Pour V2 simple : si un groupe a plusieurs entrées, on ne sait pas encore
+                // quelle valeur appartient à quelle entrée. Donc on commence par un MVP :
+                // - si le groupe n’a qu’une entrée => on utilise toutes les valeurs
+                // - sinon => on affiche juste le mode (et on fera le mapping propre en V2.2)
+                const canEvalPrecisely = dice.length === 1 && r;
+                const rule = d.rule_id ? rulesMap[d.rule_id] : null;
+
+                const res =
+                  canEvalPrecisely && rule
+                    ? evaluateRule(rule.kind, rule.params_json, {
+                        values: r.dice.map((x) => x.value),
+                        sides: d.sides,
+                      })
+                    : null;
+                  
+                return (
+                  <Text key={d.id} style={{ opacity: 0.75, marginTop: 4 }}>
+                    règle: {rule ? rule.name : "Somme"}
+                    {res ? ` → ${formatRuleResult(res)}` : ""}
+                  </Text>
+                );
+              })}
 
               {r ? (
                 <View style={{ marginTop: 10 }}>
@@ -424,8 +489,7 @@ export default function RollScreen() {
                       draftDice: draftDice.map((d) => ({
                         sides: d.sides,
                         qty: d.qty,
-                        rule_mode: "sum",
-                        rule_params_json: "{}",
+                        rule_id: null, // fallback sum
                       })),
                     });
                   

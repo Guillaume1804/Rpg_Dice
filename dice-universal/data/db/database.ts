@@ -4,7 +4,7 @@ export type Db = SQLite.SQLiteDatabase;
 
 export async function openDb(): Promise<Db> {
   // ✅ Nouveau fichier = reset total
-  const db = await SQLite.openDatabaseAsync("dice_universal_V2_reset1.db");
+  const db = await SQLite.openDatabaseAsync("dice_universal_V3.db");
 
   // ⚠️ FK ON doit être fait à chaque ouverture
   await db.execAsync("PRAGMA foreign_keys = ON;");
@@ -58,6 +58,18 @@ export async function initSchema(db: Db): Promise<void> {
   `);
 
   await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS rules (
+      id TEXT PRIMARY KEY NOT NULL,
+      name TEXT NOT NULL,
+      kind TEXT NOT NULL,                -- ex: sum, d20, pool, mapping, percentile
+      params_json TEXT NOT NULL DEFAULT '{}',
+      is_system INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+  `);
+
+  await db.execAsync(`
     CREATE TABLE IF NOT EXISTS groups (
       id TEXT PRIMARY KEY NOT NULL,
       table_id TEXT NOT NULL,
@@ -78,13 +90,13 @@ export async function initSchema(db: Db): Promise<void> {
       modifier INTEGER NOT NULL DEFAULT 0,
       sort_order INTEGER NOT NULL DEFAULT 0,
 
-      -- ✅ règles AU NIVEAU DU DÉ (ou entrée de dé)
-      rule_mode TEXT NOT NULL DEFAULT 'sum',
-      rule_params_json TEXT NOT NULL DEFAULT '{}',
+      rule_id TEXT NULL,  -- ✅ référence une règle réutilisable
 
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
-      FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE
+
+      FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
+      FOREIGN KEY (rule_id) REFERENCES rules(id) ON DELETE SET NULL
     );
   `);
 
@@ -107,4 +119,6 @@ export async function initSchema(db: Db): Promise<void> {
   await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_dice_group ON group_dice(group_id);`);
   await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_rolls_table ON roll_events(table_id);`);
   await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_rolls_created ON roll_events(created_at);`);
+  await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_dice_rule ON group_dice(rule_id);`);
+  await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_rules_kind ON rules(kind);`);
 }

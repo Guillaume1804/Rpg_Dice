@@ -5,22 +5,27 @@ export type DraftDie = {
   sides: number;
   qty: number;
   modifier?: number;
-
-  // ✅ règles V2 (optionnelles)
-  rule_mode?: string;         // ex: "sum" | "d20" | "pool" ...
-  rule_params_json?: string;  // JSON string
+  rule_id?: string | null;
 };
 
 function nowIso() {
   return new Date().toISOString();
 }
 
-/** Supprime tous les groupes d'une table (cascade -> group_dice) */
 export async function deleteAllGroupsForTable(db: Db, tableId: string): Promise<void> {
+
+  const rows = await db.getAllAsync<{ is_system: number }>(
+    "SELECT is_system FROM tables WHERE id = ? LIMIT 1;",
+    [tableId]
+  );
+
+  if (rows.length && rows[0].is_system === 1) {
+    throw new Error("Impossible de modifier une table système");
+  }
+
   await db.runAsync("DELETE FROM groups WHERE table_id = ?;", [tableId]);
 }
 
-/** Crée un groupe + ses dés dans une table */
 export async function createGroupFromDraft(db: Db, params: {
   tableId: string;
   groupName: string;
@@ -37,23 +42,22 @@ export async function createGroupFromDraft(db: Db, params: {
 
   let sort = 0;
   for (const d of params.draftDice) {
-    const dieId = await newId();
-
+    const id = await newId();
     await db.runAsync(
       `INSERT INTO group_dice(
         id, group_id, sides, qty, modifier, sort_order,
-        rule_mode, rule_params_json,
+        rule_id,
         created_at, updated_at
-      ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      )
+      VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?);`,
       [
-        dieId,
+        id,
         groupId,
         d.sides,
         d.qty,
         d.modifier ?? 0,
         sort++,
-        d.rule_mode ?? "sum",
-        d.rule_params_json ?? "{}",
+        d.rule_id ?? null,
         createdAt,
         createdAt,
       ]
@@ -63,11 +67,10 @@ export async function createGroupFromDraft(db: Db, params: {
   return groupId;
 }
 
-/** Crée une nouvelle table + (optionnel) un groupe créé depuis draft */
 export async function createTableWithDraft(db: Db, params: {
   name: string;
-  draftDice: DraftDie[];
   groupName: string;
+  draftDice: DraftDie[];
 }): Promise<string> {
   const createdAt = nowIso();
   const tableId = await newId();
@@ -78,13 +81,11 @@ export async function createTableWithDraft(db: Db, params: {
     [tableId, params.name, 0, createdAt, createdAt]
   );
 
-  if (params.draftDice.length > 0) {
-    await createGroupFromDraft(db, {
-      tableId,
-      groupName: params.groupName,
-      draftDice: params.draftDice,
-    });
-  }
+  await createGroupFromDraft(db, {
+    tableId,
+    groupName: params.groupName,
+    draftDice: params.draftDice,
+  });
 
   return tableId;
 }
