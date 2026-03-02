@@ -84,6 +84,7 @@ export default function RulesScreen() {
       // si params_json cassé, on retombe sur défauts
     }
 
+    setPreviewResult("");
     setShowEditModal(true);
   }
 
@@ -223,6 +224,17 @@ export default function RulesScreen() {
                 key={k}
                 onPress={() => {
                   setFormKind(k);
+                  // reset champs selon type (important)
+                  setD20CritSuccess("20");
+                  setD20CritFailure("1");
+                  setD20Threshold("");
+                                
+                  setPoolSuccessAtOrAbove("4");
+                  setPoolCritFailureFace("1");
+                  setPoolGlitchRule("ones_gt_successes");
+                                
+                  setPreviewResult("");
+
                   setShowPickKindModal(false);
                   setShowEditModal(true);
                 }}
@@ -233,7 +245,13 @@ export default function RulesScreen() {
             ))}
 
             <Pressable
-              onPress={() => setShowPickKindModal(false)}
+              onPress={() => {
+                setShowPickKindModal(false);
+                setEditingRule(null);
+                setFormName("");
+                setFormKind("sum");
+                setPreviewResult("");
+              }}
               style={{ marginTop: 12, padding: 10, borderWidth: 1, borderRadius: 10 }}
             >
               <Text>Annuler</Text>
@@ -245,7 +263,10 @@ export default function RulesScreen() {
         visible={showEditModal}
         transparent
         animationType="fade"
-        onRequestClose={() => setShowEditModal(false)}
+        onRequestClose={() => {
+          setShowEditModal(false);
+          setEditingRule(null);
+        }}
       >
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 16 }}>
           <View style={{ backgroundColor: "white", borderRadius: 12, padding: 16, borderWidth: 1 }}>
@@ -317,7 +338,10 @@ export default function RulesScreen() {
             {/* Actions */}
             <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 16 }}>
               <Pressable
-                onPress={() => setShowEditModal(false)}
+                onPress={() => {
+                  setShowEditModal(false);
+                  setEditingRule(null);
+                }}
                 style={{ padding: 10, borderWidth: 1, borderRadius: 10, marginRight: 10 }}
               >
                 <Text>Annuler</Text>
@@ -344,7 +368,8 @@ export default function RulesScreen() {
                       is_system: 0,
                     });
                   }
-                
+                  setEditingRule(null);
+                  setPreviewResult("");
                   setShowEditModal(false);
                   await load(); // ton load existant qui refresh la liste
                 }}
