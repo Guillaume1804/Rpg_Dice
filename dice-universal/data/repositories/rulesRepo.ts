@@ -50,3 +50,28 @@ export async function createRule(
 export async function deleteRule(db: Db, id: string): Promise<void> {
   await db.runAsync("DELETE FROM rules WHERE id = ? AND is_system = 0;", [id]);
 }
+
+export async function updateRule(
+  db: Db,
+  id: string,
+  params: { name: string; kind: string; params_json: string }
+): Promise<void> {
+  const now = new Date().toISOString();
+
+  // sécurité: ne pas modifier une règle système
+  const rows = await db.getAllAsync<{ is_system: number }>(
+    "SELECT is_system FROM rules WHERE id = ? LIMIT 1;",
+    [id]
+  );
+
+  if (rows.length && rows[0].is_system === 1) {
+    throw new Error("Modification interdite sur règle système");
+  }
+
+  await db.runAsync(
+    `UPDATE rules
+     SET name = ?, kind = ?, params_json = ?, updated_at = ?
+     WHERE id = ?;`,
+    [params.name, params.kind, params.params_json, now, id]
+  );
+}
