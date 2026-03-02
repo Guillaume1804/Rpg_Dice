@@ -11,6 +11,7 @@ export default function RootLayout() {
           <Stack.Screen name="roll" options={{ title: "Jet" }} />
           <Stack.Screen name="tables" options={{ title: "Mes tables" }} />
           <Stack.Screen name="history" options={{ title: "Historique" }} />
+          <Stack.Screen name="rules" options={{ title: "Règles" }} />
         </Stack>
       </ActiveTableProvider>
     </DbProvider>

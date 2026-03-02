@@ -35,7 +35,7 @@ export async function createRule(
   }
 ): Promise<string> {
   const createdAt = new Date().toISOString();
-  const id = await newId(); // ✅ ici
+  const id = await newId();
   const isSystem = params.is_system ?? 0;
 
   await db.runAsync(

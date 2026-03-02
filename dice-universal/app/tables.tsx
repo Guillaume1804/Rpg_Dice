@@ -45,6 +45,13 @@ export default function TablesScreen() {
     <View style={{ flex: 1, padding: 16 }}>
       <Text style={{ fontSize: 18, fontWeight: "600" }}>Mes tables</Text>
 
+      <Pressable
+        onPress={() => router.push("/rules" as any)}
+        style={{ padding: 10, borderWidth: 1, borderRadius: 10, marginBottom: 12 }}
+      >
+        <Text>Règles</Text>
+      </Pressable>
+
       <FlatList
         style={{ marginTop: 12 }}
         data={tables}
