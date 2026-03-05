@@ -125,9 +125,9 @@ export async function runSeedIfNeeded(db: Db): Promise<void> {
     const dieId = await newId();
     await db.runAsync(
       `INSERT INTO group_dice(
-        id, group_id, sides, qty, modifier, sort_order, rule_id, created_at, updated_at
-      ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?);`,
-      [dieId, g1, 20, 1, 0, 0, ruleD20Id, createdAt, createdAt]
+        id, group_id, sides, qty, modifier, sign, sort_order, rule_id, created_at, updated_at
+      ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      [dieId, g1, 20, 1, 0, 1, 0, ruleD20Id, createdAt, createdAt]
     );
   }
 
@@ -145,9 +145,9 @@ export async function runSeedIfNeeded(db: Db): Promise<void> {
     const dieId = await newId();
     await db.runAsync(
       `INSERT INTO group_dice(
-        id, group_id, sides, qty, modifier, sort_order, rule_id, created_at, updated_at
-      ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?);`,
-      [dieId, g2, 6, 6, 0, 0, rulePoolId, createdAt, createdAt]
+        id, group_id, sides, qty, modifier, sign, sort_order, rule_id, created_at, updated_at
+      ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      [dieId, g2, 6, 6, 0, 1, 0, rulePoolId, createdAt, createdAt]
     );
   }
 

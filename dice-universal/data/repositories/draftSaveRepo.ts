@@ -5,6 +5,7 @@ export type DraftDie = {
   sides: number;
   qty: number;
   modifier?: number;
+  sign?: number;
   rule_id?: string | null;
 };
 
@@ -45,17 +46,18 @@ export async function createGroupFromDraft(db: Db, params: {
     const id = await newId();
     await db.runAsync(
       `INSERT INTO group_dice(
-        id, group_id, sides, qty, modifier, sort_order,
+        id, group_id, sides, qty, modifier, sign, sort_order,
         rule_id,
         created_at, updated_at
       )
-      VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
       [
         id,
         groupId,
         d.sides,
         d.qty,
         d.modifier ?? 0,
+        d.sign ?? 1,
         sort++,
         d.rule_id ?? null,
         createdAt,

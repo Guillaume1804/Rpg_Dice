@@ -15,6 +15,7 @@ export type GroupDieRow = {
   sides: number;
   qty: number;
   modifier: number;
+  sign: number;
   sort_order: number;
 
   rule_id: string | null;

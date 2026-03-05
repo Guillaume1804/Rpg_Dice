@@ -1,41 +1,56 @@
-export type DieSpec = {
-  sides: number;   // ex: 20
-  qty: number;     // ex: 2
+// core/roll/roll.ts
+
+export type RollDieValue = {
+  value: number; // valeur naturelle (1..sides)
 };
 
-export type RolledDie = {
+export type RollEntryInput = {
+  dieId: string;      // ✅ id de group_dice
   sides: number;
-  value: number;
+  qty: number;
+};
+
+export type RollEntryResult = {
+  dieId: string;
+  sides: number;
+  qty: number;
+  dice: RollDieValue[]; // ✅ valeurs naturelles, longueur = qty
 };
 
 export type GroupRollResult = {
   groupId: string;
   label: string;
-  dice: RolledDie[];
-  total: number; // somme simple (utile même si on affiche séparé)
+  entries: RollEntryResult[];
+  // total brut (somme des valeurs naturelles), utile debug/legacy
+  raw_total: number;
 };
 
-function rollOne(sides: number) {
-  return Math.floor(Math.random() * sides) + 1;
+function randInt(min: number, max: number) {
+  // min/max inclus
+  return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 export function rollGroup(params: {
   groupId: string;
   label: string;
-  dice: DieSpec[];
+  entries: RollEntryInput[];
 }): GroupRollResult {
-  const rolled: RolledDie[] = [];
-  for (const spec of params.dice) {
-    for (let i = 0; i < spec.qty; i++) {
-      rolled.push({ sides: spec.sides, value: rollOne(spec.sides) });
+  const entries: RollEntryResult[] = params.entries.map((e) => {
+    const dice: RollDieValue[] = [];
+    for (let i = 0; i < e.qty; i++) {
+      dice.push({ value: randInt(1, e.sides) });
     }
-  }
-  const total = rolled.reduce((acc, d) => acc + d.value, 0);
+    return { dieId: e.dieId, sides: e.sides, qty: e.qty, dice };
+  });
+
+  const raw_total = entries
+    .flatMap((e) => e.dice)
+    .reduce((acc, d) => acc + d.value, 0);
 
   return {
     groupId: params.groupId,
     label: params.label,
-    dice: rolled,
-    total,
+    entries,
+    raw_total,
   };
 }

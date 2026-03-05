@@ -111,9 +111,11 @@ export default function RollScreen() {
   }
 
   function summarizeGroup(r: GroupRollResult) {
-    const values = r.dice.map((d) => d.value);
-    const short = values.length === 1 ? String(values[0]) : `${values.join(", ")} (total ${r.total})`;
-    return `${r.label}: ${short}`;
+    const parts = r.entries.map((e) => {
+      const values = e.dice.map((d) => d.value).join(", ");
+      return `${e.qty}d${e.sides}: [${values}]`;
+    });
+    return `${r.label}: ${parts.join(" | ")} (raw ${r.raw_total})`;
   }
 
   function formatRuleResult(res: any): string {
@@ -164,7 +166,11 @@ export default function RollScreen() {
       rollGroup({
         groupId: group.id,
         label: group.name,
-        dice: dice.map((d) => ({ sides: d.sides, qty: d.qty })),
+        entries: dice.map((d) => ({
+          dieId: d.id,
+          sides: d.sides,
+          qty: d.qty,
+        })),
       })
     );
 

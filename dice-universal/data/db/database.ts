@@ -4,7 +4,7 @@ export type Db = SQLite.SQLiteDatabase;
 
 export async function openDb(): Promise<Db> {
   // ✅ Nouveau fichier = reset total
-  const db = await SQLite.openDatabaseAsync("dice_universal_V3.db");
+  const db = await SQLite.openDatabaseAsync("dice_universal_V4.db");
 
   // ⚠️ FK ON doit être fait à chaque ouverture
   await db.execAsync("PRAGMA foreign_keys = ON;");
@@ -40,9 +40,14 @@ export async function setMeta(db: Db, key: string, value: string): Promise<void>
   );
 }
 
+async function ensureColumn(db: Db, table: string, column: string): Promise<boolean> {
+  const rows = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(${table});`);
+  return rows.some((r) => r.name === column);
+}
+
 /**
  * ✅ Nouveau schéma “rules par dé/groupe”
- * - tables -> groups -> group_dice (avec rule_mode / rule_params_json)
+ * - tables -> groups -> group_dice (rule_id)
  */
 export async function initSchema(db: Db): Promise<void> {
   await ensureMetaTable(db);
@@ -88,6 +93,7 @@ export async function initSchema(db: Db): Promise<void> {
       sides INTEGER NOT NULL,
       qty INTEGER NOT NULL,
       modifier INTEGER NOT NULL DEFAULT 0,
+      sign INTEGER NOT NULL DEFAULT 1,
       sort_order INTEGER NOT NULL DEFAULT 0,
 
       rule_id TEXT NULL,  -- ✅ référence une règle réutilisable
@@ -121,4 +127,10 @@ export async function initSchema(db: Db): Promise<void> {
   await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_rolls_created ON roll_events(created_at);`);
   await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_dice_rule ON group_dice(rule_id);`);
   await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_rules_kind ON rules(kind);`);
+
+    // --- Migrations légères (ALTER TABLE) ---
+  const hasSign = await ensureColumn(db, "group_dice", "sign");
+  if (!hasSign) {
+    await db.execAsync(`ALTER TABLE group_dice ADD COLUMN sign INTEGER NOT NULL DEFAULT 1;`);
+  }
 }
