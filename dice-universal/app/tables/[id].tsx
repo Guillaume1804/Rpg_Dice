@@ -60,6 +60,17 @@ export default function TableDetailScreen() {
       setGroups(withDice);
 
       const allRules = await listRules(db);
+
+      // pipelines d'abord
+      allRules.sort((a, b) => {
+        const ap = a.kind === "pipeline" ? 0 : 1;
+        const bp = b.kind === "pipeline" ? 0 : 1;
+        if (ap !== bp) return ap - bp;
+        // système d'abord
+        if (a.is_system !== b.is_system) return b.is_system - a.is_system;
+        return a.created_at.localeCompare(b.created_at);
+      });
+      
       setRules(allRules);
     } catch (e: any) {
       setError(e?.message ?? String(e));
