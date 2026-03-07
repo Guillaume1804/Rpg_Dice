@@ -2,7 +2,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { View, Text, Pressable, Modal, TextInput, ScrollView } from "react-native";
 import { useDb } from "../data/db/DbProvider";
-import { listRules, createRule, deleteRule, RuleRow, updateRule } from "../data/repositories/rulesRepo";
+import {
+  listRules,
+  createRule,
+  deleteRule,
+  RuleRow,
+  updateRule,
+} from "../data/repositories/rulesRepo";
 import { evaluateRule } from "../core/rules/evaluate";
 
 type RangeRow = { min: string; max: string; label: string };
@@ -12,16 +18,30 @@ type PipelineStep =
   | { op: "keep_lowest"; n: number }
   | { op: "drop_highest"; n: number }
   | { op: "drop_lowest"; n: number }
+  | { op: "take"; index: number }
+  | { op: "sort_asc" }
+  | { op: "sort_desc" }
   | { op: "reroll"; faces: number[]; once?: boolean; max_rerolls?: number }
   | { op: "explode"; faces: number[]; max_explosions?: number }
   | { op: "count_successes"; at_or_above: number }
+  | { op: "count_equal"; faces: number[] }
+  | { op: "count_range"; min: number; max: number }
   | { op: "lookup"; ranges: { min: number; max: number; label: string }[] }
-  | { op: "sum" }
-  | { op: "take"; index: number };
+  | { op: "sum" };
+
+type PipelineOutput =
+  | "sum"
+  | "successes"
+  | "count_equal"
+  | "count_range"
+  | "first_value"
+  | "values"
+  | "lookup_label"
+  | "lookup_value";
 
 type PipelineParams = {
   steps: PipelineStep[];
-  output?: "sum" | "successes" | "lookup_label" | "values";
+  output?: PipelineOutput;
   crit_success_faces?: number[];
   crit_failure_faces?: number[];
   success_threshold?: number | null;
@@ -49,23 +69,75 @@ function stringifyPipeline(p: PipelineParams) {
   );
 }
 
+function formatPreviewResult(res: any): string {
+  if (!res) return "";
+
+  if (res.kind === "sum") {
+    return `Somme = ${res.total}`;
+  }
+
+  if (res.kind === "d20") {
+    return JSON.stringify(
+      {
+        kind: res.kind,
+        outcome: res.outcome,
+        natural: res.natural,
+        final: res.final,
+        threshold: res.threshold,
+      },
+      null,
+      2
+    );
+  }
+
+  if (res.kind === "pool") {
+    return JSON.stringify(
+      {
+        kind: res.kind,
+        outcome: res.outcome,
+        successes: res.successes,
+        ones: res.ones,
+      },
+      null,
+      2
+    );
+  }
+
+  if (res.kind === "table_lookup") {
+    return `Lookup → ${res.label} (${res.value})`;
+  }
+
+  if (res.kind === "pipeline") {
+    return JSON.stringify(
+      {
+        kind: res.kind,
+        values: res.values,
+        kept: res.kept,
+        final: res.final,
+        meta: res.meta,
+      },
+      null,
+      2
+    );
+  }
+
+  return JSON.stringify(res, null, 2);
+}
+
 export default function RulesScreen() {
   const db = useDb();
 
   const [rules, setRules] = useState<RuleRow[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  // modals
   const [showEditModal, setShowEditModal] = useState(false);
 
-  // édition
   const [editingRule, setEditingRule] = useState<RuleRow | null>(null);
   const [formName, setFormName] = useState("");
 
-  // pipeline form
-  const [pipeOutput, setPipeOutput] = useState<"sum" | "successes" | "lookup_label" | "values">("sum");
-  const [successThreshold, setSuccessThreshold] = useState(""); // "" => null
-  const [critSuccessFaces, setCritSuccessFaces] = useState("");// "20,100" etc
+  const [pipeOutput, setPipeOutput] = useState<PipelineOutput>("sum");
+  const [successThreshold, setSuccessThreshold] = useState("");
+  const [critSuccessFaces, setCritSuccessFaces] = useState("");
   const [critFailureFaces, setCritFailureFaces] = useState("");
 
   const [steps, setSteps] = useState<PipelineStep[]>([]);
@@ -74,6 +146,9 @@ export default function RulesScreen() {
   const [keepN, setKeepN] = useState("5");
   const [successAt, setSuccessAt] = useState("5");
   const [takeIndex, setTakeIndex] = useState("0");
+  const [facesInput, setFacesInput] = useState("1");
+  const [rangeMin, setRangeMin] = useState("1");
+  const [rangeMax, setRangeMax] = useState("10");
 
   // lookup editor
   const [ranges, setRanges] = useState<RangeRow[]>([
@@ -88,7 +163,7 @@ export default function RulesScreen() {
   const [previewSides, setPreviewSides] = useState("20");
   const [previewModifier, setPreviewModifier] = useState("0");
   const [previewSign, setPreviewSign] = useState("1");
-  const [previewResult, setPreviewResult] = useState<string>("");
+  const [previewResult, setPreviewResult] = useState("");
 
   async function load() {
     try {
@@ -117,6 +192,16 @@ export default function RulesScreen() {
     setKeepN("5");
     setSuccessAt("5");
     setTakeIndex("0");
+    setFacesInput("1");
+    setRangeMin("1");
+    setRangeMax("10");
+
+    setRanges([
+      { min: "1", max: "20", label: "Tête" },
+      { min: "21", max: "50", label: "Torse" },
+      { min: "51", max: "80", label: "Bras" },
+      { min: "81", max: "100", label: "Jambes" },
+    ]);
 
     setPreviewResult("");
   }
@@ -146,7 +231,6 @@ export default function RulesScreen() {
 
   function openCreate() {
     resetForm();
-    // par défaut : sum (pipeline)
     setFormName("Nouvelle règle");
     setPipeOutput("sum");
     setSteps([{ op: "sum" }]);
@@ -160,16 +244,16 @@ export default function RulesScreen() {
     const p = safeParse(rule.params_json);
 
     if (rule.kind === "pipeline") {
-      const st = Array.isArray(p.steps) ? p.steps : [];
-      setSteps(st);
-
-      setPipeOutput((p.output as any) ?? "sum");
+      setSteps(Array.isArray(p.steps) ? p.steps : []);
+      setPipeOutput((p.output as PipelineOutput) ?? "sum");
       setSuccessThreshold(p.success_threshold == null ? "" : String(p.success_threshold));
-      setCritSuccessFaces(Array.isArray(p.crit_success_faces) ? p.crit_success_faces.join(", ") : "");
-      setCritFailureFaces(Array.isArray(p.crit_failure_faces) ? p.crit_failure_faces.join(", ") : "");
+      setCritSuccessFaces(
+        Array.isArray(p.crit_success_faces) ? p.crit_success_faces.join(", ") : ""
+      );
+      setCritFailureFaces(
+        Array.isArray(p.crit_failure_faces) ? p.crit_failure_faces.join(", ") : ""
+      );
     } else {
-      // règles legacy : on les ouvre en "lecture"
-      // (tu pourras les supprimer plus tard quand seed sera pipeline-only)
       setSteps([{ op: "sum" }]);
       setPipeOutput("sum");
       setSuccessThreshold("");
@@ -181,7 +265,15 @@ export default function RulesScreen() {
     setShowEditModal(true);
   }
 
-  function applyPreset(preset: "SUM" | "D20" | "D100_CRIT" | "D100_LOC" | "KEEP_HIGHEST") {
+  function applyPreset(
+    preset:
+      | "SUM"
+      | "D20"
+      | "D100_CRIT"
+      | "D100_LOC"
+      | "KEEP_HIGHEST"
+      | "SUCCESS_POOL"
+  ) {
     setPreviewResult("");
 
     if (preset === "SUM") {
@@ -198,14 +290,14 @@ export default function RulesScreen() {
       setFormName("D20 (crit 1/20) — pipeline");
       setPipeOutput("sum");
       setSteps([{ op: "take", index: 0 }, { op: "sum" }]);
-      setSuccessThreshold(""); // optionnel
+      setSuccessThreshold("");
       setCritSuccessFaces("20");
       setCritFailureFaces("1");
       return;
     }
 
     if (preset === "D100_CRIT") {
-      setFormName("D100 (crit 1-5 / 95-100) — pipeline");
+      setFormName("D100 (crit 95-100 / 1-5) — pipeline");
       setPipeOutput("sum");
       setSteps([{ op: "take", index: 0 }, { op: "sum" }]);
       setSuccessThreshold("");
@@ -234,16 +326,25 @@ export default function RulesScreen() {
     }
 
     if (preset === "KEEP_HIGHEST") {
-      setFormName("Keep highest (GoT style) — pipeline");
+      setFormName("Keep highest — pipeline");
       setPipeOutput("sum");
       setSteps([
-        { op: "keep_highest", n: Math.max(0, Number(keepN || "5")) },
+        { op: "keep_highest", n: Math.max(0, Number(keepN || "0")) },
         { op: "sum" },
       ]);
       setSuccessThreshold("");
       setCritSuccessFaces("");
       setCritFailureFaces("");
       return;
+    }
+
+    if (preset === "SUCCESS_POOL") {
+      setFormName("Pool à succès — pipeline");
+      setPipeOutput("successes");
+      setSteps([{ op: "count_successes", at_or_above: Math.max(0, Number(successAt || "0")) }]);
+      setSuccessThreshold("");
+      setCritSuccessFaces("");
+      setCritFailureFaces("");
     }
   }
 
@@ -257,6 +358,26 @@ export default function RulesScreen() {
     setPreviewResult("");
   }
 
+  function moveStepUp(index: number) {
+    if (index <= 0) return;
+    setSteps((prev) => {
+      const next = [...prev];
+      [next[index - 1], next[index]] = [next[index], next[index - 1]];
+      return next;
+    });
+    setPreviewResult("");
+  }
+
+  function moveStepDown(index: number) {
+    setSteps((prev) => {
+      if (index >= prev.length - 1) return prev;
+      const next = [...prev];
+      [next[index], next[index + 1]] = [next[index + 1], next[index]];
+      return next;
+    });
+    setPreviewResult("");
+  }
+
   function computePreview() {
     try {
       const values = previewValues
@@ -266,15 +387,20 @@ export default function RulesScreen() {
         .map((x) => Number(x))
         .filter((n) => Number.isFinite(n));
 
-      const params = buildPipelineParams();
-      const params_json = stringifyPipeline(params);
+      const params_json = stringifyPipeline(buildPipelineParams());
 
       const sides = Number(previewSides || "0");
       const modifier = Number(previewModifier || "0");
       const sign = Number(previewSign || "1");
 
-      const res = evaluateRule("pipeline", params_json, { values, sides, modifier, sign });
-      setPreviewResult(JSON.stringify(res, null, 2));
+      const res = evaluateRule("pipeline", params_json, {
+        values,
+        sides,
+        modifier,
+        sign,
+      });
+
+      setPreviewResult(formatPreviewResult(res));
     } catch (e: any) {
       setPreviewResult(e?.message ?? "Erreur preview");
     }
@@ -310,6 +436,9 @@ export default function RulesScreen() {
     }
   }
 
+  const pipelineRules = useMemo(() => rules.filter((r) => r.kind === "pipeline"), [rules]);
+  const legacyRules = useMemo(() => rules.filter((r) => r.kind !== "pipeline"), [rules]);
+
   if (error) {
     return (
       <View style={{ flex: 1, padding: 16 }}>
@@ -318,9 +447,6 @@ export default function RulesScreen() {
       </View>
     );
   }
-
-  const pipelineRules = useMemo(() => rules.filter((r) => r.kind === "pipeline"), [rules]);
-  const legacyRules = useMemo(() => rules.filter((r) => r.kind !== "pipeline"), [rules]);
 
   return (
     <View style={{ flex: 1, padding: 16, gap: 12 }}>
@@ -357,7 +483,7 @@ export default function RulesScreen() {
               <Text>Éditer</Text>
             </Pressable>
 
-            {rule.is_system !== 1 && (
+            {rule.is_system !== 1 ? (
               <Pressable
                 onPress={async () => {
                   await deleteRule(db, rule.id);
@@ -367,7 +493,7 @@ export default function RulesScreen() {
               >
                 <Text>Supprimer</Text>
               </Pressable>
-            )}
+            ) : null}
           </View>
         ))}
 
@@ -375,13 +501,19 @@ export default function RulesScreen() {
           <View style={{ marginTop: 18 }}>
             <Text style={{ fontWeight: "700" }}>Compatibilité (anciens types)</Text>
             <Text style={{ opacity: 0.7, marginTop: 4 }}>
-              Ces règles existent encore car seed historique. On les supprimera quand seed sera pipeline-only.
+              Ces règles existent encore pour compatibilité.
             </Text>
 
             {legacyRules.map((rule) => (
               <View
                 key={rule.id}
-                style={{ marginTop: 10, padding: 12, borderWidth: 1, borderRadius: 10, opacity: 0.75 }}
+                style={{
+                  marginTop: 10,
+                  padding: 12,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  opacity: 0.75,
+                }}
               >
                 <Text style={{ fontWeight: "600" }}>{rule.name}</Text>
                 <Text style={{ opacity: 0.7, marginTop: 4 }}>
@@ -400,7 +532,6 @@ export default function RulesScreen() {
         ) : null}
       </ScrollView>
 
-      {/* Modal édition / création */}
       <Modal
         visible={showEditModal}
         transparent
@@ -410,8 +541,23 @@ export default function RulesScreen() {
           resetForm();
         }}
       >
-        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 16 }}>
-          <View style={{ backgroundColor: "white", borderRadius: 12, padding: 16, borderWidth: 1, maxHeight: "90%" }}>
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            justifyContent: "center",
+            padding: 16,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: "white",
+              borderRadius: 12,
+              padding: 16,
+              borderWidth: 1,
+              maxHeight: "90%",
+            }}
+          >
             <Text style={{ fontSize: 16, fontWeight: "700" }}>
               {editingRule ? "Éditer la règle" : "Créer une règle"} — pipeline
             </Text>
@@ -425,36 +571,67 @@ export default function RulesScreen() {
                 style={{ borderWidth: 1, borderRadius: 10, padding: 10, marginTop: 6 }}
               />
 
-              {/* Presets */}
               <Text style={{ marginTop: 12, fontWeight: "700" }}>Presets</Text>
 
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
-                <Pressable onPress={() => applyPreset("SUM")} style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}>
+                <Pressable
+                  onPress={() => applyPreset("SUM")}
+                  style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
+                >
                   <Text>Somme</Text>
                 </Pressable>
 
-                <Pressable onPress={() => applyPreset("D20")} style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}>
+                <Pressable
+                  onPress={() => applyPreset("D20")}
+                  style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
+                >
                   <Text>D20 crit</Text>
                 </Pressable>
 
-                <Pressable onPress={() => applyPreset("D100_CRIT")} style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}>
+                <Pressable
+                  onPress={() => applyPreset("D100_CRIT")}
+                  style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
+                >
                   <Text>D100 crit</Text>
                 </Pressable>
 
-                <Pressable onPress={() => applyPreset("D100_LOC")} style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}>
+                <Pressable
+                  onPress={() => applyPreset("D100_LOC")}
+                  style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
+                >
                   <Text>D100 localisation</Text>
                 </Pressable>
 
-                <Pressable onPress={() => applyPreset("KEEP_HIGHEST")} style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}>
+                <Pressable
+                  onPress={() => applyPreset("KEEP_HIGHEST")}
+                  style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
+                >
                   <Text>Keep highest</Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => applyPreset("SUCCESS_POOL")}
+                  style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
+                >
+                  <Text>Pool succès</Text>
                 </Pressable>
               </View>
 
-              {/* Options globales */}
               <Text style={{ marginTop: 12, fontWeight: "700" }}>Options</Text>
 
               <Text style={{ marginTop: 8 }}>Output</Text>
-              {(["sum", "successes", "lookup_label", "values"] as const).map((o) => (
+              {(
+                [
+                  "sum",
+                  "successes",
+                  "count_equal",
+                  "count_range",
+                  "first_value",
+                  "values",
+                  "lookup_label",
+                  "lookup_value",
+                ] as const
+              ).map((o) => (
                 <Pressable
                   key={o}
                   onPress={() => setPipeOutput(o)}
@@ -479,7 +656,7 @@ export default function RulesScreen() {
                 keyboardType="numeric"
               />
 
-              <Text style={{ marginTop: 10 }}>crit_success_faces (ex: 20 ou 95,96,97,98,99,100)</Text>
+              <Text style={{ marginTop: 10 }}>crit_success_faces</Text>
               <TextInput
                 value={critSuccessFaces}
                 onChangeText={setCritSuccessFaces}
@@ -495,28 +672,49 @@ export default function RulesScreen() {
                 style={{ borderWidth: 1, borderRadius: 10, padding: 10, marginTop: 6 }}
               />
 
-              {/* Steps */}
               <Text style={{ marginTop: 14, fontWeight: "700" }}>Pipeline steps</Text>
 
               {steps.length === 0 ? (
-                <Text style={{ marginTop: 8, opacity: 0.7 }}>Aucune étape. Ajoute au moins “sum”.</Text>
+                <Text style={{ marginTop: 8, opacity: 0.7 }}>
+                  Aucune étape. Ajoute au moins une étape.
+                </Text>
               ) : (
                 steps.map((s, idx) => (
-                  <View key={idx} style={{ marginTop: 10, padding: 10, borderWidth: 1, borderRadius: 10 }}>
-                    <Text style={{ fontWeight: "700" }}>#{idx + 1} — {s.op}</Text>
+                  <View
+                    key={idx}
+                    style={{ marginTop: 10, padding: 10, borderWidth: 1, borderRadius: 10 }}
+                  >
+                    <Text style={{ fontWeight: "700" }}>
+                      #{idx + 1} — {s.op}
+                    </Text>
                     <Text style={{ marginTop: 6, opacity: 0.8 }}>{JSON.stringify(s)}</Text>
 
-                    <Pressable
-                      onPress={() => removeStepAt(idx)}
-                      style={{ marginTop: 10, padding: 8, borderWidth: 1, borderRadius: 10 }}
-                    >
-                      <Text>Supprimer step</Text>
-                    </Pressable>
+                    <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
+                      <Pressable
+                        onPress={() => moveStepUp(idx)}
+                        style={{ padding: 8, borderWidth: 1, borderRadius: 10 }}
+                      >
+                        <Text>Monter</Text>
+                      </Pressable>
+
+                      <Pressable
+                        onPress={() => moveStepDown(idx)}
+                        style={{ padding: 8, borderWidth: 1, borderRadius: 10 }}
+                      >
+                        <Text>Descendre</Text>
+                      </Pressable>
+
+                      <Pressable
+                        onPress={() => removeStepAt(idx)}
+                        style={{ padding: 8, borderWidth: 1, borderRadius: 10 }}
+                      >
+                        <Text>Supprimer</Text>
+                      </Pressable>
+                    </View>
                   </View>
                 ))
               )}
 
-              {/* Add step UI */}
               <Text style={{ marginTop: 14, fontWeight: "700" }}>Ajouter une step</Text>
 
               <Pressable
@@ -524,6 +722,20 @@ export default function RulesScreen() {
                 style={{ marginTop: 8, padding: 10, borderWidth: 1, borderRadius: 10 }}
               >
                 <Text>+ sum</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => addStep({ op: "sort_asc" })}
+                style={{ marginTop: 8, padding: 10, borderWidth: 1, borderRadius: 10 }}
+              >
+                <Text>+ sort_asc</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => addStep({ op: "sort_desc" })}
+                style={{ marginTop: 8, padding: 10, borderWidth: 1, borderRadius: 10 }}
+              >
+                <Text>+ sort_desc</Text>
               </Pressable>
 
               <View style={{ marginTop: 10, padding: 10, borderWidth: 1, borderRadius: 10 }}>
@@ -536,10 +748,69 @@ export default function RulesScreen() {
                   style={{ marginTop: 8, borderWidth: 1, borderRadius: 10, padding: 10 }}
                 />
                 <Pressable
-                  onPress={() => addStep({ op: "keep_highest", n: Math.max(0, Number(keepN || "0")) })}
+                  onPress={() =>
+                    addStep({ op: "keep_highest", n: Math.max(0, Number(keepN || "0")) })
+                  }
                   style={{ marginTop: 8, padding: 10, borderWidth: 1, borderRadius: 10 }}
                 >
                   <Text>+ keep_highest</Text>
+                </Pressable>
+              </View>
+
+              <View style={{ marginTop: 10, padding: 10, borderWidth: 1, borderRadius: 10 }}>
+                <Text style={{ fontWeight: "600" }}>keep_lowest</Text>
+                <TextInput
+                  value={keepN}
+                  onChangeText={setKeepN}
+                  placeholder="n"
+                  keyboardType="numeric"
+                  style={{ marginTop: 8, borderWidth: 1, borderRadius: 10, padding: 10 }}
+                />
+                <Pressable
+                  onPress={() =>
+                    addStep({ op: "keep_lowest", n: Math.max(0, Number(keepN || "0")) })
+                  }
+                  style={{ marginTop: 8, padding: 10, borderWidth: 1, borderRadius: 10 }}
+                >
+                  <Text>+ keep_lowest</Text>
+                </Pressable>
+              </View>
+
+              <View style={{ marginTop: 10, padding: 10, borderWidth: 1, borderRadius: 10 }}>
+                <Text style={{ fontWeight: "600" }}>drop_highest</Text>
+                <TextInput
+                  value={keepN}
+                  onChangeText={setKeepN}
+                  placeholder="n"
+                  keyboardType="numeric"
+                  style={{ marginTop: 8, borderWidth: 1, borderRadius: 10, padding: 10 }}
+                />
+                <Pressable
+                  onPress={() =>
+                    addStep({ op: "drop_highest", n: Math.max(0, Number(keepN || "0")) })
+                  }
+                  style={{ marginTop: 8, padding: 10, borderWidth: 1, borderRadius: 10 }}
+                >
+                  <Text>+ drop_highest</Text>
+                </Pressable>
+              </View>
+
+              <View style={{ marginTop: 10, padding: 10, borderWidth: 1, borderRadius: 10 }}>
+                <Text style={{ fontWeight: "600" }}>drop_lowest</Text>
+                <TextInput
+                  value={keepN}
+                  onChangeText={setKeepN}
+                  placeholder="n"
+                  keyboardType="numeric"
+                  style={{ marginTop: 8, borderWidth: 1, borderRadius: 10, padding: 10 }}
+                />
+                <Pressable
+                  onPress={() =>
+                    addStep({ op: "drop_lowest", n: Math.max(0, Number(keepN || "0")) })
+                  }
+                  style={{ marginTop: 8, padding: 10, borderWidth: 1, borderRadius: 10 }}
+                >
+                  <Text>+ drop_lowest</Text>
                 </Pressable>
               </View>
 
@@ -553,10 +824,61 @@ export default function RulesScreen() {
                   style={{ marginTop: 8, borderWidth: 1, borderRadius: 10, padding: 10 }}
                 />
                 <Pressable
-                  onPress={() => addStep({ op: "count_successes", at_or_above: Math.max(0, Number(successAt || "0")) })}
+                  onPress={() =>
+                    addStep({
+                      op: "count_successes",
+                      at_or_above: Math.max(0, Number(successAt || "0")),
+                    })
+                  }
                   style={{ marginTop: 8, padding: 10, borderWidth: 1, borderRadius: 10 }}
                 >
                   <Text>+ count_successes</Text>
+                </Pressable>
+              </View>
+
+              <View style={{ marginTop: 10, padding: 10, borderWidth: 1, borderRadius: 10 }}>
+                <Text style={{ fontWeight: "600" }}>count_equal</Text>
+                <TextInput
+                  value={facesInput}
+                  onChangeText={setFacesInput}
+                  placeholder="ex: 1 ou 1,10"
+                  style={{ marginTop: 8, borderWidth: 1, borderRadius: 10, padding: 10 }}
+                />
+                <Pressable
+                  onPress={() => addStep({ op: "count_equal", faces: toFacesArray(facesInput) })}
+                  style={{ marginTop: 8, padding: 10, borderWidth: 1, borderRadius: 10 }}
+                >
+                  <Text>+ count_equal</Text>
+                </Pressable>
+              </View>
+
+              <View style={{ marginTop: 10, padding: 10, borderWidth: 1, borderRadius: 10 }}>
+                <Text style={{ fontWeight: "600" }}>count_range</Text>
+                <TextInput
+                  value={rangeMin}
+                  onChangeText={setRangeMin}
+                  placeholder="min"
+                  keyboardType="numeric"
+                  style={{ marginTop: 8, borderWidth: 1, borderRadius: 10, padding: 10 }}
+                />
+                <TextInput
+                  value={rangeMax}
+                  onChangeText={setRangeMax}
+                  placeholder="max"
+                  keyboardType="numeric"
+                  style={{ marginTop: 8, borderWidth: 1, borderRadius: 10, padding: 10 }}
+                />
+                <Pressable
+                  onPress={() =>
+                    addStep({
+                      op: "count_range",
+                      min: Number(rangeMin || "0"),
+                      max: Number(rangeMax || "0"),
+                    })
+                  }
+                  style={{ marginTop: 8, padding: 10, borderWidth: 1, borderRadius: 10 }}
+                >
+                  <Text>+ count_range</Text>
                 </Pressable>
               </View>
 
@@ -570,7 +892,9 @@ export default function RulesScreen() {
                   style={{ marginTop: 8, borderWidth: 1, borderRadius: 10, padding: 10 }}
                 />
                 <Pressable
-                  onPress={() => addStep({ op: "take", index: Math.max(0, Number(takeIndex || "0")) })}
+                  onPress={() =>
+                    addStep({ op: "take", index: Math.max(0, Number(takeIndex || "0")) })
+                  }
                   style={{ marginTop: 8, padding: 10, borderWidth: 1, borderRadius: 10 }}
                 >
                   <Text>+ take</Text>
@@ -578,7 +902,7 @@ export default function RulesScreen() {
               </View>
 
               <View style={{ marginTop: 10, padding: 10, borderWidth: 1, borderRadius: 10 }}>
-                <Text style={{ fontWeight: "600" }}>lookup ranges (éditeur simple)</Text>
+                <Text style={{ fontWeight: "600" }}>lookup ranges</Text>
 
                 {ranges.map((r, i) => (
                   <View key={i} style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1 }}>
@@ -586,21 +910,33 @@ export default function RulesScreen() {
 
                     <TextInput
                       value={r.min}
-                      onChangeText={(v) => setRanges((prev) => prev.map((x, idx) => (idx === i ? { ...x, min: v } : x)))}
+                      onChangeText={(v) =>
+                        setRanges((prev) =>
+                          prev.map((x, idx) => (idx === i ? { ...x, min: v } : x))
+                        )
+                      }
                       placeholder="min"
                       keyboardType="numeric"
                       style={{ marginTop: 6, borderWidth: 1, borderRadius: 10, padding: 10 }}
                     />
                     <TextInput
                       value={r.max}
-                      onChangeText={(v) => setRanges((prev) => prev.map((x, idx) => (idx === i ? { ...x, max: v } : x)))}
+                      onChangeText={(v) =>
+                        setRanges((prev) =>
+                          prev.map((x, idx) => (idx === i ? { ...x, max: v } : x))
+                        )
+                      }
                       placeholder="max"
                       keyboardType="numeric"
                       style={{ marginTop: 6, borderWidth: 1, borderRadius: 10, padding: 10 }}
                     />
                     <TextInput
                       value={r.label}
-                      onChangeText={(v) => setRanges((prev) => prev.map((x, idx) => (idx === i ? { ...x, label: v } : x)))}
+                      onChangeText={(v) =>
+                        setRanges((prev) =>
+                          prev.map((x, idx) => (idx === i ? { ...x, label: v } : x))
+                        )
+                      }
                       placeholder="label"
                       style={{ marginTop: 6, borderWidth: 1, borderRadius: 10, padding: 10 }}
                     />
@@ -615,7 +951,9 @@ export default function RulesScreen() {
                 ))}
 
                 <Pressable
-                  onPress={() => setRanges((prev) => [...prev, { min: "1", max: "1", label: "Nouvelle entrée" }])}
+                  onPress={() =>
+                    setRanges((prev) => [...prev, { min: "1", max: "1", label: "Nouvelle entrée" }])
+                  }
                   style={{ marginTop: 10, padding: 10, borderWidth: 1, borderRadius: 10 }}
                 >
                   <Text>+ Ajouter une range</Text>
@@ -638,9 +976,8 @@ export default function RulesScreen() {
                 </Pressable>
               </View>
 
-              {/* Preview */}
               <View style={{ marginTop: 16, paddingTop: 12, borderTopWidth: 1 }}>
-                <Text style={{ fontWeight: "700" }}>Preview (pipeline)</Text>
+                <Text style={{ fontWeight: "700" }}>Preview</Text>
 
                 <Text style={{ marginTop: 10 }}>values</Text>
                 <TextInput
@@ -685,14 +1022,15 @@ export default function RulesScreen() {
                 </Pressable>
 
                 {previewResult ? (
-                  <Text style={{ marginTop: 10, opacity: 0.85, fontFamily: "monospace" }}>{previewResult}</Text>
+                  <Text style={{ marginTop: 10, opacity: 0.85, fontFamily: "monospace" }}>
+                    {previewResult}
+                  </Text>
                 ) : null}
               </View>
 
               <View style={{ height: 10 }} />
             </ScrollView>
 
-            {/* Actions */}
             <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 10 }}>
               <Pressable
                 onPress={() => {

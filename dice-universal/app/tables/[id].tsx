@@ -3,7 +3,11 @@ import { useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { View, Text, Pressable, TextInput, Modal, ScrollView } from "react-native";
 import { useDb } from "../../data/db/DbProvider";
-import { getTableById, TableRow, updateTableName } from "../../data/repositories/tablesRepo";
+import {
+  getTableById,
+  TableRow,
+  updateTableName,
+} from "../../data/repositories/tablesRepo";
 import {
   listGroupsByTableId,
   listDiceByGroupId,
@@ -53,24 +57,15 @@ export default function TableDetailScreen() {
 
       const gs = await listGroupsByTableId(db, tableId);
       const withDice: GroupWithDice[] = [];
+
       for (const g of gs) {
         const dice = await listDiceByGroupId(db, g.id);
         withDice.push({ group: g, dice });
       }
+
       setGroups(withDice);
 
       const allRules = await listRules(db);
-
-      // pipelines d'abord
-      allRules.sort((a, b) => {
-        const ap = a.kind === "pipeline" ? 0 : 1;
-        const bp = b.kind === "pipeline" ? 0 : 1;
-        if (ap !== bp) return ap - bp;
-        // système d'abord
-        if (a.is_system !== b.is_system) return b.is_system - a.is_system;
-        return a.created_at.localeCompare(b.created_at);
-      });
-      
       setRules(allRules);
     } catch (e: any) {
       setError(e?.message ?? String(e));
@@ -79,13 +74,26 @@ export default function TableDetailScreen() {
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [db, tableId]);
 
-  const getRuleName = (ruleId: string | null) => {
+  const pipelineRules = useMemo(
+    () => rules.filter((r) => r.kind === "pipeline"),
+    [rules]
+  );
+
+  const legacyRules = useMemo(
+    () => rules.filter((r) => r.kind !== "pipeline"),
+    [rules]
+  );
+
+  function getRuleName(ruleId: string | null) {
     if (!ruleId) return "Somme (par défaut)";
-    return rules.find((r) => r.id === ruleId)?.name ?? "Somme (par défaut)";
-  };
+    return rules.find((r) => r.id === ruleId)?.name ?? "Règle introuvable";
+  }
+
+  function getSignLabel(sign: number | undefined) {
+    return (sign ?? 1) === -1 ? "-" : "+";
+  }
 
   if (error) {
     return (
@@ -106,7 +114,7 @@ export default function TableDetailScreen() {
   }
 
   return (
-    <View style={{ flex: 1, padding: 16, gap: 12 }}>
+    <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
       <Text style={{ fontSize: 20, fontWeight: "700" }}>{table.name}</Text>
 
       {table.is_system !== 1 ? (
@@ -138,7 +146,14 @@ export default function TableDetailScreen() {
             padding: 16,
           }}
         >
-          <View style={{ backgroundColor: "white", borderRadius: 12, padding: 16, borderWidth: 1 }}>
+          <View
+            style={{
+              backgroundColor: "white",
+              borderRadius: 12,
+              padding: 16,
+              borderWidth: 1,
+            }}
+          >
             <Text style={{ fontSize: 16, fontWeight: "700" }}>Renommer la table</Text>
 
             <TextInput
@@ -175,29 +190,44 @@ export default function TableDetailScreen() {
         </View>
       </Modal>
 
-      {/* Groupes + dés */}
+      {/* Groupes + entrées */}
       <View style={{ padding: 12, borderWidth: 1, borderRadius: 12 }}>
-        <Text style={{ fontWeight: "600" }}>Groupes</Text>
+        <Text style={{ fontWeight: "700" }}>Groupes</Text>
 
         {groups.length === 0 ? (
           <Text style={{ marginTop: 8, opacity: 0.7 }}>Aucun groupe.</Text>
         ) : (
           groups.map(({ group, dice }) => (
-            <View key={group.id} style={{ marginTop: 12, paddingTop: 10, borderTopWidth: 1 }}>
-              <Text style={{ fontSize: 16, fontWeight: "600" }}>{group.name}</Text>
+            <View
+              key={group.id}
+              style={{ marginTop: 14, paddingTop: 10, borderTopWidth: 1 }}
+            >
+              <Text style={{ fontSize: 16, fontWeight: "700" }}>{group.name}</Text>
 
               {dice.length === 0 ? (
-                <Text style={{ marginTop: 6, opacity: 0.7 }}>Aucun dé.</Text>
+                <Text style={{ marginTop: 6, opacity: 0.7 }}>Aucune entrée de dés.</Text>
               ) : (
                 dice.map((d) => (
-                  <View key={d.id} style={{ marginTop: 10 }}>
-                    <Text>
+                  <View
+                    key={d.id}
+                    style={{
+                      marginTop: 10,
+                      padding: 10,
+                      borderWidth: 1,
+                      borderRadius: 10,
+                    }}
+                  >
+                    <Text style={{ fontWeight: "700" }}>
                       {d.qty}d{d.sides}
-                      {d.modifier ? ` (mod ${d.modifier >= 0 ? "+" : ""}${d.modifier})` : ""}
                     </Text>
 
-                    <Text style={{ opacity: 0.7, marginTop: 2 }}>
-                      règle: {getRuleName(d.rule_id)}
+                    <Text style={{ marginTop: 4, opacity: 0.8 }}>
+                      signe : {getSignLabel(d.sign)}{" "}
+                      | modificateur : {d.modifier ?? 0}
+                    </Text>
+
+                    <Text style={{ marginTop: 4, opacity: 0.8 }}>
+                      règle : {getRuleName(d.rule_id)}
                     </Text>
 
                     <Pressable
@@ -208,14 +238,14 @@ export default function TableDetailScreen() {
                         setSelectedRuleId(d.rule_id ?? null);
                       }}
                       style={{
-                        marginTop: 6,
+                        marginTop: 8,
                         padding: 8,
                         borderWidth: 1,
                         borderRadius: 8,
                         opacity: table.is_system === 1 ? 0.4 : 1,
                       }}
                     >
-                      <Text>Modifier règle</Text>
+                      <Text>Changer la règle</Text>
                     </Pressable>
                   </View>
                 ))
@@ -225,7 +255,7 @@ export default function TableDetailScreen() {
         )}
       </View>
 
-      {/* Modal modifier règle (rule_id) */}
+      {/* Modal modifier règle */}
       <Modal
         visible={!!editingDie}
         transparent
@@ -243,18 +273,33 @@ export default function TableDetailScreen() {
             padding: 16,
           }}
         >
-          <View style={{ backgroundColor: "white", borderRadius: 12, padding: 16, borderWidth: 1 }}>
-            <Text style={{ fontSize: 16, fontWeight: "700" }}>Modifier règle</Text>
-
-            <Text style={{ marginTop: 10, opacity: 0.7 }}>
-              Sélectionne une règle (Somme = aucune règle)
+          <View
+            style={{
+              backgroundColor: "white",
+              borderRadius: 12,
+              padding: 16,
+              borderWidth: 1,
+              maxHeight: "90%",
+            }}
+          >
+            <Text style={{ fontSize: 16, fontWeight: "700" }}>
+              Associer une règle à l’entrée
             </Text>
 
-            {/* Option "Somme" */}
+            {editingDie ? (
+              <Text style={{ marginTop: 8, opacity: 0.7 }}>
+                Entrée : {editingDie.qty}d{editingDie.sides} | signe {getSignLabel(editingDie.sign)} | mod {editingDie.modifier ?? 0}
+              </Text>
+            ) : null}
+
+            <Text style={{ marginTop: 12, fontWeight: "700" }}>
+              Aucune règle spécifique
+            </Text>
+
             <Pressable
               onPress={() => setSelectedRuleId(null)}
               style={{
-                marginTop: 12,
+                marginTop: 8,
                 padding: 10,
                 borderWidth: 1,
                 borderRadius: 8,
@@ -266,10 +311,15 @@ export default function TableDetailScreen() {
               </Text>
             </Pressable>
 
-            {/* Liste de règles */}
-            <View style={{ marginTop: 12, maxHeight: 260 }}>
-              <ScrollView>
-                {rules.map((rule) => (
+            <ScrollView style={{ marginTop: 14, maxHeight: 420 }}>
+              <Text style={{ fontWeight: "700" }}>Règles pipeline</Text>
+
+              {pipelineRules.length === 0 ? (
+                <Text style={{ marginTop: 8, opacity: 0.7 }}>
+                  Aucune règle pipeline disponible.
+                </Text>
+              ) : (
+                pipelineRules.map((rule) => (
                   <Pressable
                     key={rule.id}
                     onPress={() => setSelectedRuleId(rule.id)}
@@ -288,9 +338,39 @@ export default function TableDetailScreen() {
                       type: {rule.kind} {rule.is_system === 1 ? "• système" : "• perso"}
                     </Text>
                   </Pressable>
-                ))}
-              </ScrollView>
-            </View>
+                ))
+              )}
+
+              {legacyRules.length > 0 ? (
+                <View style={{ marginTop: 16 }}>
+                  <Text style={{ fontWeight: "700" }}>Compatibilité (anciens types)</Text>
+                  <Text style={{ marginTop: 4, opacity: 0.7 }}>
+                    À éviter à terme. Conservé uniquement pour compatibilité.
+                  </Text>
+
+                  {legacyRules.map((rule) => (
+                    <Pressable
+                      key={rule.id}
+                      onPress={() => setSelectedRuleId(rule.id)}
+                      style={{
+                        padding: 10,
+                        borderWidth: 1,
+                        borderRadius: 8,
+                        marginTop: 8,
+                        opacity: selectedRuleId === rule.id ? 1 : 0.65,
+                      }}
+                    >
+                      <Text style={{ fontWeight: selectedRuleId === rule.id ? "700" : "400" }}>
+                        {rule.name}
+                      </Text>
+                      <Text style={{ marginTop: 2, opacity: 0.7, fontSize: 12 }}>
+                        type: {rule.kind} {rule.is_system === 1 ? "• système" : "• perso"}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
+            </ScrollView>
 
             <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 16 }}>
               <Pressable
@@ -322,6 +402,6 @@ export default function TableDetailScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </ScrollView>
   );
 }
