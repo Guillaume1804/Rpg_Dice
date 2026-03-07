@@ -3,17 +3,17 @@ import { useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { View, Text, Pressable, TextInput, Modal, ScrollView } from "react-native";
 import { useDb } from "../../data/db/DbProvider";
-import {
-  getTableById,
-  TableRow,
-  updateTableName,
-} from "../../data/repositories/tablesRepo";
+import { getTableById, TableRow, updateTableName } from "../../data/repositories/tablesRepo";
 import {
   listGroupsByTableId,
   listDiceByGroupId,
   GroupRow,
   GroupDieRow,
-  updateGroupDieRuleId,
+  updateGroupDie,
+  createGroup,
+  deleteGroup,
+  createGroupDie,
+  deleteGroupDie,
 } from "../../data/repositories/groupsRepo";
 import { listRules, RuleRow } from "../../data/repositories/rulesRepo";
 
@@ -35,7 +35,23 @@ export default function TableDetailScreen() {
   const [renameValue, setRenameValue] = useState("");
   const [showRenameModal, setShowRenameModal] = useState(false);
 
+  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
+
+  const [showCreateDieModal, setShowCreateDieModal] = useState(false);
+  const [targetGroupForNewDie, setTargetGroupForNewDie] = useState<GroupRow | null>(null);
+  const [newDieSides, setNewDieSides] = useState("6");
+  const [newDieQty, setNewDieQty] = useState("1");
+  const [newDieModifier, setNewDieModifier] = useState("0");
+  const [newDieSign, setNewDieSign] = useState<"1" | "-1">("1");
+  const [newDieRuleId, setNewDieRuleId] = useState<string | null>(null);
+
   const [editingDie, setEditingDie] = useState<GroupDieRow | null>(null);
+
+  const [editDieSides, setEditDieSides] = useState("6");
+  const [editDieQty, setEditDieQty] = useState("1");
+  const [editDieModifier, setEditDieModifier] = useState("0");
+  const [editDieSign, setEditDieSign] = useState<"1" | "-1">("1");
   const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null);
 
   const [error, setError] = useState<string | null>(null);
@@ -57,12 +73,10 @@ export default function TableDetailScreen() {
 
       const gs = await listGroupsByTableId(db, tableId);
       const withDice: GroupWithDice[] = [];
-
       for (const g of gs) {
         const dice = await listDiceByGroupId(db, g.id);
         withDice.push({ group: g, dice });
       }
-
       setGroups(withDice);
 
       const allRules = await listRules(db);
@@ -76,23 +90,30 @@ export default function TableDetailScreen() {
     load();
   }, [db, tableId]);
 
-  const pipelineRules = useMemo(
-    () => rules.filter((r) => r.kind === "pipeline"),
-    [rules]
-  );
-
-  const legacyRules = useMemo(
-    () => rules.filter((r) => r.kind !== "pipeline"),
-    [rules]
-  );
-
-  function getRuleName(ruleId: string | null) {
+  const getRuleName = (ruleId: string | null) => {
     if (!ruleId) return "Somme (par défaut)";
-    return rules.find((r) => r.id === ruleId)?.name ?? "Règle introuvable";
+    return rules.find((r) => r.id === ruleId)?.name ?? "Somme (par défaut)";
+  };
+
+  const pipelineRules = rules.filter((r) => r.kind === "pipeline");
+  const legacyRules = rules.filter((r) => r.kind !== "pipeline");
+
+  function resetCreateDieForm() {
+    setTargetGroupForNewDie(null);
+    setNewDieSides("6");
+    setNewDieQty("1");
+    setNewDieModifier("0");
+    setNewDieSign("1");
+    setNewDieRuleId(null);
   }
 
-  function getSignLabel(sign: number | undefined) {
-    return (sign ?? 1) === -1 ? "-" : "+";
+  function openEditDieModal(die: GroupDieRow) {
+    setEditingDie(die);
+    setEditDieSides(String(die.sides));
+    setEditDieQty(String(die.qty));
+    setEditDieModifier(String(die.modifier ?? 0));
+    setEditDieSign((die.sign ?? 1) === -1 ? "-1" : "1");
+    setSelectedRuleId(die.rule_id ?? null);
   }
 
   if (error) {
@@ -113,47 +134,133 @@ export default function TableDetailScreen() {
     );
   }
 
+  const isSystem = table.is_system === 1;
+
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
+    <View style={{ flex: 1, padding: 16, gap: 12 }}>
       <Text style={{ fontSize: 20, fontWeight: "700" }}>{table.name}</Text>
 
-      {table.is_system !== 1 ? (
-        <Pressable
-          onPress={() => {
-            setRenameValue(table.name);
-            setShowRenameModal(true);
-          }}
-          style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
-        >
-          <Text>Renommer</Text>
-        </Pressable>
+      {isSystem ? (
+        <Text style={{ opacity: 0.7 }}>Table système : modification interdite</Text>
       ) : (
-        <Text style={{ opacity: 0.7 }}>Table système : renommage interdit</Text>
+        <View style={{ gap: 8 }}>
+          <Pressable
+            onPress={() => {
+              setRenameValue(table.name);
+              setShowRenameModal(true);
+            }}
+            style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
+          >
+            <Text>Renommer la table</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => {
+              setNewGroupName("");
+              setShowCreateGroupModal(true);
+            }}
+            style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
+          >
+            <Text>Créer un groupe</Text>
+          </Pressable>
+        </View>
       )}
 
-      {/* Modal renommer */}
+      <ScrollView>
+        <View style={{ padding: 12, borderWidth: 1, borderRadius: 12 }}>
+          <Text style={{ fontWeight: "700" }}>Groupes</Text>
+
+          {groups.length === 0 ? (
+            <Text style={{ marginTop: 8, opacity: 0.7 }}>Aucun groupe.</Text>
+          ) : (
+            groups.map(({ group, dice }) => (
+              <View key={group.id} style={{ marginTop: 12, paddingTop: 10, borderTopWidth: 1 }}>
+                <Text style={{ fontSize: 16, fontWeight: "700" }}>{group.name}</Text>
+
+                {!isSystem ? (
+                  <View style={{ flexDirection: "row", marginTop: 8 }}>
+                    <Pressable
+                      onPress={() => {
+                        setTargetGroupForNewDie(group);
+                        setNewDieSides("6");
+                        setNewDieQty("1");
+                        setNewDieModifier("0");
+                        setNewDieSign("1");
+                        setNewDieRuleId(null);
+                        setShowCreateDieModal(true);
+                      }}
+                      style={{ padding: 8, borderWidth: 1, borderRadius: 8, marginRight: 8 }}
+                    >
+                      <Text>Ajouter une entrée</Text>
+                    </Pressable>
+
+                    <Pressable
+                      onPress={async () => {
+                        await deleteGroup(db, group.id);
+                        await load();
+                      }}
+                      style={{ padding: 8, borderWidth: 1, borderRadius: 8 }}
+                    >
+                      <Text>Supprimer le groupe</Text>
+                    </Pressable>
+                  </View>
+                ) : null}
+
+                {dice.length === 0 ? (
+                  <Text style={{ marginTop: 8, opacity: 0.7 }}>Aucune entrée.</Text>
+                ) : (
+                  dice.map((d) => (
+                    <View key={d.id} style={{ marginTop: 10, padding: 10, borderWidth: 1, borderRadius: 10 }}>
+                      <Text style={{ fontWeight: "700" }}>
+                        {d.qty}d{d.sides}
+                      </Text>
+
+                      <Text style={{ marginTop: 4, opacity: 0.8 }}>
+                        signe : {d.sign === -1 ? "-" : "+"} | mod : {d.modifier}
+                      </Text>
+
+                      <Text style={{ marginTop: 4, opacity: 0.8 }}>
+                        règle : {getRuleName(d.rule_id)}
+                      </Text>
+
+                      {!isSystem ? (
+                        <View style={{ flexDirection: "row", marginTop: 8, flexWrap: "wrap" }}>
+                          <Pressable
+                            onPress={() => openEditDieModal(d)}
+                            style={{ padding: 8, borderWidth: 1, borderRadius: 8, marginRight: 8, marginBottom: 8 }}
+                          >
+                            <Text>Éditer l’entrée</Text>
+                          </Pressable>
+
+                          <Pressable
+                            onPress={async () => {
+                              await deleteGroupDie(db, d.id);
+                              await load();
+                            }}
+                            style={{ padding: 8, borderWidth: 1, borderRadius: 8, marginBottom: 8 }}
+                          >
+                            <Text>Supprimer l’entrée</Text>
+                          </Pressable>
+                        </View>
+                      ) : null}
+                    </View>
+                  ))
+                )}
+              </View>
+            ))
+          )}
+        </View>
+      </ScrollView>
+
+      {/* Modal renommer table */}
       <Modal
         visible={showRenameModal}
         transparent
         animationType="fade"
         onRequestClose={() => setShowRenameModal(false)}
       >
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: "rgba(0,0,0,0.5)",
-            justifyContent: "center",
-            padding: 16,
-          }}
-        >
-          <View
-            style={{
-              backgroundColor: "white",
-              borderRadius: 12,
-              padding: 16,
-              borderWidth: 1,
-            }}
-          >
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 16 }}>
+          <View style={{ backgroundColor: "white", borderRadius: 12, padding: 16, borderWidth: 1 }}>
             <Text style={{ fontSize: 16, fontWeight: "700" }}>Renommer la table</Text>
 
             <TextInput
@@ -175,7 +282,7 @@ export default function TableDetailScreen() {
                 onPress={async () => {
                   const name = renameValue.trim();
                   if (!name) return;
-                  if (table.is_system === 1) return;
+                  if (isSystem) return;
 
                   await updateTableName(db, table.id, name);
                   setShowRenameModal(false);
@@ -190,72 +297,237 @@ export default function TableDetailScreen() {
         </View>
       </Modal>
 
-      {/* Groupes + entrées */}
-      <View style={{ padding: 12, borderWidth: 1, borderRadius: 12 }}>
-        <Text style={{ fontWeight: "700" }}>Groupes</Text>
+      {/* Modal création groupe */}
+      <Modal
+        visible={showCreateGroupModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowCreateGroupModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 16 }}>
+          <View style={{ backgroundColor: "white", borderRadius: 12, padding: 16, borderWidth: 1 }}>
+            <Text style={{ fontSize: 16, fontWeight: "700" }}>Créer un groupe</Text>
 
-        {groups.length === 0 ? (
-          <Text style={{ marginTop: 8, opacity: 0.7 }}>Aucun groupe.</Text>
-        ) : (
-          groups.map(({ group, dice }) => (
-            <View
-              key={group.id}
-              style={{ marginTop: 14, paddingTop: 10, borderTopWidth: 1 }}
-            >
-              <Text style={{ fontSize: 16, fontWeight: "700" }}>{group.name}</Text>
+            <TextInput
+              value={newGroupName}
+              onChangeText={setNewGroupName}
+              placeholder="Ex: Actions, Dégâts, Localisation..."
+              style={{ marginTop: 12, borderWidth: 1, borderRadius: 10, padding: 10 }}
+            />
 
-              {dice.length === 0 ? (
-                <Text style={{ marginTop: 6, opacity: 0.7 }}>Aucune entrée de dés.</Text>
-              ) : (
-                dice.map((d) => (
-                  <View
-                    key={d.id}
-                    style={{
-                      marginTop: 10,
-                      padding: 10,
-                      borderWidth: 1,
-                      borderRadius: 10,
-                    }}
-                  >
-                    <Text style={{ fontWeight: "700" }}>
-                      {d.qty}d{d.sides}
-                    </Text>
+            <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 12 }}>
+              <Pressable
+                onPress={() => setShowCreateGroupModal(false)}
+                style={{ padding: 10, borderWidth: 1, borderRadius: 10, marginRight: 10 }}
+              >
+                <Text>Annuler</Text>
+              </Pressable>
 
-                    <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                      signe : {getSignLabel(d.sign)}{" "}
-                      | modificateur : {d.modifier ?? 0}
-                    </Text>
+              <Pressable
+                onPress={async () => {
+                  const name = newGroupName.trim();
+                  if (!name) return;
 
-                    <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                      règle : {getRuleName(d.rule_id)}
-                    </Text>
+                  await createGroup(db, {
+                    tableId: table.id,
+                    name,
+                  });
 
+                  setShowCreateGroupModal(false);
+                  setNewGroupName("");
+                  await load();
+                }}
+                style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
+              >
+                <Text style={{ fontWeight: "700" }}>Créer</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal création entrée */}
+      <Modal
+        visible={showCreateDieModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setShowCreateDieModal(false);
+          resetCreateDieForm();
+        }}
+      >
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 16 }}>
+          <View style={{ backgroundColor: "white", borderRadius: 12, padding: 16, borderWidth: 1, maxHeight: "90%" }}>
+            <Text style={{ fontSize: 16, fontWeight: "700" }}>Ajouter une entrée</Text>
+
+            {targetGroupForNewDie ? (
+              <Text style={{ marginTop: 8, opacity: 0.7 }}>
+                Groupe : {targetGroupForNewDie.name}
+              </Text>
+            ) : null}
+
+            <ScrollView style={{ marginTop: 12 }}>
+              <Text>Faces du dé</Text>
+              <TextInput
+                value={newDieSides}
+                onChangeText={setNewDieSides}
+                placeholder="6"
+                keyboardType="numeric"
+                style={{ marginTop: 6, borderWidth: 1, borderRadius: 10, padding: 10 }}
+              />
+
+              <Text style={{ marginTop: 12 }}>Quantité</Text>
+              <TextInput
+                value={newDieQty}
+                onChangeText={setNewDieQty}
+                placeholder="1"
+                keyboardType="numeric"
+                style={{ marginTop: 6, borderWidth: 1, borderRadius: 10, padding: 10 }}
+              />
+
+              <Text style={{ marginTop: 12 }}>Modificateur</Text>
+              <TextInput
+                value={newDieModifier}
+                onChangeText={setNewDieModifier}
+                placeholder="0"
+                keyboardType="numeric"
+                style={{ marginTop: 6, borderWidth: 1, borderRadius: 10, padding: 10 }}
+              />
+
+              <Text style={{ marginTop: 12 }}>Signe</Text>
+              <View style={{ flexDirection: "row", marginTop: 8 }}>
+                <Pressable
+                  onPress={() => setNewDieSign("1")}
+                  style={{
+                    padding: 10,
+                    borderWidth: 1,
+                    borderRadius: 8,
+                    marginRight: 8,
+                    opacity: newDieSign === "1" ? 1 : 0.6,
+                  }}
+                >
+                  <Text style={{ fontWeight: newDieSign === "1" ? "700" : "400" }}>+</Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => setNewDieSign("-1")}
+                  style={{
+                    padding: 10,
+                    borderWidth: 1,
+                    borderRadius: 8,
+                    opacity: newDieSign === "-1" ? 1 : 0.6,
+                  }}
+                >
+                  <Text style={{ fontWeight: newDieSign === "-1" ? "700" : "400" }}>-</Text>
+                </Pressable>
+              </View>
+
+              <Text style={{ marginTop: 12, fontWeight: "700" }}>Règle</Text>
+
+              <Pressable
+                onPress={() => setNewDieRuleId(null)}
+                style={{
+                  marginTop: 8,
+                  padding: 10,
+                  borderWidth: 1,
+                  borderRadius: 8,
+                  opacity: newDieRuleId === null ? 1 : 0.7,
+                }}
+              >
+                <Text style={{ fontWeight: newDieRuleId === null ? "700" : "400" }}>
+                  Somme (par défaut)
+                </Text>
+              </Pressable>
+
+              <Text style={{ marginTop: 12, fontWeight: "700" }}>Pipelines</Text>
+              {pipelineRules.map((rule) => (
+                <Pressable
+                  key={rule.id}
+                  onPress={() => setNewDieRuleId(rule.id)}
+                  style={{
+                    marginTop: 8,
+                    padding: 10,
+                    borderWidth: 1,
+                    borderRadius: 8,
+                    opacity: newDieRuleId === rule.id ? 1 : 0.7,
+                  }}
+                >
+                  <Text style={{ fontWeight: newDieRuleId === rule.id ? "700" : "400" }}>
+                    {rule.name}
+                  </Text>
+                </Pressable>
+              ))}
+
+              {legacyRules.length > 0 ? (
+                <View style={{ marginTop: 12 }}>
+                  <Text style={{ fontWeight: "700" }}>Compatibilité</Text>
+                  {legacyRules.map((rule) => (
                     <Pressable
-                      disabled={table.is_system === 1}
-                      onPress={() => {
-                        if (table.is_system === 1) return;
-                        setEditingDie(d);
-                        setSelectedRuleId(d.rule_id ?? null);
-                      }}
+                      key={rule.id}
+                      onPress={() => setNewDieRuleId(rule.id)}
                       style={{
                         marginTop: 8,
-                        padding: 8,
+                        padding: 10,
                         borderWidth: 1,
                         borderRadius: 8,
-                        opacity: table.is_system === 1 ? 0.4 : 1,
+                        opacity: newDieRuleId === rule.id ? 1 : 0.7,
                       }}
                     >
-                      <Text>Changer la règle</Text>
+                      <Text style={{ fontWeight: newDieRuleId === rule.id ? "700" : "400" }}>
+                        {rule.name}
+                      </Text>
                     </Pressable>
-                  </View>
-                ))
-              )}
-            </View>
-          ))
-        )}
-      </View>
+                  ))}
+                </View>
+              ) : null}
+            </ScrollView>
 
-      {/* Modal modifier règle */}
+            <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 16 }}>
+              <Pressable
+                onPress={() => {
+                  setShowCreateDieModal(false);
+                  resetCreateDieForm();
+                }}
+                style={{ padding: 10, borderWidth: 1, borderRadius: 8, marginRight: 10 }}
+              >
+                <Text>Annuler</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={async () => {
+                  if (!targetGroupForNewDie) return;
+
+                  const sides = Number(newDieSides || "0");
+                  const qty = Number(newDieQty || "0");
+                  const modifier = Number(newDieModifier || "0");
+                  const sign = Number(newDieSign || "1");
+
+                  if (!Number.isFinite(sides) || sides <= 0) return;
+                  if (!Number.isFinite(qty) || qty <= 0) return;
+
+                  await createGroupDie(db, {
+                    groupId: targetGroupForNewDie.id,
+                    sides,
+                    qty,
+                    modifier: Number.isFinite(modifier) ? modifier : 0,
+                    sign: sign === -1 ? -1 : 1,
+                    rule_id: newDieRuleId ?? null,
+                  });
+
+                  setShowCreateDieModal(false);
+                  resetCreateDieForm();
+                  await load();
+                }}
+                style={{ padding: 10, borderWidth: 1, borderRadius: 8 }}
+              >
+                <Text style={{ fontWeight: "700" }}>Ajouter</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal édition complète d'une entrée */}
       <Modal
         visible={!!editingDie}
         transparent
@@ -282,72 +554,106 @@ export default function TableDetailScreen() {
               maxHeight: "90%",
             }}
           >
-            <Text style={{ fontSize: 16, fontWeight: "700" }}>
-              Associer une règle à l’entrée
-            </Text>
+            <Text style={{ fontSize: 16, fontWeight: "700" }}>Éditer l’entrée</Text>
+          
+            <ScrollView style={{ marginTop: 12 }}>
+              <Text>Faces du dé</Text>
+              <TextInput
+                value={editDieSides}
+                onChangeText={setEditDieSides}
+                placeholder="6"
+                keyboardType="numeric"
+                style={{ marginTop: 6, borderWidth: 1, borderRadius: 10, padding: 10 }}
+              />
 
-            {editingDie ? (
-              <Text style={{ marginTop: 8, opacity: 0.7 }}>
-                Entrée : {editingDie.qty}d{editingDie.sides} | signe {getSignLabel(editingDie.sign)} | mod {editingDie.modifier ?? 0}
-              </Text>
-            ) : null}
+              <Text style={{ marginTop: 12 }}>Quantité</Text>
+              <TextInput
+                value={editDieQty}
+                onChangeText={setEditDieQty}
+                placeholder="1"
+                keyboardType="numeric"
+                style={{ marginTop: 6, borderWidth: 1, borderRadius: 10, padding: 10 }}
+              />
 
-            <Text style={{ marginTop: 12, fontWeight: "700" }}>
-              Aucune règle spécifique
-            </Text>
+              <Text style={{ marginTop: 12 }}>Modificateur</Text>
+              <TextInput
+                value={editDieModifier}
+                onChangeText={setEditDieModifier}
+                placeholder="0"
+                keyboardType="numeric"
+                style={{ marginTop: 6, borderWidth: 1, borderRadius: 10, padding: 10 }}
+              />
 
-            <Pressable
-              onPress={() => setSelectedRuleId(null)}
-              style={{
-                marginTop: 8,
-                padding: 10,
-                borderWidth: 1,
-                borderRadius: 8,
-                opacity: selectedRuleId === null ? 1 : 0.7,
-              }}
-            >
-              <Text style={{ fontWeight: selectedRuleId === null ? "700" : "400" }}>
-                Somme (par défaut)
-              </Text>
-            </Pressable>
-
-            <ScrollView style={{ marginTop: 14, maxHeight: 420 }}>
-              <Text style={{ fontWeight: "700" }}>Règles pipeline</Text>
-
-              {pipelineRules.length === 0 ? (
-                <Text style={{ marginTop: 8, opacity: 0.7 }}>
-                  Aucune règle pipeline disponible.
+              <Text style={{ marginTop: 12 }}>Signe</Text>
+              <View style={{ flexDirection: "row", marginTop: 8 }}>
+                <Pressable
+                  onPress={() => setEditDieSign("1")}
+                  style={{
+                    padding: 10,
+                    borderWidth: 1,
+                    borderRadius: 8,
+                    marginRight: 8,
+                    opacity: editDieSign === "1" ? 1 : 0.6,
+                  }}
+                >
+                  <Text style={{ fontWeight: editDieSign === "1" ? "700" : "400" }}>+</Text>
+                </Pressable>
+                
+                <Pressable
+                  onPress={() => setEditDieSign("-1")}
+                  style={{
+                    padding: 10,
+                    borderWidth: 1,
+                    borderRadius: 8,
+                    opacity: editDieSign === "-1" ? 1 : 0.6,
+                  }}
+                >
+                  <Text style={{ fontWeight: editDieSign === "-1" ? "700" : "400" }}>-</Text>
+                </Pressable>
+              </View>
+                
+              <Text style={{ marginTop: 12, fontWeight: "700" }}>Règle</Text>
+                
+              <Pressable
+                onPress={() => setSelectedRuleId(null)}
+                style={{
+                  marginTop: 8,
+                  padding: 10,
+                  borderWidth: 1,
+                  borderRadius: 8,
+                  opacity: selectedRuleId === null ? 1 : 0.7,
+                }}
+              >
+                <Text style={{ fontWeight: selectedRuleId === null ? "700" : "400" }}>
+                  Somme (par défaut)
                 </Text>
-              ) : (
-                pipelineRules.map((rule) => (
-                  <Pressable
-                    key={rule.id}
-                    onPress={() => setSelectedRuleId(rule.id)}
-                    style={{
-                      padding: 10,
-                      borderWidth: 1,
-                      borderRadius: 8,
-                      marginTop: 8,
-                      opacity: selectedRuleId === rule.id ? 1 : 0.7,
-                    }}
-                  >
-                    <Text style={{ fontWeight: selectedRuleId === rule.id ? "700" : "400" }}>
-                      {rule.name}
-                    </Text>
-                    <Text style={{ marginTop: 2, opacity: 0.7, fontSize: 12 }}>
-                      type: {rule.kind} {rule.is_system === 1 ? "• système" : "• perso"}
-                    </Text>
-                  </Pressable>
-                ))
-              )}
+              </Pressable>
+              
+              <Text style={{ marginTop: 12, fontWeight: "700" }}>Pipelines</Text>
+              {pipelineRules.map((rule) => (
+                <Pressable
+                  key={rule.id}
+                  onPress={() => setSelectedRuleId(rule.id)}
+                  style={{
+                    padding: 10,
+                    borderWidth: 1,
+                    borderRadius: 8,
+                    marginTop: 8,
+                    opacity: selectedRuleId === rule.id ? 1 : 0.7,
+                  }}
+                >
+                  <Text style={{ fontWeight: selectedRuleId === rule.id ? "700" : "400" }}>
+                    {rule.name}
+                  </Text>
+                  <Text style={{ marginTop: 2, opacity: 0.7, fontSize: 12 }}>
+                    {rule.is_system === 1 ? "système" : "perso"}
+                  </Text>
+                </Pressable>
+              ))}
 
               {legacyRules.length > 0 ? (
                 <View style={{ marginTop: 16 }}>
-                  <Text style={{ fontWeight: "700" }}>Compatibilité (anciens types)</Text>
-                  <Text style={{ marginTop: 4, opacity: 0.7 }}>
-                    À éviter à terme. Conservé uniquement pour compatibilité.
-                  </Text>
-
+                  <Text style={{ fontWeight: "700" }}>Compatibilité</Text>
                   {legacyRules.map((rule) => (
                     <Pressable
                       key={rule.id}
@@ -357,21 +663,21 @@ export default function TableDetailScreen() {
                         borderWidth: 1,
                         borderRadius: 8,
                         marginTop: 8,
-                        opacity: selectedRuleId === rule.id ? 1 : 0.65,
+                        opacity: selectedRuleId === rule.id ? 1 : 0.7,
                       }}
                     >
                       <Text style={{ fontWeight: selectedRuleId === rule.id ? "700" : "400" }}>
                         {rule.name}
                       </Text>
                       <Text style={{ marginTop: 2, opacity: 0.7, fontSize: 12 }}>
-                        type: {rule.kind} {rule.is_system === 1 ? "• système" : "• perso"}
+                        type: {rule.kind}
                       </Text>
                     </Pressable>
                   ))}
                 </View>
               ) : null}
             </ScrollView>
-
+            
             <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 16 }}>
               <Pressable
                 onPress={() => {
@@ -382,16 +688,30 @@ export default function TableDetailScreen() {
               >
                 <Text>Annuler</Text>
               </Pressable>
-
+              
               <Pressable
                 onPress={async () => {
                   if (!editingDie) return;
-
-                  await updateGroupDieRuleId(db, editingDie.id, selectedRuleId);
-
+                
+                  const sides = Number(editDieSides || "0");
+                  const qty = Number(editDieQty || "0");
+                  const modifier = Number(editDieModifier || "0");
+                  const sign = Number(editDieSign || "1");
+                
+                  if (!Number.isFinite(sides) || sides <= 0) return;
+                  if (!Number.isFinite(qty) || qty <= 0) return;
+                
+                  await updateGroupDie(db, editingDie.id, {
+                    sides,
+                    qty,
+                    modifier: Number.isFinite(modifier) ? modifier : 0,
+                    sign: sign === -1 ? -1 : 1,
+                    rule_id: selectedRuleId ?? null,
+                  });
+                
                   setEditingDie(null);
                   setSelectedRuleId(null);
-
+                
                   await load();
                 }}
                 style={{ padding: 10, borderWidth: 1, borderRadius: 8 }}
@@ -402,6 +722,6 @@ export default function TableDetailScreen() {
           </View>
         </View>
       </Modal>
-    </ScrollView>
+    </View>
   );
 }

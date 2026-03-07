@@ -23,7 +23,7 @@ import { insertRollEvent } from "../data/repositories/rollEventsRepo";
 import { newId } from "../core/types/ids";
 
 import { evaluateRule } from "../core/rules/evaluate";
-import { getRuleById } from "../data/repositories/rulesRepo";
+import { getRuleById, listRules, RuleRow } from "../data/repositories/rulesRepo";
 
 type GroupWithDice = {
   group: GroupRow;
@@ -35,6 +35,7 @@ type DraftDie = {
   qty: number;
   modifier?: number;
   sign?: number;
+  rule_id?: string | null;
 };
 
 export default function RollScreen() {
@@ -53,6 +54,13 @@ export default function RollScreen() {
   const [newTableName, setNewTableName] = useState("");
 
   const [rulesMap, setRulesMap] = useState<Record<string, any>>({});
+  const [availableRules, setAvailableRules] = useState<RuleRow[]>([]);
+
+  const [editingDraftIndex, setEditingDraftIndex] = useState<number | null>(null);
+  const [draftEditModifier, setDraftEditModifier] = useState("0");
+  const [draftEditSign, setDraftEditSign] = useState<"1" | "-1">("1");
+  const [draftEditRuleId, setDraftEditRuleId] = useState<string | null>(null);
+
   const [error, setError] = useState<string | null>(null);
 
   const STANDARD_DICE = [4, 6, 8, 10, 12, 20, 100];
@@ -68,6 +76,11 @@ export default function RollScreen() {
 
   function getRuleName(rule: any | null) {
     return rule?.name ?? "Somme (par défaut)";
+  }
+
+  function getRuleNameFromId(ruleId: string | null | undefined) {
+    if (!ruleId) return "Somme (par défaut)";
+    return availableRules.find((r) => r.id === ruleId)?.name ?? "Règle introuvable";
   }
 
   function getSignLabel(sign?: number) {
@@ -158,6 +171,11 @@ export default function RollScreen() {
     setRulesMap(map);
   }
 
+  async function loadAvailableRules() {
+    const all = await listRules(db);
+    setAvailableRules(all);
+  }
+
   useEffect(() => {
     (async () => {
       try {
@@ -166,6 +184,8 @@ export default function RollScreen() {
         setDraftDice([]);
         setDraftResult(null);
         setShowSaveOptions(false);
+
+        await loadAvailableRules();
 
         if (!tableId) {
           setTable(null);
@@ -183,6 +203,7 @@ export default function RollScreen() {
 
   async function reloadGroups(tid: string) {
     await loadTableData(tid);
+    await loadAvailableRules();
   }
 
   async function onRoll() {
@@ -245,23 +266,63 @@ export default function RollScreen() {
   }
 
   function addDieToDraft(sides: number) {
-    setDraftDice((prev) => {
-      const existing = prev.find(
-        (d) => d.sides === sides && (d.sign ?? 1) === 1 && (d.modifier ?? 0) === 0
-      );
+    setDraftDice((prev) => [
+      ...prev,
+      {
+        sides,
+        qty: 1,
+        modifier: 0,
+        sign: 1,
+        rule_id: null,
+      },
+    ]);
+  }
 
-      if (existing) {
-        return prev.map((d) => (d === existing ? { ...d, qty: d.qty + 1 } : d));
-      }
-
-      return [...prev, { sides, qty: 1, sign: 1, modifier: 0 }];
-    });
+  function removeDraftDie(index: number) {
+    setDraftDice((prev) => prev.filter((_, i) => i !== index));
+    setDraftResult(null);
   }
 
   function clearDraft() {
     setDraftDice([]);
     setDraftResult(null);
     setShowSaveOptions(false);
+  }
+
+  function openDraftEditor(index: number) {
+    const d = draftDice[index];
+    if (!d) return;
+
+    setEditingDraftIndex(index);
+    setDraftEditModifier(String(d.modifier ?? 0));
+    setDraftEditSign(String(d.sign ?? 1) as "1" | "-1");
+    setDraftEditRuleId(d.rule_id ?? null);
+  }
+
+  function saveDraftEditor() {
+    if (editingDraftIndex == null) return;
+
+    const modifier = Number(draftEditModifier || "0");
+    const sign = Number(draftEditSign || "1");
+
+    setDraftDice((prev) =>
+      prev.map((d, i) =>
+        i === editingDraftIndex
+          ? {
+              ...d,
+              modifier: Number.isFinite(modifier) ? modifier : 0,
+              sign: sign === -1 ? -1 : 1,
+              rule_id: draftEditRuleId ?? null,
+            }
+          : d
+      )
+    );
+
+    setEditingDraftIndex(null);
+    setDraftEditModifier("0");
+    setDraftEditSign("1");
+    setDraftEditRuleId(null);
+    setDraftResult(null);
   }
 
   async function rollDraft() {
@@ -271,14 +332,25 @@ export default function RollScreen() {
     const result = rollGroup({
       groupId: "draft",
       label: "Jet rapide",
-      entries: draftDice.map((d, idx) => ({
-        entryId: `draft-${d.sides}-${idx}`,
-        sides: d.sides,
-        qty: d.qty,
-        modifier: d.modifier ?? 0,
-        sign: d.sign ?? 1,
-        rule: null,
-      })),
+      entries: draftDice.map((d, idx) => {
+        const rule = d.rule_id ? availableRules.find((r) => r.id === d.rule_id) : null;
+
+        return {
+          entryId: `draft-${idx}`,
+          sides: d.sides,
+          qty: d.qty,
+          modifier: d.modifier ?? 0,
+          sign: d.sign ?? 1,
+          rule: rule
+            ? {
+                id: rule.id,
+                name: rule.name,
+                kind: rule.kind,
+                params_json: rule.params_json,
+              }
+            : null,
+        };
+      }),
       evaluateRule,
     });
 
@@ -341,6 +413,9 @@ export default function RollScreen() {
     );
   }
 
+  const pipelineRules = availableRules.filter((r) => r.kind === "pipeline");
+  const legacyRules = availableRules.filter((r) => r.kind !== "pipeline");
+
   return (
     <View style={{ flex: 1, padding: 16, gap: 12 }}>
       <Text style={{ fontSize: 18, fontWeight: "700" }}>Jet — {table.name}</Text>
@@ -375,12 +450,51 @@ export default function RollScreen() {
             ))}
           </View>
 
-          <Text style={{ marginTop: 10, opacity: 0.7 }}>
-            Draft :{" "}
-            {draftDice.length === 0
-              ? "—"
-              : draftDice.map((d) => `${d.qty}d${d.sides}`).join(" + ")}
-          </Text>
+          {draftDice.length === 0 ? (
+            <Text style={{ marginTop: 10, opacity: 0.7 }}>Draft : —</Text>
+          ) : (
+            <View style={{ marginTop: 10 }}>
+              {draftDice.map((d, index) => (
+                <View
+                  key={`${d.sides}-${index}`}
+                  style={{
+                    marginTop: 8,
+                    padding: 10,
+                    borderWidth: 1,
+                    borderRadius: 10,
+                  }}
+                >
+                  <Text style={{ fontWeight: "700" }}>
+                    Entrée #{index + 1} — {d.qty}d{d.sides}
+                  </Text>
+
+                  <Text style={{ marginTop: 4, opacity: 0.8 }}>
+                    signe : {getSignLabel(d.sign)} | mod : {d.modifier ?? 0}
+                  </Text>
+
+                  <Text style={{ marginTop: 4, opacity: 0.8 }}>
+                    règle : {getRuleNameFromId(d.rule_id)}
+                  </Text>
+
+                  <View style={{ flexDirection: "row", marginTop: 8 }}>
+                    <Pressable
+                      onPress={() => openDraftEditor(index)}
+                      style={{ padding: 8, borderWidth: 1, borderRadius: 8, marginRight: 8 }}
+                    >
+                      <Text>Configurer</Text>
+                    </Pressable>
+
+                    <Pressable
+                      onPress={() => removeDraftDie(index)}
+                      style={{ padding: 8, borderWidth: 1, borderRadius: 8 }}
+                    >
+                      <Text>Supprimer</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
 
           <View style={{ flexDirection: "row", marginTop: 10 }}>
             <Pressable
@@ -421,6 +535,16 @@ export default function RollScreen() {
                   </Text>
 
                   <Text style={{ marginTop: 4, opacity: 0.8 }}>
+                    règle : {getRuleName(e.rule)}
+                  </Text>
+
+                  {e.eval_result ? (
+                    <Text style={{ marginTop: 4, opacity: 0.9 }}>
+                      résultat règle : {formatRuleResult(e.eval_result)}
+                    </Text>
+                  ) : null}
+
+                  <Text style={{ marginTop: 4, fontWeight: "700" }}>
                     entrée = {e.final_total}
                   </Text>
                 </View>
@@ -452,7 +576,7 @@ export default function RollScreen() {
                       qty: d.qty,
                       modifier: d.modifier ?? 0,
                       sign: d.sign ?? 1,
-                      rule_id: null,
+                      rule_id: d.rule_id ?? null,
                     })),
                   });
 
@@ -582,6 +706,165 @@ export default function RollScreen() {
           );
         })}
 
+        {/* Modal config entrée draft */}
+        <Modal
+          visible={editingDraftIndex !== null}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setEditingDraftIndex(null)}
+        >
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: "rgba(0,0,0,0.5)",
+              justifyContent: "center",
+              padding: 16,
+            }}
+          >
+            <View
+              style={{
+                backgroundColor: "white",
+                borderRadius: 12,
+                padding: 16,
+                borderWidth: 1,
+                maxHeight: "90%",
+              }}
+            >
+              <Text style={{ fontSize: 16, fontWeight: "700" }}>
+                Configurer l’entrée du draft
+              </Text>
+
+              {editingDraftIndex != null && draftDice[editingDraftIndex] ? (
+                <Text style={{ marginTop: 8, opacity: 0.7 }}>
+                  Entrée : {draftDice[editingDraftIndex].qty}d{draftDice[editingDraftIndex].sides}
+                </Text>
+              ) : null}
+
+              <Text style={{ marginTop: 12 }}>Signe</Text>
+
+              <View style={{ flexDirection: "row", marginTop: 8 }}>
+                <Pressable
+                  onPress={() => setDraftEditSign("1")}
+                  style={{
+                    padding: 10,
+                    borderWidth: 1,
+                    borderRadius: 8,
+                    marginRight: 8,
+                    opacity: draftEditSign === "1" ? 1 : 0.6,
+                  }}
+                >
+                  <Text style={{ fontWeight: draftEditSign === "1" ? "700" : "400" }}>+</Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => setDraftEditSign("-1")}
+                  style={{
+                    padding: 10,
+                    borderWidth: 1,
+                    borderRadius: 8,
+                    opacity: draftEditSign === "-1" ? 1 : 0.6,
+                  }}
+                >
+                  <Text style={{ fontWeight: draftEditSign === "-1" ? "700" : "400" }}>-</Text>
+                </Pressable>
+              </View>
+
+              <Text style={{ marginTop: 12 }}>Modificateur</Text>
+              <TextInput
+                value={draftEditModifier}
+                onChangeText={setDraftEditModifier}
+                placeholder="0"
+                keyboardType="numeric"
+                style={{ marginTop: 8, borderWidth: 1, borderRadius: 10, padding: 10 }}
+              />
+
+              <Text style={{ marginTop: 12, fontWeight: "700" }}>Règle</Text>
+
+              <Pressable
+                onPress={() => setDraftEditRuleId(null)}
+                style={{
+                  marginTop: 8,
+                  padding: 10,
+                  borderWidth: 1,
+                  borderRadius: 8,
+                  opacity: draftEditRuleId === null ? 1 : 0.7,
+                }}
+              >
+                <Text style={{ fontWeight: draftEditRuleId === null ? "700" : "400" }}>
+                  Somme (par défaut)
+                </Text>
+              </Pressable>
+
+              <ScrollView style={{ marginTop: 12, maxHeight: 260 }}>
+                <Text style={{ fontWeight: "700" }}>Pipelines</Text>
+
+                {pipelineRules.map((rule) => (
+                  <Pressable
+                    key={rule.id}
+                    onPress={() => setDraftEditRuleId(rule.id)}
+                    style={{
+                      padding: 10,
+                      borderWidth: 1,
+                      borderRadius: 8,
+                      marginTop: 8,
+                      opacity: draftEditRuleId === rule.id ? 1 : 0.7,
+                    }}
+                  >
+                    <Text style={{ fontWeight: draftEditRuleId === rule.id ? "700" : "400" }}>
+                      {rule.name}
+                    </Text>
+                    <Text style={{ marginTop: 2, opacity: 0.7, fontSize: 12 }}>
+                      {rule.is_system === 1 ? "système" : "perso"}
+                    </Text>
+                  </Pressable>
+                ))}
+
+                {legacyRules.length > 0 ? (
+                  <View style={{ marginTop: 16 }}>
+                    <Text style={{ fontWeight: "700" }}>Compatibilité</Text>
+                    {legacyRules.map((rule) => (
+                      <Pressable
+                        key={rule.id}
+                        onPress={() => setDraftEditRuleId(rule.id)}
+                        style={{
+                          padding: 10,
+                          borderWidth: 1,
+                          borderRadius: 8,
+                          marginTop: 8,
+                          opacity: draftEditRuleId === rule.id ? 1 : 0.65,
+                        }}
+                      >
+                        <Text style={{ fontWeight: draftEditRuleId === rule.id ? "700" : "400" }}>
+                          {rule.name}
+                        </Text>
+                        <Text style={{ marginTop: 2, opacity: 0.7, fontSize: 12 }}>
+                          type: {rule.kind}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                ) : null}
+              </ScrollView>
+
+              <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 16 }}>
+                <Pressable
+                  onPress={() => setEditingDraftIndex(null)}
+                  style={{ padding: 10, borderWidth: 1, borderRadius: 8, marginRight: 10 }}
+                >
+                  <Text>Annuler</Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={saveDraftEditor}
+                  style={{ padding: 10, borderWidth: 1, borderRadius: 8 }}
+                >
+                  <Text style={{ fontWeight: "700" }}>Sauvegarder</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
         {/* Modal création table depuis draft */}
         <Modal
           visible={showNameModal}
@@ -639,7 +922,7 @@ export default function RollScreen() {
                         qty: d.qty,
                         modifier: d.modifier ?? 0,
                         sign: d.sign ?? 1,
-                        rule_id: null,
+                        rule_id: d.rule_id ?? null,
                       })),
                     });
 
