@@ -10,6 +10,7 @@ import {
   GroupRow,
   GroupDieRow,
   updateGroupDie,
+  updateGroupName,
   createGroup,
   deleteGroup,
   createGroupDie,
@@ -37,6 +38,10 @@ export default function TableDetailScreen() {
 
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
+
+  const [showRenameGroupModal, setShowRenameGroupModal] = useState(false);
+  const [editingGroup, setEditingGroup] = useState<GroupRow | null>(null);
+  const [renameGroupValue, setRenameGroupValue] = useState("");
 
   const [showCreateDieModal, setShowCreateDieModal] = useState(false);
   const [targetGroupForNewDie, setTargetGroupForNewDie] = useState<GroupRow | null>(null);
@@ -116,6 +121,12 @@ export default function TableDetailScreen() {
     setSelectedRuleId(die.rule_id ?? null);
   }
 
+  function openRenameGroupModal(group: GroupRow) {
+    setEditingGroup(group);
+    setRenameGroupValue(group.name);
+    setShowRenameGroupModal(true);
+  }
+
   if (error) {
     return (
       <View style={{ flex: 1, padding: 16 }}>
@@ -178,7 +189,14 @@ export default function TableDetailScreen() {
                 <Text style={{ fontSize: 16, fontWeight: "700" }}>{group.name}</Text>
 
                 {!isSystem ? (
-                  <View style={{ flexDirection: "row", marginTop: 8 }}>
+                  <View style={{ flexDirection: "row", marginTop: 8, flexWrap: "wrap" }}>
+                    <Pressable
+                      onPress={() => openRenameGroupModal(group)}
+                      style={{ padding: 8, borderWidth: 1, borderRadius: 8, marginRight: 8, marginBottom: 8 }}
+                    >
+                      <Text>Renommer le groupe</Text>
+                    </Pressable>
+
                     <Pressable
                       onPress={() => {
                         setTargetGroupForNewDie(group);
@@ -189,17 +207,17 @@ export default function TableDetailScreen() {
                         setNewDieRuleId(null);
                         setShowCreateDieModal(true);
                       }}
-                      style={{ padding: 8, borderWidth: 1, borderRadius: 8, marginRight: 8 }}
+                      style={{ padding: 8, borderWidth: 1, borderRadius: 8, marginRight: 8, marginBottom: 8 }}
                     >
                       <Text>Ajouter une entrée</Text>
                     </Pressable>
-
+                    
                     <Pressable
                       onPress={async () => {
                         await deleteGroup(db, group.id);
                         await load();
                       }}
-                      style={{ padding: 8, borderWidth: 1, borderRadius: 8 }}
+                      style={{ padding: 8, borderWidth: 1, borderRadius: 8, marginBottom: 8 }}
                     >
                       <Text>Supprimer le groupe</Text>
                     </Pressable>
@@ -340,6 +358,63 @@ export default function TableDetailScreen() {
                 style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
               >
                 <Text style={{ fontWeight: "700" }}>Créer</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal renommer groupe */}
+      <Modal
+        visible={showRenameGroupModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setShowRenameGroupModal(false);
+          setEditingGroup(null);
+          setRenameGroupValue("");
+        }}
+      >
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 16 }}>
+          <View style={{ backgroundColor: "white", borderRadius: 12, padding: 16, borderWidth: 1 }}>
+            <Text style={{ fontSize: 16, fontWeight: "700" }}>Renommer le groupe</Text>
+      
+            <TextInput
+              value={renameGroupValue}
+              onChangeText={setRenameGroupValue}
+              placeholder="Nouveau nom du groupe..."
+              style={{ marginTop: 12, borderWidth: 1, borderRadius: 10, padding: 10 }}
+            />
+      
+            <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 12 }}>
+              <Pressable
+                onPress={() => {
+                  setShowRenameGroupModal(false);
+                  setEditingGroup(null);
+                  setRenameGroupValue("");
+                }}
+                style={{ padding: 10, borderWidth: 1, borderRadius: 10, marginRight: 10 }}
+              >
+                <Text>Annuler</Text>
+              </Pressable>
+              
+              <Pressable
+                onPress={async () => {
+                  const name = renameGroupValue.trim();
+                  if (!editingGroup) return;
+                  if (!name) return;
+                
+                  await updateGroupName(db, editingGroup.id, name);
+                
+                  setShowRenameGroupModal(false);
+                  setEditingGroup(null);
+                  setRenameGroupValue("");
+                
+                  await load();
+                }}
+                style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
+              >
+                <Text style={{ fontWeight: "700" }}>Renommer</Text>
               </Pressable>
             </View>
           </View>

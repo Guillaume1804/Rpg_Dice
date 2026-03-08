@@ -228,3 +228,22 @@ export async function updateGroupDie(
     ]
   );
 }
+
+export async function updateGroupName(
+  db: Db,
+  groupId: string,
+  name: string
+): Promise<void> {
+  await assertTableIsNotSystemFromGroup(db, groupId);
+
+  const now = new Date().toISOString();
+
+  await db.runAsync(
+    `
+    UPDATE groups
+    SET name = ?, updated_at = ?
+    WHERE id = ?;
+    `,
+    [name, now, groupId]
+  );
+}
