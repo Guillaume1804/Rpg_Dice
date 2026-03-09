@@ -6,6 +6,7 @@ export type GroupRow = {
   table_id: string;
   name: string;
   sort_order: number;
+  rule_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -92,6 +93,8 @@ export async function createGroup(
   params: {
     tableId: string;
     name: string;
+    rule_id?: string | null;
+
   }
 ): Promise<string> {
   await assertTableIsNotSystemByTableId(db, params.tableId);
@@ -107,10 +110,10 @@ export async function createGroup(
 
   await db.runAsync(
     `
-    INSERT INTO groups(id, table_id, name, sort_order, created_at, updated_at)
-    VALUES(?, ?, ?, ?, ?, ?);
+    INSERT INTO groups(id, table_id, name, sort_order, rule_id, created_at, updated_at)
+    VALUES(?, ?, ?, ?, ?, ?, ?);
     `,
-    [id, params.tableId, params.name, nextSort, createdAt, createdAt]
+    [id, params.tableId, params.name, nextSort, params.rule_id ?? null, createdAt, createdAt]
   );
 
   return id;
@@ -226,6 +229,25 @@ export async function updateGroupDie(
       now,
       dieId,
     ]
+  );
+}
+
+export async function updateGroupRuleId(
+  db: Db,
+  groupId: string,
+  ruleId: string | null
+): Promise<void> {
+  await assertTableIsNotSystemFromGroup(db, groupId);
+
+  const now = new Date().toISOString();
+
+  await db.runAsync(
+    `
+    UPDATE groups
+    SET rule_id = ?, updated_at = ?
+    WHERE id = ?;
+    `,
+    [ruleId, now, groupId]
   );
 }
 

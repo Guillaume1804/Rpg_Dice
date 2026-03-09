@@ -11,6 +11,7 @@ import {
   GroupDieRow,
   updateGroupDie,
   updateGroupName,
+  updateGroupRuleId,
   createGroup,
   deleteGroup,
   createGroupDie,
@@ -38,10 +39,15 @@ export default function TableDetailScreen() {
 
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
+  const [newGroupRuleId, setNewGroupRuleId] = useState<string | null>(null);
 
   const [showRenameGroupModal, setShowRenameGroupModal] = useState(false);
   const [editingGroup, setEditingGroup] = useState<GroupRow | null>(null);
   const [renameGroupValue, setRenameGroupValue] = useState("");
+
+  const [showEditGroupRuleModal, setShowEditGroupRuleModal] = useState(false);
+  const [editingGroupForRule, setEditingGroupForRule] = useState<GroupRow | null>(null);
+  const [selectedGroupRuleId, setSelectedGroupRuleId] = useState<string | null>(null);
 
   const [showCreateDieModal, setShowCreateDieModal] = useState(false);
   const [targetGroupForNewDie, setTargetGroupForNewDie] = useState<GroupRow | null>(null);
@@ -112,6 +118,11 @@ export default function TableDetailScreen() {
     setNewDieRuleId(null);
   }
 
+  function resetCreateGroupForm() {
+    setNewGroupName("");
+    setNewGroupRuleId(null);
+  }
+
   function openEditDieModal(die: GroupDieRow) {
     setEditingDie(die);
     setEditDieSides(String(die.sides));
@@ -125,6 +136,12 @@ export default function TableDetailScreen() {
     setEditingGroup(group);
     setRenameGroupValue(group.name);
     setShowRenameGroupModal(true);
+  }
+
+  function openEditGroupRuleModal(group: GroupRow) {
+    setEditingGroupForRule(group);
+    setSelectedGroupRuleId(group.rule_id ?? null);
+    setShowEditGroupRuleModal(true);
   }
 
   if (error) {
@@ -167,7 +184,7 @@ export default function TableDetailScreen() {
 
           <Pressable
             onPress={() => {
-              setNewGroupName("");
+              resetCreateGroupForm();
               setShowCreateGroupModal(true);
             }}
             style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
@@ -188,6 +205,10 @@ export default function TableDetailScreen() {
               <View key={group.id} style={{ marginTop: 12, paddingTop: 10, borderTopWidth: 1 }}>
                 <Text style={{ fontSize: 16, fontWeight: "700" }}>{group.name}</Text>
 
+                <Text style={{ marginTop: 4, opacity: 0.8 }}>
+                  règle de groupe : {getRuleName(group.rule_id)}
+                </Text>
+
                 {!isSystem ? (
                   <View style={{ flexDirection: "row", marginTop: 8, flexWrap: "wrap" }}>
                     <Pressable
@@ -195,6 +216,13 @@ export default function TableDetailScreen() {
                       style={{ padding: 8, borderWidth: 1, borderRadius: 8, marginRight: 8, marginBottom: 8 }}
                     >
                       <Text>Renommer le groupe</Text>
+                    </Pressable>
+
+                    <Pressable
+                      onPress={() => openEditGroupRuleModal(group)}
+                      style={{ padding: 8, borderWidth: 1, borderRadius: 8, marginRight: 8, marginBottom: 8 }}
+                    >
+                      <Text>Règle du groupe</Text>
                     </Pressable>
 
                     <Pressable
@@ -211,7 +239,7 @@ export default function TableDetailScreen() {
                     >
                       <Text>Ajouter une entrée</Text>
                     </Pressable>
-                    
+
                     <Pressable
                       onPress={async () => {
                         await deleteGroup(db, group.id);
@@ -238,7 +266,7 @@ export default function TableDetailScreen() {
                       </Text>
 
                       <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                        règle : {getRuleName(d.rule_id)}
+                        règle d’entrée : {getRuleName(d.rule_id)}
                       </Text>
 
                       {!isSystem ? (
@@ -320,22 +348,90 @@ export default function TableDetailScreen() {
         visible={showCreateGroupModal}
         transparent
         animationType="fade"
-        onRequestClose={() => setShowCreateGroupModal(false)}
+        onRequestClose={() => {
+          setShowCreateGroupModal(false);
+          resetCreateGroupForm();
+        }}
       >
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 16 }}>
-          <View style={{ backgroundColor: "white", borderRadius: 12, padding: 16, borderWidth: 1 }}>
+          <View style={{ backgroundColor: "white", borderRadius: 12, padding: 16, borderWidth: 1, maxHeight: "90%" }}>
             <Text style={{ fontSize: 16, fontWeight: "700" }}>Créer un groupe</Text>
 
-            <TextInput
-              value={newGroupName}
-              onChangeText={setNewGroupName}
-              placeholder="Ex: Actions, Dégâts, Localisation..."
-              style={{ marginTop: 12, borderWidth: 1, borderRadius: 10, padding: 10 }}
-            />
+            <ScrollView style={{ marginTop: 12 }}>
+              <Text>Nom du groupe</Text>
+              <TextInput
+                value={newGroupName}
+                onChangeText={setNewGroupName}
+                placeholder="Ex: Actions, Dégâts, Localisation..."
+                style={{ marginTop: 6, borderWidth: 1, borderRadius: 10, padding: 10 }}
+              />
+
+              <Text style={{ marginTop: 12, fontWeight: "700" }}>Règle de groupe</Text>
+
+              <Pressable
+                onPress={() => setNewGroupRuleId(null)}
+                style={{
+                  marginTop: 8,
+                  padding: 10,
+                  borderWidth: 1,
+                  borderRadius: 8,
+                  opacity: newGroupRuleId === null ? 1 : 0.7,
+                }}
+              >
+                <Text style={{ fontWeight: newGroupRuleId === null ? "700" : "400" }}>
+                  Somme (par défaut)
+                </Text>
+              </Pressable>
+
+              <Text style={{ marginTop: 12, fontWeight: "700" }}>Pipelines</Text>
+              {pipelineRules.map((rule) => (
+                <Pressable
+                  key={rule.id}
+                  onPress={() => setNewGroupRuleId(rule.id)}
+                  style={{
+                    marginTop: 8,
+                    padding: 10,
+                    borderWidth: 1,
+                    borderRadius: 8,
+                    opacity: newGroupRuleId === rule.id ? 1 : 0.7,
+                  }}
+                >
+                  <Text style={{ fontWeight: newGroupRuleId === rule.id ? "700" : "400" }}>
+                    {rule.name}
+                  </Text>
+                </Pressable>
+              ))}
+
+              {legacyRules.length > 0 ? (
+                <View style={{ marginTop: 12 }}>
+                  <Text style={{ fontWeight: "700" }}>Compatibilité</Text>
+                  {legacyRules.map((rule) => (
+                    <Pressable
+                      key={rule.id}
+                      onPress={() => setNewGroupRuleId(rule.id)}
+                      style={{
+                        marginTop: 8,
+                        padding: 10,
+                        borderWidth: 1,
+                        borderRadius: 8,
+                        opacity: newGroupRuleId === rule.id ? 1 : 0.7,
+                      }}
+                    >
+                      <Text style={{ fontWeight: newGroupRuleId === rule.id ? "700" : "400" }}>
+                        {rule.name}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
+            </ScrollView>
 
             <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 12 }}>
               <Pressable
-                onPress={() => setShowCreateGroupModal(false)}
+                onPress={() => {
+                  setShowCreateGroupModal(false);
+                  resetCreateGroupForm();
+                }}
                 style={{ padding: 10, borderWidth: 1, borderRadius: 10, marginRight: 10 }}
               >
                 <Text>Annuler</Text>
@@ -349,10 +445,11 @@ export default function TableDetailScreen() {
                   await createGroup(db, {
                     tableId: table.id,
                     name,
+                    rule_id: newGroupRuleId ?? null,
                   });
 
                   setShowCreateGroupModal(false);
-                  setNewGroupName("");
+                  resetCreateGroupForm();
                   await load();
                 }}
                 style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
@@ -378,14 +475,14 @@ export default function TableDetailScreen() {
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 16 }}>
           <View style={{ backgroundColor: "white", borderRadius: 12, padding: 16, borderWidth: 1 }}>
             <Text style={{ fontSize: 16, fontWeight: "700" }}>Renommer le groupe</Text>
-      
+
             <TextInput
               value={renameGroupValue}
               onChangeText={setRenameGroupValue}
               placeholder="Nouveau nom du groupe..."
               style={{ marginTop: 12, borderWidth: 1, borderRadius: 10, padding: 10 }}
             />
-      
+
             <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 12 }}>
               <Pressable
                 onPress={() => {
@@ -397,24 +494,137 @@ export default function TableDetailScreen() {
               >
                 <Text>Annuler</Text>
               </Pressable>
-              
+
               <Pressable
                 onPress={async () => {
                   const name = renameGroupValue.trim();
                   if (!editingGroup) return;
                   if (!name) return;
-                
+
                   await updateGroupName(db, editingGroup.id, name);
-                
+
                   setShowRenameGroupModal(false);
                   setEditingGroup(null);
                   setRenameGroupValue("");
-                
+
                   await load();
                 }}
                 style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
               >
                 <Text style={{ fontWeight: "700" }}>Renommer</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal règle du groupe */}
+      <Modal
+        visible={showEditGroupRuleModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setShowEditGroupRuleModal(false);
+          setEditingGroupForRule(null);
+          setSelectedGroupRuleId(null);
+        }}
+      >
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 16 }}>
+          <View style={{ backgroundColor: "white", borderRadius: 12, padding: 16, borderWidth: 1, maxHeight: "90%" }}>
+            <Text style={{ fontSize: 16, fontWeight: "700" }}>Modifier la règle du groupe</Text>
+
+            {editingGroupForRule ? (
+              <Text style={{ marginTop: 8, opacity: 0.7 }}>
+                Groupe : {editingGroupForRule.name}
+              </Text>
+            ) : null}
+
+            <ScrollView style={{ marginTop: 12 }}>
+              <Pressable
+                onPress={() => setSelectedGroupRuleId(null)}
+                style={{
+                  marginTop: 8,
+                  padding: 10,
+                  borderWidth: 1,
+                  borderRadius: 8,
+                  opacity: selectedGroupRuleId === null ? 1 : 0.7,
+                }}
+              >
+                <Text style={{ fontWeight: selectedGroupRuleId === null ? "700" : "400" }}>
+                  Somme (par défaut)
+                </Text>
+              </Pressable>
+
+              <Text style={{ marginTop: 12, fontWeight: "700" }}>Pipelines</Text>
+              {pipelineRules.map((rule) => (
+                <Pressable
+                  key={rule.id}
+                  onPress={() => setSelectedGroupRuleId(rule.id)}
+                  style={{
+                    marginTop: 8,
+                    padding: 10,
+                    borderWidth: 1,
+                    borderRadius: 8,
+                    opacity: selectedGroupRuleId === rule.id ? 1 : 0.7,
+                  }}
+                >
+                  <Text style={{ fontWeight: selectedGroupRuleId === rule.id ? "700" : "400" }}>
+                    {rule.name}
+                  </Text>
+                </Pressable>
+              ))}
+
+              {legacyRules.length > 0 ? (
+                <View style={{ marginTop: 12 }}>
+                  <Text style={{ fontWeight: "700" }}>Compatibilité</Text>
+                  {legacyRules.map((rule) => (
+                    <Pressable
+                      key={rule.id}
+                      onPress={() => setSelectedGroupRuleId(rule.id)}
+                      style={{
+                        marginTop: 8,
+                        padding: 10,
+                        borderWidth: 1,
+                        borderRadius: 8,
+                        opacity: selectedGroupRuleId === rule.id ? 1 : 0.7,
+                      }}
+                    >
+                      <Text style={{ fontWeight: selectedGroupRuleId === rule.id ? "700" : "400" }}>
+                        {rule.name}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
+            </ScrollView>
+
+            <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 16 }}>
+              <Pressable
+                onPress={() => {
+                  setShowEditGroupRuleModal(false);
+                  setEditingGroupForRule(null);
+                  setSelectedGroupRuleId(null);
+                }}
+                style={{ padding: 10, borderWidth: 1, borderRadius: 8, marginRight: 10 }}
+              >
+                <Text>Annuler</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={async () => {
+                  if (!editingGroupForRule) return;
+
+                  await updateGroupRuleId(db, editingGroupForRule.id, selectedGroupRuleId ?? null);
+
+                  setShowEditGroupRuleModal(false);
+                  setEditingGroupForRule(null);
+                  setSelectedGroupRuleId(null);
+
+                  await load();
+                }}
+                style={{ padding: 10, borderWidth: 1, borderRadius: 8 }}
+              >
+                <Text style={{ fontWeight: "700" }}>Sauvegarder</Text>
               </Pressable>
             </View>
           </View>
@@ -497,7 +707,7 @@ export default function TableDetailScreen() {
                 </Pressable>
               </View>
 
-              <Text style={{ marginTop: 12, fontWeight: "700" }}>Règle</Text>
+              <Text style={{ marginTop: 12, fontWeight: "700" }}>Règle d’entrée</Text>
 
               <Pressable
                 onPress={() => setNewDieRuleId(null)}
@@ -630,7 +840,7 @@ export default function TableDetailScreen() {
             }}
           >
             <Text style={{ fontSize: 16, fontWeight: "700" }}>Éditer l’entrée</Text>
-          
+
             <ScrollView style={{ marginTop: 12 }}>
               <Text>Faces du dé</Text>
               <TextInput
@@ -673,7 +883,7 @@ export default function TableDetailScreen() {
                 >
                   <Text style={{ fontWeight: editDieSign === "1" ? "700" : "400" }}>+</Text>
                 </Pressable>
-                
+
                 <Pressable
                   onPress={() => setEditDieSign("-1")}
                   style={{
@@ -686,9 +896,9 @@ export default function TableDetailScreen() {
                   <Text style={{ fontWeight: editDieSign === "-1" ? "700" : "400" }}>-</Text>
                 </Pressable>
               </View>
-                
-              <Text style={{ marginTop: 12, fontWeight: "700" }}>Règle</Text>
-                
+
+              <Text style={{ marginTop: 12, fontWeight: "700" }}>Règle d’entrée</Text>
+
               <Pressable
                 onPress={() => setSelectedRuleId(null)}
                 style={{
@@ -703,7 +913,7 @@ export default function TableDetailScreen() {
                   Somme (par défaut)
                 </Text>
               </Pressable>
-              
+
               <Text style={{ marginTop: 12, fontWeight: "700" }}>Pipelines</Text>
               {pipelineRules.map((rule) => (
                 <Pressable
@@ -752,7 +962,7 @@ export default function TableDetailScreen() {
                 </View>
               ) : null}
             </ScrollView>
-            
+
             <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 16 }}>
               <Pressable
                 onPress={() => {
@@ -763,19 +973,19 @@ export default function TableDetailScreen() {
               >
                 <Text>Annuler</Text>
               </Pressable>
-              
+
               <Pressable
                 onPress={async () => {
                   if (!editingDie) return;
-                
+
                   const sides = Number(editDieSides || "0");
                   const qty = Number(editDieQty || "0");
                   const modifier = Number(editDieModifier || "0");
                   const sign = Number(editDieSign || "1");
-                
+
                   if (!Number.isFinite(sides) || sides <= 0) return;
                   if (!Number.isFinite(qty) || qty <= 0) return;
-                
+
                   await updateGroupDie(db, editingDie.id, {
                     sides,
                     qty,
@@ -783,10 +993,10 @@ export default function TableDetailScreen() {
                     sign: sign === -1 ? -1 : 1,
                     rule_id: selectedRuleId ?? null,
                   });
-                
+
                   setEditingDie(null);
                   setSelectedRuleId(null);
-                
+
                   await load();
                 }}
                 style={{ padding: 10, borderWidth: 1, borderRadius: 8 }}
