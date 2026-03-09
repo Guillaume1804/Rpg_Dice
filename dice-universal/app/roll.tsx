@@ -38,6 +38,13 @@ type DraftDie = {
   rule_id?: string | null;
 };
 
+type DraftGroupState = {
+  id: string;
+  name: string;
+  rule_id?: string | null;
+  dice: DraftDie[];
+};
+
 export default function RollScreen() {
   const db = useDb();
   const { activeTableId, setActiveTableId } = useActiveTable();
@@ -46,8 +53,13 @@ export default function RollScreen() {
   const [groups, setGroups] = useState<GroupWithDice[]>([]);
   const [results, setResults] = useState<GroupRollResult[]>([]);
 
-  const [draftDice, setDraftDice] = useState<DraftDie[]>([]);
-  const [draftResult, setDraftResult] = useState<GroupRollResult | null>(null);
+  const [draftGroups, setDraftGroups] = useState<DraftGroupState[]>([]);
+  const [draftResults, setDraftResults] = useState<GroupRollResult[]>([]);
+
+  const [selectedDraftGroupId, setSelectedDraftGroupId] = useState<string | null>(null);
+
+  const [showDraftGroupRuleModal, setShowDraftGroupRuleModal] = useState(false);
+  const [draftGroupRuleSelection, setDraftGroupRuleSelection] = useState<string | null>(null);
 
   const [showSaveOptions, setShowSaveOptions] = useState(false);
   const [showNameModal, setShowNameModal] = useState(false);
@@ -57,6 +69,7 @@ export default function RollScreen() {
   const [availableRules, setAvailableRules] = useState<RuleRow[]>([]);
 
   const [editingDraftIndex, setEditingDraftIndex] = useState<number | null>(null);
+  const [editingDraftGroupId, setEditingDraftGroupId] = useState<string | null>(null);
   const [draftEditModifier, setDraftEditModifier] = useState("0");
   const [draftEditSign, setDraftEditSign] = useState<"1" | "-1">("1");
   const [draftEditRuleId, setDraftEditRuleId] = useState<string | null>(null);
@@ -173,10 +186,11 @@ export default function RollScreen() {
   useEffect(() => {
     (async () => {
       try {
-        setError(null);
         setResults([]);
-        setDraftDice([]);
-        setDraftResult(null);
+        setDraftGroups([]);
+        setDraftResults([]);
+        setSelectedDraftGroupId(null);
+        setDraftGroupRuleSelection(null);
         setShowSaveOptions(false);
 
         await loadAvailableRules();
@@ -271,33 +285,95 @@ export default function RollScreen() {
   }
 
   function addDieToDraft(sides: number) {
-    setDraftDice((prev) => [
-      ...prev,
-      {
-        sides,
-        qty: 1,
-        modifier: 0,
-        sign: 1,
-        rule_id: null,
-      },
-    ]);
+    setDraftGroups((prev) => {
+      let next = [...prev];
+    
+      if (next.length === 0) {
+        const newGroup = createEmptyDraftGroup("Groupe rapide");
+        next = [newGroup];
+        setSelectedDraftGroupId(newGroup.id);
+      }
+    
+      const targetGroupId = selectedDraftGroupId ?? next[0].id;
+    
+      return next.map((group) =>
+        group.id === targetGroupId
+          ? {
+              ...group,
+              dice: [
+                ...group.dice,
+                {
+                  sides,
+                  qty: 1,
+                  modifier: 0,
+                  sign: 1,
+                  rule_id: null,
+                },
+              ],
+            }
+          : group
+      );
+    });
+  
+    setDraftResults([]);
   }
 
-  function removeDraftDie(index: number) {
-    setDraftDice((prev) => prev.filter((_, i) => i !== index));
-    setDraftResult(null);
+  function removeDraftDie(groupId: string, index: number) {
+    setDraftGroups((prev) => {
+      const next = prev
+        .map((group) =>
+          group.id === groupId
+            ? { ...group, dice: group.dice.filter((_, i) => i !== index) }
+            : group
+        )
+        .filter((group) => group.dice.length > 0 || prev.length === 1);
+
+      const cleaned = next.filter((group) => group.dice.length > 0);
+
+      if (cleaned.length === 0) {
+        setSelectedDraftGroupId(null);
+        setDraftGroupRuleSelection(null);
+        return [];
+      }
+
+      if (!cleaned.some((g) => g.id === selectedDraftGroupId)) {
+        setSelectedDraftGroupId(cleaned[0].id);
+      }
+
+      return cleaned;
+    });
+
+    setDraftResults([]);
   }
 
   function clearDraft() {
-    setDraftDice([]);
-    setDraftResult(null);
+    setDraftGroups([]);
+    setDraftResults([]);
+    setSelectedDraftGroupId(null);
+    setDraftGroupRuleSelection(null);
     setShowSaveOptions(false);
   }
 
-  function openDraftEditor(index: number) {
-    const d = draftDice[index];
-    if (!d) return;
+  function createEmptyDraftGroup(name?: string): DraftGroupState {
+    return {
+      id: `draft-group-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name: name ?? "Groupe rapide",
+      rule_id: null,
+      dice: [],
+    };
+  }
 
+  function getSelectedDraftGroup(): DraftGroupState | null {
+    if (!selectedDraftGroupId) return null;
+    return draftGroups.find((g) => g.id === selectedDraftGroupId) ?? null;
+  }
+
+  function openDraftEditor(groupId: string, index: number) {
+    const group = draftGroups.find((g) => g.id === groupId);
+    const d = group?.dice[index];
+    if (!group || !d) return;
+
+    setEditingDraftGroupId(groupId);
     setEditingDraftIndex(index);
     setDraftEditModifier(String(d.modifier ?? 0));
     setDraftEditSign(String(d.sign ?? 1) as "1" | "-1");
@@ -305,76 +381,124 @@ export default function RollScreen() {
   }
 
   function saveDraftEditor() {
-    if (editingDraftIndex == null) return;
-
+    if (editingDraftGroupId == null || editingDraftIndex == null) return;
+    
     const modifier = Number(draftEditModifier || "0");
     const sign = Number(draftEditSign || "1");
-
-    setDraftDice((prev) =>
-      prev.map((d, i) =>
-        i === editingDraftIndex
+    
+    setDraftGroups((prev) =>
+      prev.map((group) =>
+        group.id === editingDraftGroupId
           ? {
-              ...d,
-              modifier: Number.isFinite(modifier) ? modifier : 0,
-              sign: sign === -1 ? -1 : 1,
-              rule_id: draftEditRuleId ?? null,
+              ...group,
+              dice: group.dice.map((d, i) =>
+                i === editingDraftIndex
+                  ? {
+                      ...d,
+                      modifier: Number.isFinite(modifier) ? modifier : 0,
+                      sign: sign === -1 ? -1 : 1,
+                      rule_id: draftEditRuleId ?? null,
+                    }
+                  : d
+              ),
             }
-          : d
+          : group
       )
     );
-
+  
+    setEditingDraftGroupId(null);
     setEditingDraftIndex(null);
     setDraftEditModifier("0");
     setDraftEditSign("1");
     setDraftEditRuleId(null);
-    setDraftResult(null);
+    setDraftResults([]);
+  }
+
+  function openDraftGroupRuleEditor(groupId: string) {
+    const group = draftGroups.find((g) => g.id === groupId);
+    if (!group) return;
+
+    setSelectedDraftGroupId(groupId);
+    setDraftGroupRuleSelection(group.rule_id ?? null);
+    setShowDraftGroupRuleModal(true);
+  }
+
+  function saveDraftGroupRuleEditor() {
+    if (!selectedDraftGroupId) return;
+
+    setDraftGroups((prev) =>
+      prev.map((group) =>
+        group.id === selectedDraftGroupId
+          ? { ...group, rule_id: draftGroupRuleSelection ?? null }
+          : group
+      )
+    );
+
+    setShowDraftGroupRuleModal(false);
+    setDraftResults([]);
   }
 
   async function rollDraft() {
-    if (draftDice.length === 0) return;
+    if (draftGroups.length === 0) return;
     if (!table) return;
 
-    const result = rollGroup({
-      groupId: "draft",
-      label: "Jet rapide",
-      entries: draftDice.map((d, idx) => {
-        const rule = d.rule_id ? availableRules.find((r) => r.id === d.rule_id) : null;
+    const rolled = draftGroups.map((group) => {
+      const groupRule = group.rule_id
+        ? availableRules.find((r) => r.id === group.rule_id)
+        : null;
 
-        return {
-          entryId: `draft-${idx}`,
-          sides: d.sides,
-          qty: d.qty,
-          modifier: d.modifier ?? 0,
-          sign: d.sign ?? 1,
-          rule: rule
-            ? {
-                id: rule.id,
-                name: rule.name,
-                kind: rule.kind,
-                params_json: rule.params_json,
-              }
-            : null,
-        };
-      }),
-      evaluateRule,
+      return rollGroup({
+        groupId: group.id,
+        label: group.name,
+        entries: group.dice.map((d, idx) => {
+          const rule = d.rule_id
+            ? availableRules.find((r) => r.id === d.rule_id)
+            : null;
+
+          return {
+            entryId: `${group.id}-draft-${idx}`,
+            sides: d.sides,
+            qty: d.qty,
+            modifier: d.modifier ?? 0,
+            sign: d.sign ?? 1,
+            rule: rule
+              ? {
+                  id: rule.id,
+                  name: rule.name,
+                  kind: rule.kind,
+                  params_json: rule.params_json,
+                }
+              : null,
+          };
+        }),
+        groupRule: groupRule
+          ? {
+              id: groupRule.id,
+              name: groupRule.name,
+              kind: groupRule.kind,
+              params_json: groupRule.params_json,
+            }
+          : null,
+        evaluateRule,
+      });
     });
 
-    setDraftResult(result);
+    setDraftResults(rolled);
 
     try {
       const eventId = await newId();
       const createdAt = nowIso();
 
       const payload = {
-        type: "draft",
+        type: "draft_multi_groups",
         tableId: table.id,
         tableName: table.name,
-        result,
+        groups: rolled,
       };
 
       const summary = {
         title: `Jet rapide — ${table.name}`,
-        lines: [`Total draft: ${result.total}`],
+        lines: rolled.map((r) => `${r.label}: total ${r.total}`),
       };
 
       await insertRollEvent(db, {
@@ -385,7 +509,7 @@ export default function RollScreen() {
         summary_json: JSON.stringify(summary),
       });
     } catch (e) {
-      console.warn("insertRollEvent (draft) failed", e);
+      console.warn("insertRollEvent (draft multi-groups) failed", e);
     }
   }
 
@@ -455,111 +579,131 @@ export default function RollScreen() {
             ))}
           </View>
 
-          {draftDice.length === 0 ? (
+          {draftGroups.length === 0 ? (
             <Text style={{ marginTop: 10, opacity: 0.7 }}>Draft : —</Text>
           ) : (
             <View style={{ marginTop: 10 }}>
-              {draftDice.map((d, index) => (
-                <View
-                  key={`${d.sides}-${index}`}
-                  style={{
-                    marginTop: 8,
-                    padding: 10,
-                    borderWidth: 1,
-                    borderRadius: 10,
-                  }}
-                >
-                  <Text style={{ fontWeight: "700" }}>
-                    Entrée #{index + 1} — {d.qty}d{d.sides}
-                  </Text>
+              {draftGroups.map((group) => {
+                const groupResult = draftResults.find((r) => r.groupId === group.id);
+              
+                return (
+                  <View
+                    key={group.id}
+                    style={{ marginTop: 10, padding: 10, borderWidth: 1, borderRadius: 10 }}
+                  >
+                    <Text style={{ fontWeight: "800" }}>{group.name}</Text>
+                
+                    <Text style={{ marginTop: 4, opacity: 0.8 }}>
+                      règle de groupe : {getRuleNameFromId(group.rule_id)}
+                    </Text>
+                
+                    <View style={{ flexDirection: "row", marginTop: 8 }}>
+                      <Pressable
+                        onPress={() => {
+                          setSelectedDraftGroupId(group.id);
+                          openDraftGroupRuleEditor(group.id);
+                        }}
+                        style={{ padding: 8, borderWidth: 1, borderRadius: 8, marginRight: 8 }}
+                      >
+                        <Text>Règle groupe</Text>
+                      </Pressable>
+                    </View>
+                      
+                    {group.dice.map((d, index) => (
+                      <View
+                        key={`${group.id}-${index}`}
+                        style={{
+                          marginTop: 8,
+                          padding: 10,
+                          borderWidth: 1,
+                          borderRadius: 10,
+                        }}
+                      >
+                        <Text style={{ fontWeight: "700" }}>
+                          Entrée #{index + 1} — {d.qty}d{d.sides}
+                        </Text>
+                      
+                        <Text style={{ marginTop: 4, opacity: 0.8 }}>
+                          signe : {getSignLabel(d.sign)} | mod : {d.modifier ?? 0}
+                        </Text>
+                      
+                        <Text style={{ marginTop: 4, opacity: 0.8 }}>
+                          règle : {getRuleNameFromId(d.rule_id)}
+                        </Text>
+                      
+                        <View style={{ flexDirection: "row", marginTop: 8 }}>
+                          <Pressable
+                            onPress={() => openDraftEditor(group.id, index)}
+                            style={{ padding: 8, borderWidth: 1, borderRadius: 8, marginRight: 8 }}
+                          >
+                            <Text>Configurer</Text>
+                          </Pressable>
+                      
+                          <Pressable
+                            onPress={() => removeDraftDie(group.id, index)}
+                            style={{ padding: 8, borderWidth: 1, borderRadius: 8 }}
+                          >
+                            <Text>Supprimer</Text>
+                          </Pressable>
+                        </View>
+                      </View>
+                    ))}
 
-                  <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                    signe : {getSignLabel(d.sign)} | mod : {d.modifier ?? 0}
-                  </Text>
+                    {groupResult ? (
+                      <View style={{ marginTop: 10 }}>
+                        {groupResult.entries.map((e) => (
+                          <View
+                            key={e.entryId}
+                            style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1 }}
+                          >
+                            <Text style={{ fontWeight: "700" }}>
+                              {e.qty}d{e.sides} | signe {getSignLabel(e.sign)} | mod {e.modifier}
+                            </Text>
+                        
+                            <Text style={{ marginTop: 4, opacity: 0.8 }}>
+                              valeurs : [{e.signed_values.join(", ")}]
+                            </Text>
+                        
+                            <Text style={{ marginTop: 4, opacity: 0.8 }}>
+                              règle : {getRuleName(e.rule)}
+                            </Text>
+                        
+                            {e.eval_result ? (
+                              <Text style={{ marginTop: 4, opacity: 0.9 }}>
+                                résultat règle : {formatRuleResult(e.eval_result)}
+                              </Text>
+                            ) : null}
 
-                  <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                    règle : {getRuleNameFromId(d.rule_id)}
-                  </Text>
+                            <Text style={{ marginTop: 4, fontWeight: "700" }}>
+                              entrée = {e.final_total}
+                            </Text>
+                          </View>
+                        ))}
 
-                  <View style={{ flexDirection: "row", marginTop: 8 }}>
-                    <Pressable
-                      onPress={() => openDraftEditor(index)}
-                      style={{ padding: 8, borderWidth: 1, borderRadius: 8, marginRight: 8 }}
-                    >
-                      <Text>Configurer</Text>
-                    </Pressable>
-
-                    <Pressable
-                      onPress={() => removeDraftDie(index)}
-                      style={{ padding: 8, borderWidth: 1, borderRadius: 8 }}
-                    >
-                      <Text>Supprimer</Text>
-                    </Pressable>
+                        <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1 }}>
+                          <Text style={{ opacity: 0.8 }}>
+                            Somme des entrées : {groupResult.entries_total}
+                          </Text>
+                      
+                          <Text style={{ marginTop: 4, opacity: 0.8 }}>
+                            Règle de groupe :{" "}
+                            {groupResult.group_rule ? groupResult.group_rule.name : "Somme (par défaut)"}
+                            {groupResult.group_eval_result
+                              ? ` → ${formatRuleResult(groupResult.group_eval_result)}`
+                              : ""}
+                          </Text>
+                        </View>
+                            
+                        <Text style={{ marginTop: 10, fontWeight: "900" }}>
+                          Total groupe : {groupResult.total}
+                        </Text>
+                      </View>
+                    ) : null}
                   </View>
-                </View>
-              ))}
+                );
+              })}
             </View>
           )}
-
-          <View style={{ flexDirection: "row", marginTop: 10 }}>
-            <Pressable
-              onPress={rollDraft}
-              style={{ padding: 10, borderWidth: 1, borderRadius: 8, marginRight: 10 }}
-            >
-              <Text>Lancer draft</Text>
-            </Pressable>
-
-            <Pressable
-              onPress={clearDraft}
-              style={{ padding: 10, borderWidth: 1, borderRadius: 8 }}
-            >
-              <Text>Reset</Text>
-            </Pressable>
-
-            <Pressable
-              onPress={() => setShowSaveOptions((v) => !v)}
-              style={{ padding: 10, borderWidth: 1, borderRadius: 8, marginLeft: 10 }}
-            >
-              <Text>Enregistrer</Text>
-            </Pressable>
-          </View>
-
-          {draftResult ? (
-            <View style={{ marginTop: 10 }}>
-              {draftResult.entries.map((e) => (
-                <View
-                  key={e.entryId}
-                  style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1 }}
-                >
-                  <Text style={{ fontWeight: "700" }}>
-                    {e.qty}d{e.sides} | signe {getSignLabel(e.sign)} | mod {e.modifier}
-                  </Text>
-
-                  <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                    valeurs : [{e.signed_values.join(", ")}]
-                  </Text>
-
-                  <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                    règle : {getRuleName(e.rule)}
-                  </Text>
-
-                  {e.eval_result ? (
-                    <Text style={{ marginTop: 4, opacity: 0.9 }}>
-                      résultat règle : {formatRuleResult(e.eval_result)}
-                    </Text>
-                  ) : null}
-
-                  <Text style={{ marginTop: 4, fontWeight: "700" }}>
-                    entrée = {e.final_total}
-                  </Text>
-                </View>
-              ))}
-
-              <Text style={{ marginTop: 10, fontWeight: "900" }}>
-                Total draft : {draftResult.total}
-              </Text>
-            </View>
-          ) : null}
 
           {showSaveOptions ? (
             <View style={{ marginTop: 10, gap: 8 }}>
@@ -569,13 +713,13 @@ export default function RollScreen() {
                 onPress={async () => {
                   if (!table) return;
                   if (table.is_system === 1) return;
-                  if (draftDice.length === 0) return;
-
+                  if (draftGroups.length === 0) return;
                   await deleteAllGroupsForTable(db, table.id);
 
                   await createGroupFromDraft(db, {
                     tableId: table.id,
                     groupName: "Groupe (depuis Jet rapide)",
+                    groupRuleId: draftGroupRuleId ?? null,
                     draftDice: draftDice.map((d) => ({
                       sides: d.sides,
                       qty: d.qty,
@@ -692,7 +836,10 @@ export default function RollScreen() {
           visible={editingDraftIndex !== null}
           transparent
           animationType="fade"
-          onRequestClose={() => setEditingDraftIndex(null)}
+          onRequestClose={() => {
+            setEditingDraftGroupId(null);
+            setEditingDraftIndex(null);
+          }}
         >
           <View
             style={{
@@ -829,7 +976,10 @@ export default function RollScreen() {
 
               <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 16 }}>
                 <Pressable
-                  onPress={() => setEditingDraftIndex(null)}
+                  onPress={() => {
+                    setEditingDraftGroupId(null);
+                    setEditingDraftIndex(null);
+                  }}
                   style={{ padding: 10, borderWidth: 1, borderRadius: 8, marginRight: 10 }}
                 >
                   <Text>Annuler</Text>
@@ -837,6 +987,118 @@ export default function RollScreen() {
 
                 <Pressable
                   onPress={saveDraftEditor}
+                  style={{ padding: 10, borderWidth: 1, borderRadius: 8 }}
+                >
+                  <Text style={{ fontWeight: "700" }}>Sauvegarder</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        <Modal
+          visible={showDraftGroupRuleModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowDraftGroupRuleModal(false)}
+        >
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: "rgba(0,0,0,0.5)",
+              justifyContent: "center",
+              padding: 16,
+            }}
+          >
+            <View
+              style={{
+                backgroundColor: "white",
+                borderRadius: 12,
+                padding: 16,
+                borderWidth: 1,
+                maxHeight: "90%",
+              }}
+            >
+              <Text style={{ fontSize: 16, fontWeight: "700" }}>
+                Configurer la règle de groupe du draft
+              </Text>
+            
+              <Pressable
+                onPress={() => setDraftGroupRuleSelection(null)}
+                style={{
+                  marginTop: 12,
+                  padding: 10,
+                  borderWidth: 1,
+                  borderRadius: 8,
+                  opacity: draftGroupRuleSelection === null ? 1 : 0.7,
+                }}
+              >
+                <Text style={{ fontWeight: draftGroupRuleSelection === null ? "700" : "400" }}>
+                  Somme (par défaut)
+                </Text>
+              </Pressable>
+              
+              <ScrollView style={{ marginTop: 12, maxHeight: 300 }}>
+                <Text style={{ fontWeight: "700" }}>Pipelines</Text>
+              
+                {pipelineRules.map((rule) => (
+                  <Pressable
+                    key={rule.id}
+                    onPress={() => setDraftGroupRuleSelection(rule.id)}
+                    style={{
+                      padding: 10,
+                      borderWidth: 1,
+                      borderRadius: 8,
+                      marginTop: 8,
+                      opacity: draftGroupRuleSelection === rule.id ? 1 : 0.7,
+                    }}
+                  >
+                    <Text style={{ fontWeight: draftGroupRuleSelection === rule.id ? "700" : "400" }}>
+                      {rule.name}
+                    </Text>
+                    <Text style={{ marginTop: 2, opacity: 0.7, fontSize: 12 }}>
+                      {rule.is_system === 1 ? "système" : "perso"}
+                    </Text>
+                  </Pressable>
+                ))}
+
+                {legacyRules.length > 0 ? (
+                  <View style={{ marginTop: 16 }}>
+                    <Text style={{ fontWeight: "700" }}>Compatibilité</Text>
+                    {legacyRules.map((rule) => (
+                      <Pressable
+                        key={rule.id}
+                        onPress={() => setDraftGroupRuleSelection(rule.id)}
+                        style={{
+                          padding: 10,
+                          borderWidth: 1,
+                          borderRadius: 8,
+                          marginTop: 8,
+                          opacity: draftGroupRuleSelection === rule.id ? 1 : 0.65,
+                        }}
+                      >
+                        <Text style={{ fontWeight: draftGroupRuleSelection === rule.id ? "700" : "400" }}>
+                          {rule.name}
+                        </Text>
+                        <Text style={{ marginTop: 2, opacity: 0.7, fontSize: 12 }}>
+                          type: {rule.kind}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                ) : null}
+              </ScrollView>
+              
+              <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 16 }}>
+                <Pressable
+                  onPress={() => setShowDraftGroupRuleModal(false)}
+                  style={{ padding: 10, borderWidth: 1, borderRadius: 8, marginRight: 10 }}
+                >
+                  <Text>Annuler</Text>
+                </Pressable>
+              
+                <Pressable
+                  onPress={saveDraftGroupRuleEditor}
                   style={{ padding: 10, borderWidth: 1, borderRadius: 8 }}
                 >
                   <Text style={{ fontWeight: "700" }}>Sauvegarder</Text>
@@ -898,6 +1160,7 @@ export default function RollScreen() {
                     const newTableId = await createTableWithDraft(db, {
                       name,
                       groupName: "Groupe (depuis Jet rapide)",
+                      groupRuleId: draftGroupRuleId ?? null,
                       draftDice: draftDice.map((d) => ({
                         sides: d.sides,
                         qty: d.qty,
@@ -913,6 +1176,8 @@ export default function RollScreen() {
                     setNewTableName("");
                     setDraftDice([]);
                     setDraftResult(null);
+                    setDraftGroupRuleId(null);
+                    setDraftGroupRuleSelection(null);
                   }}
                   style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
                 >
