@@ -1,129 +1,178 @@
 // core/roll/roll.ts
 
+export type RollDie = {
+  value: number;
+};
+
 export type RollRuleRef = {
-  id?: string;
-  name?: string;
-  kind: string;        // "sum" | "d20" | "pool" | "table_lookup" | etc
-  params_json: string; // JSON string
+  id: string;
+  name: string;
+  kind: string;
+  params_json: string;
 };
 
 export type RollEntryInput = {
-  entryId: string;     // id de group_dice (ou "draft-1" etc)
-  sides: number;
-  qty: number;
-  modifier: number;    // ex: +4
-  sign: number;        // 1 ou -1
-  rule?: RollRuleRef | null;
-};
-
-export type RollDieValue = {
-  value: number;       // valeur brute (1..sides)
-};
-
-export type RollEntryResult = {
   entryId: string;
   sides: number;
   qty: number;
+  modifier?: number;
+  sign?: number; // +1 / -1
+  rule?: RollRuleRef | null;
+};
 
+export type GroupRuleInput = {
+  id: string;
+  name: string;
+  kind: string;
+  params_json: string;
+} | null;
+
+export type EntryRollResult = {
+  entryId: string;
+  sides: number;
+  qty: number;
   modifier: number;
   sign: number;
 
-  raw_values: number[];       // ex: [4, 6, 1]
-  signed_values: number[];    // ex: [4, 6, 1] ou [-4, -6, -1]
-  base_total: number;         // somme(signed_values)
-  total_with_modifier: number;// base_total + modifier
+  rule: RollRuleRef | null;
 
-  rule?: RollRuleRef | null;
-  eval_result?: any | null;   // retour brut de evaluateRule
-  final_total: number;        // total final de l’entrée (par défaut = total_with_modifier)
+  dice: RollDie[];
+  natural_values: number[];
+  signed_values: number[];
+
+  base_total: number;
+  total_with_modifier: number;
+
+  eval_result: any | null;
+  final_total: number;
 };
 
 export type GroupRollResult = {
   groupId: string;
   label: string;
-  entries: RollEntryResult[];
-  total: number; // somme des final_total
+
+  group_rule: GroupRuleInput;
+  group_eval_result: any | null;
+
+  entries: EntryRollResult[];
+
+  entries_total: number;
+  total: number;
 };
 
-function randIntInclusive(min: number, max: number) {
+type EvaluateRuleFn = (
+  kind: string,
+  params_json: string,
+  ctx: {
+    values: number[];
+    sides: number;
+    modifier?: number;
+    sign?: number;
+  }
+) => any;
+
+function randInt(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function rollOneDie(sides: number): number {
-  return randIntInclusive(1, Math.max(1, sides));
+function extractNumericFinalFromEval(res: any): number | null {
+  if (!res) return null;
+
+  if (res.kind === "sum" && typeof res.total === "number") return res.total;
+  if (res.kind === "d20" && typeof res.final === "number") return res.final;
+  if (res.kind === "pipeline" && typeof res.final === "number") return res.final;
+
+  return null;
 }
 
-/**
- * IMPORTANT :
- * - rollGroup ne touche pas à la DB.
- * - si une rule est fournie, on applique evaluateRule (passée en param).
- * - sinon : final_total = somme(sign*valeurs) + modifier
- */
 export function rollGroup(params: {
   groupId: string;
   label: string;
   entries: RollEntryInput[];
-
-  // injection du moteur d’évaluation (pour garder roll.ts indépendant)
-  evaluateRule?: (kind: string, params_json: string, ctx: { values: number[]; sides: number }) => any;
+  groupRule?: GroupRuleInput;
+  evaluateRule: EvaluateRuleFn;
 }): GroupRollResult {
-  const entries: RollEntryResult[] = params.entries.map((e) => {
-    const raw_values: number[] = [];
-    for (let i = 0; i < Math.max(0, e.qty); i++) {
-      raw_values.push(rollOneDie(e.sides));
+  const entryResults: EntryRollResult[] = params.entries.map((entry) => {
+    const qty = Math.max(0, entry.qty || 0);
+    const sides = Math.max(1, entry.sides || 1);
+    const sign = entry.sign === -1 ? -1 : 1;
+    const modifier = Number.isFinite(entry.modifier) ? Number(entry.modifier) : 0;
+
+    const dice: RollDie[] = [];
+    for (let i = 0; i < qty; i++) {
+      dice.push({ value: randInt(1, sides) });
     }
 
-    const sign = e.sign === -1 ? -1 : 1;
-    const signed_values = raw_values.map((v) => v * sign);
+    const natural_values = dice.map((d) => d.value);
+    const signed_values = natural_values.map((v) => v * sign);
 
-    const base_total = signed_values.reduce((a, b) => a + b, 0);
-    const total_with_modifier = base_total + (Number.isFinite(e.modifier) ? e.modifier : 0);
+    const base_total = signed_values.reduce((acc, v) => acc + v, 0);
+    const total_with_modifier = base_total + modifier;
 
     let eval_result: any | null = null;
     let final_total = total_with_modifier;
 
-    if (e.rule && params.evaluateRule) {
-      try {
-        eval_result = params.evaluateRule(e.rule.kind, e.rule.params_json, {
-          values: signed_values,
-          sides: e.sides,
-        });
+    if (entry.rule) {
+      eval_result = params.evaluateRule(entry.rule.kind, entry.rule.params_json, {
+        values: natural_values,
+        sides,
+        modifier,
+        sign,
+      });
 
-        // Convention simple (MVP) :
-        // - si l’éval renvoie un "total" numérique => on l’utilise
-        // - sinon on garde total_with_modifier (et l’UI affichera le texte de résultat)
-        if (eval_result && typeof eval_result.total === "number" && Number.isFinite(eval_result.total)) {
-          final_total = eval_result.total + (Number.isFinite(e.modifier) ? e.modifier : 0);
-        }
-      } catch {
-        // si la rule casse, on n’empêche pas le jet
-        eval_result = { kind: "unknown", message: "Erreur évaluation règle" };
-        final_total = total_with_modifier;
+      const numericFromRule = extractNumericFinalFromEval(eval_result);
+      if (numericFromRule != null) {
+        final_total = numericFromRule;
       }
     }
 
     return {
-      entryId: e.entryId,
-      sides: e.sides,
-      qty: e.qty,
-      modifier: e.modifier,
+      entryId: entry.entryId,
+      sides,
+      qty,
+      modifier,
       sign,
-      raw_values,
+      rule: entry.rule ?? null,
+      dice,
+      natural_values,
       signed_values,
       base_total,
       total_with_modifier,
-      rule: e.rule ?? null,
       eval_result,
       final_total,
     };
   });
 
-  const total = entries.reduce((acc, x) => acc + x.final_total, 0);
+  const entries_total = entryResults.reduce((acc, e) => acc + e.final_total, 0);
+
+  let group_eval_result: any | null = null;
+  let total = entries_total;
+
+  if (params.groupRule) {
+    group_eval_result = params.evaluateRule(
+      params.groupRule.kind,
+      params.groupRule.params_json,
+      {
+        values: entryResults.map((e) => e.final_total),
+        sides: 0,
+        modifier: 0,
+        sign: 1,
+      }
+    );
+
+    const numericFromGroupRule = extractNumericFinalFromEval(group_eval_result);
+    if (numericFromGroupRule != null) {
+      total = numericFromGroupRule;
+    }
+  }
 
   return {
     groupId: params.groupId,
     label: params.label,
-    entries,
+    group_rule: params.groupRule ?? null,
+    group_eval_result,
+    entries: entryResults,
+    entries_total,
     total,
   };
 }

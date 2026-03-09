@@ -90,17 +90,19 @@ export default function RollScreen() {
   function formatRuleResult(res: any): string {
     if (!res) return "";
 
-    if (res.kind === "sum") {
-      return `Somme = ${res.total}`;
+    if (res.kind === "sum") return `Somme = ${res.total}`;
+
+    if (res.kind === "pipeline") {
+      const outcome =
+        res?.meta?.outcome != null ? ` | outcome: ${res.meta.outcome}` : "";
+      return `Pipeline = ${res.final}${outcome}`;
     }
 
     if (res.kind === "d20") {
-      if (res.outcome === "crit_success") return `Réussite critique (final ${res.final})`;
-      if (res.outcome === "crit_failure") return `Échec critique (final ${res.final})`;
-      if (res.threshold == null) return `Résultat (final ${res.final})`;
-      return res.outcome === "success"
-        ? `Réussite (final ${res.final})`
-        : `Échec (final ${res.final})`;
+      if (res.outcome === "crit_success") return "Réussite critique";
+      if (res.outcome === "crit_failure") return "Échec critique";
+      if (res.threshold == null) return "Résultat";
+      return res.outcome === "success" ? "Réussite" : "Échec";
     }
 
     if (res.kind === "pool") {
@@ -115,22 +117,8 @@ export default function RollScreen() {
       return `${label} — succès: ${res.successes} / ones: ${res.ones}`;
     }
 
-    if (res.kind === "table_lookup") {
-      return `${res.label} (valeur ${res.value})`;
-    }
-
-    if (res.kind === "pipeline") {
-      const outcome = res.meta?.outcome ? ` | état: ${res.meta.outcome}` : "";
-      const successes =
-        typeof res.meta?.successes === "number" ? ` | succès: ${res.meta.successes}` : "";
-      const lookup =
-        res.meta?.lookup?.label != null ? ` | lookup: ${res.meta.lookup.label}` : "";
-      return `Pipeline → final ${res.final}${outcome}${successes}${lookup}`;
-    }
-
-    if (res.kind === "unknown") {
-      return res.message;
-    }
+    if (res.kind === "table_lookup") return res.label;
+    if (res.kind === "unknown") return res.message;
 
     return "";
   }
@@ -156,11 +144,17 @@ export default function RollScreen() {
     setGroups(withDice);
 
     const ruleIds = new Set<string>();
-    withDice.forEach((g) =>
+    withDice.forEach((g) => {
+      if (g.group.rule_id) {
+        ruleIds.add(g.group.rule_id);
+      }
+    
       g.dice.forEach((d) => {
-        if (d.rule_id) ruleIds.add(d.rule_id);
-      })
-    );
+        if (d.rule_id) {
+          ruleIds.add(d.rule_id);
+        }
+      });
+    });
 
     const map: Record<string, any> = {};
     for (const id of ruleIds) {
@@ -209,12 +203,15 @@ export default function RollScreen() {
   async function onRoll() {
     if (!table) return;
 
-    const rolled: GroupRollResult[] = groups.map(({ group, dice }) =>
-      rollGroup({
+    const rolled: GroupRollResult[] = groups.map(({ group, dice }) => {
+      const groupRule = group.rule_id ? rulesMap[group.rule_id] : null;
+
+      return rollGroup({
         groupId: group.id,
         label: group.name,
         entries: dice.map((d) => {
           const rule = d.rule_id ? rulesMap[d.rule_id] : null;
+
           return {
             entryId: d.id,
             sides: d.sides,
@@ -231,9 +228,17 @@ export default function RollScreen() {
               : null,
           };
         }),
+        groupRule: groupRule
+          ? {
+              id: groupRule.id,
+              name: groupRule.name,
+              kind: groupRule.kind,
+              params_json: groupRule.params_json,
+            }
+          : null,
         evaluateRule,
-      })
-    );
+      });
+    });
 
     setResults(rolled);
 
@@ -616,90 +621,66 @@ export default function RollScreen() {
         {/* Groupes */}
         <Text style={{ fontWeight: "700", marginTop: 12 }}>Groupes de la table</Text>
 
-        {groups.map(({ group, dice }) => {
+        {groups.map(({ group }) => {
           const r = results.find((x) => x.groupId === group.id);
 
           return (
-            <View
-              key={group.id}
-              style={{ marginTop: 10, padding: 12, borderWidth: 1, borderRadius: 12 }}
-            >
-              <Text style={{ fontSize: 16, fontWeight: "700" }}>{group.name}</Text>
-
+            <View key={group.id} style={{ marginTop: 10, padding: 12, borderWidth: 1, borderRadius: 12 }}>
+              <Text style={{ fontSize: 16, fontWeight: "600" }}>{group.name}</Text>
+              <Text style={{ marginTop: 4, opacity: 0.75 }}>
+                règle de groupe : {group.rule_id ? (rulesMap[group.rule_id]?.name ?? "Règle inconnue") : "Somme (par défaut)"}
+              </Text>
+          
               {!r ? (
-                <View style={{ marginTop: 8 }}>
-                  {dice.map((d) => {
-                    const rule = d.rule_id ? rulesMap[d.rule_id] : null;
-
-                    return (
-                      <View
-                        key={d.id}
-                        style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1 }}
-                      >
-                        <Text style={{ fontWeight: "700" }}>
-                          {d.qty}d{d.sides}
-                        </Text>
-                        <Text style={{ marginTop: 4, opacity: 0.75 }}>
-                          signe : {getSignLabel(d.sign)} | mod : {d.modifier ?? 0}
-                        </Text>
-                        <Text style={{ marginTop: 4, opacity: 0.75 }}>
-                          règle : {getRuleName(rule)}
-                        </Text>
-                      </View>
-                    );
-                  })}
-
-                  <Text style={{ marginTop: 10, opacity: 0.7 }}>
-                    Pas encore de résultat. Appuie sur “Lancer la table”.
-                  </Text>
-                </View>
+                <Text style={{ marginTop: 8, opacity: 0.7 }}>
+                  Pas encore de résultat (appuie sur Lancer).
+                </Text>
               ) : (
                 <View style={{ marginTop: 10 }}>
                   {r.entries.map((e) => {
-                    const evalText = e.eval_result ? formatRuleResult(e.eval_result) : "";
-                    const ruleName = getRuleName(e.rule);
-
+                    const ruleName = e.rule?.name ?? "Somme";
+                    const evalText = e.eval_result ? ` → ${formatRuleResult(e.eval_result)}` : "";
+                  
                     return (
-                      <View
-                        key={e.entryId}
-                        style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1 }}
-                      >
+                      <View key={e.entryId} style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1 }}>
                         <Text style={{ fontWeight: "700" }}>
-                          {e.qty}d{e.sides}
+                          Entrée: {e.qty}d{e.sides} {e.sign === -1 ? "(-)" : "(+)"}
+                          {e.modifier ? ` mod ${e.modifier >= 0 ? "+" : ""}${e.modifier}` : ""}
                         </Text>
-
+                    
                         <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                          signe : {getSignLabel(e.sign)} | mod : {e.modifier}
+                          valeurs: [{e.signed_values.join(", ")}]
                         </Text>
-
-                        <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                          valeurs : [{e.signed_values.join(", ")}]
+                    
+                        <Text style={{ marginTop: 2, opacity: 0.75 }}>
+                          base {e.base_total} → total {e.total_with_modifier}
                         </Text>
-
-                        <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                          règle : {ruleName}
+                    
+                        <Text style={{ marginTop: 2, opacity: 0.75 }}>
+                          règle entrée: {ruleName}{evalText}
                         </Text>
-
-                        <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                          base {e.base_total} → total avec mod {e.total_with_modifier}
-                        </Text>
-
-                        {evalText ? (
-                          <Text style={{ marginTop: 4, opacity: 0.9 }}>
-                            résultat règle : {evalText}
-                          </Text>
-                        ) : null}
-
-                        <Text style={{ marginTop: 6, fontWeight: "900" }}>
-                          final entrée : {e.final_total}
+                    
+                        <Text style={{ marginTop: 4, fontWeight: "800" }}>
+                          final entrée: {e.final_total}
                         </Text>
                       </View>
                     );
                   })}
 
-                  <Text style={{ marginTop: 12, fontSize: 16, fontWeight: "900" }}>
-                    Total groupe : {r.total}
-                  </Text>
+                  <View style={{ marginTop: 12, paddingTop: 10, borderTopWidth: 1 }}>
+                    <Text style={{ opacity: 0.8 }}>
+                      Somme des entrées : {r.entries_total}
+                    </Text>
+                
+                    <Text style={{ marginTop: 4, opacity: 0.8 }}>
+                      Règle de groupe : {r.group_rule ? r.group_rule.name : "Somme (par défaut)"}
+                      {r.group_eval_result ? ` → ${formatRuleResult(r.group_eval_result)}` : ""}
+                    </Text>
+                
+                    <Text style={{ marginTop: 8, fontSize: 16, fontWeight: "900" }}>
+                      Total groupe : {r.total}
+                    </Text>
+                  </View>
                 </View>
               )}
             </View>
