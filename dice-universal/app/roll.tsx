@@ -6,11 +6,16 @@ import { useActiveTable } from "../data/state/ActiveTableProvider";
 
 import { getTableById, TableRow } from "../data/repositories/tablesRepo";
 import {
-  listGroupsByTableId,
+  listGroupsByProfileId,
   listDiceByGroupId,
   GroupRow,
   GroupDieRow,
 } from "../data/repositories/groupsRepo";
+
+import {
+  listProfilesByTableId,
+  ProfileRow,
+} from "../data/repositories/profilesRepo";
 
 import {
   replaceTableWithDraftGroups,
@@ -24,9 +29,12 @@ import { newId } from "../core/types/ids";
 import { evaluateRule } from "../core/rules/evaluate";
 import { getRuleById, listRules, RuleRow } from "../data/repositories/rulesRepo";
 
-type GroupWithDice = {
-  group: GroupRow;
-  dice: GroupDieRow[];
+type ProfileWithGroups = {
+  profile: ProfileRow;
+  groups: {
+    group: GroupRow;
+    dice: GroupDieRow[];
+  }[];
 };
 
 type DraftDie = {
@@ -49,7 +57,7 @@ export default function RollScreen() {
   const { activeTableId, setActiveTableId } = useActiveTable();
 
   const [table, setTable] = useState<TableRow | null>(null);
-  const [groups, setGroups] = useState<GroupWithDice[]>([]);
+  const [profiles, setProfiles] = useState<ProfileWithGroups[]>([]);
   const [results, setResults] = useState<GroupRollResult[]>([]);
 
   const [draftGroups, setDraftGroups] = useState<DraftGroupState[]>([]);
@@ -184,30 +192,51 @@ export default function RollScreen() {
     setTable(t);
 
     if (!t) {
-      setGroups([]);
+      setProfiles([]);
       setRulesMap({});
       return;
     }
 
-    const gs = await listGroupsByTableId(db, tid);
-    const withDice: GroupWithDice[] = [];
+    const ps = await listProfilesByTableId(db, tid);
 
-    for (const g of gs) {
-      const dice = await listDiceByGroupId(db, g.id);
-      withDice.push({ group: g, dice });
+    const result: ProfileWithGroups[] = [];
+
+    for (const p of ps) {
+      const groups = await listGroupsByProfileId(db, p.id);
+
+      const groupsWithDice = [];
+
+      for (const g of groups) {
+        const dice = await listDiceByGroupId(db, g.id);
+
+        groupsWithDice.push({
+          group: g,
+          dice,
+        });
+      }
+
+      result.push({
+        profile: p,
+        groups: groupsWithDice,
+      });
     }
 
-    setGroups(withDice);
+    setProfiles(result);
 
     const ruleIds = new Set<string>();
-    withDice.forEach((g) => {
-      if (g.group.rule_id) ruleIds.add(g.group.rule_id);
-      g.dice.forEach((d) => {
-        if (d.rule_id) ruleIds.add(d.rule_id);
+
+    result.forEach((p) => {
+      p.groups.forEach((g) => {
+        if (g.group.rule_id) ruleIds.add(g.group.rule_id);
+
+        g.dice.forEach((d) => {
+          if (d.rule_id) ruleIds.add(d.rule_id);
+        });
       });
     });
 
     const map: Record<string, RuleRow> = {};
+
     for (const id of ruleIds) {
       const rule = await getRuleById(db, id);
       if (rule) map[id] = rule;
@@ -256,40 +285,49 @@ export default function RollScreen() {
   async function onRoll() {
     if (!table) return;
 
-    const rolled: GroupRollResult[] = groups.map(({ group, dice }) => {
-      const groupRule = group.rule_id ? rulesMap[group.rule_id] : null;
+    const rolled: GroupRollResult[] = [];
 
-      return rollGroup({
-        groupId: group.id,
-        label: group.name,
-        entries: dice.map((d) => {
-          const rule = d.rule_id ? rulesMap[d.rule_id] : null;
-
-          return {
-            entryId: d.id,
-            sides: d.sides,
-            qty: d.qty,
-            modifier: d.modifier ?? 0,
-            sign: d.sign ?? 1,
-            rule: rule
-              ? {
-                  id: rule.id,
-                  name: rule.name,
-                  kind: rule.kind,
-                  params_json: rule.params_json,
-                }
-              : null,
-          };
-        }),
-        groupRule: groupRule
-          ? {
-              id: groupRule.id,
-              name: groupRule.name,
-              kind: groupRule.kind,
-              params_json: groupRule.params_json,
-            }
-          : null,
-        evaluateRule,
+    profiles.forEach((p) => {
+      p.groups.forEach(({ group, dice }) => {
+      
+        const groupRule = group.rule_id ? rulesMap[group.rule_id] : null;
+      
+        const r = rollGroup({
+          groupId: group.id,
+          label: `${p.profile.name} — ${group.name}`,
+          entries: dice.map((d) => {
+          
+            const rule = d.rule_id ? rulesMap[d.rule_id] : null;
+          
+            return {
+              entryId: d.id,
+              sides: d.sides,
+              qty: d.qty,
+              modifier: d.modifier ?? 0,
+              sign: d.sign ?? 1,
+              rule: rule
+                ? {
+                    id: rule.id,
+                    name: rule.name,
+                    kind: rule.kind,
+                    params_json: rule.params_json,
+                  }
+                : null,
+            };
+          }),
+          groupRule: groupRule
+            ? {
+                id: groupRule.id,
+                name: groupRule.name,
+                kind: groupRule.kind,
+                params_json: groupRule.params_json,
+              }
+            : null,
+          evaluateRule,
+        });
+      
+        rolled.push(r);
+      
       });
     });
 
@@ -965,15 +1003,27 @@ export default function RollScreen() {
 
         <Text style={{ fontWeight: "700", marginTop: 12 }}>Groupes de la table</Text>
 
-        {groups.map(({ group }) => {
-          const r = results.find((x) => x.groupId === group.id);
-
-          return (
-            <View
-              key={group.id}
-              style={{ marginTop: 10, padding: 12, borderWidth: 1, borderRadius: 12 }}
-            >
-              <Text style={{ fontSize: 16, fontWeight: "600" }}>{group.name}</Text>
+        {profiles.map((p) => (
+          <View key={p.profile.id} style={{ marginTop: 12 }}>
+        
+            <Text style={{ fontWeight: "800", fontSize: 16 }}>
+              {p.profile.name}
+            </Text>
+                
+            {p.groups.map(({ group }) => {
+            
+              const r = results.find((x) => x.groupId === group.id);
+            
+              return (
+                <View
+                  key={group.id}
+                  style={{ marginTop: 10, padding: 12, borderWidth: 1, borderRadius: 12 }}
+                >
+        
+                  <Text style={{ fontSize: 16, fontWeight: "600" }}>
+                    {group.name}
+                  </Text>
+              
               <Text style={{ marginTop: 4, opacity: 0.75 }}>
                 règle de groupe :{" "}
                 {group.rule_id
