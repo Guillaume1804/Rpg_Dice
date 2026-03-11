@@ -3,7 +3,7 @@ import { newId } from "../../core/types/ids";
 
 export type GroupRow = {
   id: string;
-  table_id: string;
+  profile_id: string;
   name: string;
   sort_order: number;
   rule_id: string | null;
@@ -33,7 +33,8 @@ async function assertTableIsNotSystemFromGroup(db: Db, groupId: string): Promise
     `
     SELECT t.is_system
     FROM groups g
-    JOIN tables t ON t.id = g.table_id
+    JOIN profiles p ON p.id = g.profile_id
+    JOIN tables t ON t.id = p.table_id
     WHERE g.id = ?
     LIMIT 1;
     `,
@@ -51,7 +52,8 @@ async function assertTableIsNotSystemFromDie(db: Db, dieId: string): Promise<voi
     SELECT t.is_system
     FROM group_dice gd
     JOIN groups g ON g.id = gd.group_id
-    JOIN tables t ON t.id = g.table_id
+    JOIN profiles p ON p.id = g.profile_id
+    JOIN tables t ON t.id = p.table_id
     WHERE gd.id = ?
     LIMIT 1;
     `,
@@ -63,10 +65,16 @@ async function assertTableIsNotSystemFromDie(db: Db, dieId: string): Promise<voi
   }
 }
 
-async function assertTableIsNotSystemByTableId(db: Db, tableId: string): Promise<void> {
+async function assertTableIsNotSystemFromProfile(db: Db, profileId: string): Promise<void> {
   const rows = await db.getAllAsync<{ is_system: number }>(
-    "SELECT is_system FROM tables WHERE id = ? LIMIT 1;",
-    [tableId]
+    `
+    SELECT t.is_system
+    FROM profiles p
+    JOIN tables t ON t.id = p.table_id
+    WHERE p.id = ?
+    LIMIT 1;
+    `,
+    [profileId]
   );
 
   if (rows.length && rows[0].is_system === 1) {
@@ -74,16 +82,40 @@ async function assertTableIsNotSystemByTableId(db: Db, tableId: string): Promise
   }
 }
 
-export async function listGroupsByTableId(db: Db, tableId: string): Promise<GroupRow[]> {
+export async function listGroupsByProfileId(db: Db, profileId: string): Promise<GroupRow[]> {
   return db.getAllAsync<GroupRow>(
-    "SELECT * FROM groups WHERE table_id = ? ORDER BY sort_order ASC, created_at ASC;",
-    [tableId]
+    `
+    SELECT *
+    FROM groups
+    WHERE profile_id = ?
+    ORDER BY sort_order ASC, created_at ASC;
+    `,
+    [profileId]
   );
+}
+
+export async function getGroupById(db: Db, groupId: string): Promise<GroupRow | null> {
+  const rows = await db.getAllAsync<GroupRow>(
+    `
+    SELECT *
+    FROM groups
+    WHERE id = ?
+    LIMIT 1;
+    `,
+    [groupId]
+  );
+
+  return rows.length ? rows[0] : null;
 }
 
 export async function listDiceByGroupId(db: Db, groupId: string): Promise<GroupDieRow[]> {
   return db.getAllAsync<GroupDieRow>(
-    "SELECT * FROM group_dice WHERE group_id = ? ORDER BY sort_order ASC, created_at ASC;",
+    `
+    SELECT *
+    FROM group_dice
+    WHERE group_id = ?
+    ORDER BY sort_order ASC, created_at ASC;
+    `,
     [groupId]
   );
 }
@@ -91,29 +123,49 @@ export async function listDiceByGroupId(db: Db, groupId: string): Promise<GroupD
 export async function createGroup(
   db: Db,
   params: {
-    tableId: string;
+    profileId: string;
     name: string;
     rule_id?: string | null;
-
   }
 ): Promise<string> {
-  await assertTableIsNotSystemByTableId(db, params.tableId);
+  await assertTableIsNotSystemFromProfile(db, params.profileId);
 
   const createdAt = nowIso();
   const id = await newId();
 
   const rows = await db.getAllAsync<{ max_sort: number | null }>(
-    "SELECT MAX(sort_order) as max_sort FROM groups WHERE table_id = ?;",
-    [params.tableId]
+    `
+    SELECT MAX(sort_order) as max_sort
+    FROM groups
+    WHERE profile_id = ?;
+    `,
+    [params.profileId]
   );
+
   const nextSort = (rows[0]?.max_sort ?? -1) + 1;
 
   await db.runAsync(
     `
-    INSERT INTO groups(id, table_id, name, sort_order, rule_id, created_at, updated_at)
+    INSERT INTO groups(
+      id,
+      profile_id,
+      name,
+      sort_order,
+      rule_id,
+      created_at,
+      updated_at
+    )
     VALUES(?, ?, ?, ?, ?, ?, ?);
     `,
-    [id, params.tableId, params.name, nextSort, params.rule_id ?? null, createdAt, createdAt]
+    [
+      id,
+      params.profileId,
+      params.name,
+      nextSort,
+      params.rule_id ?? null,
+      createdAt,
+      createdAt,
+    ]
   );
 
   return id;
@@ -141,15 +193,29 @@ export async function createGroupDie(
   const id = await newId();
 
   const rows = await db.getAllAsync<{ max_sort: number | null }>(
-    "SELECT MAX(sort_order) as max_sort FROM group_dice WHERE group_id = ?;",
+    `
+    SELECT MAX(sort_order) as max_sort
+    FROM group_dice
+    WHERE group_id = ?;
+    `,
     [params.groupId]
   );
+
   const nextSort = (rows[0]?.max_sort ?? -1) + 1;
 
   await db.runAsync(
     `
     INSERT INTO group_dice(
-      id, group_id, sides, qty, modifier, sign, sort_order, rule_id, created_at, updated_at
+      id,
+      group_id,
+      sides,
+      qty,
+      modifier,
+      sign,
+      sort_order,
+      rule_id,
+      created_at,
+      updated_at
     )
     VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     `,
@@ -182,7 +248,8 @@ export async function updateGroupDieRuleId(
 ): Promise<void> {
   await assertTableIsNotSystemFromDie(db, dieId);
 
-  const now = new Date().toISOString();
+  const now = nowIso();
+
   await db.runAsync(
     `
     UPDATE group_dice
@@ -206,7 +273,7 @@ export async function updateGroupDie(
 ): Promise<void> {
   await assertTableIsNotSystemFromDie(db, dieId);
 
-  const now = new Date().toISOString();
+  const now = nowIso();
 
   await db.runAsync(
     `
@@ -239,7 +306,7 @@ export async function updateGroupRuleId(
 ): Promise<void> {
   await assertTableIsNotSystemFromGroup(db, groupId);
 
-  const now = new Date().toISOString();
+  const now = nowIso();
 
   await db.runAsync(
     `
@@ -258,7 +325,7 @@ export async function updateGroupName(
 ): Promise<void> {
   await assertTableIsNotSystemFromGroup(db, groupId);
 
-  const now = new Date().toISOString();
+  const now = nowIso();
 
   await db.runAsync(
     `
@@ -267,5 +334,24 @@ export async function updateGroupName(
     WHERE id = ?;
     `,
     [name, now, groupId]
+  );
+}
+
+export async function updateGroupOrder(
+  db: Db,
+  groupId: string,
+  sortOrder: number
+): Promise<void> {
+  await assertTableIsNotSystemFromGroup(db, groupId);
+
+  const now = nowIso();
+
+  await db.runAsync(
+    `
+    UPDATE groups
+    SET sort_order = ?, updated_at = ?
+    WHERE id = ?;
+    `,
+    [sortOrder, now, groupId]
   );
 }

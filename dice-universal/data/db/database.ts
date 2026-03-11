@@ -3,13 +3,9 @@ import * as SQLite from "expo-sqlite";
 export type Db = SQLite.SQLiteDatabase;
 
 export async function openDb(): Promise<Db> {
-  // ✅ Nouveau fichier = reset total
   const db = await SQLite.openDatabaseAsync("dice_universal_V5.db");
 
-  // ⚠️ FK ON doit être fait à chaque ouverture
   await db.execAsync("PRAGMA foreign_keys = ON;");
-
-  // ✅ Crée le schéma complet si nécessaire
   await initSchema(db);
 
   return db;
@@ -46,8 +42,17 @@ async function ensureColumn(db: Db, table: string, column: string): Promise<bool
 }
 
 /**
- * ✅ Nouveau schéma “rules par dé/groupe”
- * - tables -> groups -> group_dice (rule_id)
+ * Schéma cible :
+ * - tables
+ * - profiles
+ * - groups   (utilisé comme "actions" côté logique UI pour l'instant)
+ * - group_dice
+ * - rules
+ * - roll_events
+ *
+ * Transition douce :
+ * - groups conserve temporairement table_id
+ * - groups reçoit profile_id
  */
 export async function initSchema(db: Db): Promise<void> {
   await ensureMetaTable(db);
@@ -66,7 +71,7 @@ export async function initSchema(db: Db): Promise<void> {
     CREATE TABLE IF NOT EXISTS rules (
       id TEXT PRIMARY KEY NOT NULL,
       name TEXT NOT NULL,
-      kind TEXT NOT NULL,                -- ex: sum, d20, pool, mapping, percentile
+      kind TEXT NOT NULL,
       params_json TEXT NOT NULL DEFAULT '{}',
       is_system INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL,
@@ -75,15 +80,29 @@ export async function initSchema(db: Db): Promise<void> {
   `);
 
   await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS profiles (
+      id TEXT PRIMARY KEY NOT NULL,
+      table_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (table_id) REFERENCES tables(id) ON DELETE CASCADE
+    );
+  `);
+
+  await db.execAsync(`
     CREATE TABLE IF NOT EXISTS groups (
       id TEXT PRIMARY KEY NOT NULL,
       table_id TEXT NOT NULL,
+      profile_id TEXT NULL,
       name TEXT NOT NULL,
       sort_order INTEGER NOT NULL DEFAULT 0,
       rule_id TEXT NULL,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       FOREIGN KEY (table_id) REFERENCES tables(id) ON DELETE CASCADE,
+      FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE,
       FOREIGN KEY (rule_id) REFERENCES rules(id) ON DELETE SET NULL
     );
   `);
@@ -97,12 +116,9 @@ export async function initSchema(db: Db): Promise<void> {
       modifier INTEGER NOT NULL DEFAULT 0,
       sign INTEGER NOT NULL DEFAULT 1,
       sort_order INTEGER NOT NULL DEFAULT 0,
-
-      rule_id TEXT NULL,  -- ✅ référence une règle réutilisable
-
+      rule_id TEXT NULL,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
-
       FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
       FOREIGN KEY (rule_id) REFERENCES rules(id) ON DELETE SET NULL
     );
@@ -111,34 +127,92 @@ export async function initSchema(db: Db): Promise<void> {
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS roll_events (
       id TEXT PRIMARY KEY NOT NULL,
-
-      -- ✅ soit lié à une table, soit NULL pour un jet instantané pur
       table_id TEXT NULL,
-
       created_at TEXT NOT NULL,
       payload_json TEXT NOT NULL,
       summary_json TEXT NOT NULL,
-
       FOREIGN KEY (table_id) REFERENCES tables(id) ON DELETE CASCADE
     );
   `);
 
-  await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_groups_table ON groups(table_id);`);
-  await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_groups_rule ON groups(rule_id);`);
-  await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_dice_group ON group_dice(group_id);`);
-  await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_rolls_table ON roll_events(table_id);`);
-  await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_rolls_created ON roll_events(created_at);`);
-  await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_dice_rule ON group_dice(rule_id);`);
-  await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_rules_kind ON rules(kind);`);
+  await db.execAsync(`
+    CREATE INDEX IF NOT EXISTS idx_profiles_table
+    ON profiles(table_id);
+  `);
 
-    // --- Migrations légères (ALTER TABLE) ---
+  await db.execAsync(`
+    CREATE INDEX IF NOT EXISTS idx_profiles_sort
+    ON profiles(table_id, sort_order);
+  `);
+
+  await db.execAsync(`
+    CREATE INDEX IF NOT EXISTS idx_groups_table
+    ON groups(table_id);
+  `);
+
+  await db.execAsync(`
+    CREATE INDEX IF NOT EXISTS idx_groups_profile
+    ON groups(profile_id);
+  `);
+
+  await db.execAsync(`
+    CREATE INDEX IF NOT EXISTS idx_groups_rule
+    ON groups(rule_id);
+  `);
+
+  await db.execAsync(`
+    CREATE INDEX IF NOT EXISTS idx_groups_profile_sort
+    ON groups(profile_id, sort_order);
+  `);
+
+  await db.execAsync(`
+    CREATE INDEX IF NOT EXISTS idx_dice_group
+    ON group_dice(group_id);
+  `);
+
+  await db.execAsync(`
+    CREATE INDEX IF NOT EXISTS idx_dice_rule
+    ON group_dice(rule_id);
+  `);
+
+  await db.execAsync(`
+    CREATE INDEX IF NOT EXISTS idx_rolls_table
+    ON roll_events(table_id);
+  `);
+
+  await db.execAsync(`
+    CREATE INDEX IF NOT EXISTS idx_rolls_created
+    ON roll_events(created_at);
+  `);
+
+  await db.execAsync(`
+    CREATE INDEX IF NOT EXISTS idx_rules_kind
+    ON rules(kind);
+  `);
+
+  // --- Migrations légères (ALTER TABLE) ---
+
   const hasSign = await ensureColumn(db, "group_dice", "sign");
   if (!hasSign) {
-    await db.execAsync(`ALTER TABLE group_dice ADD COLUMN sign INTEGER NOT NULL DEFAULT 1;`);
+    await db.execAsync(`
+      ALTER TABLE group_dice
+      ADD COLUMN sign INTEGER NOT NULL DEFAULT 1;
+    `);
   }
 
   const hasGroupRuleId = await ensureColumn(db, "groups", "rule_id");
   if (!hasGroupRuleId) {
-    await db.execAsync(`ALTER TABLE groups ADD COLUMN rule_id TEXT NULL;`);
+    await db.execAsync(`
+      ALTER TABLE groups
+      ADD COLUMN rule_id TEXT NULL;
+    `);
+  }
+
+  const hasProfileId = await ensureColumn(db, "groups", "profile_id");
+  if (!hasProfileId) {
+    await db.execAsync(`
+      ALTER TABLE groups
+      ADD COLUMN profile_id TEXT NULL;
+    `);
   }
 }

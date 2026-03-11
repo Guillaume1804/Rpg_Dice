@@ -30,15 +30,53 @@ async function assertTableIsNotSystem(db: Db, tableId: string): Promise<void> {
   }
 }
 
-export async function deleteAllGroupsForTable(db: Db, tableId: string): Promise<void> {
+export async function deleteAllProfilesForTable(db: Db, tableId: string): Promise<void> {
   await assertTableIsNotSystem(db, tableId);
-  await db.runAsync("DELETE FROM groups WHERE table_id = ?;", [tableId]);
+  await db.runAsync("DELETE FROM profiles WHERE table_id = ?;", [tableId]);
+}
+
+export async function createProfileFromDraft(
+  db: Db,
+  params: {
+    tableId: string;
+    profileName: string;
+    sortOrder?: number;
+  }
+): Promise<string> {
+  await assertTableIsNotSystem(db, params.tableId);
+
+  const createdAt = nowIso();
+  const profileId = await newId();
+
+  await db.runAsync(
+    `
+    INSERT INTO profiles(
+      id,
+      table_id,
+      name,
+      sort_order,
+      created_at,
+      updated_at
+    )
+    VALUES(?, ?, ?, ?, ?, ?);
+    `,
+    [
+      profileId,
+      params.tableId,
+      params.profileName,
+      params.sortOrder ?? 0,
+      createdAt,
+      createdAt,
+    ]
+  );
+
+  return profileId;
 }
 
 export async function createGroupFromDraft(
   db: Db,
   params: {
-    tableId: string;
+    profileId: string;
     groupName: string;
     groupRuleId?: string | null;
     draftDice: DraftDie[];
@@ -49,11 +87,21 @@ export async function createGroupFromDraft(
   const groupId = await newId();
 
   await db.runAsync(
-    `INSERT INTO groups(id, table_id, name, sort_order, rule_id, created_at, updated_at)
-     VALUES(?, ?, ?, ?, ?, ?, ?);`,
+    `
+    INSERT INTO groups(
+      id,
+      profile_id,
+      name,
+      sort_order,
+      rule_id,
+      created_at,
+      updated_at
+    )
+    VALUES(?, ?, ?, ?, ?, ?, ?);
+    `,
     [
       groupId,
-      params.tableId,
+      params.profileId,
       params.groupName,
       params.sortOrder ?? 0,
       params.groupRuleId ?? null,
@@ -63,18 +111,28 @@ export async function createGroupFromDraft(
   );
 
   let sort = 0;
+
   for (const d of params.draftDice) {
-    const id = await newId();
+    const dieId = await newId();
 
     await db.runAsync(
-      `INSERT INTO group_dice(
-        id, group_id, sides, qty, modifier, sign, sort_order,
-        rule_id,
-        created_at, updated_at
-      )
-      VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
-      [
+      `
+      INSERT INTO group_dice(
         id,
+        group_id,
+        sides,
+        qty,
+        modifier,
+        sign,
+        sort_order,
+        rule_id,
+        created_at,
+        updated_at
+      )
+      VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+      `,
+      [
+        dieId,
         groupId,
         d.sides,
         d.qty,
@@ -94,19 +152,17 @@ export async function createGroupFromDraft(
 export async function createGroupsFromDraft(
   db: Db,
   params: {
-    tableId: string;
+    profileId: string;
     groups: DraftGroup[];
   }
 ): Promise<string[]> {
-  await assertTableIsNotSystem(db, params.tableId);
-
   const groupIds: string[] = [];
 
   for (let i = 0; i < params.groups.length; i++) {
     const g = params.groups[i];
 
     const groupId = await createGroupFromDraft(db, {
-      tableId: params.tableId,
+      profileId: params.profileId,
       groupName: g.name,
       groupRuleId: g.rule_id ?? null,
       draftDice: g.dice,
@@ -123,6 +179,7 @@ export async function createTableWithDraft(
   db: Db,
   params: {
     name: string;
+    profileName?: string;
     groupName: string;
     groupRuleId?: string | null;
     draftDice: DraftDie[];
@@ -132,13 +189,21 @@ export async function createTableWithDraft(
   const tableId = await newId();
 
   await db.runAsync(
-    `INSERT INTO tables(id, name, is_system, created_at, updated_at)
-     VALUES(?, ?, ?, ?, ?);`,
+    `
+    INSERT INTO tables(id, name, is_system, created_at, updated_at)
+    VALUES(?, ?, ?, ?, ?);
+    `,
     [tableId, params.name, 0, createdAt, createdAt]
   );
 
-  await createGroupFromDraft(db, {
+  const profileId = await createProfileFromDraft(db, {
     tableId,
+    profileName: params.profileName ?? "Profil principal",
+    sortOrder: 0,
+  });
+
+  await createGroupFromDraft(db, {
+    profileId,
     groupName: params.groupName,
     groupRuleId: params.groupRuleId ?? null,
     draftDice: params.draftDice,
@@ -152,6 +217,7 @@ export async function createTableWithDraftGroups(
   db: Db,
   params: {
     name: string;
+    profileName?: string;
     groups: DraftGroup[];
   }
 ): Promise<string> {
@@ -159,13 +225,21 @@ export async function createTableWithDraftGroups(
   const tableId = await newId();
 
   await db.runAsync(
-    `INSERT INTO tables(id, name, is_system, created_at, updated_at)
-     VALUES(?, ?, ?, ?, ?);`,
+    `
+    INSERT INTO tables(id, name, is_system, created_at, updated_at)
+    VALUES(?, ?, ?, ?, ?);
+    `,
     [tableId, params.name, 0, createdAt, createdAt]
   );
 
-  await createGroupsFromDraft(db, {
+  const profileId = await createProfileFromDraft(db, {
     tableId,
+    profileName: params.profileName ?? "Profil principal",
+    sortOrder: 0,
+  });
+
+  await createGroupsFromDraft(db, {
+    profileId,
     groups: params.groups,
   });
 
@@ -176,15 +250,22 @@ export async function replaceTableWithDraftGroups(
   db: Db,
   params: {
     tableId: string;
+    profileName?: string;
     groups: DraftGroup[];
   }
 ): Promise<void> {
   await assertTableIsNotSystem(db, params.tableId);
 
-  await deleteAllGroupsForTable(db, params.tableId);
+  await deleteAllProfilesForTable(db, params.tableId);
+
+  const profileId = await createProfileFromDraft(db, {
+    tableId: params.tableId,
+    profileName: params.profileName ?? "Profil principal",
+    sortOrder: 0,
+  });
 
   await createGroupsFromDraft(db, {
-    tableId: params.tableId,
+    profileId,
     groups: params.groups,
   });
 }
