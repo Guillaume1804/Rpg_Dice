@@ -12,6 +12,7 @@ import { SavedProfilesSection } from "./roll/components/SavedProfilesSection";
 import { NewTableModal } from "./roll/components/NewTableModal";
 import { useDraftTableActions } from "./roll/hooks/useDraftTableActions";
 
+import { useRollExecution } from "./roll/hooks/useRollExecution";
 
 import {
   useQuickRollDraft,
