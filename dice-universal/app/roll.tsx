@@ -10,6 +10,8 @@ import { DraftDieEditorModal } from "./roll/components/DraftDieEditorModal";
 import { QuickRollSection } from "./roll/components/QuickRollSection";
 import { SavedProfilesSection } from "./roll/components/SavedProfilesSection";
 import { NewTableModal } from "./roll/components/NewTableModal";
+import { useDraftTableActions } from "./roll/hooks/useDraftTableActions";
+
 
 import {
   useQuickRollDraft,
@@ -17,16 +19,7 @@ import {
 
 import { useRollTableData } from "./roll/hooks/useRollTableData";
 
-import {
-  replaceTableWithDraftGroups,
-  createTableWithDraftGroups,
-} from "../data/repositories/draftSaveRepo";
-
-import { rollGroup, GroupRollResult } from "../core/roll/roll";
-import { insertRollEvent } from "../data/repositories/rollEventsRepo";
-import { newId } from "../core/types/ids";
-
-import { evaluateRule } from "../core/rules/evaluate";
+import { GroupRollResult } from "../core/roll/roll";
 
 export default function RollScreen() {
   const db = useDb();
@@ -114,85 +107,35 @@ export default function RollScreen() {
     availableRules,
   });
 
-  function nowIso() {
-    return new Date().toISOString();
-  }
+  const { rollSavedTable } = useRollExecution({
+    db,
+    table,
+    profiles,
+    rulesMap,
+    setResults,
+  });
 
-  async function onRoll() {
-    if (!table) return;
-
-    const rolled: GroupRollResult[] = [];
-
-    profiles.forEach((p) => {
-      p.groups.forEach(({ group, dice }) => {
-        const groupRule = group.rule_id ? rulesMap[group.rule_id] : null;
-
-        const r = rollGroup({
-          groupId: group.id,
-          label: `${p.profile.name} — ${group.name}`,
-          entries: dice.map((d) => {
-            const rule = d.rule_id ? rulesMap[d.rule_id] : null;
-
-            return {
-              entryId: d.id,
-              sides: d.sides,
-              qty: d.qty,
-              modifier: d.modifier ?? 0,
-              sign: d.sign ?? 1,
-              rule: rule
-                ? {
-                    id: rule.id,
-                    name: rule.name,
-                    kind: rule.kind,
-                    params_json: rule.params_json,
-                  }
-                : null,
-            };
-          }),
-          groupRule: groupRule
-            ? {
-                id: groupRule.id,
-                name: groupRule.name,
-                kind: groupRule.kind,
-                params_json: groupRule.params_json,
-              }
-            : null,
-          evaluateRule,
-        });
-
-        rolled.push(r);
-      });
+    const {
+      replaceCurrentTable,
+      openCreateTableModal,
+      createNewTableFromName,
+      closeCreateTableModal,
+    } = useDraftTableActions({
+      db,
+      table,
+      getNonEmptyDraftGroups,
+      reloadGroups,
+      setShowSaveOptions,
+      setShowNameModal,
+      setNewTableName,
+      setActiveTableId,
+      resetDraftAfterCreate: () => {
+        setDraftGroups([]);
+        setDraftResults([]);
+        setSelectedDraftGroupId(null);
+        setDraftGroupRuleSelection(null);
+      },
     });
-
-    setResults(rolled);
-
-    try {
-      const eventId = await newId();
-      const createdAt = nowIso();
-
-      const payload = {
-        type: "groups",
-        tableId: table.id,
-        tableName: table.name,
-        groups: rolled,
-      };
-
-      const summary = {
-        title: `Jet — ${table.name}`,
-        lines: rolled.map((r) => `${r.label}: total ${r.total}`),
-      };
-
-      await insertRollEvent(db, {
-        id: eventId,
-        table_id: table.id,
-        created_at: createdAt,
-        payload_json: JSON.stringify(payload),
-        summary_json: JSON.stringify(summary),
-      });
-    } catch (e) {
-      console.warn("insertRollEvent (groups) failed", e);
-    }
-  }
 
   if (error) {
     return (
@@ -231,7 +174,7 @@ export default function RollScreen() {
       <Text style={{ fontSize: 18, fontWeight: "700" }}>Jet — {table.name}</Text>
 
       <Pressable
-        onPress={onRoll}
+        onPress={rollSavedTable}
         style={{ padding: 14, borderWidth: 1, borderRadius: 12, alignItems: "center" }}
       >
         <Text style={{ fontSize: 16, fontWeight: "600" }}>Lancer la table</Text>
@@ -256,39 +199,8 @@ export default function RollScreen() {
           onRemoveDraftDie={removeDraftDie}
           onRollDraft={rollDraft}
           onClearDraft={clearDraft}
-          onReplaceCurrentTable={async () => {
-            if (!table) return;
-            if (table.is_system === 1) return;
-          
-            const nonEmptyGroups = getNonEmptyDraftGroups();
-            if (nonEmptyGroups.length === 0) return;
-          
-            await replaceTableWithDraftGroups(db, {
-              tableId: table.id,
-              groups: nonEmptyGroups.map((g) => ({
-                name: g.name,
-                rule_id: g.rule_id ?? null,
-                dice: g.dice.map((d) => ({
-                  sides: d.sides,
-                  qty: d.qty,
-                  modifier: d.modifier ?? 0,
-                  sign: d.sign ?? 1,
-                  rule_id: d.rule_id ?? null,
-                })),
-              })),
-            });
-          
-            await reloadGroups();
-            setShowSaveOptions(false);
-          }}
-          onCreateNewTable={() => {
-            const nonEmptyGroups = getNonEmptyDraftGroups();
-            if (nonEmptyGroups.length === 0) return;
-          
-            setNewTableName(`Nouvelle table (${new Date().toLocaleDateString()})`);
-            setShowSaveOptions(false);
-            setShowNameModal(true);
-          }}
+          onReplaceCurrentTable={replaceCurrentTable}
+          onCreateNewTable={openCreateTableModal}
           availableRules={availableRules}
         />
 
@@ -347,41 +259,8 @@ export default function RollScreen() {
           visible={showNameModal}
           value={newTableName}
           onChangeValue={setNewTableName}
-          onCancel={() => {
-            setShowNameModal(false);
-            setNewTableName("");
-          }}
-          onSave={async () => {
-            const name = newTableName.trim();
-            if (!name) return;
-          
-            const nonEmptyGroups = getNonEmptyDraftGroups();
-            if (nonEmptyGroups.length === 0) return;
-          
-            const newTableId = await createTableWithDraftGroups(db, {
-              name,
-              groups: nonEmptyGroups.map((g) => ({
-                name: g.name,
-                rule_id: g.rule_id ?? null,
-                dice: g.dice.map((d) => ({
-                  sides: d.sides,
-                  qty: d.qty,
-                  modifier: d.modifier ?? 0,
-                  sign: d.sign ?? 1,
-                  rule_id: d.rule_id ?? null,
-                })),
-              })),
-            });
-          
-            await setActiveTableId(newTableId);
-          
-            setShowNameModal(false);
-            setNewTableName("");
-            setDraftGroups([]);
-            setDraftResults([]);
-            setSelectedDraftGroupId(null);
-            setDraftGroupRuleSelection(null);
-          }}
+          onCancel={closeCreateTableModal}
+          onSave={() => createNewTableFromName(newTableName)}
         />
 
         <View style={{ height: 24 }} />
