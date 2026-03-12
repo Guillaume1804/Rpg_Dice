@@ -4,6 +4,11 @@ import { View, Text, Pressable, ScrollView, TextInput, Modal } from "react-nativ
 import { useDb } from "../data/db/DbProvider";
 import { useActiveTable } from "../data/state/ActiveTableProvider";
 
+import { getRuleName, getRuleNameFromId, getSignLabel, formatRuleResult } from "./roll/helpers";
+import { RenameDraftGroupModal } from "./roll/components/RenameDraftGroupModal";
+import { DraftGroupRuleModal } from "./roll/components/DraftGroupRuleModal";
+import { DraftDieEditorModal } from "./roll/components/DraftDieEditorModal";
+
 import { getTableById, TableRow } from "../data/repositories/tablesRepo";
 import {
   listGroupsByProfileId,
@@ -11,12 +16,10 @@ import {
   GroupRow,
   GroupDieRow,
 } from "../data/repositories/groupsRepo";
-
 import {
   listProfilesByTableId,
   ProfileRow,
 } from "../data/repositories/profilesRepo";
-
 import {
   replaceTableWithDraftGroups,
   createTableWithDraftGroups,
@@ -83,7 +86,6 @@ export default function RollScreen() {
   const [draftEditModifier, setDraftEditModifier] = useState("0");
   const [draftEditSign, setDraftEditSign] = useState<"1" | "-1">("1");
   const [draftEditRuleId, setDraftEditRuleId] = useState<string | null>(null);
-
   const [draftEditSides, setDraftEditSides] = useState("6");
   const [draftEditQty, setDraftEditQty] = useState("1");
 
@@ -100,54 +102,6 @@ export default function RollScreen() {
     return new Date().toISOString();
   }
 
-  function getRuleName(rule: any | null) {
-    return rule?.name ?? "Somme (par défaut)";
-  }
-
-  function getRuleNameFromId(ruleId: string | null | undefined) {
-    if (!ruleId) return "Somme (par défaut)";
-    return availableRules.find((r) => r.id === ruleId)?.name ?? "Règle introuvable";
-  }
-
-  function getSignLabel(sign?: number) {
-    return (sign ?? 1) === -1 ? "-" : "+";
-  }
-
-  function formatRuleResult(res: any): string {
-    if (!res) return "";
-
-    if (res.kind === "sum") return `Somme = ${res.total}`;
-
-    if (res.kind === "pipeline") {
-      const outcome = res?.meta?.outcome != null ? ` | outcome: ${res.meta.outcome}` : "";
-      return `Pipeline = ${res.final}${outcome}`;
-    }
-
-    if (res.kind === "d20") {
-      if (res.outcome === "crit_success") return "Réussite critique";
-      if (res.outcome === "crit_failure") return "Échec critique";
-      if (res.threshold == null) return "Résultat";
-      return res.outcome === "success" ? "Réussite" : "Échec";
-    }
-
-    if (res.kind === "pool") {
-      const label =
-        res.outcome === "crit_glitch"
-          ? "Échec critique (glitch)"
-          : res.outcome === "glitch"
-          ? "Glitch"
-          : res.outcome === "success"
-          ? "Réussite"
-          : "Échec";
-      return `${label} — succès: ${res.successes} / ones: ${res.ones}`;
-    }
-
-    if (res.kind === "table_lookup") return res.label;
-    if (res.kind === "unknown") return res.message;
-
-    return "";
-  }
-
   function createEmptyDraftGroup(name?: string): DraftGroupState {
     return {
       id: `draft-group-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -157,34 +111,41 @@ export default function RollScreen() {
     };
   }
 
+  function resetDraftEditorState() {
+    setEditingDraftGroupId(null);
+    setEditingDraftIndex(null);
+    setDraftEditSides("6");
+    setDraftEditQty("1");
+    setDraftEditModifier("0");
+    setDraftEditSign("1");
+    setDraftEditRuleId(null);
+  }
+
   function openRenameDraftGroupModal(groupId: string, currentName: string) {
     setRenamingDraftGroupId(groupId);
     setRenameDraftGroupValue(currentName);
     setShowRenameDraftGroupModal(true);
   }
 
-  function saveRenameDraftGroup() {
-    const name = renameDraftGroupValue.trim();
-    if (!renamingDraftGroupId) return;
-    if (!name) return;
-
-    setDraftGroups((prev) =>
-      prev.map((g) =>
-        g.id === renamingDraftGroupId
-          ? { ...g, name }
-          : g
-      )
-    );
-
+  function closeRenameDraftGroupModal() {
     setShowRenameDraftGroupModal(false);
     setRenamingDraftGroupId(null);
     setRenameDraftGroupValue("");
   }
 
-  function closeRenameDraftGroupModal() {
-    setShowRenameDraftGroupModal(false);
-    setRenamingDraftGroupId(null);
-    setRenameDraftGroupValue("");
+  function saveRenameDraftGroup() {
+    const name = renameDraftGroupValue.trim();
+    if (!renamingDraftGroupId || !name) return;
+
+    setDraftGroups((prev) =>
+      prev.map((g) => (g.id === renamingDraftGroupId ? { ...g, name } : g))
+    );
+
+    closeRenameDraftGroupModal();
+  }
+
+  function getNonEmptyDraftGroups(): DraftGroupState[] {
+    return draftGroups.filter((group) => group.dice.length > 0);
   }
 
   async function loadTableData(tid: string) {
@@ -198,21 +159,16 @@ export default function RollScreen() {
     }
 
     const ps = await listProfilesByTableId(db, tid);
-
     const result: ProfileWithGroups[] = [];
 
     for (const p of ps) {
       const groups = await listGroupsByProfileId(db, p.id);
 
-      const groupsWithDice = [];
+      const groupsWithDice: { group: GroupRow; dice: GroupDieRow[] }[] = [];
 
       for (const g of groups) {
         const dice = await listDiceByGroupId(db, g.id);
-
-        groupsWithDice.push({
-          group: g,
-          dice,
-        });
+        groupsWithDice.push({ group: g, dice });
       }
 
       result.push({
@@ -228,7 +184,6 @@ export default function RollScreen() {
     result.forEach((p) => {
       p.groups.forEach((g) => {
         if (g.group.rule_id) ruleIds.add(g.group.rule_id);
-
         g.dice.forEach((d) => {
           if (d.rule_id) ruleIds.add(d.rule_id);
         });
@@ -236,7 +191,6 @@ export default function RollScreen() {
     });
 
     const map: Record<string, RuleRow> = {};
-
     for (const id of ruleIds) {
       const rule = await getRuleById(db, id);
       if (rule) map[id] = rule;
@@ -265,7 +219,7 @@ export default function RollScreen() {
 
         if (!tableId) {
           setTable(null);
-          setGroups([]);
+          setProfiles([]);
           setRulesMap({});
           return;
         }
@@ -289,16 +243,14 @@ export default function RollScreen() {
 
     profiles.forEach((p) => {
       p.groups.forEach(({ group, dice }) => {
-      
         const groupRule = group.rule_id ? rulesMap[group.rule_id] : null;
-      
+
         const r = rollGroup({
           groupId: group.id,
           label: `${p.profile.name} — ${group.name}`,
           entries: dice.map((d) => {
-          
             const rule = d.rule_id ? rulesMap[d.rule_id] : null;
-          
+
             return {
               entryId: d.id,
               sides: d.sides,
@@ -325,9 +277,8 @@ export default function RollScreen() {
             : null,
           evaluateRule,
         });
-      
+
         rolled.push(r);
-      
       });
     });
 
@@ -449,11 +400,7 @@ export default function RollScreen() {
     setDraftResults((prev) => prev.filter((r) => r.groupId !== groupId));
 
     if (editingDraftGroupId === groupId) {
-      setEditingDraftGroupId(null);
-      setEditingDraftIndex(null);
-      setDraftEditModifier("0");
-      setDraftEditSign("1");
-      setDraftEditRuleId(null);
+      resetDraftEditorState();
     }
 
     if (renamingDraftGroupId === groupId) {
@@ -478,18 +425,9 @@ export default function RollScreen() {
     setShowDraftGroupRuleModal(false);
     setDraftGroupRuleSelection(null);
 
-    setEditingDraftGroupId(null);
-    setEditingDraftIndex(null);
-    setDraftEditModifier("0");
-    setDraftEditSign("1");
-    setDraftEditRuleId(null);
+    resetDraftEditorState();
 
-    setShowRenameDraftGroupModal(false);
-    setRenamingDraftGroupId(null);
-    setRenameDraftGroupValue("");
-
-    setDraftEditSides("6");
-    setDraftEditQty("1");
+    closeRenameDraftGroupModal();
   }
 
   function openDraftEditor(groupId: string, index: number) {
@@ -539,13 +477,7 @@ export default function RollScreen() {
       )
     );
 
-    setEditingDraftGroupId(null);
-    setEditingDraftIndex(null);
-    setDraftEditSides("6");
-    setDraftEditQty("1");
-    setDraftEditModifier("0");
-    setDraftEditSign("1");
-    setDraftEditRuleId(null);
+    resetDraftEditorState();
     setDraftResults([]);
   }
 
@@ -573,27 +505,25 @@ export default function RollScreen() {
     setDraftResults([]);
   }
 
-  function getNonEmptyDraftGroups(): DraftGroupState[] {
-    return draftGroups.filter((group) => group.dice.length > 0);
-  }
-
   async function rollDraft() {
     const nonEmptyGroups = getNonEmptyDraftGroups();
-    
+
     if (nonEmptyGroups.length === 0) return;
     if (!table) return;
-    
+
     const rolled = nonEmptyGroups.map((group) => {
       const groupRule = group.rule_id
-        ? availableRules.find((r) => r.id === group.rule_id)
+        ? availableRules.find((r) => r.id === group.rule_id) ?? null
         : null;
-    
+
       return rollGroup({
         groupId: group.id,
         label: group.name,
         entries: group.dice.map((d, idx) => {
-          const rule = d.rule_id ? availableRules.find((r) => r.id === d.rule_id) : null;
-        
+          const rule = d.rule_id
+            ? availableRules.find((r) => r.id === d.rule_id) ?? null
+            : null;
+
           return {
             entryId: `${group.id}-draft-${idx}`,
             sides: d.sides,
@@ -650,6 +580,272 @@ export default function RollScreen() {
     } catch (e) {
       console.warn("insertRollEvent (draft multi-groups) failed", e);
     }
+  }
+
+  function renderDraftGroup(group: DraftGroupState) {
+    const groupResult = draftResults.find((r) => r.groupId === group.id);
+    const isSelected = selectedDraftGroupId === group.id;
+
+    return (
+      <View
+        key={group.id}
+        style={{
+          marginTop: 10,
+          padding: 10,
+          borderWidth: 1,
+          borderRadius: 10,
+        }}
+      >
+        <Text style={{ fontWeight: "800" }}>
+          {group.name} {isSelected ? "• sélectionné" : ""}
+        </Text>
+
+        <Text style={{ marginTop: 4, opacity: 0.8 }}>
+          règle de groupe : {getRuleNameFromId(group.rule_id)}
+        </Text>
+
+        <View style={{ flexDirection: "row", marginTop: 8, flexWrap: "wrap" }}>
+          <Pressable
+            onPress={() => setSelectedDraftGroupId(group.id)}
+            style={{
+              padding: 8,
+              borderWidth: 1,
+              borderRadius: 8,
+              marginRight: 8,
+              marginBottom: 8,
+            }}
+          >
+            <Text>Sélectionner</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => openRenameDraftGroupModal(group.id, group.name)}
+            style={{
+              padding: 8,
+              borderWidth: 1,
+              borderRadius: 8,
+              marginRight: 8,
+              marginBottom: 8,
+            }}
+          >
+            <Text>Renommer</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => openDraftGroupRuleEditor(group.id)}
+            style={{
+              padding: 8,
+              borderWidth: 1,
+              borderRadius: 8,
+              marginRight: 8,
+              marginBottom: 8,
+            }}
+          >
+            <Text>Règle groupe</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => removeDraftGroup(group.id)}
+            style={{
+              padding: 8,
+              borderWidth: 1,
+              borderRadius: 8,
+              marginRight: 8,
+              marginBottom: 8,
+            }}
+          >
+            <Text>Supprimer groupe</Text>
+          </Pressable>
+        </View>
+
+        {group.dice.length === 0 ? (
+          <Text style={{ marginTop: 8, opacity: 0.7 }}>Aucune entrée.</Text>
+        ) : (
+          group.dice.map((d, index) => (
+            <View
+              key={`${group.id}-${index}`}
+              style={{
+                marginTop: 8,
+                padding: 10,
+                borderWidth: 1,
+                borderRadius: 10,
+              }}
+            >
+              <Text style={{ fontWeight: "700" }}>
+                Entrée #{index + 1} — {d.qty}d{d.sides}
+              </Text>
+
+              <Text style={{ marginTop: 4, opacity: 0.8 }}>
+                signe : {getSignLabel(d.sign)} | mod : {d.modifier ?? 0}
+              </Text>
+
+              <Text style={{ marginTop: 4, opacity: 0.8 }}>
+                règle : {getRuleNameFromId(d.rule_id)}
+              </Text>
+
+              <View style={{ flexDirection: "row", marginTop: 8 }}>
+                <Pressable
+                  onPress={() => openDraftEditor(group.id, index)}
+                  style={{
+                    padding: 8,
+                    borderWidth: 1,
+                    borderRadius: 8,
+                    marginRight: 8,
+                  }}
+                >
+                  <Text>Configurer</Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => removeDraftDie(group.id, index)}
+                  style={{ padding: 8, borderWidth: 1, borderRadius: 8 }}
+                >
+                  <Text>Supprimer</Text>
+                </Pressable>
+              </View>
+            </View>
+          ))
+        )}
+
+        {groupResult ? (
+          <View style={{ marginTop: 10 }}>
+            {groupResult.entries.map((e) => (
+              <View
+                key={e.entryId}
+                style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1 }}
+              >
+                <Text style={{ fontWeight: "700" }}>
+                  {e.qty}d{e.sides} | signe {getSignLabel(e.sign)} | mod {e.modifier}
+                </Text>
+
+                <Text style={{ marginTop: 4, opacity: 0.8 }}>
+                  valeurs : [{e.signed_values.join(", ")}]
+                </Text>
+
+                <Text style={{ marginTop: 4, opacity: 0.8 }}>
+                  règle : {getRuleName(e.rule)}
+                </Text>
+
+                {e.eval_result ? (
+                  <Text style={{ marginTop: 4, opacity: 0.9 }}>
+                    résultat règle : {formatRuleResult(e.eval_result)}
+                  </Text>
+                ) : null}
+
+                <Text style={{ marginTop: 4, fontWeight: "700" }}>
+                  entrée = {e.final_total}
+                </Text>
+              </View>
+            ))}
+
+            <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1 }}>
+              <Text style={{ opacity: 0.8 }}>
+                Somme des entrées : {groupResult.entries_total}
+              </Text>
+
+              <Text style={{ marginTop: 4, opacity: 0.8 }}>
+                Règle de groupe :{" "}
+                {groupResult.group_rule
+                  ? groupResult.group_rule.name
+                  : "Somme (par défaut)"}
+                {groupResult.group_eval_result
+                  ? ` → ${formatRuleResult(groupResult.group_eval_result)}`
+                  : ""}
+              </Text>
+            </View>
+
+            <Text style={{ marginTop: 10, fontWeight: "900" }}>
+              Total groupe : {groupResult.total}
+            </Text>
+          </View>
+        ) : null}
+      </View>
+    );
+  }
+
+  function renderSavedProfiles() {
+    return profiles.map((p) => (
+      <View key={p.profile.id} style={{ marginTop: 12 }}>
+        <Text style={{ fontWeight: "800", fontSize: 16 }}>{p.profile.name}</Text>
+
+        {p.groups.map(({ group }) => {
+          const r = results.find((x) => x.groupId === group.id);
+
+          return (
+            <View
+              key={group.id}
+              style={{ marginTop: 10, padding: 12, borderWidth: 1, borderRadius: 12 }}
+            >
+              <Text style={{ fontSize: 16, fontWeight: "600" }}>{group.name}</Text>
+
+              <Text style={{ marginTop: 4, opacity: 0.75 }}>
+                règle de groupe :{" "}
+                {group.rule_id
+                  ? rulesMap[group.rule_id]?.name ?? "Règle inconnue"
+                  : "Somme (par défaut)"}
+              </Text>
+
+              {!r ? (
+                <Text style={{ marginTop: 8, opacity: 0.7 }}>
+                  Pas encore de résultat (appuie sur Lancer).
+                </Text>
+              ) : (
+                <View style={{ marginTop: 10 }}>
+                  {r.entries.map((e) => {
+                    const ruleName = e.rule?.name ?? "Somme";
+                    const evalText = e.eval_result ? ` → ${formatRuleResult(e.eval_result)}` : "";
+
+                    return (
+                      <View
+                        key={e.entryId}
+                        style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1 }}
+                      >
+                        <Text style={{ fontWeight: "700" }}>
+                          Entrée: {e.qty}d{e.sides} {e.sign === -1 ? "(-)" : "(+)"}
+                          {e.modifier ? ` mod ${e.modifier >= 0 ? "+" : ""}${e.modifier}` : ""}
+                        </Text>
+
+                        <Text style={{ marginTop: 4, opacity: 0.8 }}>
+                          valeurs: [{e.signed_values.join(", ")}]
+                        </Text>
+
+                        <Text style={{ marginTop: 2, opacity: 0.75 }}>
+                          base {e.base_total} → total {e.total_with_modifier}
+                        </Text>
+
+                        <Text style={{ marginTop: 2, opacity: 0.75 }}>
+                          règle entrée: {ruleName}
+                          {evalText}
+                        </Text>
+
+                        <Text style={{ marginTop: 4, fontWeight: "800" }}>
+                          final entrée: {e.final_total}
+                        </Text>
+                      </View>
+                    );
+                  })}
+
+                  <View style={{ marginTop: 12, paddingTop: 10, borderTopWidth: 1 }}>
+                    <Text style={{ opacity: 0.8 }}>Somme des entrées : {r.entries_total}</Text>
+
+                    <Text style={{ marginTop: 4, opacity: 0.8 }}>
+                      Règle de groupe : {r.group_rule ? r.group_rule.name : "Somme (par défaut)"}
+                      {r.group_eval_result
+                        ? ` → ${formatRuleResult(r.group_eval_result)}`
+                        : ""}
+                    </Text>
+
+                    <Text style={{ marginTop: 8, fontSize: 16, fontWeight: "900" }}>
+                      Total groupe : {r.total}
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </View>
+          );
+        })}
+      </View>
+    ));
   }
 
   if (error) {
@@ -733,189 +929,7 @@ export default function RollScreen() {
           {draftGroups.length === 0 ? (
             <Text style={{ marginTop: 10, opacity: 0.7 }}>Draft : —</Text>
           ) : (
-            <View style={{ marginTop: 10 }}>
-              {draftGroups.map((group) => {
-                const groupResult = draftResults.find((r) => r.groupId === group.id);
-                const isSelected = selectedDraftGroupId === group.id;
-
-                return (
-                  <View
-                    key={group.id}
-                    style={{
-                      marginTop: 10,
-                      padding: 10,
-                      borderWidth: 1,
-                      borderRadius: 10,
-                    }}
-                  >
-                    <Text style={{ fontWeight: "800" }}>
-                      {group.name} {isSelected ? "• sélectionné" : ""}
-                    </Text>
-
-                    <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                      règle de groupe : {getRuleNameFromId(group.rule_id)}
-                    </Text>
-
-                    <View style={{ flexDirection: "row", marginTop: 8, flexWrap: "wrap" }}>
-                      <Pressable
-                        onPress={() => setSelectedDraftGroupId(group.id)}
-                        style={{
-                          padding: 8,
-                          borderWidth: 1,
-                          borderRadius: 8,
-                          marginRight: 8,
-                          marginBottom: 8,
-                        }}
-                      >
-                        <Text>Sélectionner</Text>
-                      </Pressable>
-
-                      <Pressable
-                        onPress={() => openRenameDraftGroupModal(group.id, group.name)}
-                        style={{
-                          padding: 8,
-                          borderWidth: 1,
-                          borderRadius: 8,
-                          marginRight: 8,
-                          marginBottom: 8,
-                        }}
-                      >
-                        <Text>Renommer</Text>
-                      </Pressable>
-
-                      <Pressable
-                        onPress={() => openDraftGroupRuleEditor(group.id)}
-                        style={{
-                          padding: 8,
-                          borderWidth: 1,
-                          borderRadius: 8,
-                          marginRight: 8,
-                          marginBottom: 8,
-                        }}
-                      >
-                        <Text>Règle groupe</Text>
-                      </Pressable>
-
-                      <Pressable
-                        onPress={() => removeDraftGroup(group.id)}
-                        style={{
-                          padding: 8,
-                          borderWidth: 1,
-                          borderRadius: 8,
-                          marginRight: 8,
-                          marginBottom: 8,
-                        }}
-                      >
-                        <Text>Supprimer groupe</Text>
-                      </Pressable>
-
-                    </View>
-
-                    {group.dice.length === 0 ? (
-                      <Text style={{ marginTop: 8, opacity: 0.7 }}>Aucune entrée.</Text>
-                    ) : (
-                      group.dice.map((d, index) => (
-                        <View
-                          key={`${group.id}-${index}`}
-                          style={{
-                            marginTop: 8,
-                            padding: 10,
-                            borderWidth: 1,
-                            borderRadius: 10,
-                          }}
-                        >
-                          <Text style={{ fontWeight: "700" }}>
-                            Entrée #{index + 1} — {d.qty}d{d.sides}
-                          </Text>
-
-                          <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                            signe : {getSignLabel(d.sign)} | mod : {d.modifier ?? 0}
-                          </Text>
-
-                          <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                            règle : {getRuleNameFromId(d.rule_id)}
-                          </Text>
-
-                          <View style={{ flexDirection: "row", marginTop: 8 }}>
-                            <Pressable
-                              onPress={() => openDraftEditor(group.id, index)}
-                              style={{
-                                padding: 8,
-                                borderWidth: 1,
-                                borderRadius: 8,
-                                marginRight: 8,
-                              }}
-                            >
-                              <Text>Configurer</Text>
-                            </Pressable>
-
-                            <Pressable
-                              onPress={() => removeDraftDie(group.id, index)}
-                              style={{ padding: 8, borderWidth: 1, borderRadius: 8 }}
-                            >
-                              <Text>Supprimer</Text>
-                            </Pressable>
-                          </View>
-                        </View>
-                      ))
-                    )}
-
-                    {groupResult ? (
-                      <View style={{ marginTop: 10 }}>
-                        {groupResult.entries.map((e) => (
-                          <View
-                            key={e.entryId}
-                            style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1 }}
-                          >
-                            <Text style={{ fontWeight: "700" }}>
-                              {e.qty}d{e.sides} | signe {getSignLabel(e.sign)} | mod {e.modifier}
-                            </Text>
-
-                            <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                              valeurs : [{e.signed_values.join(", ")}]
-                            </Text>
-
-                            <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                              règle : {getRuleName(e.rule)}
-                            </Text>
-
-                            {e.eval_result ? (
-                              <Text style={{ marginTop: 4, opacity: 0.9 }}>
-                                résultat règle : {formatRuleResult(e.eval_result)}
-                              </Text>
-                            ) : null}
-
-                            <Text style={{ marginTop: 4, fontWeight: "700" }}>
-                              entrée = {e.final_total}
-                            </Text>
-                          </View>
-                        ))}
-
-                        <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1 }}>
-                          <Text style={{ opacity: 0.8 }}>
-                            Somme des entrées : {groupResult.entries_total}
-                          </Text>
-
-                          <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                            Règle de groupe :{" "}
-                            {groupResult.group_rule
-                              ? groupResult.group_rule.name
-                              : "Somme (par défaut)"}
-                            {groupResult.group_eval_result
-                              ? ` → ${formatRuleResult(groupResult.group_eval_result)}`
-                              : ""}
-                          </Text>
-                        </View>
-
-                        <Text style={{ marginTop: 10, fontWeight: "900" }}>
-                          Total groupe : {groupResult.total}
-                        </Text>
-                      </View>
-                    ) : null}
-                  </View>
-                );
-              })}
-            </View>
+            <View style={{ marginTop: 10 }}>{draftGroups.map(renderDraftGroup)}</View>
           )}
 
           <View style={{ flexDirection: "row", marginTop: 10 }}>
@@ -949,6 +963,7 @@ export default function RollScreen() {
                 onPress={async () => {
                   if (!table) return;
                   if (table.is_system === 1) return;
+
                   const nonEmptyGroups = getNonEmptyDraftGroups();
                   if (nonEmptyGroups.length === 0) return;
 
@@ -989,6 +1004,7 @@ export default function RollScreen() {
                 onPress={() => {
                   const nonEmptyGroups = getNonEmptyDraftGroups();
                   if (nonEmptyGroups.length === 0) return;
+
                   setNewTableName(`Nouvelle table (${new Date().toLocaleDateString()})`);
                   setShowSaveOptions(false);
                   setShowNameModal(true);
@@ -1002,403 +1018,55 @@ export default function RollScreen() {
         </View>
 
         <Text style={{ fontWeight: "700", marginTop: 12 }}>Groupes de la table</Text>
+        {renderSavedProfiles()}
 
-        {profiles.map((p) => (
-          <View key={p.profile.id} style={{ marginTop: 12 }}>
-        
-            <Text style={{ fontWeight: "800", fontSize: 16 }}>
-              {p.profile.name}
-            </Text>
-                
-            {p.groups.map(({ group }) => {
-            
-              const r = results.find((x) => x.groupId === group.id);
-            
-              return (
-                <View
-                  key={group.id}
-                  style={{ marginTop: 10, padding: 12, borderWidth: 1, borderRadius: 12 }}
-                >
-        
-                  <Text style={{ fontSize: 16, fontWeight: "600" }}>
-                    {group.name}
-                  </Text>
-              
-              <Text style={{ marginTop: 4, opacity: 0.75 }}>
-                règle de groupe :{" "}
-                {group.rule_id
-                  ? rulesMap[group.rule_id]?.name ?? "Règle inconnue"
-                  : "Somme (par défaut)"}
-              </Text>
-
-              {!r ? (
-                <Text style={{ marginTop: 8, opacity: 0.7 }}>
-                  Pas encore de résultat (appuie sur Lancer).
-                </Text>
-              ) : (
-                <View style={{ marginTop: 10 }}>
-                  {r.entries.map((e) => {
-                    const ruleName = e.rule?.name ?? "Somme";
-                    const evalText = e.eval_result ? ` → ${formatRuleResult(e.eval_result)}` : "";
-
-                    return (
-                      <View
-                        key={e.entryId}
-                        style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1 }}
-                      >
-                        <Text style={{ fontWeight: "700" }}>
-                          Entrée: {e.qty}d{e.sides} {e.sign === -1 ? "(-)" : "(+)"}
-                          {e.modifier ? ` mod ${e.modifier >= 0 ? "+" : ""}${e.modifier}` : ""}
-                        </Text>
-
-                        <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                          valeurs: [{e.signed_values.join(", ")}]
-                        </Text>
-
-                        <Text style={{ marginTop: 2, opacity: 0.75 }}>
-                          base {e.base_total} → total {e.total_with_modifier}
-                        </Text>
-
-                        <Text style={{ marginTop: 2, opacity: 0.75 }}>
-                          règle entrée: {ruleName}
-                          {evalText}
-                        </Text>
-
-                        <Text style={{ marginTop: 4, fontWeight: "800" }}>
-                          final entrée: {e.final_total}
-                        </Text>
-                      </View>
-                    );
-                  })}
-
-                  <View style={{ marginTop: 12, paddingTop: 10, borderTopWidth: 1 }}>
-                    <Text style={{ opacity: 0.8 }}>Somme des entrées : {r.entries_total}</Text>
-
-                    <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                      Règle de groupe :{" "}
-                      {r.group_rule ? r.group_rule.name : "Somme (par défaut)"}
-                      {r.group_eval_result
-                        ? ` → ${formatRuleResult(r.group_eval_result)}`
-                        : ""}
-                    </Text>
-
-                    <Text style={{ marginTop: 8, fontSize: 16, fontWeight: "900" }}>
-                      Total groupe : {r.total}
-                    </Text>
-                  </View>
-                </View>
-              )}
-            </View>
-          );
-        })}
-
-        <Modal
+        <DraftDieEditorModal
           visible={editingDraftIndex !== null}
-          transparent
-          animationType="fade"
-          onRequestClose={() => {
+          entryLabel={
+            editingDraftGroupId != null && editingDraftIndex != null
+              ? (() => {
+                  const group = draftGroups.find((g) => g.id === editingDraftGroupId);
+                  const die = group?.dice[editingDraftIndex];
+                  return die ? `${die.qty}d${die.sides}` : null;
+                })()
+              : null
+          }
+          draftEditSign={draftEditSign}
+          draftEditSides={draftEditSides}
+          draftEditQty={draftEditQty}
+          draftEditModifier={draftEditModifier}
+          draftEditRuleId={draftEditRuleId}
+          pipelineRules={pipelineRules}
+          legacyRules={legacyRules}
+          onChangeSign={setDraftEditSign}
+          onChangeSides={setDraftEditSides}
+          onChangeQty={setDraftEditQty}
+          onChangeModifier={setDraftEditModifier}
+          onChangeRuleId={setDraftEditRuleId}
+          onCancel={() => {
             setEditingDraftGroupId(null);
             setEditingDraftIndex(null);
           }}
-        >
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: "rgba(0,0,0,0.5)",
-              justifyContent: "center",
-              padding: 16,
-            }}
-          >
-            <View
-              style={{
-                backgroundColor: "white",
-                borderRadius: 12,
-                padding: 16,
-                borderWidth: 1,
-                maxHeight: "90%",
-              }}
-            >
-              <Text style={{ fontSize: 16, fontWeight: "700" }}>
-                Configurer l’entrée du draft
-              </Text>
-
-              {editingDraftGroupId != null && editingDraftIndex != null ? (() => {
-                const group = draftGroups.find((g) => g.id === editingDraftGroupId);
-                const die = group?.dice[editingDraftIndex];
-                if (!group || !die) return null;
-
-                return (
-                  <Text style={{ marginTop: 8, opacity: 0.7 }}>
-                    Entrée : {die.qty}d{die.sides}
-                  </Text>
-                );
-              })() : null}
-
-              <Text style={{ marginTop: 12 }}>Signe</Text>
-
-              <View style={{ flexDirection: "row", marginTop: 8 }}>
-                <Pressable
-                  onPress={() => setDraftEditSign("1")}
-                  style={{
-                    padding: 10,
-                    borderWidth: 1,
-                    borderRadius: 8,
-                    marginRight: 8,
-                    opacity: draftEditSign === "1" ? 1 : 0.6,
-                  }}
-                >
-                  <Text style={{ fontWeight: draftEditSign === "1" ? "700" : "400" }}>+</Text>
-                </Pressable>
-
-                <Pressable
-                  onPress={() => setDraftEditSign("-1")}
-                  style={{
-                    padding: 10,
-                    borderWidth: 1,
-                    borderRadius: 8,
-                    opacity: draftEditSign === "-1" ? 1 : 0.6,
-                  }}
-                >
-                  <Text style={{ fontWeight: draftEditSign === "-1" ? "700" : "400" }}>-</Text>
-                </Pressable>
-              </View>
-
-              <Text style={{ marginTop: 12 }}>Faces</Text>
-              <TextInput
-                value={draftEditSides}
-                onChangeText={setDraftEditSides}
-                placeholder="6"
-                keyboardType="numeric"
-                style={{ marginTop: 8, borderWidth: 1, borderRadius: 10, padding: 10 }}
-              />
-
-              <Text style={{ marginTop: 12 }}>Quantité</Text>
-              <TextInput
-                value={draftEditQty}
-                onChangeText={setDraftEditQty}
-                placeholder="1"
-                keyboardType="numeric"
-                style={{ marginTop: 8, borderWidth: 1, borderRadius: 10, padding: 10 }}
-              />
-
-              <Text style={{ marginTop: 12 }}>Modificateur</Text>
-              <TextInput
-                value={draftEditModifier}
-                onChangeText={setDraftEditModifier}
-                placeholder="0"
-                keyboardType="numeric"
-                style={{ marginTop: 8, borderWidth: 1, borderRadius: 10, padding: 10 }}
-              />
-
-              <Text style={{ marginTop: 12, fontWeight: "700" }}>Règle</Text>
-
-              <Pressable
-                onPress={() => setDraftEditRuleId(null)}
-                style={{
-                  marginTop: 8,
-                  padding: 10,
-                  borderWidth: 1,
-                  borderRadius: 8,
-                  opacity: draftEditRuleId === null ? 1 : 0.7,
-                }}
-              >
-                <Text style={{ fontWeight: draftEditRuleId === null ? "700" : "400" }}>
-                  Somme (par défaut)
-                </Text>
-              </Pressable>
-
-              <ScrollView style={{ marginTop: 12, maxHeight: 260 }}>
-                <Text style={{ fontWeight: "700" }}>Pipelines</Text>
-
-                {pipelineRules.map((rule) => (
-                  <Pressable
-                    key={rule.id}
-                    onPress={() => setDraftEditRuleId(rule.id)}
-                    style={{
-                      padding: 10,
-                      borderWidth: 1,
-                      borderRadius: 8,
-                      marginTop: 8,
-                      opacity: draftEditRuleId === rule.id ? 1 : 0.7,
-                    }}
-                  >
-                    <Text style={{ fontWeight: draftEditRuleId === rule.id ? "700" : "400" }}>
-                      {rule.name}
-                    </Text>
-                    <Text style={{ marginTop: 2, opacity: 0.7, fontSize: 12 }}>
-                      {rule.is_system === 1 ? "système" : "perso"}
-                    </Text>
-                  </Pressable>
-                ))}
-
-                {legacyRules.length > 0 ? (
-                  <View style={{ marginTop: 16 }}>
-                    <Text style={{ fontWeight: "700" }}>Compatibilité</Text>
-                    {legacyRules.map((rule) => (
-                      <Pressable
-                        key={rule.id}
-                        onPress={() => setDraftEditRuleId(rule.id)}
-                        style={{
-                          padding: 10,
-                          borderWidth: 1,
-                          borderRadius: 8,
-                          marginTop: 8,
-                          opacity: draftEditRuleId === rule.id ? 1 : 0.65,
-                        }}
-                      >
-                        <Text style={{ fontWeight: draftEditRuleId === rule.id ? "700" : "400" }}>
-                          {rule.name}
-                        </Text>
-                        <Text style={{ marginTop: 2, opacity: 0.7, fontSize: 12 }}>
-                          type: {rule.kind}
-                        </Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                ) : null}
-              </ScrollView>
-
-              <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 16 }}>
-                <Pressable
-                  onPress={() => {
-                    setEditingDraftGroupId(null);
-                    setEditingDraftIndex(null);
-                  }}
-                  style={{ padding: 10, borderWidth: 1, borderRadius: 8, marginRight: 10 }}
-                >
-                  <Text>Annuler</Text>
-                </Pressable>
-
-                <Pressable
-                  onPress={saveDraftEditor}
-                  style={{ padding: 10, borderWidth: 1, borderRadius: 8 }}
-                >
-                  <Text style={{ fontWeight: "700" }}>Sauvegarder</Text>
-                </Pressable>
-              </View>
-            </View>
-          </View>
-        </Modal>
-
-        <Modal
+          onSave={saveDraftEditor}
+        />
+        
+        <DraftGroupRuleModal
           visible={showDraftGroupRuleModal}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowDraftGroupRuleModal(false)}
-        >
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: "rgba(0,0,0,0.5)",
-              justifyContent: "center",
-              padding: 16,
-            }}
-          >
-            <View
-              style={{
-                backgroundColor: "white",
-                borderRadius: 12,
-                padding: 16,
-                borderWidth: 1,
-                maxHeight: "90%",
-              }}
-            >
-              <Text style={{ fontSize: 16, fontWeight: "700" }}>
-                Configurer la règle de groupe du draft
-              </Text>
-
-              <Pressable
-                onPress={() => setDraftGroupRuleSelection(null)}
-                style={{
-                  marginTop: 12,
-                  padding: 10,
-                  borderWidth: 1,
-                  borderRadius: 8,
-                  opacity: draftGroupRuleSelection === null ? 1 : 0.7,
-                }}
-              >
-                <Text style={{ fontWeight: draftGroupRuleSelection === null ? "700" : "400" }}>
-                  Somme (par défaut)
-                </Text>
-              </Pressable>
-
-              <ScrollView style={{ marginTop: 12, maxHeight: 300 }}>
-                <Text style={{ fontWeight: "700" }}>Pipelines</Text>
-
-                {pipelineRules.map((rule) => (
-                  <Pressable
-                    key={rule.id}
-                    onPress={() => setDraftGroupRuleSelection(rule.id)}
-                    style={{
-                      padding: 10,
-                      borderWidth: 1,
-                      borderRadius: 8,
-                      marginTop: 8,
-                      opacity: draftGroupRuleSelection === rule.id ? 1 : 0.7,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontWeight: draftGroupRuleSelection === rule.id ? "700" : "400",
-                      }}
-                    >
-                      {rule.name}
-                    </Text>
-                    <Text style={{ marginTop: 2, opacity: 0.7, fontSize: 12 }}>
-                      {rule.is_system === 1 ? "système" : "perso"}
-                    </Text>
-                  </Pressable>
-                ))}
-
-                {legacyRules.length > 0 ? (
-                  <View style={{ marginTop: 16 }}>
-                    <Text style={{ fontWeight: "700" }}>Compatibilité</Text>
-                    {legacyRules.map((rule) => (
-                      <Pressable
-                        key={rule.id}
-                        onPress={() => setDraftGroupRuleSelection(rule.id)}
-                        style={{
-                          padding: 10,
-                          borderWidth: 1,
-                          borderRadius: 8,
-                          marginTop: 8,
-                          opacity: draftGroupRuleSelection === rule.id ? 1 : 0.65,
-                        }}
-                      >
-                        <Text
-                          style={{
-                            fontWeight: draftGroupRuleSelection === rule.id ? "700" : "400",
-                          }}
-                        >
-                          {rule.name}
-                        </Text>
-                        <Text style={{ marginTop: 2, opacity: 0.7, fontSize: 12 }}>
-                          type: {rule.kind}
-                        </Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                ) : null}
-              </ScrollView>
-
-              <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 16 }}>
-                <Pressable
-                  onPress={() => setShowDraftGroupRuleModal(false)}
-                  style={{ padding: 10, borderWidth: 1, borderRadius: 8, marginRight: 10 }}
-                >
-                  <Text>Annuler</Text>
-                </Pressable>
-
-                <Pressable
-                  onPress={saveDraftGroupRuleEditor}
-                  style={{ padding: 10, borderWidth: 1, borderRadius: 8 }}
-                >
-                  <Text style={{ fontWeight: "700" }}>Sauvegarder</Text>
-                </Pressable>
-              </View>
-            </View>
-          </View>
-        </Modal>
+          selectedRuleId={draftGroupRuleSelection}
+          pipelineRules={pipelineRules}
+          legacyRules={legacyRules}
+          onSelectRule={setDraftGroupRuleSelection}
+          onCancel={() => setShowDraftGroupRuleModal(false)}
+          onSave={saveDraftGroupRuleEditor}
+        />
+        
+        <RenameDraftGroupModal
+          visible={showRenameDraftGroupModal}
+          value={renameDraftGroupValue}
+          onChangeValue={setRenameDraftGroupValue}
+          onCancel={closeRenameDraftGroupModal}
+          onSave={saveRenameDraftGroup}
+        />
 
         <Modal
           visible={showNameModal}
@@ -1448,10 +1116,10 @@ export default function RollScreen() {
                   onPress={async () => {
                     const name = newTableName.trim();
                     if (!name) return;
-                                    
+
                     const nonEmptyGroups = getNonEmptyDraftGroups();
                     if (nonEmptyGroups.length === 0) return;
-                                    
+
                     const newTableId = await createTableWithDraftGroups(db, {
                       name,
                       groups: nonEmptyGroups.map((g) => ({
@@ -1479,58 +1147,6 @@ export default function RollScreen() {
                   style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
                 >
                   <Text style={{ fontWeight: "700" }}>Créer</Text>
-                </Pressable>
-              </View>
-            </View>
-          </View>
-        </Modal>
-
-        <Modal
-          visible={showRenameDraftGroupModal}
-          transparent
-          animationType="fade"
-          onRequestClose={closeRenameDraftGroupModal}
-        >
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: "rgba(0,0,0,0.5)",
-              justifyContent: "center",
-              padding: 16,
-            }}
-          >
-            <View
-              style={{
-                backgroundColor: "white",
-                borderRadius: 12,
-                padding: 16,
-                borderWidth: 1,
-              }}
-            >
-              <Text style={{ fontSize: 16, fontWeight: "700" }}>
-                Renommer le groupe draft
-              </Text>
-            
-              <TextInput
-                value={renameDraftGroupValue}
-                onChangeText={setRenameDraftGroupValue}
-                placeholder="Ex: Actions, Dégâts, Localisation..."
-                style={{ marginTop: 12, borderWidth: 1, borderRadius: 10, padding: 10 }}
-              />
-
-              <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 12 }}>
-                <Pressable
-                  onPress={closeRenameDraftGroupModal}
-                  style={{ padding: 10, borderWidth: 1, borderRadius: 10, marginRight: 10 }}
-                >
-                  <Text>Annuler</Text>
-                </Pressable>
-            
-                <Pressable
-                  onPress={saveRenameDraftGroup}
-                  style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
-                >
-                  <Text style={{ fontWeight: "700" }}>Sauvegarder</Text>
                 </Pressable>
               </View>
             </View>
