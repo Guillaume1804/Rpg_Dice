@@ -1,25 +1,22 @@
 // app/roll.tsx
-import { useEffect, useMemo, useState } from "react";
-import { View, Text, Pressable, ScrollView, TextInput, Modal } from "react-native";
+import { useMemo, useState } from "react";
+import { View, Text, Pressable, ScrollView } from "react-native";
 import { useDb } from "../data/db/DbProvider";
 import { useActiveTable } from "../data/state/ActiveTableProvider";
 
-import { getRuleName, getRuleNameFromId, getSignLabel, formatRuleResult } from "./roll/helpers";
 import { RenameDraftGroupModal } from "./roll/components/RenameDraftGroupModal";
 import { DraftGroupRuleModal } from "./roll/components/DraftGroupRuleModal";
 import { DraftDieEditorModal } from "./roll/components/DraftDieEditorModal";
+import { QuickRollSection } from "./roll/components/QuickRollSection";
+import { SavedProfilesSection } from "./roll/components/SavedProfilesSection";
+import { NewTableModal } from "./roll/components/NewTableModal";
 
-import { getTableById, TableRow } from "../data/repositories/tablesRepo";
 import {
-  listGroupsByProfileId,
-  listDiceByGroupId,
-  GroupRow,
-  GroupDieRow,
-} from "../data/repositories/groupsRepo";
-import {
-  listProfilesByTableId,
-  ProfileRow,
-} from "../data/repositories/profilesRepo";
+  useQuickRollDraft,
+} from "./roll/hooks/useQuickRollDraft";
+
+import { useRollTableData } from "./roll/hooks/useRollTableData";
+
 import {
   replaceTableWithDraftGroups,
   createTableWithDraftGroups,
@@ -30,66 +27,16 @@ import { insertRollEvent } from "../data/repositories/rollEventsRepo";
 import { newId } from "../core/types/ids";
 
 import { evaluateRule } from "../core/rules/evaluate";
-import { getRuleById, listRules, RuleRow } from "../data/repositories/rulesRepo";
-
-type ProfileWithGroups = {
-  profile: ProfileRow;
-  groups: {
-    group: GroupRow;
-    dice: GroupDieRow[];
-  }[];
-};
-
-type DraftDie = {
-  sides: number;
-  qty: number;
-  modifier?: number;
-  sign?: number;
-  rule_id?: string | null;
-};
-
-type DraftGroupState = {
-  id: string;
-  name: string;
-  rule_id?: string | null;
-  dice: DraftDie[];
-};
 
 export default function RollScreen() {
   const db = useDb();
   const { activeTableId, setActiveTableId } = useActiveTable();
 
-  const [table, setTable] = useState<TableRow | null>(null);
-  const [profiles, setProfiles] = useState<ProfileWithGroups[]>([]);
   const [results, setResults] = useState<GroupRollResult[]>([]);
-
-  const [draftGroups, setDraftGroups] = useState<DraftGroupState[]>([]);
-  const [draftResults, setDraftResults] = useState<GroupRollResult[]>([]);
-  const [selectedDraftGroupId, setSelectedDraftGroupId] = useState<string | null>(null);
-
-  const [showRenameDraftGroupModal, setShowRenameDraftGroupModal] = useState(false);
-  const [renamingDraftGroupId, setRenamingDraftGroupId] = useState<string | null>(null);
-  const [renameDraftGroupValue, setRenameDraftGroupValue] = useState("");
-
-  const [showDraftGroupRuleModal, setShowDraftGroupRuleModal] = useState(false);
-  const [draftGroupRuleSelection, setDraftGroupRuleSelection] = useState<string | null>(null);
 
   const [showSaveOptions, setShowSaveOptions] = useState(false);
   const [showNameModal, setShowNameModal] = useState(false);
   const [newTableName, setNewTableName] = useState("");
-
-  const [rulesMap, setRulesMap] = useState<Record<string, RuleRow>>({});
-  const [availableRules, setAvailableRules] = useState<RuleRow[]>([]);
-
-  const [editingDraftGroupId, setEditingDraftGroupId] = useState<string | null>(null);
-  const [editingDraftIndex, setEditingDraftIndex] = useState<number | null>(null);
-  const [draftEditModifier, setDraftEditModifier] = useState("0");
-  const [draftEditSign, setDraftEditSign] = useState<"1" | "-1">("1");
-  const [draftEditRuleId, setDraftEditRuleId] = useState<string | null>(null);
-  const [draftEditSides, setDraftEditSides] = useState("6");
-  const [draftEditQty, setDraftEditQty] = useState("1");
-
-  const [error, setError] = useState<string | null>(null);
 
   const STANDARD_DICE = [4, 6, 8, 10, 12, 20, 100];
 
@@ -98,142 +45,77 @@ export default function RollScreen() {
     [activeTableId]
   );
 
+  const {
+    table,
+    profiles,
+    rulesMap,
+    availableRules,
+    error,
+    reloadGroups,
+  } = useRollTableData({
+    db,
+    tableId,
+  });
+
+
+  const {
+    draftGroups,
+    setDraftGroups,
+    draftResults,
+    setDraftResults,
+    selectedDraftGroupId,
+    setSelectedDraftGroupId,
+
+    showRenameDraftGroupModal,
+    renameDraftGroupValue,
+    setRenameDraftGroupValue,
+
+    showDraftGroupRuleModal,
+    closeDraftGroupRuleModal,
+    draftGroupRuleSelection,
+    setDraftGroupRuleSelection,
+
+    editingDraftGroupId,
+    editingDraftIndex,
+    draftEditModifier,
+    setDraftEditModifier,
+    draftEditSign,
+    setDraftEditSign,
+    draftEditRuleId,
+    setDraftEditRuleId,
+    draftEditSides,
+    setDraftEditSides,
+    draftEditQty,
+    setDraftEditQty,
+
+    resetDraftEditorState,
+    getNonEmptyDraftGroups,
+
+    addDraftGroup,
+    addDieToDraft,
+    removeDraftDie,
+    removeDraftGroup,
+    clearDraft,
+
+    openRenameDraftGroupModal,
+    closeRenameDraftGroupModal,
+    saveRenameDraftGroup,
+
+    openDraftEditor,
+    saveDraftEditor,
+
+    openDraftGroupRuleEditor,
+    saveDraftGroupRuleEditor,
+
+    rollDraft,
+  } = useQuickRollDraft({
+    db,
+    table,
+    availableRules,
+  });
+
   function nowIso() {
     return new Date().toISOString();
-  }
-
-  function createEmptyDraftGroup(name?: string): DraftGroupState {
-    return {
-      id: `draft-group-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      name: name ?? "Groupe rapide",
-      rule_id: null,
-      dice: [],
-    };
-  }
-
-  function resetDraftEditorState() {
-    setEditingDraftGroupId(null);
-    setEditingDraftIndex(null);
-    setDraftEditSides("6");
-    setDraftEditQty("1");
-    setDraftEditModifier("0");
-    setDraftEditSign("1");
-    setDraftEditRuleId(null);
-  }
-
-  function openRenameDraftGroupModal(groupId: string, currentName: string) {
-    setRenamingDraftGroupId(groupId);
-    setRenameDraftGroupValue(currentName);
-    setShowRenameDraftGroupModal(true);
-  }
-
-  function closeRenameDraftGroupModal() {
-    setShowRenameDraftGroupModal(false);
-    setRenamingDraftGroupId(null);
-    setRenameDraftGroupValue("");
-  }
-
-  function saveRenameDraftGroup() {
-    const name = renameDraftGroupValue.trim();
-    if (!renamingDraftGroupId || !name) return;
-
-    setDraftGroups((prev) =>
-      prev.map((g) => (g.id === renamingDraftGroupId ? { ...g, name } : g))
-    );
-
-    closeRenameDraftGroupModal();
-  }
-
-  function getNonEmptyDraftGroups(): DraftGroupState[] {
-    return draftGroups.filter((group) => group.dice.length > 0);
-  }
-
-  async function loadTableData(tid: string) {
-    const t = await getTableById(db, tid);
-    setTable(t);
-
-    if (!t) {
-      setProfiles([]);
-      setRulesMap({});
-      return;
-    }
-
-    const ps = await listProfilesByTableId(db, tid);
-    const result: ProfileWithGroups[] = [];
-
-    for (const p of ps) {
-      const groups = await listGroupsByProfileId(db, p.id);
-
-      const groupsWithDice: { group: GroupRow; dice: GroupDieRow[] }[] = [];
-
-      for (const g of groups) {
-        const dice = await listDiceByGroupId(db, g.id);
-        groupsWithDice.push({ group: g, dice });
-      }
-
-      result.push({
-        profile: p,
-        groups: groupsWithDice,
-      });
-    }
-
-    setProfiles(result);
-
-    const ruleIds = new Set<string>();
-
-    result.forEach((p) => {
-      p.groups.forEach((g) => {
-        if (g.group.rule_id) ruleIds.add(g.group.rule_id);
-        g.dice.forEach((d) => {
-          if (d.rule_id) ruleIds.add(d.rule_id);
-        });
-      });
-    });
-
-    const map: Record<string, RuleRow> = {};
-    for (const id of ruleIds) {
-      const rule = await getRuleById(db, id);
-      if (rule) map[id] = rule;
-    }
-
-    setRulesMap(map);
-  }
-
-  async function loadAvailableRules() {
-    const all = await listRules(db);
-    setAvailableRules(all);
-  }
-
-  useEffect(() => {
-    (async () => {
-      try {
-        setError(null);
-        setResults([]);
-        setDraftGroups([]);
-        setDraftResults([]);
-        setSelectedDraftGroupId(null);
-        setDraftGroupRuleSelection(null);
-        setShowSaveOptions(false);
-
-        await loadAvailableRules();
-
-        if (!tableId) {
-          setTable(null);
-          setProfiles([]);
-          setRulesMap({});
-          return;
-        }
-
-        await loadTableData(tableId);
-      } catch (e: any) {
-        setError(e?.message ?? String(e));
-      }
-    })();
-  }, [db, tableId]);
-
-  async function reloadGroups(tid: string) {
-    await loadTableData(tid);
-    await loadAvailableRules();
   }
 
   async function onRoll() {
@@ -312,542 +194,6 @@ export default function RollScreen() {
     }
   }
 
-  function addDraftGroup() {
-    const newGroup = createEmptyDraftGroup(`Groupe ${draftGroups.length + 1}`);
-    setDraftGroups((prev) => [...prev, newGroup]);
-    setSelectedDraftGroupId(newGroup.id);
-    setDraftResults([]);
-  }
-
-  function addDieToDraft(sides: number) {
-    setDraftGroups((prev) => {
-      let next = [...prev];
-
-      if (next.length === 0) {
-        const newGroup = createEmptyDraftGroup("Groupe rapide");
-        next = [newGroup];
-        setSelectedDraftGroupId(newGroup.id);
-      }
-
-      const targetGroupId = selectedDraftGroupId ?? next[0].id;
-
-      return next.map((group) =>
-        group.id === targetGroupId
-          ? {
-              ...group,
-              dice: [
-                ...group.dice,
-                {
-                  sides,
-                  qty: 1,
-                  modifier: 0,
-                  sign: 1,
-                  rule_id: null,
-                },
-              ],
-            }
-          : group
-      );
-    });
-
-    setDraftResults([]);
-  }
-
-  function removeDraftDie(groupId: string, index: number) {
-    setDraftGroups((prev) => {
-      const next = prev
-        .map((group) =>
-          group.id === groupId
-            ? { ...group, dice: group.dice.filter((_, i) => i !== index) }
-            : group
-        )
-        .filter((group) => group.dice.length > 0 || prev.length === 1);
-
-      const cleaned = next.filter((group) => group.dice.length > 0);
-
-      if (cleaned.length === 0) {
-        setSelectedDraftGroupId(null);
-        setDraftGroupRuleSelection(null);
-        return [];
-      }
-
-      if (!cleaned.some((g) => g.id === selectedDraftGroupId)) {
-        setSelectedDraftGroupId(cleaned[0].id);
-      }
-
-      return cleaned;
-    });
-
-    setDraftResults([]);
-  }
-
-  function removeDraftGroup(groupId: string) {
-    setDraftGroups((prev) => {
-      const next = prev.filter((group) => group.id !== groupId);
-
-      if (next.length === 0) {
-        setSelectedDraftGroupId(null);
-        return [];
-      }
-
-      if (selectedDraftGroupId === groupId) {
-        setSelectedDraftGroupId(next[0].id);
-      }
-
-      return next;
-    });
-
-    setDraftResults((prev) => prev.filter((r) => r.groupId !== groupId));
-
-    if (editingDraftGroupId === groupId) {
-      resetDraftEditorState();
-    }
-
-    if (renamingDraftGroupId === groupId) {
-      closeRenameDraftGroupModal();
-    }
-
-    if (showDraftGroupRuleModal && selectedDraftGroupId === groupId) {
-      setShowDraftGroupRuleModal(false);
-      setDraftGroupRuleSelection(null);
-    }
-  }
-
-  function clearDraft() {
-    setDraftGroups([]);
-    setDraftResults([]);
-    setSelectedDraftGroupId(null);
-
-    setShowSaveOptions(false);
-    setShowNameModal(false);
-    setNewTableName("");
-
-    setShowDraftGroupRuleModal(false);
-    setDraftGroupRuleSelection(null);
-
-    resetDraftEditorState();
-
-    closeRenameDraftGroupModal();
-  }
-
-  function openDraftEditor(groupId: string, index: number) {
-    const group = draftGroups.find((g) => g.id === groupId);
-    const d = group?.dice[index];
-    if (!group || !d) return;
-
-    setEditingDraftGroupId(groupId);
-    setEditingDraftIndex(index);
-    setDraftEditModifier(String(d.modifier ?? 0));
-    setDraftEditSign(String(d.sign ?? 1) as "1" | "-1");
-    setDraftEditRuleId(d.rule_id ?? null);
-    setDraftEditSides(String(d.sides));
-    setDraftEditQty(String(d.qty));
-  }
-
-  function saveDraftEditor() {
-    if (editingDraftGroupId == null || editingDraftIndex == null) return;
-
-    const sides = Number(draftEditSides || "0");
-    const qty = Number(draftEditQty || "0");
-    const modifier = Number(draftEditModifier || "0");
-    const sign = Number(draftEditSign || "1");
-
-    if (!Number.isFinite(sides) || sides <= 0) return;
-    if (!Number.isFinite(qty) || qty <= 0) return;
-
-    setDraftGroups((prev) =>
-      prev.map((group) =>
-        group.id === editingDraftGroupId
-          ? {
-              ...group,
-              dice: group.dice.map((d, i) =>
-                i === editingDraftIndex
-                  ? {
-                      ...d,
-                      sides,
-                      qty,
-                      modifier: Number.isFinite(modifier) ? modifier : 0,
-                      sign: sign === -1 ? -1 : 1,
-                      rule_id: draftEditRuleId ?? null,
-                    }
-                  : d
-              ),
-            }
-          : group
-      )
-    );
-
-    resetDraftEditorState();
-    setDraftResults([]);
-  }
-
-  function openDraftGroupRuleEditor(groupId: string) {
-    const group = draftGroups.find((g) => g.id === groupId);
-    if (!group) return;
-
-    setSelectedDraftGroupId(groupId);
-    setDraftGroupRuleSelection(group.rule_id ?? null);
-    setShowDraftGroupRuleModal(true);
-  }
-
-  function saveDraftGroupRuleEditor() {
-    if (!selectedDraftGroupId) return;
-
-    setDraftGroups((prev) =>
-      prev.map((group) =>
-        group.id === selectedDraftGroupId
-          ? { ...group, rule_id: draftGroupRuleSelection ?? null }
-          : group
-      )
-    );
-
-    setShowDraftGroupRuleModal(false);
-    setDraftResults([]);
-  }
-
-  async function rollDraft() {
-    const nonEmptyGroups = getNonEmptyDraftGroups();
-
-    if (nonEmptyGroups.length === 0) return;
-    if (!table) return;
-
-    const rolled = nonEmptyGroups.map((group) => {
-      const groupRule = group.rule_id
-        ? availableRules.find((r) => r.id === group.rule_id) ?? null
-        : null;
-
-      return rollGroup({
-        groupId: group.id,
-        label: group.name,
-        entries: group.dice.map((d, idx) => {
-          const rule = d.rule_id
-            ? availableRules.find((r) => r.id === d.rule_id) ?? null
-            : null;
-
-          return {
-            entryId: `${group.id}-draft-${idx}`,
-            sides: d.sides,
-            qty: d.qty,
-            modifier: d.modifier ?? 0,
-            sign: d.sign ?? 1,
-            rule: rule
-              ? {
-                  id: rule.id,
-                  name: rule.name,
-                  kind: rule.kind,
-                  params_json: rule.params_json,
-                }
-              : null,
-          };
-        }),
-        groupRule: groupRule
-          ? {
-              id: groupRule.id,
-              name: groupRule.name,
-              kind: groupRule.kind,
-              params_json: groupRule.params_json,
-            }
-          : null,
-        evaluateRule,
-      });
-    });
-
-    setDraftResults(rolled);
-
-    try {
-      const eventId = await newId();
-      const createdAt = nowIso();
-
-      const payload = {
-        type: "draft_multi_groups",
-        tableId: table.id,
-        tableName: table.name,
-        groups: rolled,
-      };
-
-      const summary = {
-        title: `Jet rapide — ${table.name}`,
-        lines: rolled.map((r) => `${r.label}: total ${r.total}`),
-      };
-
-      await insertRollEvent(db, {
-        id: eventId,
-        table_id: table.id,
-        created_at: createdAt,
-        payload_json: JSON.stringify(payload),
-        summary_json: JSON.stringify(summary),
-      });
-    } catch (e) {
-      console.warn("insertRollEvent (draft multi-groups) failed", e);
-    }
-  }
-
-  function renderDraftGroup(group: DraftGroupState) {
-    const groupResult = draftResults.find((r) => r.groupId === group.id);
-    const isSelected = selectedDraftGroupId === group.id;
-
-    return (
-      <View
-        key={group.id}
-        style={{
-          marginTop: 10,
-          padding: 10,
-          borderWidth: 1,
-          borderRadius: 10,
-        }}
-      >
-        <Text style={{ fontWeight: "800" }}>
-          {group.name} {isSelected ? "• sélectionné" : ""}
-        </Text>
-
-        <Text style={{ marginTop: 4, opacity: 0.8 }}>
-          règle de groupe : {getRuleNameFromId(group.rule_id)}
-        </Text>
-
-        <View style={{ flexDirection: "row", marginTop: 8, flexWrap: "wrap" }}>
-          <Pressable
-            onPress={() => setSelectedDraftGroupId(group.id)}
-            style={{
-              padding: 8,
-              borderWidth: 1,
-              borderRadius: 8,
-              marginRight: 8,
-              marginBottom: 8,
-            }}
-          >
-            <Text>Sélectionner</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => openRenameDraftGroupModal(group.id, group.name)}
-            style={{
-              padding: 8,
-              borderWidth: 1,
-              borderRadius: 8,
-              marginRight: 8,
-              marginBottom: 8,
-            }}
-          >
-            <Text>Renommer</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => openDraftGroupRuleEditor(group.id)}
-            style={{
-              padding: 8,
-              borderWidth: 1,
-              borderRadius: 8,
-              marginRight: 8,
-              marginBottom: 8,
-            }}
-          >
-            <Text>Règle groupe</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => removeDraftGroup(group.id)}
-            style={{
-              padding: 8,
-              borderWidth: 1,
-              borderRadius: 8,
-              marginRight: 8,
-              marginBottom: 8,
-            }}
-          >
-            <Text>Supprimer groupe</Text>
-          </Pressable>
-        </View>
-
-        {group.dice.length === 0 ? (
-          <Text style={{ marginTop: 8, opacity: 0.7 }}>Aucune entrée.</Text>
-        ) : (
-          group.dice.map((d, index) => (
-            <View
-              key={`${group.id}-${index}`}
-              style={{
-                marginTop: 8,
-                padding: 10,
-                borderWidth: 1,
-                borderRadius: 10,
-              }}
-            >
-              <Text style={{ fontWeight: "700" }}>
-                Entrée #{index + 1} — {d.qty}d{d.sides}
-              </Text>
-
-              <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                signe : {getSignLabel(d.sign)} | mod : {d.modifier ?? 0}
-              </Text>
-
-              <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                règle : {getRuleNameFromId(d.rule_id)}
-              </Text>
-
-              <View style={{ flexDirection: "row", marginTop: 8 }}>
-                <Pressable
-                  onPress={() => openDraftEditor(group.id, index)}
-                  style={{
-                    padding: 8,
-                    borderWidth: 1,
-                    borderRadius: 8,
-                    marginRight: 8,
-                  }}
-                >
-                  <Text>Configurer</Text>
-                </Pressable>
-
-                <Pressable
-                  onPress={() => removeDraftDie(group.id, index)}
-                  style={{ padding: 8, borderWidth: 1, borderRadius: 8 }}
-                >
-                  <Text>Supprimer</Text>
-                </Pressable>
-              </View>
-            </View>
-          ))
-        )}
-
-        {groupResult ? (
-          <View style={{ marginTop: 10 }}>
-            {groupResult.entries.map((e) => (
-              <View
-                key={e.entryId}
-                style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1 }}
-              >
-                <Text style={{ fontWeight: "700" }}>
-                  {e.qty}d{e.sides} | signe {getSignLabel(e.sign)} | mod {e.modifier}
-                </Text>
-
-                <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                  valeurs : [{e.signed_values.join(", ")}]
-                </Text>
-
-                <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                  règle : {getRuleName(e.rule)}
-                </Text>
-
-                {e.eval_result ? (
-                  <Text style={{ marginTop: 4, opacity: 0.9 }}>
-                    résultat règle : {formatRuleResult(e.eval_result)}
-                  </Text>
-                ) : null}
-
-                <Text style={{ marginTop: 4, fontWeight: "700" }}>
-                  entrée = {e.final_total}
-                </Text>
-              </View>
-            ))}
-
-            <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1 }}>
-              <Text style={{ opacity: 0.8 }}>
-                Somme des entrées : {groupResult.entries_total}
-              </Text>
-
-              <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                Règle de groupe :{" "}
-                {groupResult.group_rule
-                  ? groupResult.group_rule.name
-                  : "Somme (par défaut)"}
-                {groupResult.group_eval_result
-                  ? ` → ${formatRuleResult(groupResult.group_eval_result)}`
-                  : ""}
-              </Text>
-            </View>
-
-            <Text style={{ marginTop: 10, fontWeight: "900" }}>
-              Total groupe : {groupResult.total}
-            </Text>
-          </View>
-        ) : null}
-      </View>
-    );
-  }
-
-  function renderSavedProfiles() {
-    return profiles.map((p) => (
-      <View key={p.profile.id} style={{ marginTop: 12 }}>
-        <Text style={{ fontWeight: "800", fontSize: 16 }}>{p.profile.name}</Text>
-
-        {p.groups.map(({ group }) => {
-          const r = results.find((x) => x.groupId === group.id);
-
-          return (
-            <View
-              key={group.id}
-              style={{ marginTop: 10, padding: 12, borderWidth: 1, borderRadius: 12 }}
-            >
-              <Text style={{ fontSize: 16, fontWeight: "600" }}>{group.name}</Text>
-
-              <Text style={{ marginTop: 4, opacity: 0.75 }}>
-                règle de groupe :{" "}
-                {group.rule_id
-                  ? rulesMap[group.rule_id]?.name ?? "Règle inconnue"
-                  : "Somme (par défaut)"}
-              </Text>
-
-              {!r ? (
-                <Text style={{ marginTop: 8, opacity: 0.7 }}>
-                  Pas encore de résultat (appuie sur Lancer).
-                </Text>
-              ) : (
-                <View style={{ marginTop: 10 }}>
-                  {r.entries.map((e) => {
-                    const ruleName = e.rule?.name ?? "Somme";
-                    const evalText = e.eval_result ? ` → ${formatRuleResult(e.eval_result)}` : "";
-
-                    return (
-                      <View
-                        key={e.entryId}
-                        style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1 }}
-                      >
-                        <Text style={{ fontWeight: "700" }}>
-                          Entrée: {e.qty}d{e.sides} {e.sign === -1 ? "(-)" : "(+)"}
-                          {e.modifier ? ` mod ${e.modifier >= 0 ? "+" : ""}${e.modifier}` : ""}
-                        </Text>
-
-                        <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                          valeurs: [{e.signed_values.join(", ")}]
-                        </Text>
-
-                        <Text style={{ marginTop: 2, opacity: 0.75 }}>
-                          base {e.base_total} → total {e.total_with_modifier}
-                        </Text>
-
-                        <Text style={{ marginTop: 2, opacity: 0.75 }}>
-                          règle entrée: {ruleName}
-                          {evalText}
-                        </Text>
-
-                        <Text style={{ marginTop: 4, fontWeight: "800" }}>
-                          final entrée: {e.final_total}
-                        </Text>
-                      </View>
-                    );
-                  })}
-
-                  <View style={{ marginTop: 12, paddingTop: 10, borderTopWidth: 1 }}>
-                    <Text style={{ opacity: 0.8 }}>Somme des entrées : {r.entries_total}</Text>
-
-                    <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                      Règle de groupe : {r.group_rule ? r.group_rule.name : "Somme (par défaut)"}
-                      {r.group_eval_result
-                        ? ` → ${formatRuleResult(r.group_eval_result)}`
-                        : ""}
-                    </Text>
-
-                    <Text style={{ marginTop: 8, fontSize: 16, fontWeight: "900" }}>
-                      Total groupe : {r.total}
-                    </Text>
-                  </View>
-                </View>
-              )}
-            </View>
-          );
-        })}
-      </View>
-    ));
-  }
-
   if (error) {
     return (
       <View style={{ flex: 1, padding: 16 }}>
@@ -892,133 +238,65 @@ export default function RollScreen() {
       </Pressable>
 
       <ScrollView style={{ flex: 1 }}>
-        <View style={{ marginTop: 16, padding: 12, borderWidth: 1, borderRadius: 12 }}>
-          <Text style={{ fontSize: 16, fontWeight: "700" }}>Jet rapide</Text>
+        <QuickRollSection
+          standardDice={STANDARD_DICE}
+          draftGroups={draftGroups}
+          draftResults={draftResults}
+          selectedDraftGroupId={selectedDraftGroupId}
+          tableIsSystem={table.is_system === 1}
+          showSaveOptions={showSaveOptions}
+          onToggleSaveOptions={() => setShowSaveOptions((v) => !v)}
+          onAddDraftGroup={addDraftGroup}
+          onAddDieToDraft={addDieToDraft}
+          onSelectDraftGroup={setSelectedDraftGroupId}
+          onRenameDraftGroup={openRenameDraftGroupModal}
+          onEditDraftGroupRule={openDraftGroupRuleEditor}
+          onRemoveDraftGroup={removeDraftGroup}
+          onEditDraftDie={openDraftEditor}
+          onRemoveDraftDie={removeDraftDie}
+          onRollDraft={rollDraft}
+          onClearDraft={clearDraft}
+          onReplaceCurrentTable={async () => {
+            if (!table) return;
+            if (table.is_system === 1) return;
+          
+            const nonEmptyGroups = getNonEmptyDraftGroups();
+            if (nonEmptyGroups.length === 0) return;
+          
+            await replaceTableWithDraftGroups(db, {
+              tableId: table.id,
+              groups: nonEmptyGroups.map((g) => ({
+                name: g.name,
+                rule_id: g.rule_id ?? null,
+                dice: g.dice.map((d) => ({
+                  sides: d.sides,
+                  qty: d.qty,
+                  modifier: d.modifier ?? 0,
+                  sign: d.sign ?? 1,
+                  rule_id: d.rule_id ?? null,
+                })),
+              })),
+            });
+          
+            await reloadGroups();
+            setShowSaveOptions(false);
+          }}
+          onCreateNewTable={() => {
+            const nonEmptyGroups = getNonEmptyDraftGroups();
+            if (nonEmptyGroups.length === 0) return;
+          
+            setNewTableName(`Nouvelle table (${new Date().toLocaleDateString()})`);
+            setShowSaveOptions(false);
+            setShowNameModal(true);
+          }}
+          availableRules={availableRules}
+        />
 
-          <View style={{ flexDirection: "row", marginTop: 10, flexWrap: "wrap" }}>
-            <Pressable
-              onPress={addDraftGroup}
-              style={{
-                padding: 10,
-                borderWidth: 1,
-                borderRadius: 8,
-                marginRight: 8,
-                marginBottom: 8,
-              }}
-            >
-              <Text>+ Groupe</Text>
-            </Pressable>
-
-            {STANDARD_DICE.map((s) => (
-              <Pressable
-                key={s}
-                onPress={() => addDieToDraft(s)}
-                style={{
-                  padding: 10,
-                  borderWidth: 1,
-                  borderRadius: 8,
-                  marginRight: 8,
-                  marginBottom: 8,
-                }}
-              >
-                <Text>d{s}</Text>
-              </Pressable>
-            ))}
-          </View>
-
-          {draftGroups.length === 0 ? (
-            <Text style={{ marginTop: 10, opacity: 0.7 }}>Draft : —</Text>
-          ) : (
-            <View style={{ marginTop: 10 }}>{draftGroups.map(renderDraftGroup)}</View>
-          )}
-
-          <View style={{ flexDirection: "row", marginTop: 10 }}>
-            <Pressable
-              onPress={rollDraft}
-              style={{ padding: 10, borderWidth: 1, borderRadius: 8, marginRight: 10 }}
-            >
-              <Text>Lancer draft</Text>
-            </Pressable>
-
-            <Pressable
-              onPress={clearDraft}
-              style={{ padding: 10, borderWidth: 1, borderRadius: 8 }}
-            >
-              <Text>Reset</Text>
-            </Pressable>
-
-            <Pressable
-              onPress={() => setShowSaveOptions((v) => !v)}
-              style={{ padding: 10, borderWidth: 1, borderRadius: 8, marginLeft: 10 }}
-            >
-              <Text>Enregistrer</Text>
-            </Pressable>
-          </View>
-
-          {showSaveOptions ? (
-            <View style={{ marginTop: 10, gap: 8 }}>
-              <Text style={{ fontWeight: "700" }}>Enregistrer le draft</Text>
-
-              <Pressable
-                onPress={async () => {
-                  if (!table) return;
-                  if (table.is_system === 1) return;
-
-                  const nonEmptyGroups = getNonEmptyDraftGroups();
-                  if (nonEmptyGroups.length === 0) return;
-
-                  await replaceTableWithDraftGroups(db, {
-                    tableId: table.id,
-                    groups: nonEmptyGroups.map((g) => ({
-                      name: g.name,
-                      rule_id: g.rule_id ?? null,
-                      dice: g.dice.map((d) => ({
-                        sides: d.sides,
-                        qty: d.qty,
-                        modifier: d.modifier ?? 0,
-                        sign: d.sign ?? 1,
-                        rule_id: d.rule_id ?? null,
-                      })),
-                    })),
-                  });
-
-                  await reloadGroups(table.id);
-                  setShowSaveOptions(false);
-                }}
-                style={{
-                  padding: 10,
-                  borderWidth: 1,
-                  borderRadius: 8,
-                  opacity: table.is_system === 1 ? 0.4 : 1,
-                }}
-              >
-                <Text>Remplacer la table actuelle</Text>
-                {table.is_system === 1 ? (
-                  <Text style={{ opacity: 0.7, marginTop: 4 }}>
-                    Table système : remplacement interdit
-                  </Text>
-                ) : null}
-              </Pressable>
-
-              <Pressable
-                onPress={() => {
-                  const nonEmptyGroups = getNonEmptyDraftGroups();
-                  if (nonEmptyGroups.length === 0) return;
-
-                  setNewTableName(`Nouvelle table (${new Date().toLocaleDateString()})`);
-                  setShowSaveOptions(false);
-                  setShowNameModal(true);
-                }}
-                style={{ padding: 10, borderWidth: 1, borderRadius: 8 }}
-              >
-                <Text>Créer une nouvelle table</Text>
-              </Pressable>
-            </View>
-          ) : null}
-        </View>
-
-        <Text style={{ fontWeight: "700", marginTop: 12 }}>Groupes de la table</Text>
-        {renderSavedProfiles()}
+        <SavedProfilesSection
+          profiles={profiles}
+          results={results}
+          rulesMap={rulesMap}
+        />
 
         <DraftDieEditorModal
           visible={editingDraftIndex !== null}
@@ -1043,10 +321,7 @@ export default function RollScreen() {
           onChangeQty={setDraftEditQty}
           onChangeModifier={setDraftEditModifier}
           onChangeRuleId={setDraftEditRuleId}
-          onCancel={() => {
-            setEditingDraftGroupId(null);
-            setEditingDraftIndex(null);
-          }}
+          onCancel={resetDraftEditorState}
           onSave={saveDraftEditor}
         />
         
@@ -1056,7 +331,7 @@ export default function RollScreen() {
           pipelineRules={pipelineRules}
           legacyRules={legacyRules}
           onSelectRule={setDraftGroupRuleSelection}
-          onCancel={() => setShowDraftGroupRuleModal(false)}
+          onCancel={closeDraftGroupRuleModal}
           onSave={saveDraftGroupRuleEditor}
         />
         
@@ -1068,90 +343,46 @@ export default function RollScreen() {
           onSave={saveRenameDraftGroup}
         />
 
-        <Modal
+        <NewTableModal
           visible={showNameModal}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowNameModal(false)}
-        >
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: "rgba(0,0,0,0.5)",
-              justifyContent: "center",
-              padding: 16,
-            }}
-          >
-            <View
-              style={{
-                backgroundColor: "white",
-                borderRadius: 12,
-                padding: 16,
-                borderWidth: 1,
-              }}
-            >
-              <Text style={{ fontSize: 16, fontWeight: "700" }}>Nom de la nouvelle table</Text>
-
-              <TextInput
-                value={newTableName}
-                onChangeText={setNewTableName}
-                placeholder="Ex: Donjons & Dragons — Mage"
-                style={{ marginTop: 12, borderWidth: 1, borderRadius: 10, padding: 10 }}
-              />
-
-              <View
-                style={{ flexDirection: "row", justifyContent: "flex-end", gap: 10, marginTop: 12 }}
-              >
-                <Pressable
-                  onPress={() => {
-                    setShowNameModal(false);
-                    setNewTableName("");
-                  }}
-                  style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
-                >
-                  <Text>Annuler</Text>
-                </Pressable>
-
-                <Pressable
-                  onPress={async () => {
-                    const name = newTableName.trim();
-                    if (!name) return;
-
-                    const nonEmptyGroups = getNonEmptyDraftGroups();
-                    if (nonEmptyGroups.length === 0) return;
-
-                    const newTableId = await createTableWithDraftGroups(db, {
-                      name,
-                      groups: nonEmptyGroups.map((g) => ({
-                        name: g.name,
-                        rule_id: g.rule_id ?? null,
-                        dice: g.dice.map((d) => ({
-                          sides: d.sides,
-                          qty: d.qty,
-                          modifier: d.modifier ?? 0,
-                          sign: d.sign ?? 1,
-                          rule_id: d.rule_id ?? null,
-                        })),
-                      })),
-                    });
-
-                    await setActiveTableId(newTableId);
-
-                    setShowNameModal(false);
-                    setNewTableName("");
-                    setDraftGroups([]);
-                    setDraftResults([]);
-                    setSelectedDraftGroupId(null);
-                    setDraftGroupRuleSelection(null);
-                  }}
-                  style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
-                >
-                  <Text style={{ fontWeight: "700" }}>Créer</Text>
-                </Pressable>
-              </View>
-            </View>
-          </View>
-        </Modal>
+          value={newTableName}
+          onChangeValue={setNewTableName}
+          onCancel={() => {
+            setShowNameModal(false);
+            setNewTableName("");
+          }}
+          onSave={async () => {
+            const name = newTableName.trim();
+            if (!name) return;
+          
+            const nonEmptyGroups = getNonEmptyDraftGroups();
+            if (nonEmptyGroups.length === 0) return;
+          
+            const newTableId = await createTableWithDraftGroups(db, {
+              name,
+              groups: nonEmptyGroups.map((g) => ({
+                name: g.name,
+                rule_id: g.rule_id ?? null,
+                dice: g.dice.map((d) => ({
+                  sides: d.sides,
+                  qty: d.qty,
+                  modifier: d.modifier ?? 0,
+                  sign: d.sign ?? 1,
+                  rule_id: d.rule_id ?? null,
+                })),
+              })),
+            });
+          
+            await setActiveTableId(newTableId);
+          
+            setShowNameModal(false);
+            setNewTableName("");
+            setDraftGroups([]);
+            setDraftResults([]);
+            setSelectedDraftGroupId(null);
+            setDraftGroupRuleSelection(null);
+          }}
+        />
 
         <View style={{ height: 24 }} />
       </ScrollView>

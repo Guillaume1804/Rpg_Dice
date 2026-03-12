@@ -1,6 +1,6 @@
 import type { RuleRow } from "../../data/repositories/rulesRepo";
 
-export function getRuleName(rule: RuleRow | { name?: string } | null) {
+export function getRuleName(rule: any | null) {
   return rule?.name ?? "Somme (par défaut)";
 }
 
@@ -42,7 +42,6 @@ export function formatRuleResult(res: any): string {
         : res.outcome === "success"
         ? "Réussite"
         : "Échec";
-
     return `${label} — succès: ${res.successes} / ones: ${res.ones}`;
   }
 
