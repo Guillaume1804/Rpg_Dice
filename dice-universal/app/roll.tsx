@@ -4,12 +4,9 @@ import { View, Text, Pressable, ScrollView } from "react-native";
 import { useDb } from "../data/db/DbProvider";
 import { useActiveTable } from "../data/state/ActiveTableProvider";
 
-import { RenameDraftGroupModal } from "./roll/components/RenameDraftGroupModal";
-import { DraftGroupRuleModal } from "./roll/components/DraftGroupRuleModal";
-import { DraftDieEditorModal } from "./roll/components/DraftDieEditorModal";
-import { QuickRollSection } from "./roll/components/QuickRollSection";
+import { RollModals } from "./roll/components/RollModals";
+
 import { SavedProfilesSection } from "./roll/components/SavedProfilesSection";
-import { NewTableModal } from "./roll/components/NewTableModal";
 import { useDraftTableActions } from "./roll/hooks/useDraftTableActions";
 
 import { useRollExecution } from "./roll/hooks/useRollExecution";
@@ -17,6 +14,8 @@ import { useRollExecution } from "./roll/hooks/useRollExecution";
 import {
   useQuickRollDraft,
 } from "./roll/hooks/useQuickRollDraft";
+
+import { QuickRollSection } from "./roll/components/QuickRollSection";
 
 import { useRollTableData } from "./roll/hooks/useRollTableData";
 
@@ -211,17 +210,10 @@ export default function RollScreen() {
           rulesMap={rulesMap}
         />
 
-        <DraftDieEditorModal
-          visible={editingDraftIndex !== null}
-          entryLabel={
-            editingDraftGroupId != null && editingDraftIndex != null
-              ? (() => {
-                  const group = draftGroups.find((g) => g.id === editingDraftGroupId);
-                  const die = group?.dice[editingDraftIndex];
-                  return die ? `${die.qty}d${die.sides}` : null;
-                })()
-              : null
-          }
+        <RollModals
+          draftGroups={draftGroups}
+          editingDraftGroupId={editingDraftGroupId}
+          editingDraftIndex={editingDraftIndex}
           draftEditSign={draftEditSign}
           draftEditSides={draftEditSides}
           draftEditQty={draftEditQty}
@@ -234,34 +226,23 @@ export default function RollScreen() {
           onChangeQty={setDraftEditQty}
           onChangeModifier={setDraftEditModifier}
           onChangeRuleId={setDraftEditRuleId}
-          onCancel={resetDraftEditorState}
-          onSave={saveDraftEditor}
-        />
-        
-        <DraftGroupRuleModal
-          visible={showDraftGroupRuleModal}
-          selectedRuleId={draftGroupRuleSelection}
-          pipelineRules={pipelineRules}
-          legacyRules={legacyRules}
-          onSelectRule={setDraftGroupRuleSelection}
-          onCancel={closeDraftGroupRuleModal}
-          onSave={saveDraftGroupRuleEditor}
-        />
-        
-        <RenameDraftGroupModal
-          visible={showRenameDraftGroupModal}
-          value={renameDraftGroupValue}
-          onChangeValue={setRenameDraftGroupValue}
-          onCancel={closeRenameDraftGroupModal}
-          onSave={saveRenameDraftGroup}
-        />
-
-        <NewTableModal
-          visible={showNameModal}
-          value={newTableName}
-          onChangeValue={setNewTableName}
-          onCancel={closeCreateTableModal}
-          onSave={() => createNewTableFromName(newTableName)}
+          onCancelDraftEditor={resetDraftEditorState}
+          onSaveDraftEditor={saveDraftEditor}
+          showDraftGroupRuleModal={showDraftGroupRuleModal}
+          draftGroupRuleSelection={draftGroupRuleSelection}
+          onSelectDraftGroupRule={setDraftGroupRuleSelection}
+          onCancelDraftGroupRule={closeDraftGroupRuleModal}
+          onSaveDraftGroupRule={saveDraftGroupRuleEditor}
+          showRenameDraftGroupModal={showRenameDraftGroupModal}
+          renameDraftGroupValue={renameDraftGroupValue}
+          onChangeRenameDraftGroupValue={setRenameDraftGroupValue}
+          onCancelRenameDraftGroup={closeRenameDraftGroupModal}
+          onSaveRenameDraftGroup={saveRenameDraftGroup}
+          showNameModal={showNameModal}
+          newTableName={newTableName}
+          onChangeNewTableName={setNewTableName}
+          onCancelNewTable={closeCreateTableModal}
+          onSaveNewTable={() => createNewTableFromName(newTableName)}
         />
 
         <View style={{ height: 24 }} />
