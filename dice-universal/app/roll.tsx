@@ -1,6 +1,6 @@
 // app/roll.tsx
 import { useMemo, useState } from "react";
-import { View, Text, Pressable, ScrollView } from "react-native";
+import { View, Text, ScrollView } from "react-native";
 import { useDb } from "../data/db/DbProvider";
 import { useActiveTable } from "../data/state/ActiveTableProvider";
 
@@ -21,6 +21,8 @@ import { useRollTableData } from "./roll/hooks/useRollTableData";
 
 import { GroupRollResult } from "../core/roll/roll";
 
+import { RollHeaderSection } from "./roll/components/RollHeaderSection";
+
 export default function RollScreen() {
   const db = useDb();
   const { activeTableId, setActiveTableId } = useActiveTable();
@@ -39,16 +41,18 @@ export default function RollScreen() {
   );
 
   const {
-    table,
-    profiles,
-    rulesMap,
-    availableRules,
-    error,
-    reloadGroups,
-  } = useRollTableData({
-    db,
-    tableId,
-  });
+  table,
+  profiles,
+  rulesMap,
+  availableRules,
+  pipelineRules,
+  legacyRules,
+  error,
+  reloadGroups,
+} = useRollTableData({
+  db,
+  tableId,
+});
 
 
   const {
@@ -166,19 +170,12 @@ export default function RollScreen() {
     );
   }
 
-  const pipelineRules = availableRules.filter((r) => r.kind === "pipeline");
-  const legacyRules = availableRules.filter((r) => r.kind !== "pipeline");
-
   return (
     <View style={{ flex: 1, padding: 16, gap: 12 }}>
-      <Text style={{ fontSize: 18, fontWeight: "700" }}>Jet — {table.name}</Text>
-
-      <Pressable
-        onPress={rollSavedTable}
-        style={{ padding: 14, borderWidth: 1, borderRadius: 12, alignItems: "center" }}
-      >
-        <Text style={{ fontSize: 16, fontWeight: "600" }}>Lancer la table</Text>
-      </Pressable>
+      <RollHeaderSection
+        tableName={table.name}
+        onRollTable={rollSavedTable}
+      />
 
       <ScrollView style={{ flex: 1 }}>
         <QuickRollSection

@@ -1,23 +1,14 @@
-// app/roll/hooks/useRollTableData.ts
-import { useEffect, useState } from "react";
-
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Db } from "../../../data/db/database";
-import { getTableById, type TableRow } from "../../../data/repositories/tablesRepo";
-import {
-  listGroupsByProfileId,
-  listDiceByGroupId,
-  type GroupRow,
-  type GroupDieRow,
-} from "../../../data/repositories/groupsRepo";
-import {
-  listProfilesByTableId,
-  type ProfileRow,
-} from "../../../data/repositories/profilesRepo";
-import {
-  getRuleById,
-  listRules,
-  type RuleRow,
-} from "../../../data/repositories/rulesRepo";
+import type { TableRow } from "../../../data/repositories/tablesRepo";
+import type { ProfileRow } from "../../../data/repositories/profilesRepo";
+import type { GroupRow, GroupDieRow } from "../../../data/repositories/groupsRepo";
+import type { RuleRow } from "../../../data/repositories/rulesRepo";
+
+import { getTableById } from "../../../data/repositories/tablesRepo";
+import { listProfilesByTableId } from "../../../data/repositories/profilesRepo";
+import { listGroupsByProfileId, listDiceByGroupId } from "../../../data/repositories/groupsRepo";
+import { listRules, getRuleById } from "../../../data/repositories/rulesRepo";
 
 export type ProfileWithGroups = {
   profile: ProfileRow;
@@ -39,12 +30,12 @@ export function useRollTableData({ db, tableId }: UseRollTableDataParams) {
   const [availableRules, setAvailableRules] = useState<RuleRow[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  async function loadAvailableRules() {
+  const loadAvailableRules = useCallback(async () => {
     const all = await listRules(db);
     setAvailableRules(all);
-  }
+  }, [db]);
 
-  async function loadTableData(tid: string) {
+  const loadTableData = useCallback(async (tid: string) => {
     const t = await getTableById(db, tid);
     setTable(t);
 
@@ -79,7 +70,6 @@ export function useRollTableData({ db, tableId }: UseRollTableDataParams) {
     result.forEach((p) => {
       p.groups.forEach((g) => {
         if (g.group.rule_id) ruleIds.add(g.group.rule_id);
-
         g.dice.forEach((d) => {
           if (d.rule_id) ruleIds.add(d.rule_id);
         });
@@ -87,20 +77,19 @@ export function useRollTableData({ db, tableId }: UseRollTableDataParams) {
     });
 
     const map: Record<string, RuleRow> = {};
-
     for (const id of ruleIds) {
       const rule = await getRuleById(db, id);
       if (rule) map[id] = rule;
     }
 
     setRulesMap(map);
-  }
+  }, [db]);
 
-  async function reloadGroups() {
+  const reloadGroups = useCallback(async () => {
     if (!tableId) return;
     await loadTableData(tableId);
     await loadAvailableRules();
-  }
+  }, [tableId, loadTableData, loadAvailableRules]);
 
   useEffect(() => {
     (async () => {
@@ -121,13 +110,25 @@ export function useRollTableData({ db, tableId }: UseRollTableDataParams) {
         setError(e?.message ?? String(e));
       }
     })();
-  }, [db, tableId]);
+  }, [tableId, loadAvailableRules, loadTableData]);
+
+  const pipelineRules = useMemo(
+    () => availableRules.filter((r) => r.kind === "pipeline"),
+    [availableRules]
+  );
+
+  const legacyRules = useMemo(
+    () => availableRules.filter((r) => r.kind !== "pipeline"),
+    [availableRules]
+  );
 
   return {
     table,
     profiles,
     rulesMap,
     availableRules,
+    pipelineRules,
+    legacyRules,
     error,
     reloadGroups,
   };
