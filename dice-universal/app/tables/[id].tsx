@@ -1,17 +1,15 @@
 // app/tables/[id].tsx
 import { useLocalSearchParams } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { View, Text, Pressable, TextInput, Modal, ScrollView } from "react-native";
 import { useDb } from "../../data/db/DbProvider";
 
 import {
-  getTableById,
   TableRow,
   updateTableName,
 } from "../../data/repositories/tablesRepo";
 
 import {
-  listProfilesByTableId,
   createProfile,
   updateProfileName,
   deleteProfile,
@@ -19,8 +17,6 @@ import {
 } from "../../data/repositories/profilesRepo";
 
 import {
-  listGroupsByProfileId,
-  listDiceByGroupId,
   GroupRow,
   GroupDieRow,
   updateGroupDie,
@@ -32,8 +28,10 @@ import {
   deleteGroupDie,
 } from "../../data/repositories/groupsRepo";
 
-import { listRules, RuleRow } from "../../data/repositories/rulesRepo";
+import { RuleRow } from "../../data/repositories/rulesRepo";
 import { newId } from "../../core/types/ids";
+
+import { useTableDetailData } from "./hooks/useTableDetailData";
 
 type GroupWithDice = {
   group: GroupRow;
@@ -50,10 +48,6 @@ export default function TableDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const tableId = useMemo(() => (typeof id === "string" ? id : ""), [id]);
-
-  const [table, setTable] = useState<TableRow | null>(null);
-  const [profiles, setProfiles] = useState<ProfileWithGroups[]>([]);
-  const [rules, setRules] = useState<RuleRow[]>([]);
 
   const [renameValue, setRenameValue] = useState("");
   const [showRenameModal, setShowRenameModal] = useState(false);
@@ -93,61 +87,19 @@ export default function TableDetailScreen() {
   const [editDieSign, setEditDieSign] = useState<"1" | "-1">("1");
   const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null);
 
-  const [error, setError] = useState<string | null>(null);
-
-  async function load() {
-    if (!tableId) return;
-
-    try {
-      setError(null);
-
-      const t = await getTableById(db, tableId);
-      setTable(t);
-
-      if (!t) {
-        setProfiles([]);
-        setRules([]);
-        return;
-      }
-
-      const profileRows = await listProfilesByTableId(db, tableId);
-      const nextProfiles: ProfileWithGroups[] = [];
-
-      for (const profile of profileRows) {
-        const groupRows = await listGroupsByProfileId(db, profile.id);
-        const groupsWithDice: GroupWithDice[] = [];
-
-        for (const group of groupRows) {
-          const dice = await listDiceByGroupId(db, group.id);
-          groupsWithDice.push({ group, dice });
-        }
-
-        nextProfiles.push({
-          profile,
-          groups: groupsWithDice,
-        });
-      }
-
-      setProfiles(nextProfiles);
-
-      const allRules = await listRules(db);
-      setRules(allRules);
-    } catch (e: any) {
-      setError(e?.message ?? String(e));
-    }
-  }
-
-  useEffect(() => {
-    load();
-  }, [db, tableId]);
-
-  const getRuleName = (ruleId: string | null) => {
-    if (!ruleId) return "Somme (par défaut)";
-    return rules.find((r) => r.id === ruleId)?.name ?? "Somme (par défaut)";
-  };
-
-  const pipelineRules = rules.filter((r) => r.kind === "pipeline");
-  const legacyRules = rules.filter((r) => r.kind !== "pipeline");
+  const {
+    table,
+    profiles,
+    rules,
+    error,
+    load,
+    getRuleName,
+    pipelineRules,
+    legacyRules,
+  } = useTableDetailData({
+    db,
+    tableId,
+  });
 
   function resetCreateProfileForm() {
     setNewProfileName("");
