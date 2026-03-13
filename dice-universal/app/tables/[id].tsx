@@ -5,7 +5,6 @@ import { View, Text, Pressable, TextInput, Modal, ScrollView } from "react-nativ
 import { useDb } from "../../data/db/DbProvider";
 
 import {
-  TableRow,
   updateTableName,
 } from "../../data/repositories/tablesRepo";
 
@@ -28,20 +27,11 @@ import {
   deleteGroupDie,
 } from "../../data/repositories/groupsRepo";
 
-import { RuleRow } from "../../data/repositories/rulesRepo";
 import { newId } from "../../core/types/ids";
 
 import { useTableDetailData } from "./hooks/useTableDetailData";
-
-type GroupWithDice = {
-  group: GroupRow;
-  dice: GroupDieRow[];
-};
-
-type ProfileWithGroups = {
-  profile: ProfileRow;
-  groups: GroupWithDice[];
-};
+import { TableProfilesSection } from "./components/TableProfilesSection";
+import { TableProfileModals } from "./components/TableProfileModals";
 
 export default function TableDetailScreen() {
   const db = useDb();
@@ -90,7 +80,6 @@ export default function TableDetailScreen() {
   const {
     table,
     profiles,
-    rules,
     error,
     load,
     getRuleName,
@@ -198,150 +187,42 @@ export default function TableDetailScreen() {
       )}
 
       <ScrollView>
-        <View style={{ padding: 12, borderWidth: 1, borderRadius: 12 }}>
-          <Text style={{ fontWeight: "700" }}>Profils</Text>
-
-          {profiles.length === 0 ? (
-            <Text style={{ marginTop: 8, opacity: 0.7 }}>Aucun profil.</Text>
-          ) : (
-            profiles.map(({ profile, groups }) => (
-              <View key={profile.id} style={{ marginTop: 16, paddingTop: 12, borderTopWidth: 1 }}>
-                <Text style={{ fontSize: 17, fontWeight: "800" }}>{profile.name}</Text>
-
-                {!isSystem ? (
-                  <View style={{ flexDirection: "row", marginTop: 8, flexWrap: "wrap" }}>
-                    <Pressable
-                      onPress={() => openRenameProfileModal(profile)}
-                      style={{ padding: 8, borderWidth: 1, borderRadius: 8, marginRight: 8, marginBottom: 8 }}
-                    >
-                      <Text>Renommer le profil</Text>
-                    </Pressable>
-
-                    <Pressable
-                      onPress={() => {
-                        setTargetProfileForNewGroup(profile);
-                        setNewGroupName("");
-                        setNewGroupRuleId(null);
-                        setShowCreateGroupModal(true);
-                      }}
-                      style={{ padding: 8, borderWidth: 1, borderRadius: 8, marginRight: 8, marginBottom: 8 }}
-                    >
-                      <Text>Créer une action</Text>
-                    </Pressable>
-
-                    <Pressable
-                      onPress={async () => {
-                        await deleteProfile(db, profile.id);
-                        await load();
-                      }}
-                      style={{ padding: 8, borderWidth: 1, borderRadius: 8, marginBottom: 8 }}
-                    >
-                      <Text>Supprimer le profil</Text>
-                    </Pressable>
-                  </View>
-                ) : null}
-
-                {groups.length === 0 ? (
-                  <Text style={{ marginTop: 8, opacity: 0.7 }}>Aucune action.</Text>
-                ) : (
-                  groups.map(({ group, dice }) => (
-                    <View key={group.id} style={{ marginTop: 12, padding: 12, borderWidth: 1, borderRadius: 12 }}>
-                      <Text style={{ fontSize: 16, fontWeight: "700" }}>{group.name}</Text>
-
-                      <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                        règle de groupe : {getRuleName(group.rule_id)}
-                      </Text>
-
-                      {!isSystem ? (
-                        <View style={{ flexDirection: "row", marginTop: 8, flexWrap: "wrap" }}>
-                          <Pressable
-                            onPress={() => openRenameGroupModal(group)}
-                            style={{ padding: 8, borderWidth: 1, borderRadius: 8, marginRight: 8, marginBottom: 8 }}
-                          >
-                            <Text>Renommer l’action</Text>
-                          </Pressable>
-
-                          <Pressable
-                            onPress={() => openEditGroupRuleModal(group)}
-                            style={{ padding: 8, borderWidth: 1, borderRadius: 8, marginRight: 8, marginBottom: 8 }}
-                          >
-                            <Text>Règle de l’action</Text>
-                          </Pressable>
-
-                          <Pressable
-                            onPress={() => {
-                              setTargetGroupForNewDie(group);
-                              setNewDieSides("6");
-                              setNewDieQty("1");
-                              setNewDieModifier("0");
-                              setNewDieSign("1");
-                              setNewDieRuleId(null);
-                              setShowCreateDieModal(true);
-                            }}
-                            style={{ padding: 8, borderWidth: 1, borderRadius: 8, marginRight: 8, marginBottom: 8 }}
-                          >
-                            <Text>Ajouter une entrée</Text>
-                          </Pressable>
-
-                          <Pressable
-                            onPress={async () => {
-                              await deleteGroup(db, group.id);
-                              await load();
-                            }}
-                            style={{ padding: 8, borderWidth: 1, borderRadius: 8, marginBottom: 8 }}
-                          >
-                            <Text>Supprimer l’action</Text>
-                          </Pressable>
-                        </View>
-                      ) : null}
-
-                      {dice.length === 0 ? (
-                        <Text style={{ marginTop: 8, opacity: 0.7 }}>Aucune entrée.</Text>
-                      ) : (
-                        dice.map((d) => (
-                          <View key={d.id} style={{ marginTop: 10, padding: 10, borderWidth: 1, borderRadius: 10 }}>
-                            <Text style={{ fontWeight: "700" }}>
-                              {d.qty}d{d.sides}
-                            </Text>
-
-                            <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                              signe : {d.sign === -1 ? "-" : "+"} | mod : {d.modifier}
-                            </Text>
-
-                            <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                              règle d’entrée : {getRuleName(d.rule_id)}
-                            </Text>
-
-                            {!isSystem ? (
-                              <View style={{ flexDirection: "row", marginTop: 8, flexWrap: "wrap" }}>
-                                <Pressable
-                                  onPress={() => openEditDieModal(d)}
-                                  style={{ padding: 8, borderWidth: 1, borderRadius: 8, marginRight: 8, marginBottom: 8 }}
-                                >
-                                  <Text>Éditer l’entrée</Text>
-                                </Pressable>
-
-                                <Pressable
-                                  onPress={async () => {
-                                    await deleteGroupDie(db, d.id);
-                                    await load();
-                                  }}
-                                  style={{ padding: 8, borderWidth: 1, borderRadius: 8, marginBottom: 8 }}
-                                >
-                                  <Text>Supprimer l’entrée</Text>
-                                </Pressable>
-                              </View>
-                            ) : null}
-                          </View>
-                        ))
-                      )}
-                    </View>
-                  ))
-                )}
-              </View>
-            ))
-          )}
-        </View>
+        <TableProfilesSection
+          profiles={profiles}
+          isSystem={isSystem}
+          getRuleName={getRuleName}
+          onRenameProfile={openRenameProfileModal}
+          onCreateGroup={(profile) => {
+            setTargetProfileForNewGroup(profile);
+            setNewGroupName("");
+            setNewGroupRuleId(null);
+            setShowCreateGroupModal(true);
+          }}
+          onDeleteProfile={async (profile) => {
+            await deleteProfile(db, profile.id);
+            await load();
+          }}
+          onRenameGroup={openRenameGroupModal}
+          onEditGroupRule={openEditGroupRuleModal}
+          onCreateDie={(group) => {
+            setTargetGroupForNewDie(group);
+            setNewDieSides("6");
+            setNewDieQty("1");
+            setNewDieModifier("0");
+            setNewDieSign("1");
+            setNewDieRuleId(null);
+            setShowCreateDieModal(true);
+          }}
+          onDeleteGroup={async (group) => {
+            await deleteGroup(db, group.id);
+            await load();
+          }}
+          onEditDie={openEditDieModal}
+          onDeleteDie={async (die) => {
+            await deleteGroupDie(db, die.id);
+            await load();
+          }}
+        />
       </ScrollView>
 
       <Modal
@@ -388,115 +269,49 @@ export default function TableDetailScreen() {
         </View>
       </Modal>
 
-      <Modal
-        visible={showCreateProfileModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {
+      <TableProfileModals
+        showCreateProfileModal={showCreateProfileModal}
+        newProfileName={newProfileName}
+        onChangeNewProfileName={setNewProfileName}
+        onCloseCreateProfileModal={() => {
           setShowCreateProfileModal(false);
           resetCreateProfileForm();
         }}
-      >
-        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 16 }}>
-          <View style={{ backgroundColor: "white", borderRadius: 12, padding: 16, borderWidth: 1 }}>
-            <Text style={{ fontSize: 16, fontWeight: "700" }}>Créer un profil</Text>
-
-            <TextInput
-              value={newProfileName}
-              onChangeText={setNewProfileName}
-              placeholder="Ex: Guerrier, Mage, Samouraï..."
-              style={{ marginTop: 12, borderWidth: 1, borderRadius: 10, padding: 10 }}
-            />
-
-            <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 12 }}>
-              <Pressable
-                onPress={() => {
-                  setShowCreateProfileModal(false);
-                  resetCreateProfileForm();
-                }}
-                style={{ padding: 10, borderWidth: 1, borderRadius: 10, marginRight: 10 }}
-              >
-                <Text>Annuler</Text>
-              </Pressable>
-
-              <Pressable
-                onPress={async () => {
-                  const name = newProfileName.trim();
-                  if (!name) return;
-
-                  await createProfile(db, {
-                    id: await newId(),
-                    table_id: table.id,
-                    name,
-                  });
-
-                  setShowCreateProfileModal(false);
-                  resetCreateProfileForm();
-                  await load();
-                }}
-                style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
-              >
-                <Text style={{ fontWeight: "700" }}>Créer</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal
-        visible={showRenameProfileModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {
+        onSubmitCreateProfile={async () => {
+          const name = newProfileName.trim();
+          if (!name) return;
+        
+          await createProfile(db, {
+            id: await newId(),
+            table_id: table.id,
+            name,
+          });
+        
+          setShowCreateProfileModal(false);
+          resetCreateProfileForm();
+          await load();
+        }}
+        showRenameProfileModal={showRenameProfileModal}
+        renameProfileValue={renameProfileValue}
+        onChangeRenameProfileValue={setRenameProfileValue}
+        onCloseRenameProfileModal={() => {
           setShowRenameProfileModal(false);
           setEditingProfile(null);
           setRenameProfileValue("");
         }}
-      >
-        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 16 }}>
-          <View style={{ backgroundColor: "white", borderRadius: 12, padding: 16, borderWidth: 1 }}>
-            <Text style={{ fontSize: 16, fontWeight: "700" }}>Renommer le profil</Text>
-
-            <TextInput
-              value={renameProfileValue}
-              onChangeText={setRenameProfileValue}
-              placeholder="Nouveau nom du profil..."
-              style={{ marginTop: 12, borderWidth: 1, borderRadius: 10, padding: 10 }}
-            />
-
-            <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 12 }}>
-              <Pressable
-                onPress={() => {
-                  setShowRenameProfileModal(false);
-                  setEditingProfile(null);
-                  setRenameProfileValue("");
-                }}
-                style={{ padding: 10, borderWidth: 1, borderRadius: 10, marginRight: 10 }}
-              >
-                <Text>Annuler</Text>
-              </Pressable>
-
-              <Pressable
-                onPress={async () => {
-                  const name = renameProfileValue.trim();
-                  if (!editingProfile || !name) return;
-
-                  await updateProfileName(db, editingProfile.id, name);
-
-                  setShowRenameProfileModal(false);
-                  setEditingProfile(null);
-                  setRenameProfileValue("");
-
-                  await load();
-                }}
-                style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
-              >
-                <Text style={{ fontWeight: "700" }}>Renommer</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        onSubmitRenameProfile={async () => {
+          const name = renameProfileValue.trim();
+          if (!editingProfile || !name) return;
+        
+          await updateProfileName(db, editingProfile.id, name);
+        
+          setShowRenameProfileModal(false);
+          setEditingProfile(null);
+          setRenameProfileValue("");
+        
+          await load();
+        }}
+      />
 
       <Modal
         visible={showCreateGroupModal}
