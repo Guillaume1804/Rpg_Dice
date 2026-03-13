@@ -19,11 +19,16 @@ type Props = {
   rulesMap: Record<string, RuleRow>;
 };
 
+function getGroupRuleLabel(group: GroupRow, rulesMap: Record<string, RuleRow>) {
+  if (!group.rule_id) return "Somme (par défaut)";
+  return rulesMap[group.rule_id]?.name ?? "Règle inconnue";
+}
+
 export function SavedProfilesSection({ profiles, results, rulesMap }: Props) {
   if (profiles.length === 0) {
     return (
       <View style={{ marginTop: 12 }}>
-        <Text style={{ fontWeight: "700" }}>Groupes de la table</Text>
+        <Text style={{ fontWeight: "700", fontSize: 16 }}>Profils</Text>
         <Text style={{ marginTop: 8, opacity: 0.7 }}>
           Aucun profil enregistré dans cette table.
         </Text>
@@ -33,95 +38,143 @@ export function SavedProfilesSection({ profiles, results, rulesMap }: Props) {
 
   return (
     <View style={{ marginTop: 12 }}>
-      <Text style={{ fontWeight: "700" }}>Groupes de la table</Text>
+      <Text style={{ fontWeight: "700", fontSize: 16 }}>Profils</Text>
 
       {profiles.map((p) => (
-        <View key={p.profile.id} style={{ marginTop: 12 }}>
-          <Text style={{ fontWeight: "800", fontSize: 16 }}>{p.profile.name}</Text>
+        <View
+          key={p.profile.id}
+          style={{
+            marginTop: 12,
+            padding: 12,
+            borderWidth: 1,
+            borderRadius: 14,
+          }}
+        >
+          <Text style={{ fontWeight: "800", fontSize: 17 }}>{p.profile.name}</Text>
 
-          {p.groups.map(({ group }) => {
-            const r = results.find((x) => x.groupId === group.id);
+          <Text style={{ marginTop: 4, opacity: 0.7 }}>
+            {p.groups.length} action{p.groups.length > 1 ? "s" : ""}
+          </Text>
 
-            return (
-              <View
-                key={group.id}
-                style={{ marginTop: 10, padding: 12, borderWidth: 1, borderRadius: 12 }}
-              >
-                <Text style={{ fontSize: 16, fontWeight: "600" }}>{group.name}</Text>
+          {p.groups.length === 0 ? (
+            <Text style={{ marginTop: 10, opacity: 0.7 }}>
+              Aucune action enregistrée pour ce profil.
+            </Text>
+          ) : (
+            p.groups.map(({ group, dice }) => {
+              const result = results.find((x) => x.groupId === group.id);
+              const groupRuleLabel = getGroupRuleLabel(group, rulesMap);
 
-                <Text style={{ marginTop: 4, opacity: 0.75 }}>
-                  règle de groupe :{" "}
-                  {group.rule_id
-                    ? rulesMap[group.rule_id]?.name ?? "Règle inconnue"
-                    : "Somme (par défaut)"}
-                </Text>
+              return (
+                <View
+                  key={group.id}
+                  style={{
+                    marginTop: 12,
+                    padding: 12,
+                    borderWidth: 1,
+                    borderRadius: 12,
+                  }}
+                >
+                  <Text style={{ fontSize: 15, fontWeight: "700" }}>{group.name}</Text>
 
-                {!r ? (
-                  <Text style={{ marginTop: 8, opacity: 0.7 }}>
-                    Pas encore de résultat (appuie sur Lancer).
+                  <Text style={{ marginTop: 4, opacity: 0.75 }}>
+                    Règle : {groupRuleLabel}
                   </Text>
-                ) : (
-                  <View style={{ marginTop: 10 }}>
-                    {r.entries.map((e) => {
-                      const ruleName = e.rule?.name ?? "Somme";
-                      const evalText = e.eval_result
-                        ? ` → ${formatRuleResult(e.eval_result)}`
-                        : "";
 
-                      return (
-                        <View
-                          key={e.entryId}
-                          style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1 }}
-                        >
-                          <Text style={{ fontWeight: "700" }}>
-                            Entrée: {e.qty}d{e.sides} {e.sign === -1 ? "(-)" : "(+)"}
-                            {e.modifier
-                              ? ` mod ${e.modifier >= 0 ? "+" : ""}${e.modifier}`
-                              : ""}
-                          </Text>
+                  <Text style={{ marginTop: 4, opacity: 0.7 }}>
+                    {dice.length} entrée{dice.length > 1 ? "s" : ""}
+                  </Text>
 
-                          <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                            valeurs: [{e.signed_values.join(", ")}]
-                          </Text>
+                  {!result ? (
+                    <View
+                      style={{
+                        marginTop: 10,
+                        padding: 10,
+                        borderWidth: 1,
+                        borderRadius: 10,
+                      }}
+                    >
+                      <Text style={{ opacity: 0.7 }}>
+                        Pas encore de résultat pour cette action.
+                      </Text>
+                    </View>
+                  ) : (
+                    <View
+                      style={{
+                        marginTop: 10,
+                        padding: 10,
+                        borderWidth: 1,
+                        borderRadius: 10,
+                      }}
+                    >
+                      <Text style={{ fontSize: 13, opacity: 0.75 }}>
+                        Résultat
+                      </Text>
 
-                          <Text style={{ marginTop: 2, opacity: 0.75 }}>
-                            base {e.base_total} → total {e.total_with_modifier}
-                          </Text>
+                      <Text
+                        style={{
+                          marginTop: 4,
+                          fontSize: 20,
+                          fontWeight: "900",
+                        }}
+                      >
+                        {result.total}
+                      </Text>
 
-                          <Text style={{ marginTop: 2, opacity: 0.75 }}>
-                            règle entrée: {ruleName}
-                            {evalText}
-                          </Text>
-
-                          <Text style={{ marginTop: 4, fontWeight: "800" }}>
-                            final entrée: {e.final_total}
-                          </Text>
-                        </View>
-                      );
-                    })}
-
-                    <View style={{ marginTop: 12, paddingTop: 10, borderTopWidth: 1 }}>
-                      <Text style={{ opacity: 0.8 }}>
-                        Somme des entrées : {r.entries_total}
+                      <Text style={{ marginTop: 4, opacity: 0.8 }}>
+                        Somme des entrées : {result.entries_total}
                       </Text>
 
                       <Text style={{ marginTop: 4, opacity: 0.8 }}>
                         Règle de groupe :{" "}
-                        {r.group_rule ? r.group_rule.name : "Somme (par défaut)"}
-                        {r.group_eval_result
-                          ? ` → ${formatRuleResult(r.group_eval_result)}`
+                        {result.group_rule ? result.group_rule.name : "Somme (par défaut)"}
+                        {result.group_eval_result
+                          ? ` → ${formatRuleResult(result.group_eval_result)}`
                           : ""}
                       </Text>
 
-                      <Text style={{ marginTop: 8, fontSize: 16, fontWeight: "900" }}>
-                        Total groupe : {r.total}
-                      </Text>
+                      <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1 }}>
+                        {result.entries.map((entry) => {
+                          const ruleName = entry.rule?.name ?? "Somme";
+                          const evalText = entry.eval_result
+                            ? ` → ${formatRuleResult(entry.eval_result)}`
+                            : "";
+
+                          return (
+                            <View key={entry.entryId} style={{ marginTop: 8 }}>
+                              <Text style={{ fontWeight: "700" }}>
+                                {entry.qty}d{entry.sides} {entry.sign === -1 ? "(-)" : "(+)"}
+                                {entry.modifier
+                                  ? ` mod ${entry.modifier >= 0 ? "+" : ""}${entry.modifier}`
+                                  : ""}
+                              </Text>
+
+                              <Text style={{ marginTop: 2, opacity: 0.8 }}>
+                                Valeurs : [{entry.signed_values.join(", ")}]
+                              </Text>
+
+                              <Text style={{ marginTop: 2, opacity: 0.75 }}>
+                                Base {entry.base_total} → total {entry.total_with_modifier}
+                              </Text>
+
+                              <Text style={{ marginTop: 2, opacity: 0.75 }}>
+                                Règle entrée : {ruleName}
+                                {evalText}
+                              </Text>
+
+                              <Text style={{ marginTop: 2, fontWeight: "700" }}>
+                                Final entrée : {entry.final_total}
+                              </Text>
+                            </View>
+                          );
+                        })}
+                      </View>
                     </View>
-                  </View>
-                )}
-              </View>
-            );
-          })}
+                  )}
+                </View>
+              );
+            })
+          )}
         </View>
       ))}
     </View>

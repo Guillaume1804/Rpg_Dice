@@ -23,9 +23,12 @@ import { GroupRollResult } from "../core/roll/roll";
 
 import { RollHeaderSection } from "./roll/components/RollHeaderSection";
 
+import { RollTabs } from "./roll/components/RollTabs";
+
 export default function RollScreen() {
   const db = useDb();
   const { activeTableId, setActiveTableId } = useActiveTable();
+  const [activeTab, setActiveTab] = useState<"quick" | "profiles">("quick");
 
   const [results, setResults] = useState<GroupRollResult[]>([]);
 
@@ -41,18 +44,18 @@ export default function RollScreen() {
   );
 
   const {
-  table,
-  profiles,
-  rulesMap,
-  availableRules,
-  pipelineRules,
-  legacyRules,
-  error,
-  reloadGroups,
-} = useRollTableData({
-  db,
-  tableId,
-});
+    table,
+    profiles,
+    rulesMap,
+    availableRules,
+    pipelineRules,
+    legacyRules,
+    error,
+    reloadGroups,
+  } = useRollTableData({
+    db,
+    tableId,
+  });
 
 
   const {
@@ -119,27 +122,27 @@ export default function RollScreen() {
     setResults,
   });
 
-    const {
-      replaceCurrentTable,
-      openCreateTableModal,
-      createNewTableFromName,
-      closeCreateTableModal,
-    } = useDraftTableActions({
-      db,
-      table,
-      getNonEmptyDraftGroups,
-      reloadGroups,
-      setShowSaveOptions,
-      setShowNameModal,
-      setNewTableName,
-      setActiveTableId,
-      resetDraftAfterCreate: () => {
-        setDraftGroups([]);
-        setDraftResults([]);
-        setSelectedDraftGroupId(null);
-        setDraftGroupRuleSelection(null);
-      },
-    });
+  const {
+    replaceCurrentTable,
+    openCreateTableModal,
+    createNewTableFromName,
+    closeCreateTableModal,
+  } = useDraftTableActions({
+    db,
+    table,
+    getNonEmptyDraftGroups,
+    reloadGroups,
+    setShowSaveOptions,
+    setShowNameModal,
+    setNewTableName,
+    setActiveTableId,
+    resetDraftAfterCreate: () => {
+      setDraftGroups([]);
+      setDraftResults([]);
+      setSelectedDraftGroupId(null);
+      setDraftGroupRuleSelection(null);
+    },
+  });
 
   if (error) {
     return (
@@ -177,35 +180,42 @@ export default function RollScreen() {
         onRollTable={rollSavedTable}
       />
 
-      <ScrollView style={{ flex: 1 }}>
-        <QuickRollSection
-          standardDice={STANDARD_DICE}
-          draftGroups={draftGroups}
-          draftResults={draftResults}
-          selectedDraftGroupId={selectedDraftGroupId}
-          tableIsSystem={table.is_system === 1}
-          showSaveOptions={showSaveOptions}
-          onToggleSaveOptions={() => setShowSaveOptions((v) => !v)}
-          onAddDraftGroup={addDraftGroup}
-          onAddDieToDraft={addDieToDraft}
-          onSelectDraftGroup={setSelectedDraftGroupId}
-          onRenameDraftGroup={openRenameDraftGroupModal}
-          onEditDraftGroupRule={openDraftGroupRuleEditor}
-          onRemoveDraftGroup={removeDraftGroup}
-          onEditDraftDie={openDraftEditor}
-          onRemoveDraftDie={removeDraftDie}
-          onRollDraft={rollDraft}
-          onClearDraft={clearDraft}
-          onReplaceCurrentTable={replaceCurrentTable}
-          onCreateNewTable={openCreateTableModal}
-          availableRules={availableRules}
-        />
+      <RollTabs
+        activeTab={activeTab}
+        onChangeTab={setActiveTab}
+      />
 
-        <SavedProfilesSection
-          profiles={profiles}
-          results={results}
-          rulesMap={rulesMap}
-        />
+      <ScrollView style={{ flex: 1 }}>
+        {activeTab === "quick" ? (
+          <QuickRollSection
+            standardDice={STANDARD_DICE}
+            draftGroups={draftGroups}
+            draftResults={draftResults}
+            selectedDraftGroupId={selectedDraftGroupId}
+            tableIsSystem={table.is_system === 1}
+            showSaveOptions={showSaveOptions}
+            onToggleSaveOptions={() => setShowSaveOptions((v) => !v)}
+            onAddDraftGroup={addDraftGroup}
+            onAddDieToDraft={addDieToDraft}
+            onSelectDraftGroup={setSelectedDraftGroupId}
+            onRenameDraftGroup={openRenameDraftGroupModal}
+            onEditDraftGroupRule={openDraftGroupRuleEditor}
+            onRemoveDraftGroup={removeDraftGroup}
+            onEditDraftDie={openDraftEditor}
+            onRemoveDraftDie={removeDraftDie}
+            onRollDraft={rollDraft}
+            onClearDraft={clearDraft}
+            onReplaceCurrentTable={replaceCurrentTable}
+            onCreateNewTable={openCreateTableModal}
+            availableRules={availableRules}
+          />
+        ) : (
+          <SavedProfilesSection
+            profiles={profiles}
+            results={results}
+            rulesMap={rulesMap}
+          />
+        )}
 
         <RollModals
           draftGroups={draftGroups}
