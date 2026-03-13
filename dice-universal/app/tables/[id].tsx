@@ -32,6 +32,7 @@ import { newId } from "../../core/types/ids";
 import { useTableDetailData } from "./hooks/useTableDetailData";
 import { TableProfilesSection } from "./components/TableProfilesSection";
 import { TableProfileModals } from "./components/TableProfileModals";
+import { TableGroupModals } from "./components/TableGroupModals";
 
 export default function TableDetailScreen() {
   const db = useDb();
@@ -269,6 +270,79 @@ export default function TableDetailScreen() {
         </View>
       </Modal>
 
+      <TableGroupModals
+        showCreateGroupModal={showCreateGroupModal}
+        targetProfileForNewGroup={targetProfileForNewGroup}
+        newGroupName={newGroupName}
+        newGroupRuleId={newGroupRuleId}
+        pipelineRules={pipelineRules}
+        legacyRules={legacyRules}
+        onChangeNewGroupName={setNewGroupName}
+        onSelectNewGroupRuleId={setNewGroupRuleId}
+        onCloseCreateGroupModal={() => {
+          setShowCreateGroupModal(false);
+          resetCreateGroupForm();
+        }}
+        onSubmitCreateGroup={async () => {
+          const name = newGroupName.trim();
+          if (!name || !targetProfileForNewGroup) return;
+        
+          await createGroup(db, {
+            profileId: targetProfileForNewGroup.id,
+            name,
+            rule_id: newGroupRuleId ?? null,
+          });
+        
+          setShowCreateGroupModal(false);
+          resetCreateGroupForm();
+          await load();
+        }}
+        showRenameGroupModal={showRenameGroupModal}
+        renameGroupValue={renameGroupValue}
+        onChangeRenameGroupValue={setRenameGroupValue}
+        onCloseRenameGroupModal={() => {
+          setShowRenameGroupModal(false);
+          setEditingGroup(null);
+          setRenameGroupValue("");
+        }}
+        onSubmitRenameGroup={async () => {
+          const name = renameGroupValue.trim();
+          if (!editingGroup || !name) return;
+        
+          await updateGroupName(db, editingGroup.id, name);
+        
+          setShowRenameGroupModal(false);
+          setEditingGroup(null);
+          setRenameGroupValue("");
+        
+          await load();
+        }}
+        showEditGroupRuleModal={showEditGroupRuleModal}
+        editingGroupForRule={editingGroupForRule}
+        selectedGroupRuleId={selectedGroupRuleId}
+        onSelectGroupRuleId={setSelectedGroupRuleId}
+        onCloseEditGroupRuleModal={() => {
+          setShowEditGroupRuleModal(false);
+          setEditingGroupForRule(null);
+          setSelectedGroupRuleId(null);
+        }}
+        onSubmitEditGroupRule={async () => {
+          if (!editingGroupForRule) return;
+        
+          await updateGroupRuleId(
+            db,
+            editingGroupForRule.id,
+            selectedGroupRuleId ?? null
+          );
+        
+          setShowEditGroupRuleModal(false);
+          setEditingGroupForRule(null);
+          setSelectedGroupRuleId(null);
+        
+          await load();
+        }}
+      />
+
       <TableProfileModals
         showCreateProfileModal={showCreateProfileModal}
         newProfileName={newProfileName}
@@ -312,296 +386,6 @@ export default function TableDetailScreen() {
           await load();
         }}
       />
-
-      <Modal
-        visible={showCreateGroupModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {
-          setShowCreateGroupModal(false);
-          resetCreateGroupForm();
-        }}
-      >
-        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 16 }}>
-          <View style={{ backgroundColor: "white", borderRadius: 12, padding: 16, borderWidth: 1, maxHeight: "90%" }}>
-            <Text style={{ fontSize: 16, fontWeight: "700" }}>Créer une action</Text>
-
-            {targetProfileForNewGroup ? (
-              <Text style={{ marginTop: 8, opacity: 0.7 }}>
-                Profil : {targetProfileForNewGroup.name}
-              </Text>
-            ) : null}
-
-            <ScrollView style={{ marginTop: 12 }}>
-              <Text>Nom de l’action</Text>
-              <TextInput
-                value={newGroupName}
-                onChangeText={setNewGroupName}
-                placeholder="Ex: Attaque, Esquive, Dégâts..."
-                style={{ marginTop: 6, borderWidth: 1, borderRadius: 10, padding: 10 }}
-              />
-
-              <Text style={{ marginTop: 12, fontWeight: "700" }}>Règle de groupe</Text>
-
-              <Pressable
-                onPress={() => setNewGroupRuleId(null)}
-                style={{
-                  marginTop: 8,
-                  padding: 10,
-                  borderWidth: 1,
-                  borderRadius: 8,
-                  opacity: newGroupRuleId === null ? 1 : 0.7,
-                }}
-              >
-                <Text style={{ fontWeight: newGroupRuleId === null ? "700" : "400" }}>
-                  Somme (par défaut)
-                </Text>
-              </Pressable>
-
-              <Text style={{ marginTop: 12, fontWeight: "700" }}>Pipelines</Text>
-              {pipelineRules.map((rule) => (
-                <Pressable
-                  key={rule.id}
-                  onPress={() => setNewGroupRuleId(rule.id)}
-                  style={{
-                    marginTop: 8,
-                    padding: 10,
-                    borderWidth: 1,
-                    borderRadius: 8,
-                    opacity: newGroupRuleId === rule.id ? 1 : 0.7,
-                  }}
-                >
-                  <Text style={{ fontWeight: newGroupRuleId === rule.id ? "700" : "400" }}>
-                    {rule.name}
-                  </Text>
-                </Pressable>
-              ))}
-
-              {legacyRules.length > 0 ? (
-                <View style={{ marginTop: 12 }}>
-                  <Text style={{ fontWeight: "700" }}>Compatibilité</Text>
-                  {legacyRules.map((rule) => (
-                    <Pressable
-                      key={rule.id}
-                      onPress={() => setNewGroupRuleId(rule.id)}
-                      style={{
-                        marginTop: 8,
-                        padding: 10,
-                        borderWidth: 1,
-                        borderRadius: 8,
-                        opacity: newGroupRuleId === rule.id ? 1 : 0.7,
-                      }}
-                    >
-                      <Text style={{ fontWeight: newGroupRuleId === rule.id ? "700" : "400" }}>
-                        {rule.name}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              ) : null}
-            </ScrollView>
-
-            <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 12 }}>
-              <Pressable
-                onPress={() => {
-                  setShowCreateGroupModal(false);
-                  resetCreateGroupForm();
-                }}
-                style={{ padding: 10, borderWidth: 1, borderRadius: 10, marginRight: 10 }}
-              >
-                <Text>Annuler</Text>
-              </Pressable>
-
-              <Pressable
-                onPress={async () => {
-                  const name = newGroupName.trim();
-                  if (!name || !targetProfileForNewGroup) return;
-
-                  await createGroup(db, {
-                    profileId: targetProfileForNewGroup.id,
-                    name,
-                    rule_id: newGroupRuleId ?? null,
-                  });
-
-                  setShowCreateGroupModal(false);
-                  resetCreateGroupForm();
-                  await load();
-                }}
-                style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
-              >
-                <Text style={{ fontWeight: "700" }}>Créer</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal
-        visible={showRenameGroupModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {
-          setShowRenameGroupModal(false);
-          setEditingGroup(null);
-          setRenameGroupValue("");
-        }}
-      >
-        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 16 }}>
-          <View style={{ backgroundColor: "white", borderRadius: 12, padding: 16, borderWidth: 1 }}>
-            <Text style={{ fontSize: 16, fontWeight: "700" }}>Renommer l’action</Text>
-
-            <TextInput
-              value={renameGroupValue}
-              onChangeText={setRenameGroupValue}
-              placeholder="Nouveau nom de l’action..."
-              style={{ marginTop: 12, borderWidth: 1, borderRadius: 10, padding: 10 }}
-            />
-
-            <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 12 }}>
-              <Pressable
-                onPress={() => {
-                  setShowRenameGroupModal(false);
-                  setEditingGroup(null);
-                  setRenameGroupValue("");
-                }}
-                style={{ padding: 10, borderWidth: 1, borderRadius: 10, marginRight: 10 }}
-              >
-                <Text>Annuler</Text>
-              </Pressable>
-
-              <Pressable
-                onPress={async () => {
-                  const name = renameGroupValue.trim();
-                  if (!editingGroup || !name) return;
-
-                  await updateGroupName(db, editingGroup.id, name);
-
-                  setShowRenameGroupModal(false);
-                  setEditingGroup(null);
-                  setRenameGroupValue("");
-
-                  await load();
-                }}
-                style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
-              >
-                <Text style={{ fontWeight: "700" }}>Renommer</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal
-        visible={showEditGroupRuleModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {
-          setShowEditGroupRuleModal(false);
-          setEditingGroupForRule(null);
-          setSelectedGroupRuleId(null);
-        }}
-      >
-        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 16 }}>
-          <View style={{ backgroundColor: "white", borderRadius: 12, padding: 16, borderWidth: 1, maxHeight: "90%" }}>
-            <Text style={{ fontSize: 16, fontWeight: "700" }}>Modifier la règle de l’action</Text>
-
-            {editingGroupForRule ? (
-              <Text style={{ marginTop: 8, opacity: 0.7 }}>
-                Action : {editingGroupForRule.name}
-              </Text>
-            ) : null}
-
-            <ScrollView style={{ marginTop: 12 }}>
-              <Pressable
-                onPress={() => setSelectedGroupRuleId(null)}
-                style={{
-                  marginTop: 8,
-                  padding: 10,
-                  borderWidth: 1,
-                  borderRadius: 8,
-                  opacity: selectedGroupRuleId === null ? 1 : 0.7,
-                }}
-              >
-                <Text style={{ fontWeight: selectedGroupRuleId === null ? "700" : "400" }}>
-                  Somme (par défaut)
-                </Text>
-              </Pressable>
-
-              <Text style={{ marginTop: 12, fontWeight: "700" }}>Pipelines</Text>
-              {pipelineRules.map((rule) => (
-                <Pressable
-                  key={rule.id}
-                  onPress={() => setSelectedGroupRuleId(rule.id)}
-                  style={{
-                    marginTop: 8,
-                    padding: 10,
-                    borderWidth: 1,
-                    borderRadius: 8,
-                    opacity: selectedGroupRuleId === rule.id ? 1 : 0.7,
-                  }}
-                >
-                  <Text style={{ fontWeight: selectedGroupRuleId === rule.id ? "700" : "400" }}>
-                    {rule.name}
-                  </Text>
-                </Pressable>
-              ))}
-
-              {legacyRules.length > 0 ? (
-                <View style={{ marginTop: 12 }}>
-                  <Text style={{ fontWeight: "700" }}>Compatibilité</Text>
-                  {legacyRules.map((rule) => (
-                    <Pressable
-                      key={rule.id}
-                      onPress={() => setSelectedGroupRuleId(rule.id)}
-                      style={{
-                        marginTop: 8,
-                        padding: 10,
-                        borderWidth: 1,
-                        borderRadius: 8,
-                        opacity: selectedGroupRuleId === rule.id ? 1 : 0.7,
-                      }}
-                    >
-                      <Text style={{ fontWeight: selectedGroupRuleId === rule.id ? "700" : "400" }}>
-                        {rule.name}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              ) : null}
-            </ScrollView>
-
-            <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 16 }}>
-              <Pressable
-                onPress={() => {
-                  setShowEditGroupRuleModal(false);
-                  setEditingGroupForRule(null);
-                  setSelectedGroupRuleId(null);
-                }}
-                style={{ padding: 10, borderWidth: 1, borderRadius: 8, marginRight: 10 }}
-              >
-                <Text>Annuler</Text>
-              </Pressable>
-
-              <Pressable
-                onPress={async () => {
-                  if (!editingGroupForRule) return;
-
-                  await updateGroupRuleId(db, editingGroupForRule.id, selectedGroupRuleId ?? null);
-
-                  setShowEditGroupRuleModal(false);
-                  setEditingGroupForRule(null);
-                  setSelectedGroupRuleId(null);
-
-                  await load();
-                }}
-                style={{ padding: 10, borderWidth: 1, borderRadius: 8 }}
-              >
-                <Text style={{ fontWeight: "700" }}>Sauvegarder</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
 
       <Modal
         visible={showCreateDieModal}
