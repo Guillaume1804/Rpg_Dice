@@ -3,9 +3,23 @@ import { useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { View, Text, Pressable, TextInput, Modal, ScrollView } from "react-native";
 import { useDb } from "../../data/db/DbProvider";
-import { getTableById, TableRow, updateTableName } from "../../data/repositories/tablesRepo";
+
 import {
-  listGroupsByTableId,
+  getTableById,
+  TableRow,
+  updateTableName,
+} from "../../data/repositories/tablesRepo";
+
+import {
+  listProfilesByTableId,
+  createProfile,
+  updateProfileName,
+  deleteProfile,
+  ProfileRow,
+} from "../../data/repositories/profilesRepo";
+
+import {
+  listGroupsByProfileId,
   listDiceByGroupId,
   GroupRow,
   GroupDieRow,
@@ -17,11 +31,18 @@ import {
   createGroupDie,
   deleteGroupDie,
 } from "../../data/repositories/groupsRepo";
+
 import { listRules, RuleRow } from "../../data/repositories/rulesRepo";
+import { newId } from "../../core/types/ids";
 
 type GroupWithDice = {
   group: GroupRow;
   dice: GroupDieRow[];
+};
+
+type ProfileWithGroups = {
+  profile: ProfileRow;
+  groups: GroupWithDice[];
 };
 
 export default function TableDetailScreen() {
@@ -31,13 +52,21 @@ export default function TableDetailScreen() {
   const tableId = useMemo(() => (typeof id === "string" ? id : ""), [id]);
 
   const [table, setTable] = useState<TableRow | null>(null);
-  const [groups, setGroups] = useState<GroupWithDice[]>([]);
+  const [profiles, setProfiles] = useState<ProfileWithGroups[]>([]);
   const [rules, setRules] = useState<RuleRow[]>([]);
 
   const [renameValue, setRenameValue] = useState("");
   const [showRenameModal, setShowRenameModal] = useState(false);
 
+  const [showCreateProfileModal, setShowCreateProfileModal] = useState(false);
+  const [newProfileName, setNewProfileName] = useState("");
+
+  const [showRenameProfileModal, setShowRenameProfileModal] = useState(false);
+  const [editingProfile, setEditingProfile] = useState<ProfileRow | null>(null);
+  const [renameProfileValue, setRenameProfileValue] = useState("");
+
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
+  const [targetProfileForNewGroup, setTargetProfileForNewGroup] = useState<ProfileRow | null>(null);
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupRuleId, setNewGroupRuleId] = useState<string | null>(null);
 
@@ -58,7 +87,6 @@ export default function TableDetailScreen() {
   const [newDieRuleId, setNewDieRuleId] = useState<string | null>(null);
 
   const [editingDie, setEditingDie] = useState<GroupDieRow | null>(null);
-
   const [editDieSides, setEditDieSides] = useState("6");
   const [editDieQty, setEditDieQty] = useState("1");
   const [editDieModifier, setEditDieModifier] = useState("0");
@@ -77,18 +105,30 @@ export default function TableDetailScreen() {
       setTable(t);
 
       if (!t) {
-        setGroups([]);
+        setProfiles([]);
         setRules([]);
         return;
       }
 
-      const gs = await listGroupsByTableId(db, tableId);
-      const withDice: GroupWithDice[] = [];
-      for (const g of gs) {
-        const dice = await listDiceByGroupId(db, g.id);
-        withDice.push({ group: g, dice });
+      const profileRows = await listProfilesByTableId(db, tableId);
+      const nextProfiles: ProfileWithGroups[] = [];
+
+      for (const profile of profileRows) {
+        const groupRows = await listGroupsByProfileId(db, profile.id);
+        const groupsWithDice: GroupWithDice[] = [];
+
+        for (const group of groupRows) {
+          const dice = await listDiceByGroupId(db, group.id);
+          groupsWithDice.push({ group, dice });
+        }
+
+        nextProfiles.push({
+          profile,
+          groups: groupsWithDice,
+        });
       }
-      setGroups(withDice);
+
+      setProfiles(nextProfiles);
 
       const allRules = await listRules(db);
       setRules(allRules);
@@ -109,6 +149,16 @@ export default function TableDetailScreen() {
   const pipelineRules = rules.filter((r) => r.kind === "pipeline");
   const legacyRules = rules.filter((r) => r.kind !== "pipeline");
 
+  function resetCreateProfileForm() {
+    setNewProfileName("");
+  }
+
+  function resetCreateGroupForm() {
+    setTargetProfileForNewGroup(null);
+    setNewGroupName("");
+    setNewGroupRuleId(null);
+  }
+
   function resetCreateDieForm() {
     setTargetGroupForNewDie(null);
     setNewDieSides("6");
@@ -118,18 +168,10 @@ export default function TableDetailScreen() {
     setNewDieRuleId(null);
   }
 
-  function resetCreateGroupForm() {
-    setNewGroupName("");
-    setNewGroupRuleId(null);
-  }
-
-  function openEditDieModal(die: GroupDieRow) {
-    setEditingDie(die);
-    setEditDieSides(String(die.sides));
-    setEditDieQty(String(die.qty));
-    setEditDieModifier(String(die.modifier ?? 0));
-    setEditDieSign((die.sign ?? 1) === -1 ? "-1" : "1");
-    setSelectedRuleId(die.rule_id ?? null);
+  function openRenameProfileModal(profile: ProfileRow) {
+    setEditingProfile(profile);
+    setRenameProfileValue(profile.name);
+    setShowRenameProfileModal(true);
   }
 
   function openRenameGroupModal(group: GroupRow) {
@@ -142,6 +184,15 @@ export default function TableDetailScreen() {
     setEditingGroupForRule(group);
     setSelectedGroupRuleId(group.rule_id ?? null);
     setShowEditGroupRuleModal(true);
+  }
+
+  function openEditDieModal(die: GroupDieRow) {
+    setEditingDie(die);
+    setEditDieSides(String(die.sides));
+    setEditDieQty(String(die.qty));
+    setEditDieModifier(String(die.modifier ?? 0));
+    setEditDieSign((die.sign ?? 1) === -1 ? "-1" : "1");
+    setSelectedRuleId(die.rule_id ?? null);
   }
 
   if (error) {
@@ -184,111 +235,154 @@ export default function TableDetailScreen() {
 
           <Pressable
             onPress={() => {
-              resetCreateGroupForm();
-              setShowCreateGroupModal(true);
+              resetCreateProfileForm();
+              setShowCreateProfileModal(true);
             }}
             style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
           >
-            <Text>Créer un groupe</Text>
+            <Text>Créer un profil</Text>
           </Pressable>
         </View>
       )}
 
       <ScrollView>
         <View style={{ padding: 12, borderWidth: 1, borderRadius: 12 }}>
-          <Text style={{ fontWeight: "700" }}>Groupes</Text>
+          <Text style={{ fontWeight: "700" }}>Profils</Text>
 
-          {groups.length === 0 ? (
-            <Text style={{ marginTop: 8, opacity: 0.7 }}>Aucun groupe.</Text>
+          {profiles.length === 0 ? (
+            <Text style={{ marginTop: 8, opacity: 0.7 }}>Aucun profil.</Text>
           ) : (
-            groups.map(({ group, dice }) => (
-              <View key={group.id} style={{ marginTop: 12, paddingTop: 10, borderTopWidth: 1 }}>
-                <Text style={{ fontSize: 16, fontWeight: "700" }}>{group.name}</Text>
-
-                <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                  règle de groupe : {getRuleName(group.rule_id)}
-                </Text>
+            profiles.map(({ profile, groups }) => (
+              <View key={profile.id} style={{ marginTop: 16, paddingTop: 12, borderTopWidth: 1 }}>
+                <Text style={{ fontSize: 17, fontWeight: "800" }}>{profile.name}</Text>
 
                 {!isSystem ? (
                   <View style={{ flexDirection: "row", marginTop: 8, flexWrap: "wrap" }}>
                     <Pressable
-                      onPress={() => openRenameGroupModal(group)}
+                      onPress={() => openRenameProfileModal(profile)}
                       style={{ padding: 8, borderWidth: 1, borderRadius: 8, marginRight: 8, marginBottom: 8 }}
                     >
-                      <Text>Renommer le groupe</Text>
-                    </Pressable>
-
-                    <Pressable
-                      onPress={() => openEditGroupRuleModal(group)}
-                      style={{ padding: 8, borderWidth: 1, borderRadius: 8, marginRight: 8, marginBottom: 8 }}
-                    >
-                      <Text>Règle du groupe</Text>
+                      <Text>Renommer le profil</Text>
                     </Pressable>
 
                     <Pressable
                       onPress={() => {
-                        setTargetGroupForNewDie(group);
-                        setNewDieSides("6");
-                        setNewDieQty("1");
-                        setNewDieModifier("0");
-                        setNewDieSign("1");
-                        setNewDieRuleId(null);
-                        setShowCreateDieModal(true);
+                        setTargetProfileForNewGroup(profile);
+                        setNewGroupName("");
+                        setNewGroupRuleId(null);
+                        setShowCreateGroupModal(true);
                       }}
                       style={{ padding: 8, borderWidth: 1, borderRadius: 8, marginRight: 8, marginBottom: 8 }}
                     >
-                      <Text>Ajouter une entrée</Text>
+                      <Text>Créer une action</Text>
                     </Pressable>
 
                     <Pressable
                       onPress={async () => {
-                        await deleteGroup(db, group.id);
+                        await deleteProfile(db, profile.id);
                         await load();
                       }}
                       style={{ padding: 8, borderWidth: 1, borderRadius: 8, marginBottom: 8 }}
                     >
-                      <Text>Supprimer le groupe</Text>
+                      <Text>Supprimer le profil</Text>
                     </Pressable>
                   </View>
                 ) : null}
 
-                {dice.length === 0 ? (
-                  <Text style={{ marginTop: 8, opacity: 0.7 }}>Aucune entrée.</Text>
+                {groups.length === 0 ? (
+                  <Text style={{ marginTop: 8, opacity: 0.7 }}>Aucune action.</Text>
                 ) : (
-                  dice.map((d) => (
-                    <View key={d.id} style={{ marginTop: 10, padding: 10, borderWidth: 1, borderRadius: 10 }}>
-                      <Text style={{ fontWeight: "700" }}>
-                        {d.qty}d{d.sides}
-                      </Text>
+                  groups.map(({ group, dice }) => (
+                    <View key={group.id} style={{ marginTop: 12, padding: 12, borderWidth: 1, borderRadius: 12 }}>
+                      <Text style={{ fontSize: 16, fontWeight: "700" }}>{group.name}</Text>
 
                       <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                        signe : {d.sign === -1 ? "-" : "+"} | mod : {d.modifier}
-                      </Text>
-
-                      <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                        règle d’entrée : {getRuleName(d.rule_id)}
+                        règle de groupe : {getRuleName(group.rule_id)}
                       </Text>
 
                       {!isSystem ? (
                         <View style={{ flexDirection: "row", marginTop: 8, flexWrap: "wrap" }}>
                           <Pressable
-                            onPress={() => openEditDieModal(d)}
+                            onPress={() => openRenameGroupModal(group)}
                             style={{ padding: 8, borderWidth: 1, borderRadius: 8, marginRight: 8, marginBottom: 8 }}
                           >
-                            <Text>Éditer l’entrée</Text>
+                            <Text>Renommer l’action</Text>
+                          </Pressable>
+
+                          <Pressable
+                            onPress={() => openEditGroupRuleModal(group)}
+                            style={{ padding: 8, borderWidth: 1, borderRadius: 8, marginRight: 8, marginBottom: 8 }}
+                          >
+                            <Text>Règle de l’action</Text>
+                          </Pressable>
+
+                          <Pressable
+                            onPress={() => {
+                              setTargetGroupForNewDie(group);
+                              setNewDieSides("6");
+                              setNewDieQty("1");
+                              setNewDieModifier("0");
+                              setNewDieSign("1");
+                              setNewDieRuleId(null);
+                              setShowCreateDieModal(true);
+                            }}
+                            style={{ padding: 8, borderWidth: 1, borderRadius: 8, marginRight: 8, marginBottom: 8 }}
+                          >
+                            <Text>Ajouter une entrée</Text>
                           </Pressable>
 
                           <Pressable
                             onPress={async () => {
-                              await deleteGroupDie(db, d.id);
+                              await deleteGroup(db, group.id);
                               await load();
                             }}
                             style={{ padding: 8, borderWidth: 1, borderRadius: 8, marginBottom: 8 }}
                           >
-                            <Text>Supprimer l’entrée</Text>
+                            <Text>Supprimer l’action</Text>
                           </Pressable>
                         </View>
                       ) : null}
+
+                      {dice.length === 0 ? (
+                        <Text style={{ marginTop: 8, opacity: 0.7 }}>Aucune entrée.</Text>
+                      ) : (
+                        dice.map((d) => (
+                          <View key={d.id} style={{ marginTop: 10, padding: 10, borderWidth: 1, borderRadius: 10 }}>
+                            <Text style={{ fontWeight: "700" }}>
+                              {d.qty}d{d.sides}
+                            </Text>
+
+                            <Text style={{ marginTop: 4, opacity: 0.8 }}>
+                              signe : {d.sign === -1 ? "-" : "+"} | mod : {d.modifier}
+                            </Text>
+
+                            <Text style={{ marginTop: 4, opacity: 0.8 }}>
+                              règle d’entrée : {getRuleName(d.rule_id)}
+                            </Text>
+
+                            {!isSystem ? (
+                              <View style={{ flexDirection: "row", marginTop: 8, flexWrap: "wrap" }}>
+                                <Pressable
+                                  onPress={() => openEditDieModal(d)}
+                                  style={{ padding: 8, borderWidth: 1, borderRadius: 8, marginRight: 8, marginBottom: 8 }}
+                                >
+                                  <Text>Éditer l’entrée</Text>
+                                </Pressable>
+
+                                <Pressable
+                                  onPress={async () => {
+                                    await deleteGroupDie(db, d.id);
+                                    await load();
+                                  }}
+                                  style={{ padding: 8, borderWidth: 1, borderRadius: 8, marginBottom: 8 }}
+                                >
+                                  <Text>Supprimer l’entrée</Text>
+                                </Pressable>
+                              </View>
+                            ) : null}
+                          </View>
+                        ))
+                      )}
                     </View>
                   ))
                 )}
@@ -298,7 +392,6 @@ export default function TableDetailScreen() {
         </View>
       </ScrollView>
 
-      {/* Modal renommer table */}
       <Modal
         visible={showRenameModal}
         transparent
@@ -343,7 +436,116 @@ export default function TableDetailScreen() {
         </View>
       </Modal>
 
-      {/* Modal création groupe */}
+      <Modal
+        visible={showCreateProfileModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setShowCreateProfileModal(false);
+          resetCreateProfileForm();
+        }}
+      >
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 16 }}>
+          <View style={{ backgroundColor: "white", borderRadius: 12, padding: 16, borderWidth: 1 }}>
+            <Text style={{ fontSize: 16, fontWeight: "700" }}>Créer un profil</Text>
+
+            <TextInput
+              value={newProfileName}
+              onChangeText={setNewProfileName}
+              placeholder="Ex: Guerrier, Mage, Samouraï..."
+              style={{ marginTop: 12, borderWidth: 1, borderRadius: 10, padding: 10 }}
+            />
+
+            <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 12 }}>
+              <Pressable
+                onPress={() => {
+                  setShowCreateProfileModal(false);
+                  resetCreateProfileForm();
+                }}
+                style={{ padding: 10, borderWidth: 1, borderRadius: 10, marginRight: 10 }}
+              >
+                <Text>Annuler</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={async () => {
+                  const name = newProfileName.trim();
+                  if (!name) return;
+
+                  await createProfile(db, {
+                    id: await newId(),
+                    table_id: table.id,
+                    name,
+                  });
+
+                  setShowCreateProfileModal(false);
+                  resetCreateProfileForm();
+                  await load();
+                }}
+                style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
+              >
+                <Text style={{ fontWeight: "700" }}>Créer</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showRenameProfileModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setShowRenameProfileModal(false);
+          setEditingProfile(null);
+          setRenameProfileValue("");
+        }}
+      >
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 16 }}>
+          <View style={{ backgroundColor: "white", borderRadius: 12, padding: 16, borderWidth: 1 }}>
+            <Text style={{ fontSize: 16, fontWeight: "700" }}>Renommer le profil</Text>
+
+            <TextInput
+              value={renameProfileValue}
+              onChangeText={setRenameProfileValue}
+              placeholder="Nouveau nom du profil..."
+              style={{ marginTop: 12, borderWidth: 1, borderRadius: 10, padding: 10 }}
+            />
+
+            <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 12 }}>
+              <Pressable
+                onPress={() => {
+                  setShowRenameProfileModal(false);
+                  setEditingProfile(null);
+                  setRenameProfileValue("");
+                }}
+                style={{ padding: 10, borderWidth: 1, borderRadius: 10, marginRight: 10 }}
+              >
+                <Text>Annuler</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={async () => {
+                  const name = renameProfileValue.trim();
+                  if (!editingProfile || !name) return;
+
+                  await updateProfileName(db, editingProfile.id, name);
+
+                  setShowRenameProfileModal(false);
+                  setEditingProfile(null);
+                  setRenameProfileValue("");
+
+                  await load();
+                }}
+                style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
+              >
+                <Text style={{ fontWeight: "700" }}>Renommer</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <Modal
         visible={showCreateGroupModal}
         transparent
@@ -355,14 +557,20 @@ export default function TableDetailScreen() {
       >
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 16 }}>
           <View style={{ backgroundColor: "white", borderRadius: 12, padding: 16, borderWidth: 1, maxHeight: "90%" }}>
-            <Text style={{ fontSize: 16, fontWeight: "700" }}>Créer un groupe</Text>
+            <Text style={{ fontSize: 16, fontWeight: "700" }}>Créer une action</Text>
+
+            {targetProfileForNewGroup ? (
+              <Text style={{ marginTop: 8, opacity: 0.7 }}>
+                Profil : {targetProfileForNewGroup.name}
+              </Text>
+            ) : null}
 
             <ScrollView style={{ marginTop: 12 }}>
-              <Text>Nom du groupe</Text>
+              <Text>Nom de l’action</Text>
               <TextInput
                 value={newGroupName}
                 onChangeText={setNewGroupName}
-                placeholder="Ex: Actions, Dégâts, Localisation..."
+                placeholder="Ex: Attaque, Esquive, Dégâts..."
                 style={{ marginTop: 6, borderWidth: 1, borderRadius: 10, padding: 10 }}
               />
 
@@ -440,10 +648,10 @@ export default function TableDetailScreen() {
               <Pressable
                 onPress={async () => {
                   const name = newGroupName.trim();
-                  if (!name) return;
+                  if (!name || !targetProfileForNewGroup) return;
 
                   await createGroup(db, {
-                    tableId: table.id,
+                    profileId: targetProfileForNewGroup.id,
                     name,
                     rule_id: newGroupRuleId ?? null,
                   });
@@ -461,7 +669,6 @@ export default function TableDetailScreen() {
         </View>
       </Modal>
 
-      {/* Modal renommer groupe */}
       <Modal
         visible={showRenameGroupModal}
         transparent
@@ -474,12 +681,12 @@ export default function TableDetailScreen() {
       >
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 16 }}>
           <View style={{ backgroundColor: "white", borderRadius: 12, padding: 16, borderWidth: 1 }}>
-            <Text style={{ fontSize: 16, fontWeight: "700" }}>Renommer le groupe</Text>
+            <Text style={{ fontSize: 16, fontWeight: "700" }}>Renommer l’action</Text>
 
             <TextInput
               value={renameGroupValue}
               onChangeText={setRenameGroupValue}
-              placeholder="Nouveau nom du groupe..."
+              placeholder="Nouveau nom de l’action..."
               style={{ marginTop: 12, borderWidth: 1, borderRadius: 10, padding: 10 }}
             />
 
@@ -498,8 +705,7 @@ export default function TableDetailScreen() {
               <Pressable
                 onPress={async () => {
                   const name = renameGroupValue.trim();
-                  if (!editingGroup) return;
-                  if (!name) return;
+                  if (!editingGroup || !name) return;
 
                   await updateGroupName(db, editingGroup.id, name);
 
@@ -518,7 +724,6 @@ export default function TableDetailScreen() {
         </View>
       </Modal>
 
-      {/* Modal règle du groupe */}
       <Modal
         visible={showEditGroupRuleModal}
         transparent
@@ -531,11 +736,11 @@ export default function TableDetailScreen() {
       >
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 16 }}>
           <View style={{ backgroundColor: "white", borderRadius: 12, padding: 16, borderWidth: 1, maxHeight: "90%" }}>
-            <Text style={{ fontSize: 16, fontWeight: "700" }}>Modifier la règle du groupe</Text>
+            <Text style={{ fontSize: 16, fontWeight: "700" }}>Modifier la règle de l’action</Text>
 
             {editingGroupForRule ? (
               <Text style={{ marginTop: 8, opacity: 0.7 }}>
-                Groupe : {editingGroupForRule.name}
+                Action : {editingGroupForRule.name}
               </Text>
             ) : null}
 
@@ -631,7 +836,6 @@ export default function TableDetailScreen() {
         </View>
       </Modal>
 
-      {/* Modal création entrée */}
       <Modal
         visible={showCreateDieModal}
         transparent
@@ -647,7 +851,7 @@ export default function TableDetailScreen() {
 
             {targetGroupForNewDie ? (
               <Text style={{ marginTop: 8, opacity: 0.7 }}>
-                Groupe : {targetGroupForNewDie.name}
+                Action : {targetGroupForNewDie.name}
               </Text>
             ) : null}
 
@@ -812,7 +1016,6 @@ export default function TableDetailScreen() {
         </View>
       </Modal>
 
-      {/* Modal édition complète d'une entrée */}
       <Modal
         visible={!!editingDie}
         transparent
