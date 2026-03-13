@@ -9,6 +9,43 @@ export type ProfileRow = {
   updated_at: string;
 };
 
+function nowIso() {
+  return new Date().toISOString();
+}
+
+async function assertTableIsNotSystemFromTableId(db: Db, tableId: string): Promise<void> {
+  const rows = await db.getAllAsync<{ is_system: number }>(
+    `
+    SELECT is_system
+    FROM tables
+    WHERE id = ?
+    LIMIT 1;
+    `,
+    [tableId]
+  );
+
+  if (rows.length && rows[0].is_system === 1) {
+    throw new Error("Modification interdite sur table système");
+  }
+}
+
+async function assertTableIsNotSystemFromProfileId(db: Db, profileId: string): Promise<void> {
+  const rows = await db.getAllAsync<{ is_system: number }>(
+    `
+    SELECT t.is_system
+    FROM profiles p
+    JOIN tables t ON t.id = p.table_id
+    WHERE p.id = ?
+    LIMIT 1;
+    `,
+    [profileId]
+  );
+
+  if (rows.length && rows[0].is_system === 1) {
+    throw new Error("Modification interdite sur table système");
+  }
+}
+
 export async function listProfilesByTableId(
   db: Db,
   tableId: string
@@ -50,7 +87,9 @@ export async function createProfile(
     sort_order?: number;
   }
 ): Promise<void> {
-  const now = new Date().toISOString();
+  await assertTableIsNotSystemFromTableId(db, row.table_id);
+
+  const now = nowIso();
 
   await db.runAsync(
     `
@@ -80,7 +119,9 @@ export async function updateProfileName(
   id: string,
   name: string
 ): Promise<void> {
-  const now = new Date().toISOString();
+  await assertTableIsNotSystemFromProfileId(db, id);
+
+  const now = nowIso();
 
   await db.runAsync(
     `
@@ -96,6 +137,8 @@ export async function deleteProfile(
   db: Db,
   id: string
 ): Promise<void> {
+  await assertTableIsNotSystemFromProfileId(db, id);
+
   await db.runAsync(
     `
     DELETE FROM profiles
@@ -110,7 +153,9 @@ export async function updateProfileOrder(
   id: string,
   sortOrder: number
 ): Promise<void> {
-  const now = new Date().toISOString();
+  await assertTableIsNotSystemFromProfileId(db, id);
+
+  const now = nowIso();
 
   await db.runAsync(
     `
