@@ -1,39 +1,20 @@
 // app/tables/[id].tsx
 import { useLocalSearchParams } from "expo-router";
 import { useMemo, useState } from "react";
-import { View, Text, Pressable, TextInput, Modal, ScrollView } from "react-native";
+import { View, Text, Pressable, ScrollView } from "react-native";
 import { useDb } from "../../data/db/DbProvider";
 
-import {
-  updateTableName,
-} from "../../data/repositories/tablesRepo";
-
-import {
-  createProfile,
-  updateProfileName,
-  deleteProfile,
-  ProfileRow,
-} from "../../data/repositories/profilesRepo";
-
-import {
-  GroupRow,
-  GroupDieRow,
-  updateGroupDie,
-  updateGroupName,
-  updateGroupRuleId,
-  createGroup,
-  deleteGroup,
-  createGroupDie,
-  deleteGroupDie,
-} from "../../data/repositories/groupsRepo";
-
-import { newId } from "../../core/types/ids";
+import { ProfileRow } from "../../data/repositories/profilesRepo";
+import { GroupRow, GroupDieRow } from "../../data/repositories/groupsRepo";
 
 import { useTableDetailData } from "./hooks/useTableDetailData";
 import { TableProfilesSection } from "./components/TableProfilesSection";
 import { TableProfileModals } from "./components/TableProfileModals";
 import { TableGroupModals } from "./components/TableGroupModals";
 import { TableDieModals } from "./components/TableDieModals";
+import { TableRenameModal } from "./components/TableRenameModal";
+
+import { useTableDetailActions } from "./hooks/useTableDetailActions";
 
 export default function TableDetailScreen() {
   const db = useDb();
@@ -90,6 +71,73 @@ export default function TableDetailScreen() {
   } = useTableDetailData({
     db,
     tableId,
+  });
+
+  const {
+    submitRenameTable,
+    submitCreateProfile,
+    submitRenameProfile,
+    submitDeleteProfile,
+    submitCreateGroup,
+    submitRenameGroup,
+    submitEditGroupRule,
+    submitDeleteGroup,
+    submitCreateDie,
+    submitEditDie,
+    submitDeleteDie,
+  } = useTableDetailActions({
+    db,
+    table,
+    load,
+  
+    renameValue,
+    setShowRenameModal,
+  
+    newProfileName,
+    resetCreateProfileForm,
+    setShowCreateProfileModal,
+  
+    editingProfile,
+    renameProfileValue,
+    setShowRenameProfileModal,
+    setEditingProfile,
+    setRenameProfileValue,
+  
+    targetProfileForNewGroup,
+    newGroupName,
+    newGroupRuleId,
+    resetCreateGroupForm,
+    setShowCreateGroupModal,
+  
+    editingGroup,
+    renameGroupValue,
+    setShowRenameGroupModal,
+    setEditingGroup,
+    setRenameGroupValue,
+  
+    editingGroupForRule,
+    selectedGroupRuleId,
+    setShowEditGroupRuleModal,
+    setEditingGroupForRule,
+    setSelectedGroupRuleId,
+  
+    targetGroupForNewDie,
+    newDieSides,
+    newDieQty,
+    newDieModifier,
+    newDieSign,
+    newDieRuleId,
+    resetCreateDieForm,
+    setShowCreateDieModal,
+  
+    editingDie,
+    editDieSides,
+    editDieQty,
+    editDieModifier,
+    editDieSign,
+    selectedRuleId,
+    setEditingDie,
+    setSelectedRuleId,
   });
 
   function resetCreateProfileForm() {
@@ -200,10 +248,7 @@ export default function TableDetailScreen() {
             setNewGroupRuleId(null);
             setShowCreateGroupModal(true);
           }}
-          onDeleteProfile={async (profile) => {
-            await deleteProfile(db, profile.id);
-            await load();
-          }}
+          onDeleteProfile={submitDeleteProfile}
           onRenameGroup={openRenameGroupModal}
           onEditGroupRule={openEditGroupRuleModal}
           onCreateDie={(group) => {
@@ -215,61 +260,19 @@ export default function TableDetailScreen() {
             setNewDieRuleId(null);
             setShowCreateDieModal(true);
           }}
-          onDeleteGroup={async (group) => {
-            await deleteGroup(db, group.id);
-            await load();
-          }}
+          onDeleteGroup={submitDeleteGroup}
           onEditDie={openEditDieModal}
-          onDeleteDie={async (die) => {
-            await deleteGroupDie(db, die.id);
-            await load();
-          }}
+          onDeleteDie={submitDeleteDie}
         />
       </ScrollView>
 
-      <Modal
+      <TableRenameModal
         visible={showRenameModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowRenameModal(false)}
-      >
-        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 16 }}>
-          <View style={{ backgroundColor: "white", borderRadius: 12, padding: 16, borderWidth: 1 }}>
-            <Text style={{ fontSize: 16, fontWeight: "700" }}>Renommer la table</Text>
-
-            <TextInput
-              value={renameValue}
-              onChangeText={setRenameValue}
-              placeholder="Nouveau nom..."
-              style={{ marginTop: 12, borderWidth: 1, borderRadius: 10, padding: 10 }}
-            />
-
-            <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 12 }}>
-              <Pressable
-                onPress={() => setShowRenameModal(false)}
-                style={{ padding: 10, borderWidth: 1, borderRadius: 10, marginRight: 10 }}
-              >
-                <Text>Annuler</Text>
-              </Pressable>
-
-              <Pressable
-                onPress={async () => {
-                  const name = renameValue.trim();
-                  if (!name) return;
-                  if (isSystem) return;
-
-                  await updateTableName(db, table.id, name);
-                  setShowRenameModal(false);
-                  await load();
-                }}
-                style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
-              >
-                <Text style={{ fontWeight: "700" }}>Renommer</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        value={renameValue}
+        onChangeValue={setRenameValue}
+        onClose={() => setShowRenameModal(false)}
+        onSubmit={submitRenameTable}
+      />
 
       <TableGroupModals
         showCreateGroupModal={showCreateGroupModal}
@@ -284,20 +287,7 @@ export default function TableDetailScreen() {
           setShowCreateGroupModal(false);
           resetCreateGroupForm();
         }}
-        onSubmitCreateGroup={async () => {
-          const name = newGroupName.trim();
-          if (!name || !targetProfileForNewGroup) return;
-        
-          await createGroup(db, {
-            profileId: targetProfileForNewGroup.id,
-            name,
-            rule_id: newGroupRuleId ?? null,
-          });
-        
-          setShowCreateGroupModal(false);
-          resetCreateGroupForm();
-          await load();
-        }}
+        onSubmitCreateGroup={submitCreateGroup}
         showRenameGroupModal={showRenameGroupModal}
         renameGroupValue={renameGroupValue}
         onChangeRenameGroupValue={setRenameGroupValue}
@@ -306,18 +296,7 @@ export default function TableDetailScreen() {
           setEditingGroup(null);
           setRenameGroupValue("");
         }}
-        onSubmitRenameGroup={async () => {
-          const name = renameGroupValue.trim();
-          if (!editingGroup || !name) return;
-        
-          await updateGroupName(db, editingGroup.id, name);
-        
-          setShowRenameGroupModal(false);
-          setEditingGroup(null);
-          setRenameGroupValue("");
-        
-          await load();
-        }}
+        onSubmitRenameGroup={submitRenameGroup}
         showEditGroupRuleModal={showEditGroupRuleModal}
         editingGroupForRule={editingGroupForRule}
         selectedGroupRuleId={selectedGroupRuleId}
@@ -327,21 +306,7 @@ export default function TableDetailScreen() {
           setEditingGroupForRule(null);
           setSelectedGroupRuleId(null);
         }}
-        onSubmitEditGroupRule={async () => {
-          if (!editingGroupForRule) return;
-        
-          await updateGroupRuleId(
-            db,
-            editingGroupForRule.id,
-            selectedGroupRuleId ?? null
-          );
-        
-          setShowEditGroupRuleModal(false);
-          setEditingGroupForRule(null);
-          setSelectedGroupRuleId(null);
-        
-          await load();
-        }}
+        onSubmitEditGroupRule={submitEditGroupRule}
       />
 
       <TableProfileModals
@@ -352,20 +317,7 @@ export default function TableDetailScreen() {
           setShowCreateProfileModal(false);
           resetCreateProfileForm();
         }}
-        onSubmitCreateProfile={async () => {
-          const name = newProfileName.trim();
-          if (!name) return;
-        
-          await createProfile(db, {
-            id: await newId(),
-            table_id: table.id,
-            name,
-          });
-        
-          setShowCreateProfileModal(false);
-          resetCreateProfileForm();
-          await load();
-        }}
+        onSubmitCreateProfile={submitCreateProfile}
         showRenameProfileModal={showRenameProfileModal}
         renameProfileValue={renameProfileValue}
         onChangeRenameProfileValue={setRenameProfileValue}
@@ -374,18 +326,7 @@ export default function TableDetailScreen() {
           setEditingProfile(null);
           setRenameProfileValue("");
         }}
-        onSubmitRenameProfile={async () => {
-          const name = renameProfileValue.trim();
-          if (!editingProfile || !name) return;
-        
-          await updateProfileName(db, editingProfile.id, name);
-        
-          setShowRenameProfileModal(false);
-          setEditingProfile(null);
-          setRenameProfileValue("");
-        
-          await load();
-        }}
+        onSubmitRenameProfile={submitRenameProfile}
       />
 
       <TableDieModals
@@ -407,30 +348,7 @@ export default function TableDetailScreen() {
           setShowCreateDieModal(false);
           resetCreateDieForm();
         }}
-        onSubmitCreateDie={async () => {
-          if (!targetGroupForNewDie) return;
-        
-          const sides = Number(newDieSides || "0");
-          const qty = Number(newDieQty || "0");
-          const modifier = Number(newDieModifier || "0");
-          const sign = Number(newDieSign || "1");
-        
-          if (!Number.isFinite(sides) || sides <= 0) return;
-          if (!Number.isFinite(qty) || qty <= 0) return;
-        
-          await createGroupDie(db, {
-            groupId: targetGroupForNewDie.id,
-            sides,
-            qty,
-            modifier: Number.isFinite(modifier) ? modifier : 0,
-            sign: sign === -1 ? -1 : 1,
-            rule_id: newDieRuleId ?? null,
-          });
-        
-          setShowCreateDieModal(false);
-          resetCreateDieForm();
-          await load();
-        }}
+        onSubmitCreateDie={submitCreateDie}
         editingDie={editingDie}
         editDieSides={editDieSides}
         editDieQty={editDieQty}
@@ -446,30 +364,7 @@ export default function TableDetailScreen() {
           setEditingDie(null);
           setSelectedRuleId(null);
         }}
-        onSubmitEditDie={async () => {
-          if (!editingDie) return;
-        
-          const sides = Number(editDieSides || "0");
-          const qty = Number(editDieQty || "0");
-          const modifier = Number(editDieModifier || "0");
-          const sign = Number(editDieSign || "1");
-        
-          if (!Number.isFinite(sides) || sides <= 0) return;
-          if (!Number.isFinite(qty) || qty <= 0) return;
-        
-          await updateGroupDie(db, editingDie.id, {
-            sides,
-            qty,
-            modifier: Number.isFinite(modifier) ? modifier : 0,
-            sign: sign === -1 ? -1 : 1,
-            rule_id: selectedRuleId ?? null,
-          });
-        
-          setEditingDie(null);
-          setSelectedRuleId(null);
-        
-          await load();
-        }}
+        onSubmitEditDie={submitEditDie}
       />
 
     </View>
