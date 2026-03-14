@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Db } from "../../data/db/database";
-import type { RuleRow } from "../../data/repositories/rulesRepo";
+import type { Db } from "../../../data/db/database";
+import type { RuleRow } from "../../../data/repositories/rulesRepo";
 import {
   listRules,
   createRule,
   deleteRule,
   updateRule,
-} from "../../data/repositories/rulesRepo";
+} from "../../../data/repositories/rulesRepo";
 
 type UseRulesDataParams = {
   db: Db;
