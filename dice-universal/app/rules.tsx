@@ -1,14 +1,9 @@
 // app/rules.tsx
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { View, Text, Pressable, Modal, TextInput, ScrollView } from "react-native";
 import { useDb } from "../data/db/DbProvider";
-import {
-  listRules,
-  createRule,
-  deleteRule,
-  RuleRow,
-  updateRule,
-} from "../data/repositories/rulesRepo";
+import { RuleRow } from "../data/repositories/rulesRepo";
+import { useRulesData } from "./hooks/useRulesData";
 import { evaluateRule } from "../core/rules/evaluate";
 
 type RangeRow = { min: string; max: string; label: string };
@@ -127,9 +122,6 @@ function formatPreviewResult(res: any): string {
 export default function RulesScreen() {
   const db = useDb();
 
-  const [rules, setRules] = useState<RuleRow[]>([]);
-  const [error, setError] = useState<string | null>(null);
-
   const [showEditModal, setShowEditModal] = useState(false);
 
   const [editingRule, setEditingRule] = useState<RuleRow | null>(null);
@@ -165,19 +157,13 @@ export default function RulesScreen() {
   const [previewSign, setPreviewSign] = useState("1");
   const [previewResult, setPreviewResult] = useState("");
 
-  async function load() {
-    try {
-      setError(null);
-      const all = await listRules(db);
-      setRules(all);
-    } catch (e: any) {
-      setError(e?.message ?? String(e));
-    }
-  }
-
-  useEffect(() => {
-    load();
-  }, [db]);
+  const {
+    error,
+    pipelineRules,
+    legacyRules,
+    saveRule,
+    removeRule,
+  } = useRulesData({ db });
 
   function resetForm() {
     setEditingRule(null);
@@ -407,37 +393,21 @@ export default function RulesScreen() {
   }
 
   async function onSave() {
-    const name = formName.trim();
-    if (!name) return;
-
     const params_json = stringifyPipeline(buildPipelineParams());
 
     try {
-      if (editingRule) {
-        await updateRule(db, editingRule.id, {
-          name,
-          kind: "pipeline",
-          params_json,
-        });
-      } else {
-        await createRule(db, {
-          name,
-          kind: "pipeline",
-          params_json,
-          is_system: 0,
-        });
-      }
+      await saveRule({
+        editingRule,
+        name: formName,
+        params_json,
+      });
 
       setShowEditModal(false);
       resetForm();
-      await load();
-    } catch (e: any) {
-      setError(e?.message ?? String(e));
+    } catch {
+      // l'erreur est déjà gérée dans useRulesData
     }
   }
-
-  const pipelineRules = useMemo(() => rules.filter((r) => r.kind === "pipeline"), [rules]);
-  const legacyRules = useMemo(() => rules.filter((r) => r.kind !== "pipeline"), [rules]);
 
   if (error) {
     return (
@@ -486,8 +456,11 @@ export default function RulesScreen() {
             {rule.is_system !== 1 ? (
               <Pressable
                 onPress={async () => {
-                  await deleteRule(db, rule.id);
-                  await load();
+                  try {
+                    await removeRule(rule.id);
+                  } catch {
+                    // l'erreur est déjà gérée dans useRulesData
+                  }
                 }}
                 style={{ marginTop: 8, padding: 8, borderWidth: 1, borderRadius: 8 }}
               >
