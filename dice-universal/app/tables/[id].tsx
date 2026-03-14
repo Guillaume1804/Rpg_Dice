@@ -1,11 +1,8 @@
 // app/tables/[id].tsx
 import { useLocalSearchParams } from "expo-router";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { View, Text, ScrollView } from "react-native";
 import { useDb } from "../../data/db/DbProvider";
-
-import { ProfileRow } from "../../data/repositories/profilesRepo";
-import { GroupRow, GroupDieRow } from "../../data/repositories/groupsRepo";
 
 import { useTableDetailData } from "./hooks/useTableDetailData";
 import { TableProfilesSection } from "./components/TableProfilesSection";
@@ -100,6 +97,26 @@ export default function TableDetailScreen() {
     openRenameGroupModal,
     openEditGroupRuleModal,
     openEditDieModal,
+
+    openRenameTableModal,
+    closeRenameTableModal,
+      
+    openCreateProfileModal,
+    closeCreateProfileModal,
+      
+    closeRenameProfileModal,
+      
+    openCreateGroupModal,
+    closeCreateGroupModal,
+      
+    closeRenameGroupModal,
+      
+    closeEditGroupRuleModal,
+      
+    openCreateDieModal,
+    closeCreateDieModal,
+      
+    closeEditDieModal,
   } = useTableDetailUi();
 
   const {
@@ -207,14 +224,8 @@ export default function TableDetailScreen() {
       <TableDetailHeader
         tableName={table.name}
         isSystem={isSystem}
-        onRenameTable={() => {
-          setRenameValue(table.name);
-          setShowRenameModal(true);
-        }}
-        onCreateProfile={() => {
-          resetCreateProfileForm();
-          setShowCreateProfileModal(true);
-        }}
+        onRenameTable={() => openRenameTableModal(table.name)}
+        onCreateProfile={openCreateProfileModal}
       />
 
       <ScrollView>
@@ -223,24 +234,11 @@ export default function TableDetailScreen() {
           isSystem={isSystem}
           getRuleName={getRuleName}
           onRenameProfile={openRenameProfileModal}
-          onCreateGroup={(profile) => {
-            setTargetProfileForNewGroup(profile);
-            setNewGroupName("");
-            setNewGroupRuleId(null);
-            setShowCreateGroupModal(true);
-          }}
+          onCreateGroup={openCreateGroupModal}
           onDeleteProfile={submitDeleteProfile}
           onRenameGroup={openRenameGroupModal}
           onEditGroupRule={openEditGroupRuleModal}
-          onCreateDie={(group) => {
-            setTargetGroupForNewDie(group);
-            setNewDieSides("6");
-            setNewDieQty("1");
-            setNewDieModifier("0");
-            setNewDieSign("1");
-            setNewDieRuleId(null);
-            setShowCreateDieModal(true);
-          }}
+          onCreateDie={openCreateDieModal}
           onDeleteGroup={submitDeleteGroup}
           onEditDie={openEditDieModal}
           onDeleteDie={submitDeleteDie}
@@ -251,7 +249,7 @@ export default function TableDetailScreen() {
         visible={showRenameModal}
         value={renameValue}
         onChangeValue={setRenameValue}
-        onClose={() => setShowRenameModal(false)}
+        onClose={closeRenameTableModal}
         onSubmit={submitRenameTable}
       />
 
@@ -264,29 +262,18 @@ export default function TableDetailScreen() {
         legacyRules={legacyRules}
         onChangeNewGroupName={setNewGroupName}
         onSelectNewGroupRuleId={setNewGroupRuleId}
-        onCloseCreateGroupModal={() => {
-          setShowCreateGroupModal(false);
-          resetCreateGroupForm();
-        }}
+        onCloseCreateGroupModal={closeCreateGroupModal}
         onSubmitCreateGroup={submitCreateGroup}
         showRenameGroupModal={showRenameGroupModal}
         renameGroupValue={renameGroupValue}
         onChangeRenameGroupValue={setRenameGroupValue}
-        onCloseRenameGroupModal={() => {
-          setShowRenameGroupModal(false);
-          setEditingGroup(null);
-          setRenameGroupValue("");
-        }}
+        onCloseRenameGroupModal={closeRenameGroupModal}
         onSubmitRenameGroup={submitRenameGroup}
         showEditGroupRuleModal={showEditGroupRuleModal}
         editingGroupForRule={editingGroupForRule}
         selectedGroupRuleId={selectedGroupRuleId}
         onSelectGroupRuleId={setSelectedGroupRuleId}
-        onCloseEditGroupRuleModal={() => {
-          setShowEditGroupRuleModal(false);
-          setEditingGroupForRule(null);
-          setSelectedGroupRuleId(null);
-        }}
+        onCloseEditGroupRuleModal={closeEditGroupRuleModal}
         onSubmitEditGroupRule={submitEditGroupRule}
       />
 
@@ -294,19 +281,12 @@ export default function TableDetailScreen() {
         showCreateProfileModal={showCreateProfileModal}
         newProfileName={newProfileName}
         onChangeNewProfileName={setNewProfileName}
-        onCloseCreateProfileModal={() => {
-          setShowCreateProfileModal(false);
-          resetCreateProfileForm();
-        }}
+        onCloseCreateProfileModal={closeCreateProfileModal}
         onSubmitCreateProfile={submitCreateProfile}
         showRenameProfileModal={showRenameProfileModal}
         renameProfileValue={renameProfileValue}
         onChangeRenameProfileValue={setRenameProfileValue}
-        onCloseRenameProfileModal={() => {
-          setShowRenameProfileModal(false);
-          setEditingProfile(null);
-          setRenameProfileValue("");
-        }}
+        onCloseRenameProfileModal={closeRenameProfileModal}
         onSubmitRenameProfile={submitRenameProfile}
       />
 
@@ -325,10 +305,7 @@ export default function TableDetailScreen() {
         onChangeNewDieModifier={setNewDieModifier}
         onChangeNewDieSign={setNewDieSign}
         onChangeNewDieRuleId={setNewDieRuleId}
-        onCloseCreateDieModal={() => {
-          setShowCreateDieModal(false);
-          resetCreateDieForm();
-        }}
+        onCloseCreateDieModal={closeCreateDieModal}
         onSubmitCreateDie={submitCreateDie}
         editingDie={editingDie}
         editDieSides={editDieSides}
@@ -341,10 +318,7 @@ export default function TableDetailScreen() {
         onChangeEditDieModifier={setEditDieModifier}
         onChangeEditDieSign={setEditDieSign}
         onChangeSelectedRuleId={setSelectedRuleId}
-        onCloseEditDieModal={() => {
-          setEditingDie(null);
-          setSelectedRuleId(null);
-        }}
+        onCloseEditDieModal={closeEditDieModal}
         onSubmitEditDie={submitEditDie}
       />
 

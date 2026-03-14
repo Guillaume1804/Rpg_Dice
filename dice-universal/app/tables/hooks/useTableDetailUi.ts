@@ -60,10 +60,47 @@ export function useTableDetailUi() {
     setNewDieRuleId(null);
   }
 
+  function openRenameTableModal(tableName: string) {
+    setRenameValue(tableName);
+    setShowRenameModal(true);
+  }
+
+  function closeRenameTableModal() {
+    setShowRenameModal(false);
+  }
+
+  function openCreateProfileModal() {
+    resetCreateProfileForm();
+    setShowCreateProfileModal(true);
+  }
+
+  function closeCreateProfileModal() {
+    setShowCreateProfileModal(false);
+    resetCreateProfileForm();
+  }
+
   function openRenameProfileModal(profile: ProfileRow) {
     setEditingProfile(profile);
     setRenameProfileValue(profile.name);
     setShowRenameProfileModal(true);
+  }
+
+  function closeRenameProfileModal() {
+    setShowRenameProfileModal(false);
+    setEditingProfile(null);
+    setRenameProfileValue("");
+  }
+
+  function openCreateGroupModal(profile: ProfileRow) {
+    setTargetProfileForNewGroup(profile);
+    setNewGroupName("");
+    setNewGroupRuleId(null);
+    setShowCreateGroupModal(true);
+  }
+
+  function closeCreateGroupModal() {
+    setShowCreateGroupModal(false);
+    resetCreateGroupForm();
   }
 
   function openRenameGroupModal(group: GroupRow) {
@@ -72,10 +109,37 @@ export function useTableDetailUi() {
     setShowRenameGroupModal(true);
   }
 
+  function closeRenameGroupModal() {
+    setShowRenameGroupModal(false);
+    setEditingGroup(null);
+    setRenameGroupValue("");
+  }
+
   function openEditGroupRuleModal(group: GroupRow) {
     setEditingGroupForRule(group);
     setSelectedGroupRuleId(group.rule_id ?? null);
     setShowEditGroupRuleModal(true);
+  }
+
+  function closeEditGroupRuleModal() {
+    setShowEditGroupRuleModal(false);
+    setEditingGroupForRule(null);
+    setSelectedGroupRuleId(null);
+  }
+
+  function openCreateDieModal(group: GroupRow) {
+    setTargetGroupForNewDie(group);
+    setNewDieSides("6");
+    setNewDieQty("1");
+    setNewDieModifier("0");
+    setNewDieSign("1");
+    setNewDieRuleId(null);
+    setShowCreateDieModal(true);
+  }
+
+  function closeCreateDieModal() {
+    setShowCreateDieModal(false);
+    resetCreateDieForm();
   }
 
   function openEditDieModal(die: GroupDieRow) {
@@ -85,6 +149,11 @@ export function useTableDetailUi() {
     setEditDieModifier(String(die.modifier ?? 0));
     setEditDieSign((die.sign ?? 1) === -1 ? "-1" : "1");
     setSelectedRuleId(die.rule_id ?? null);
+  }
+
+  function closeEditDieModal() {
+    setEditingDie(null);
+    setSelectedRuleId(null);
   }
 
   return {
@@ -159,9 +228,29 @@ export function useTableDetailUi() {
     resetCreateProfileForm,
     resetCreateGroupForm,
     resetCreateDieForm,
+
+    openRenameTableModal,
+    closeRenameTableModal,
+
+    openCreateProfileModal,
+    closeCreateProfileModal,
+
     openRenameProfileModal,
+    closeRenameProfileModal,
+
+    openCreateGroupModal,
+    closeCreateGroupModal,
+
     openRenameGroupModal,
+    closeRenameGroupModal,
+
     openEditGroupRuleModal,
+    closeEditGroupRuleModal,
+
+    openCreateDieModal,
+    closeCreateDieModal,
+
     openEditDieModal,
+    closeEditDieModal,
   };
 }
