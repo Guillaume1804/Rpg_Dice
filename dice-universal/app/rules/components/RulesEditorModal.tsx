@@ -9,6 +9,9 @@ import type {
   RangeRow,
 } from "../hooks/useRulesEditor";
 
+import { RulesEditorHeader } from "./RulesEditorHeader";
+import { RulesEditorFooter } from "./RulesEditorFooter";
+
 type Props = {
   visible: boolean;
   editingRule: RuleRow | null;
@@ -179,9 +182,7 @@ export function RulesEditorModal({
             maxHeight: "90%",
           }}
         >
-          <Text style={{ fontSize: 16, fontWeight: "700" }}>
-            {editingRule ? "Éditer la règle" : "Créer une règle"} — pipeline
-          </Text>
+          <RulesEditorHeader editingRule={editingRule} />
 
           <ScrollView style={{ marginTop: 12 }}>
             <Text>Nom</Text>
@@ -657,21 +658,8 @@ export function RulesEditorModal({
             <View style={{ height: 10 }} />
           </ScrollView>
 
-          <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 10 }}>
-            <Pressable
-              onPress={onClose}
-              style={{ padding: 10, borderWidth: 1, borderRadius: 10, marginRight: 10 }}
-            >
-              <Text>Annuler</Text>
-            </Pressable>
-
-            <Pressable
-              onPress={onSave}
-              style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
-            >
-              <Text style={{ fontWeight: "700" }}>Sauvegarder</Text>
-            </Pressable>
-          </View>
+          <RulesEditorFooter onClose={onClose} onSave={onSave} />
+          
         </View>
       </View>
     </Modal>
