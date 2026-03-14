@@ -20,14 +20,12 @@ import {
   deleteGroupDie,
 } from "../../../data/repositories/groupsRepo";
 
-type UseTableDetailActionsParams = {
-  db: Db;
-  table: TableRow | null;
-  load: () => Promise<void>;
-
+type TableUiActions = {
   renameValue: string;
   setShowRenameModal: (value: boolean) => void;
+};
 
+type ProfileUiActions = {
   newProfileName: string;
   resetCreateProfileForm: () => void;
   setShowCreateProfileModal: (value: boolean) => void;
@@ -37,7 +35,9 @@ type UseTableDetailActionsParams = {
   setShowRenameProfileModal: (value: boolean) => void;
   setEditingProfile: (value: ProfileRow | null) => void;
   setRenameProfileValue: (value: string) => void;
+};
 
+type GroupUiActions = {
   targetProfileForNewGroup: ProfileRow | null;
   newGroupName: string;
   newGroupRuleId: string | null;
@@ -55,7 +55,9 @@ type UseTableDetailActionsParams = {
   setShowEditGroupRuleModal: (value: boolean) => void;
   setEditingGroupForRule: (value: GroupRow | null) => void;
   setSelectedGroupRuleId: (value: string | null) => void;
+};
 
+type DieUiActions = {
   targetGroupForNewDie: GroupRow | null;
   newDieSides: string;
   newDieQty: string;
@@ -75,74 +77,40 @@ type UseTableDetailActionsParams = {
   setSelectedRuleId: (value: string | null) => void;
 };
 
+type UseTableDetailActionsParams = {
+  db: Db;
+  table: TableRow | null;
+  load: () => Promise<void>;
+
+  tableUi: TableUiActions;
+  profileUi: ProfileUiActions;
+  groupUi: GroupUiActions;
+  dieUi: DieUiActions;
+};
+
 export function useTableDetailActions({
   db,
   table,
   load,
-
-  renameValue,
-  setShowRenameModal,
-
-  newProfileName,
-  resetCreateProfileForm,
-  setShowCreateProfileModal,
-
-  editingProfile,
-  renameProfileValue,
-  setShowRenameProfileModal,
-  setEditingProfile,
-  setRenameProfileValue,
-
-  targetProfileForNewGroup,
-  newGroupName,
-  newGroupRuleId,
-  resetCreateGroupForm,
-  setShowCreateGroupModal,
-
-  editingGroup,
-  renameGroupValue,
-  setShowRenameGroupModal,
-  setEditingGroup,
-  setRenameGroupValue,
-
-  editingGroupForRule,
-  selectedGroupRuleId,
-  setShowEditGroupRuleModal,
-  setEditingGroupForRule,
-  setSelectedGroupRuleId,
-
-  targetGroupForNewDie,
-  newDieSides,
-  newDieQty,
-  newDieModifier,
-  newDieSign,
-  newDieRuleId,
-  resetCreateDieForm,
-  setShowCreateDieModal,
-
-  editingDie,
-  editDieSides,
-  editDieQty,
-  editDieModifier,
-  editDieSign,
-  selectedRuleId,
-  setEditingDie,
-  setSelectedRuleId,
+  tableUi,
+  profileUi,
+  groupUi,
+  dieUi,
 }: UseTableDetailActionsParams) {
   async function submitRenameTable() {
-    const name = renameValue.trim();
+    const name = tableUi.renameValue.trim();
     if (!table) return;
     if (!name) return;
     if (table.is_system === 1) return;
-    
+
     await updateTableName(db, table.id, name);
-    setShowRenameModal(false);
+    tableUi.setShowRenameModal(false);
     await load();
   }
 
   async function submitCreateProfile() {
-    const name = newProfileName.trim();
-    if (!table) return; 
+    const name = profileUi.newProfileName.trim();
+    if (!table) return;
     if (!name) return;
 
     await createProfile(db, {
@@ -151,20 +119,20 @@ export function useTableDetailActions({
       name,
     });
 
-    setShowCreateProfileModal(false);
-    resetCreateProfileForm();
+    profileUi.setShowCreateProfileModal(false);
+    profileUi.resetCreateProfileForm();
     await load();
   }
 
   async function submitRenameProfile() {
-    const name = renameProfileValue.trim();
-    if (!editingProfile || !name) return;
+    const name = profileUi.renameProfileValue.trim();
+    if (!profileUi.editingProfile || !name) return;
 
-    await updateProfileName(db, editingProfile.id, name);
+    await updateProfileName(db, profileUi.editingProfile.id, name);
 
-    setShowRenameProfileModal(false);
-    setEditingProfile(null);
-    setRenameProfileValue("");
+    profileUi.setShowRenameProfileModal(false);
+    profileUi.setEditingProfile(null);
+    profileUi.setRenameProfileValue("");
     await load();
   }
 
@@ -174,44 +142,44 @@ export function useTableDetailActions({
   }
 
   async function submitCreateGroup() {
-    const name = newGroupName.trim();
-    if (!name || !targetProfileForNewGroup) return;
+    const name = groupUi.newGroupName.trim();
+    if (!name || !groupUi.targetProfileForNewGroup) return;
 
     await createGroup(db, {
-      profileId: targetProfileForNewGroup.id,
+      profileId: groupUi.targetProfileForNewGroup.id,
       name,
-      rule_id: newGroupRuleId ?? null,
+      rule_id: groupUi.newGroupRuleId ?? null,
     });
 
-    setShowCreateGroupModal(false);
-    resetCreateGroupForm();
+    groupUi.setShowCreateGroupModal(false);
+    groupUi.resetCreateGroupForm();
     await load();
   }
 
   async function submitRenameGroup() {
-    const name = renameGroupValue.trim();
-    if (!editingGroup || !name) return;
+    const name = groupUi.renameGroupValue.trim();
+    if (!groupUi.editingGroup || !name) return;
 
-    await updateGroupName(db, editingGroup.id, name);
+    await updateGroupName(db, groupUi.editingGroup.id, name);
 
-    setShowRenameGroupModal(false);
-    setEditingGroup(null);
-    setRenameGroupValue("");
+    groupUi.setShowRenameGroupModal(false);
+    groupUi.setEditingGroup(null);
+    groupUi.setRenameGroupValue("");
     await load();
   }
 
   async function submitEditGroupRule() {
-    if (!editingGroupForRule) return;
+    if (!groupUi.editingGroupForRule) return;
 
     await updateGroupRuleId(
       db,
-      editingGroupForRule.id,
-      selectedGroupRuleId ?? null
+      groupUi.editingGroupForRule.id,
+      groupUi.selectedGroupRuleId ?? null
     );
 
-    setShowEditGroupRuleModal(false);
-    setEditingGroupForRule(null);
-    setSelectedGroupRuleId(null);
+    groupUi.setShowEditGroupRuleModal(false);
+    groupUi.setEditingGroupForRule(null);
+    groupUi.setSelectedGroupRuleId(null);
     await load();
   }
 
@@ -221,51 +189,51 @@ export function useTableDetailActions({
   }
 
   async function submitCreateDie() {
-    if (!targetGroupForNewDie) return;
+    if (!dieUi.targetGroupForNewDie) return;
 
-    const sides = Number(newDieSides || "0");
-    const qty = Number(newDieQty || "0");
-    const modifier = Number(newDieModifier || "0");
-    const sign = Number(newDieSign || "1");
+    const sides = Number(dieUi.newDieSides || "0");
+    const qty = Number(dieUi.newDieQty || "0");
+    const modifier = Number(dieUi.newDieModifier || "0");
+    const sign = Number(dieUi.newDieSign || "1");
 
     if (!Number.isFinite(sides) || sides <= 0) return;
     if (!Number.isFinite(qty) || qty <= 0) return;
 
     await createGroupDie(db, {
-      groupId: targetGroupForNewDie.id,
+      groupId: dieUi.targetGroupForNewDie.id,
       sides,
       qty,
       modifier: Number.isFinite(modifier) ? modifier : 0,
       sign: sign === -1 ? -1 : 1,
-      rule_id: newDieRuleId ?? null,
+      rule_id: dieUi.newDieRuleId ?? null,
     });
 
-    setShowCreateDieModal(false);
-    resetCreateDieForm();
+    dieUi.setShowCreateDieModal(false);
+    dieUi.resetCreateDieForm();
     await load();
   }
 
   async function submitEditDie() {
-    if (!editingDie) return;
+    if (!dieUi.editingDie) return;
 
-    const sides = Number(editDieSides || "0");
-    const qty = Number(editDieQty || "0");
-    const modifier = Number(editDieModifier || "0");
-    const sign = Number(editDieSign || "1");
+    const sides = Number(dieUi.editDieSides || "0");
+    const qty = Number(dieUi.editDieQty || "0");
+    const modifier = Number(dieUi.editDieModifier || "0");
+    const sign = Number(dieUi.editDieSign || "1");
 
     if (!Number.isFinite(sides) || sides <= 0) return;
     if (!Number.isFinite(qty) || qty <= 0) return;
 
-    await updateGroupDie(db, editingDie.id, {
+    await updateGroupDie(db, dieUi.editingDie.id, {
       sides,
       qty,
       modifier: Number.isFinite(modifier) ? modifier : 0,
       sign: sign === -1 ? -1 : 1,
-      rule_id: selectedRuleId ?? null,
+      rule_id: dieUi.selectedRuleId ?? null,
     });
 
-    setEditingDie(null);
-    setSelectedRuleId(null);
+    dieUi.setEditingDie(null);
+    dieUi.setSelectedRuleId(null);
     await load();
   }
 
