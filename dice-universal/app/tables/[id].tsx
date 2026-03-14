@@ -1,7 +1,7 @@
 // app/tables/[id].tsx
 import { useLocalSearchParams } from "expo-router";
 import { useMemo, useState } from "react";
-import { View, Text, Pressable, ScrollView } from "react-native";
+import { View, Text, ScrollView } from "react-native";
 import { useDb } from "../../data/db/DbProvider";
 
 import { ProfileRow } from "../../data/repositories/profilesRepo";
@@ -15,6 +15,7 @@ import { TableDieModals } from "./components/TableDieModals";
 import { TableRenameModal } from "./components/TableRenameModal";
 
 import { useTableDetailActions } from "./hooks/useTableDetailActions";
+import { TableDetailHeader } from "./components/TableDetailHeader";
 
 export default function TableDetailScreen() {
   const db = useDb();
@@ -208,33 +209,18 @@ export default function TableDetailScreen() {
 
   return (
     <View style={{ flex: 1, padding: 16, gap: 12 }}>
-      <Text style={{ fontSize: 20, fontWeight: "700" }}>{table.name}</Text>
-
-      {isSystem ? (
-        <Text style={{ opacity: 0.7 }}>Table système : modification interdite</Text>
-      ) : (
-        <View style={{ gap: 8 }}>
-          <Pressable
-            onPress={() => {
-              setRenameValue(table.name);
-              setShowRenameModal(true);
-            }}
-            style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
-          >
-            <Text>Renommer la table</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => {
-              resetCreateProfileForm();
-              setShowCreateProfileModal(true);
-            }}
-            style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
-          >
-            <Text>Créer un profil</Text>
-          </Pressable>
-        </View>
-      )}
+      <TableDetailHeader
+        tableName={table.name}
+        isSystem={isSystem}
+        onRenameTable={() => {
+          setRenameValue(table.name);
+          setShowRenameModal(true);
+        }}
+        onCreateProfile={() => {
+          resetCreateProfileForm();
+          setShowCreateProfileModal(true);
+        }}
+      />
 
       <ScrollView>
         <TableProfilesSection

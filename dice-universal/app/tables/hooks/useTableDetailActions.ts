@@ -22,7 +22,7 @@ import {
 
 type UseTableDetailActionsParams = {
   db: Db;
-  table: TableRow;
+  table: TableRow | null;
   load: () => Promise<void>;
 
   renameValue: string;
@@ -131,9 +131,10 @@ export function useTableDetailActions({
 }: UseTableDetailActionsParams) {
   async function submitRenameTable() {
     const name = renameValue.trim();
+    if (!table) return;
     if (!name) return;
     if (table.is_system === 1) return;
-
+    
     await updateTableName(db, table.id, name);
     setShowRenameModal(false);
     await load();
@@ -141,6 +142,7 @@ export function useTableDetailActions({
 
   async function submitCreateProfile() {
     const name = newProfileName.trim();
+    if (!table) return; 
     if (!name) return;
 
     await createProfile(db, {
