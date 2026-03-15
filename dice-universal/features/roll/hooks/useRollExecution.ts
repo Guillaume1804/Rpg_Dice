@@ -1,3 +1,4 @@
+import type { Dispatch, SetStateAction } from "react";
 import { rollGroup, GroupRollResult } from "../../../core/roll/roll";
 import { insertRollEvent } from "../../../data/repositories/rollEventsRepo";
 import { newId } from "../../../core/types/ids";
@@ -7,7 +8,10 @@ import type { Db } from "../../../data/db/database";
 import type { TableRow } from "../../../data/repositories/tablesRepo";
 import type { RuleRow } from "../../../data/repositories/rulesRepo";
 import type { ProfileRow } from "../../../data/repositories/profilesRepo";
-import type { GroupRow, GroupDieRow } from "../../../data/repositories/groupsRepo";
+import type {
+  GroupRow,
+  GroupDieRow,
+} from "../../../data/repositories/groupsRepo";
 
 type ProfileWithGroups = {
   profile: ProfileRow;
@@ -22,11 +26,104 @@ type Params = {
   table: TableRow | null;
   profiles: ProfileWithGroups[];
   rulesMap: Record<string, RuleRow>;
-  setResults: (results: GroupRollResult[]) => void;
+  setResults: Dispatch<SetStateAction<GroupRollResult[]>>;
 };
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+function buildGroupResult(
+  profileName: string,
+  group: GroupRow,
+  dice: GroupDieRow[],
+  rulesMap: Record<string, RuleRow>,
+): GroupRollResult {
+  const groupRule = group.rule_id ? rulesMap[group.rule_id] : null;
+
+  return rollGroup({
+    groupId: group.id,
+    label: `${profileName} — ${group.name}`,
+    entries: dice.map((d) => {
+      const rule = d.rule_id ? rulesMap[d.rule_id] : null;
+
+      return {
+        entryId: d.id,
+        sides: d.sides,
+        qty: d.qty,
+        modifier: d.modifier ?? 0,
+        sign: d.sign ?? 1,
+        rule: rule
+          ? {
+              id: rule.id,
+              name: rule.name,
+              kind: rule.kind,
+              params_json: rule.params_json,
+            }
+          : null,
+      };
+    }),
+    groupRule: groupRule
+      ? {
+          id: groupRule.id,
+          name: groupRule.name,
+          kind: groupRule.kind,
+          params_json: groupRule.params_json,
+        }
+      : null,
+    evaluateRule,
+  });
+}
+
+function upsertResults(
+  previous: GroupRollResult[],
+  incoming: GroupRollResult[],
+): GroupRollResult[] {
+  const map = new Map<string, GroupRollResult>();
+
+  for (const result of previous) {
+    map.set(result.groupId, result);
+  }
+
+  for (const result of incoming) {
+    map.set(result.groupId, result);
+  }
+
+  return Array.from(map.values());
+}
+
+async function persistRollEvent(
+  db: Db,
+  table: TableRow,
+  title: string,
+  rolled: GroupRollResult[],
+) {
+  try {
+    const eventId = await newId();
+    const createdAt = nowIso();
+
+    const payload = {
+      type: "groups",
+      tableId: table.id,
+      tableName: table.name,
+      groups: rolled,
+    };
+
+    const summary = {
+      title,
+      lines: rolled.map((r) => `${r.label}: total ${r.total}`),
+    };
+
+    await insertRollEvent(db, {
+      id: eventId,
+      table_id: table.id,
+      created_at: createdAt,
+      payload_json: JSON.stringify(payload),
+      summary_json: JSON.stringify(summary),
+    });
+  } catch (e) {
+    console.warn("insertRollEvent failed", e);
+  }
 }
 
 export function useRollExecution({
@@ -43,76 +140,63 @@ export function useRollExecution({
 
     profiles.forEach((p) => {
       p.groups.forEach(({ group, dice }) => {
-        const groupRule = group.rule_id ? rulesMap[group.rule_id] : null;
-
-        const result = rollGroup({
-          groupId: group.id,
-          label: `${p.profile.name} — ${group.name}`,
-          entries: dice.map((d) => {
-            const rule = d.rule_id ? rulesMap[d.rule_id] : null;
-
-            return {
-              entryId: d.id,
-              sides: d.sides,
-              qty: d.qty,
-              modifier: d.modifier ?? 0,
-              sign: d.sign ?? 1,
-              rule: rule
-                ? {
-                    id: rule.id,
-                    name: rule.name,
-                    kind: rule.kind,
-                    params_json: rule.params_json,
-                  }
-                : null,
-            };
-          }),
-          groupRule: groupRule
-            ? {
-                id: groupRule.id,
-                name: groupRule.name,
-                kind: groupRule.kind,
-                params_json: groupRule.params_json,
-              }
-            : null,
-          evaluateRule,
-        });
-
-        rolled.push(result);
+        rolled.push(buildGroupResult(p.profile.name, group, dice, rulesMap));
       });
     });
 
     setResults(rolled);
+    await persistRollEvent(db, table, `Jet complet — ${table.name}`, rolled);
+  }
 
-    try {
-      const eventId = await newId();
-      const createdAt = nowIso();
+  async function rollSavedProfile(profileId: string) {
+    if (!table) return;
 
-      const payload = {
-        type: "groups",
-        tableId: table.id,
-        tableName: table.name,
-        groups: rolled,
-      };
+    const profileEntry = profiles.find((p) => p.profile.id === profileId);
+    if (!profileEntry) return;
 
-      const summary = {
-        title: `Jet — ${table.name}`,
-        lines: rolled.map((r) => `${r.label}: total ${r.total}`),
-      };
+    const rolled = profileEntry.groups.map(({ group, dice }) =>
+      buildGroupResult(profileEntry.profile.name, group, dice, rulesMap),
+    );
 
-      await insertRollEvent(db, {
-        id: eventId,
-        table_id: table.id,
-        created_at: createdAt,
-        payload_json: JSON.stringify(payload),
-        summary_json: JSON.stringify(summary),
-      });
-    } catch (e) {
-      console.warn("insertRollEvent (groups) failed", e);
-    }
+    setResults((prev) => upsertResults(prev, rolled));
+    await persistRollEvent(
+      db,
+      table,
+      `Jet profil — ${table.name} — ${profileEntry.profile.name}`,
+      rolled,
+    );
+  }
+
+  async function rollSavedGroup(profileId: string, groupId: string) {
+    if (!table) return;
+
+    const profileEntry = profiles.find((p) => p.profile.id === profileId);
+    if (!profileEntry) return;
+
+    const groupEntry = profileEntry.groups.find((g) => g.group.id === groupId);
+    if (!groupEntry) return;
+
+    const rolled = [
+      buildGroupResult(
+        profileEntry.profile.name,
+        groupEntry.group,
+        groupEntry.dice,
+        rulesMap,
+      ),
+    ];
+
+    setResults((prev) => upsertResults(prev, rolled));
+    await persistRollEvent(
+      db,
+      table,
+      `Jet action — ${table.name} — ${profileEntry.profile.name} — ${groupEntry.group.name}`,
+      rolled,
+    );
   }
 
   return {
     rollSavedTable,
+    rollSavedProfile,
+    rollSavedGroup,
   };
 }

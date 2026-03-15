@@ -1,34 +1,23 @@
-// app/roll.tsx
 import { useMemo, useState } from "react";
 import { View, Text, ScrollView } from "react-native";
 import { useDb } from "../data/db/DbProvider";
 import { useActiveTable } from "../data/state/ActiveTableProvider";
 
 import { RollModals } from "../features/roll/components/RollModals";
-
 import { SavedProfilesSection } from "../features/roll/components/SavedProfilesSection";
 import { useDraftTableActions } from "../features/roll/hooks/useDraftTableActions";
-
 import { useRollExecution } from "../features/roll/hooks/useRollExecution";
-
-import {
-  useQuickRollDraft,
-} from "../features/roll/hooks/useQuickRollDraft";
-
+import { useQuickRollDraft } from "../features/roll/hooks/useQuickRollDraft";
 import { QuickRollSection } from "../features/roll/components/QuickRollSection";
-
 import { useRollTableData } from "../features/roll/hooks/useRollTableData";
-
 import { GroupRollResult } from "../core/roll/roll";
-
 import { RollHeaderSection } from "../features/roll/components/RollHeaderSection";
-
 import { RollTabs } from "../features/roll/components/RollTabs";
 
 export default function RollScreen() {
   const db = useDb();
   const { activeTableId, setActiveTableId } = useActiveTable();
-  const [activeTab, setActiveTab] = useState<"quick" | "profiles">("quick");
+  const [activeTab, setActiveTab] = useState<"quick" | "actions">("quick");
 
   const [results, setResults] = useState<GroupRollResult[]>([]);
 
@@ -39,7 +28,10 @@ export default function RollScreen() {
   const STANDARD_DICE = [4, 6, 8, 10, 12, 20, 100];
 
   const tableId = useMemo(
-    () => (typeof activeTableId === "string" && activeTableId.length > 0 ? activeTableId : ""),
+    () =>
+      typeof activeTableId === "string" && activeTableId.length > 0
+        ? activeTableId
+        : "",
     [activeTableId]
   );
 
@@ -56,7 +48,6 @@ export default function RollScreen() {
     db,
     tableId,
   });
-
 
   const {
     draftGroups,
@@ -114,7 +105,11 @@ export default function RollScreen() {
     availableRules,
   });
 
-  const { rollSavedTable } = useRollExecution({
+  const {
+    rollSavedTable,
+    rollSavedProfile,
+    rollSavedGroup,
+  } = useRollExecution({
     db,
     table,
     profiles,
@@ -144,6 +139,11 @@ export default function RollScreen() {
     },
   });
 
+  const groupCount = useMemo(
+    () => profiles.reduce((acc, p) => acc + p.groups.length, 0),
+    [profiles]
+  );
+
   if (error) {
     return (
       <View style={{ flex: 1, padding: 16 }}>
@@ -168,7 +168,9 @@ export default function RollScreen() {
     return (
       <View style={{ flex: 1, padding: 16, gap: 12 }}>
         <Text style={{ fontSize: 18, fontWeight: "700" }}>Jet</Text>
-        <Text style={{ opacity: 0.7 }}>Table active introuvable (id: {tableId}).</Text>
+        <Text style={{ opacity: 0.7 }}>
+          Table active introuvable (id: {tableId}).
+        </Text>
       </View>
     );
   }
@@ -177,15 +179,17 @@ export default function RollScreen() {
     <View style={{ flex: 1, padding: 16, gap: 12 }}>
       <RollHeaderSection
         tableName={table.name}
-        onRollTable={rollSavedTable}
+        profileCount={profiles.length}
+        groupCount={groupCount}
       />
 
-      <RollTabs
-        activeTab={activeTab}
-        onChangeTab={setActiveTab}
-      />
+      <RollTabs activeTab={activeTab} onChangeTab={setActiveTab} />
 
-      <ScrollView style={{ flex: 1 }}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: 24 }}
+        showsVerticalScrollIndicator={false}
+      >
         {activeTab === "quick" ? (
           <QuickRollSection
             standardDice={STANDARD_DICE}
@@ -214,6 +218,9 @@ export default function RollScreen() {
             profiles={profiles}
             results={results}
             rulesMap={rulesMap}
+            onRollProfile={rollSavedProfile}
+            onRollGroup={rollSavedGroup}
+            onRollAll={rollSavedTable}
           />
         )}
 
@@ -251,8 +258,6 @@ export default function RollScreen() {
           onCancelNewTable={closeCreateTableModal}
           onSaveNewTable={() => createNewTableFromName(newTableName)}
         />
-
-        <View style={{ height: 24 }} />
       </ScrollView>
     </View>
   );

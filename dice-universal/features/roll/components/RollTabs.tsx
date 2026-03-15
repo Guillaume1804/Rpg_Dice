@@ -1,8 +1,8 @@
 import { View, Text, Pressable } from "react-native";
 
 type RollTabsProps = {
-  activeTab: "quick" | "profiles";
-  onChangeTab: (tab: "quick" | "profiles") => void;
+  activeTab: "quick" | "actions";
+  onChangeTab: (tab: "quick" | "actions") => void;
 };
 
 export function RollTabs({ activeTab, onChangeTab }: RollTabsProps) {
@@ -10,8 +10,6 @@ export function RollTabs({ activeTab, onChangeTab }: RollTabsProps) {
     <View
       style={{
         flexDirection: "row",
-        marginTop: 12,
-        marginBottom: 12,
         borderWidth: 1,
         borderRadius: 12,
         overflow: "hidden",
@@ -28,23 +26,23 @@ export function RollTabs({ activeTab, onChangeTab }: RollTabsProps) {
         }}
       >
         <Text style={{ fontWeight: activeTab === "quick" ? "700" : "500" }}>
-          Jet Libre
+          Jet rapide
         </Text>
       </Pressable>
 
       <Pressable
-        onPress={() => onChangeTab("profiles")}
+        onPress={() => onChangeTab("actions")}
         style={{
           flex: 1,
           paddingVertical: 12,
           paddingHorizontal: 16,
           alignItems: "center",
-          backgroundColor: activeTab === "profiles" ? "#eaeaea" : "transparent",
+          backgroundColor: activeTab === "actions" ? "#eaeaea" : "transparent",
           borderLeftWidth: 1,
         }}
       >
-        <Text style={{ fontWeight: activeTab === "profiles" ? "700" : "500" }}>
-          Profils
+        <Text style={{ fontWeight: activeTab === "actions" ? "700" : "500" }}>
+          Actions
         </Text>
       </Pressable>
     </View>
