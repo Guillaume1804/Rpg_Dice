@@ -4,16 +4,16 @@ import { useMemo } from "react";
 import { View, Text, ScrollView } from "react-native";
 import { useDb } from "../../data/db/DbProvider";
 
-import { useTableDetailData } from "./hooks/useTableDetailData";
-import { TableProfilesSection } from "./components/TableProfilesSection";
-import { TableProfileModals } from "./components/TableProfileModals";
-import { TableGroupModals } from "./components/TableGroupModals";
-import { TableDieModals } from "./components/TableDieModals";
-import { TableRenameModal } from "./components/TableRenameModal";
+import { useTableDetailData } from "../../features/tables/hooks/useTableDetailData";
+import { TableProfilesSection } from "../../features/tables/components/TableProfilesSection";
+import { TableProfileModals } from "../../features/tables/components/TableProfileModals";
+import { TableGroupModals } from "../../features/tables/components/TableGroupModals";
+import { TableDieModals } from "../../features/tables/components/TableDieModals";
+import { TableRenameModal } from "../../features/tables/components/TableRenameModal";
 
-import { useTableDetailActions } from "./hooks/useTableDetailActions";
-import { TableDetailHeader } from "./components/TableDetailHeader";
-import { useTableDetailUi } from "./hooks/useTableDetailUi";
+import { useTableDetailActions } from "../../features/tables/hooks/useTableDetailActions";
+import { TableDetailHeader } from "../../features/tables/components/TableDetailHeader";
+import { useTableDetailUi } from "../../features/tables/hooks/useTableDetailUi";
 
 export default function TableDetailScreen() {
   const db = useDb();

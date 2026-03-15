@@ -1,10 +1,10 @@
 import { View, Text, Pressable } from "react-native";
 import { useDb } from "../data/db/DbProvider";
-import { useRulesData } from "./rules/hooks/useRulesData";
-import { useRulesEditor } from "./rules/hooks/useRulesEditor";
-import { RulesEditorModal } from "./rules/components/RulesEditorModal";
-import { RulesListSection } from "./rules/components/RulesListSection";
-import { useRulesScreenActions } from "./rules/hooks/useRulesScreenActions";
+import { useRulesData } from "../features/rules/hooks/useRulesData";
+import { useRulesEditor } from "../features/rules/hooks/useRulesEditor";
+import { RulesEditorModal } from "../features/rules/components/RulesEditorModal";
+import { RulesListSection } from "../features/rules/components/RulesListSection";
+import { useRulesScreenActions } from "../features/rules/hooks/useRulesScreenActions";
 
 export default function RulesScreen() {
   const db = useDb();

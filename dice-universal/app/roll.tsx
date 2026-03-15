@@ -4,26 +4,26 @@ import { View, Text, ScrollView } from "react-native";
 import { useDb } from "../data/db/DbProvider";
 import { useActiveTable } from "../data/state/ActiveTableProvider";
 
-import { RollModals } from "./roll/components/RollModals";
+import { RollModals } from "../features/roll/components/RollModals";
 
-import { SavedProfilesSection } from "./roll/components/SavedProfilesSection";
-import { useDraftTableActions } from "./roll/hooks/useDraftTableActions";
+import { SavedProfilesSection } from "../features/roll/components/SavedProfilesSection";
+import { useDraftTableActions } from "../features/roll/hooks/useDraftTableActions";
 
-import { useRollExecution } from "./roll/hooks/useRollExecution";
+import { useRollExecution } from "../features/roll/hooks/useRollExecution";
 
 import {
   useQuickRollDraft,
-} from "./roll/hooks/useQuickRollDraft";
+} from "../features/roll/hooks/useQuickRollDraft";
 
-import { QuickRollSection } from "./roll/components/QuickRollSection";
+import { QuickRollSection } from "../features/roll/components/QuickRollSection";
 
-import { useRollTableData } from "./roll/hooks/useRollTableData";
+import { useRollTableData } from "../features/roll/hooks/useRollTableData";
 
 import { GroupRollResult } from "../core/roll/roll";
 
-import { RollHeaderSection } from "./roll/components/RollHeaderSection";
+import { RollHeaderSection } from "../features/roll/components/RollHeaderSection";
 
-import { RollTabs } from "./roll/components/RollTabs";
+import { RollTabs } from "../features/roll/components/RollTabs";
 
 export default function RollScreen() {
   const db = useDb();
