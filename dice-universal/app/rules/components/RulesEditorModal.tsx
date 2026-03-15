@@ -1,5 +1,5 @@
 // app/components/RulesEditorModal.tsx
-import { Modal, View, ScrollView } from "react-native";
+import { ScrollView } from "react-native";
 import type {
   RuleRow,
 } from "../../../data/repositories/rulesRepo";
@@ -16,6 +16,7 @@ import { RulesEditorOptionsSection } from "./RulesEditorOptionsSection";
 import { RulesEditorStepsSection } from "./RulesEditorStepsSection";
 import { RulesEditorPreviewSection } from "./RulesEditorPreviewSection";
 import { RulesEditorNameSection } from "./RulesEditorNameSection";
+import { RulesEditorModalShell } from "./RulesEditorModalShell";
 
 type Props = {
   visible: boolean;
@@ -164,94 +165,72 @@ export function RulesEditorModal({
   onSave,
 }: Props) {
   return (
-    <Modal
+    <RulesEditorModalShell
       visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
+      onClose={onClose}
     >
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: "rgba(0,0,0,0.5)",
-          justifyContent: "center",
-          padding: 16,
-        }}
-      >
-        <View
-          style={{
-            backgroundColor: "white",
-            borderRadius: 12,
-            padding: 16,
-            borderWidth: 1,
-            maxHeight: "90%",
-          }}
-        >
-          <RulesEditorHeader editingRule={editingRule} />
+      <RulesEditorHeader editingRule={editingRule} />
 
-          <ScrollView style={{ marginTop: 12 }}>
-            <RulesEditorNameSection
-              formName={formName}
-              onChangeFormName={onChangeFormName}
-            />
+      <ScrollView style={{ marginTop: 12 }}>
+        <RulesEditorNameSection
+          formName={formName}
+          onChangeFormName={onChangeFormName}
+        />
 
-            <RulesEditorPresetsSection onApplyPreset={onApplyPreset} />
+        <RulesEditorPresetsSection onApplyPreset={onApplyPreset} />
 
 
-            <RulesEditorOptionsSection
-              pipeOutput={pipeOutput}
-              onChangePipeOutput={onChangePipeOutput}
-              successThreshold={successThreshold}
-              onChangeSuccessThreshold={onChangeSuccessThreshold}
-              critSuccessFaces={critSuccessFaces}
-              onChangeCritSuccessFaces={onChangeCritSuccessFaces}
-              critFailureFaces={critFailureFaces}
-              onChangeCritFailureFaces={onChangeCritFailureFaces}
-            />
+        <RulesEditorOptionsSection
+          pipeOutput={pipeOutput}
+          onChangePipeOutput={onChangePipeOutput}
+          successThreshold={successThreshold}
+          onChangeSuccessThreshold={onChangeSuccessThreshold}
+          critSuccessFaces={critSuccessFaces}
+          onChangeCritSuccessFaces={onChangeCritSuccessFaces}
+          critFailureFaces={critFailureFaces}
+          onChangeCritFailureFaces={onChangeCritFailureFaces}
+        />
 
-            <RulesEditorStepsSection
-              steps={steps}
-              onRemoveStepAt={onRemoveStepAt}
-              onMoveStepUp={onMoveStepUp}
-              onMoveStepDown={onMoveStepDown}
-              onAddStep={onAddStep}
-              keepN={keepN}
-              onChangeKeepN={onChangeKeepN}
-              successAt={successAt}
-              onChangeSuccessAt={onChangeSuccessAt}
-              takeIndex={takeIndex}
-              onChangeTakeIndex={onChangeTakeIndex}
-              facesInput={facesInput}
-              onChangeFacesInput={onChangeFacesInput}
-              rangeMin={rangeMin}
-              onChangeRangeMin={onChangeRangeMin}
-              rangeMax={rangeMax}
-              onChangeRangeMax={onChangeRangeMax}
-              ranges={ranges}
-              onChangeRanges={onChangeRanges}
-              toFacesArray={toFacesArray}
-            />
+        <RulesEditorStepsSection
+          steps={steps}
+          onRemoveStepAt={onRemoveStepAt}
+          onMoveStepUp={onMoveStepUp}
+          onMoveStepDown={onMoveStepDown}
+          onAddStep={onAddStep}
+          keepN={keepN}
+          onChangeKeepN={onChangeKeepN}
+          successAt={successAt}
+          onChangeSuccessAt={onChangeSuccessAt}
+          takeIndex={takeIndex}
+          onChangeTakeIndex={onChangeTakeIndex}
+          facesInput={facesInput}
+          onChangeFacesInput={onChangeFacesInput}
+          rangeMin={rangeMin}
+          onChangeRangeMin={onChangeRangeMin}
+          rangeMax={rangeMax}
+          onChangeRangeMax={onChangeRangeMax}
+          ranges={ranges}
+          onChangeRanges={onChangeRanges}
+          toFacesArray={toFacesArray}
+        />
 
-            <RulesEditorPreviewSection
-              previewValues={previewValues}
-              onChangePreviewValues={onChangePreviewValues}
-              previewSides={previewSides}
-              onChangePreviewSides={onChangePreviewSides}
-              previewModifier={previewModifier}
-              onChangePreviewModifier={onChangePreviewModifier}
-              previewSign={previewSign}
-              onChangePreviewSign={onChangePreviewSign}
-              previewResult={previewResult}
-              onComputePreview={onComputePreview}
-            />
+        <RulesEditorPreviewSection
+          previewValues={previewValues}
+          onChangePreviewValues={onChangePreviewValues}
+          previewSides={previewSides}
+          onChangePreviewSides={onChangePreviewSides}
+          previewModifier={previewModifier}
+          onChangePreviewModifier={onChangePreviewModifier}
+          previewSign={previewSign}
+          onChangePreviewSign={onChangePreviewSign}
+          previewResult={previewResult}
+          onComputePreview={onComputePreview}
+        />
 
-            <View style={{ height: 10 }} />
-          </ScrollView>
+      </ScrollView>
 
-          <RulesEditorFooter onClose={onClose} onSave={onSave} />
+      <RulesEditorFooter onClose={onClose} onSave={onSave} />
           
-        </View>
-      </View>
-    </Modal>
+    </RulesEditorModalShell>
   );
 }
