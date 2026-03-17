@@ -7,11 +7,9 @@ export default function RootLayout() {
     <DbProvider>
       <ActiveTableProvider>
         <Stack screenOptions={{ headerTitleAlign: "center" }}>
-          <Stack.Screen name="index" options={{ title: "Accueil" }} />
-          <Stack.Screen name="roll" options={{ title: "Jet" }} />
-          <Stack.Screen name="tables" options={{ title: "Mes tables" }} />
-          <Stack.Screen name="history" options={{ title: "Historique" }} />
-          <Stack.Screen name="rules" options={{ title: "Règles" }} />
+          <Stack.Screen name="index" options={{ headerShown: false }} />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="tables/[id]" options={{ title: "Table" }} />
         </Stack>
       </ActiveTableProvider>
     </DbProvider>
