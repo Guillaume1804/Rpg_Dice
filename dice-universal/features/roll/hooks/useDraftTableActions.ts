@@ -1,8 +1,14 @@
-import { replaceTableWithDraftGroups, createTableWithDraftGroups } from "../../../data/repositories/draftSaveRepo";
+import {
+  replaceTableWithDraftGroups,
+  createTableWithDraftGroups,
+} from "../../../data/repositories/draftSaveRepo";
 import { toSaveableDraftGroups } from "../helpers/draftMappers";
+import { listTables } from "../../../data/repositories/tablesRepo";
 
 import type { Db } from "../../../data/db/database";
-import type { TableRow } from "../../../data/repositories/tablesRepo";
+import type {
+  TableRow,
+} from "../../../data/repositories/tablesRepo";
 
 type DraftLikeDie = {
   sides: number;
@@ -67,16 +73,21 @@ export function useDraftTableActions({
     setShowNameModal(true);
   }
 
-  async function createNewTable() {
-    const name = (typeof "" === "string" ? null : null);
-  }
-
   async function createNewTableFromName(name: string) {
     const trimmed = name.trim();
     if (!trimmed) return;
 
     const nonEmptyGroups = getNonEmptyDraftGroups();
     if (nonEmptyGroups.length === 0) return;
+
+    const existingTables = await listTables(db);
+    const alreadyExists = existingTables.some(
+      (t) => t.name.trim().toLowerCase() === trimmed.toLowerCase(),
+    );
+
+    if (alreadyExists) {
+      throw new Error("Une table avec ce nom existe déjà.");
+    }
 
     const newTableId = await createTableWithDraftGroups(db, {
       name: trimmed,

@@ -9,6 +9,7 @@ import {
   getTableStats,
   TableRow,
   TableStats,
+  deleteTable,
 } from "../data/repositories/tablesRepo";
 
 type TableListItem = {
@@ -19,10 +20,33 @@ type TableListItem = {
 export default function TablesScreen() {
   const db = useDb();
   const router = useRouter();
-  const { setActiveTableId, activeTableId } = useActiveTable();
+  const { setActiveTableId, activeTableId, clearActiveTableId } =
+    useActiveTable();
 
   const [tables, setTables] = useState<TableListItem[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  async function handleDeleteTable(tableId: string) {
+    try {
+      await deleteTable(db, tableId);
+
+      if (activeTableId === tableId) {
+        await clearActiveTableId();
+      }
+
+      const rows = await listTables(db);
+
+      const enriched: TableListItem[] = [];
+      for (const table of rows) {
+        const stats = await getTableStats(db, table.id);
+        enriched.push({ table, stats });
+      }
+
+      setTables(enriched);
+    } catch (e: any) {
+      setError(e?.message ?? String(e));
+    }
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -53,8 +77,11 @@ export default function TablesScreen() {
       return () => {
         isActive = false;
       };
-    }, [db])
+    }, [db]),
   );
+
+  const activeTable =
+    tables.find((item) => item.table.id === activeTableId) ?? null;
 
   if (error) {
     return (
@@ -72,6 +99,44 @@ export default function TablesScreen() {
       <Text style={{ marginTop: 6, opacity: 0.7 }}>
         Choisis une table active pour gérer tes profils et lancer ses actions.
       </Text>
+
+      <View
+        style={{
+          marginTop: 16,
+          padding: 14,
+          borderWidth: 1,
+          borderRadius: 12,
+          gap: 8,
+        }}
+      >
+        <Text style={{ fontSize: 16, fontWeight: "700" }}>Table active</Text>
+
+        {activeTable ? (
+          <>
+            <Text style={{ opacity: 0.8 }}>{activeTable.table.name}</Text>
+
+            <Pressable
+              onPress={async () => {
+                await clearActiveTableId();
+              }}
+              style={{
+                marginTop: 4,
+                paddingVertical: 10,
+                paddingHorizontal: 12,
+                borderWidth: 1,
+                borderRadius: 10,
+                alignSelf: "flex-start",
+              }}
+            >
+              <Text style={{ fontWeight: "700" }}>Retirer la table active</Text>
+            </Pressable>
+          </>
+        ) : (
+          <Text style={{ opacity: 0.7 }}>
+            Aucune table active sélectionnée.
+          </Text>
+        )}
+      </View>
 
       <Pressable
         onPress={() => router.push("/rules" as any)}
@@ -118,7 +183,6 @@ export default function TablesScreen() {
               <Pressable
                 onPress={async () => {
                   await setActiveTableId(table.id);
-                  router.push(`/tables/${table.id}` as any);
                 }}
                 style={{
                   padding: 14,
@@ -165,7 +229,8 @@ export default function TablesScreen() {
                   }}
                 >
                   <Text style={{ opacity: 0.8, marginRight: 12 }}>
-                    {stats.profile_count} profil{stats.profile_count > 1 ? "s" : ""}
+                    {stats.profile_count} profil
+                    {stats.profile_count > 1 ? "s" : ""}
                   </Text>
 
                   <Text style={{ opacity: 0.8, marginRight: 12 }}>
@@ -180,6 +245,44 @@ export default function TablesScreen() {
                 <Text style={{ marginTop: 10, opacity: 0.6 }}>
                   Appuyer pour ouvrir la table
                 </Text>
+
+                <View
+                  style={{
+                    flexDirection: "row",
+                    flexWrap: "wrap",
+                    gap: 8,
+                    marginTop: 10,
+                  }}
+                >
+                  <Pressable
+                    onPress={async () => {
+                      await setActiveTableId(table.id);
+                      router.push(`/tables/${table.id}` as any);
+                    }}
+                    style={{
+                      paddingVertical: 8,
+                      paddingHorizontal: 10,
+                      borderWidth: 1,
+                      borderRadius: 8,
+                    }}
+                  >
+                    <Text>Ouvrir</Text>
+                  </Pressable>
+
+                  {table.is_system !== 1 ? (
+                    <Pressable
+                      onPress={() => handleDeleteTable(table.id)}
+                      style={{
+                        paddingVertical: 8,
+                        paddingHorizontal: 10,
+                        borderWidth: 1,
+                        borderRadius: 8,
+                      }}
+                    >
+                      <Text>Supprimer</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
               </Pressable>
             );
           }}

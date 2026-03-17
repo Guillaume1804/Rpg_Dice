@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { View, Text, Pressable } from "react-native";
 import type { GroupRollResult } from "../../../core/roll/roll";
 import type { RuleRow } from "../../../data/repositories/rulesRepo";
@@ -25,13 +25,16 @@ type DraftGroupState = {
 };
 
 type QuickRollSectionProps = {
+  title: string;
   standardDice: number[];
   draftGroups: DraftGroupState[];
   draftResults: GroupRollResult[];
   selectedDraftGroupId: string | null;
   tableIsSystem: boolean;
   showSaveOptions: boolean;
+  showAdvanced: boolean;
   onToggleSaveOptions: () => void;
+  onToggleAdvanced: () => void;
   onAddDraftGroup: () => void;
   onAddDieToDraft: (sides: number) => void;
   onSelectDraftGroup: (groupId: string) => void;
@@ -48,13 +51,16 @@ type QuickRollSectionProps = {
 };
 
 export function QuickRollSection({
+  title,
   standardDice,
   draftGroups,
   draftResults,
   selectedDraftGroupId,
   tableIsSystem,
   showSaveOptions,
+  showAdvanced,
   onToggleSaveOptions,
+  onToggleAdvanced,
   onAddDraftGroup,
   onAddDieToDraft,
   onSelectDraftGroup,
@@ -69,10 +75,9 @@ export function QuickRollSection({
   onCreateNewTable,
   availableRules,
 }: QuickRollSectionProps) {
-  const [showAdvanced, setShowAdvanced] = useState(false);
-
   const selectedGroup = useMemo(() => {
     if (draftGroups.length === 0) return null;
+
     return (
       draftGroups.find((g) => g.id === selectedDraftGroupId) ??
       draftGroups[0] ??
@@ -85,46 +90,52 @@ export function QuickRollSection({
     return draftResults.find((r) => r.groupId === selectedGroup.id) ?? null;
   }, [draftResults, selectedGroup]);
 
+  const hasDraftContent = draftGroups.some((g) => g.dice.length > 0);
+
   return (
-    <View style={{ gap: 12 }}>
+    <View style={{ marginTop: 12, gap: 12 }}>
       <View
         style={{
           padding: 14,
           borderWidth: 1,
           borderRadius: 14,
-          gap: 8,
+          gap: 10,
         }}
       >
-        <Text style={{ fontSize: 16, fontWeight: "800" }}>Jet rapide</Text>
+        <Text style={{ fontSize: 16, fontWeight: "800" }}>{title}</Text>
 
-        <Text style={{ opacity: 0.75 }}>
-          Ajoute des dés, lance, puis affine si tu veux une action plus avancée.
-        </Text>
-
-        <Text style={{ marginTop: 4, fontWeight: "700" }}>Dés standards</Text>
-
-        <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 4 }}>
-          {standardDice.map((s) => (
+        <View
+          style={{
+            flexDirection: "row",
+            flexWrap: "wrap",
+            gap: 8,
+          }}
+        >
+          {standardDice.map((sides) => (
             <Pressable
-              key={s}
-              onPress={() => onAddDieToDraft(s)}
+              key={sides}
+              onPress={() => onAddDieToDraft(sides)}
               style={{
+                minWidth: 64,
                 paddingVertical: 12,
                 paddingHorizontal: 14,
                 borderWidth: 1,
-                borderRadius: 10,
-                marginRight: 8,
-                marginBottom: 8,
-                minWidth: 62,
+                borderRadius: 12,
                 alignItems: "center",
               }}
             >
-              <Text style={{ fontWeight: "800" }}>d{s}</Text>
+              <Text style={{ fontWeight: "800" }}>d{sides}</Text>
             </Pressable>
           ))}
         </View>
 
-        <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 4 }}>
+        <View
+          style={{
+            flexDirection: "row",
+            flexWrap: "wrap",
+            gap: 8,
+          }}
+        >
           <Pressable
             onPress={onRollDraft}
             style={{
@@ -132,38 +143,37 @@ export function QuickRollSection({
               paddingHorizontal: 14,
               borderWidth: 1,
               borderRadius: 10,
-              marginRight: 8,
-              marginBottom: 8,
             }}
           >
             <Text style={{ fontWeight: "800" }}>Lancer</Text>
           </Pressable>
 
-          <Pressable
-            onPress={onClearDraft}
-            style={{
-              paddingVertical: 12,
-              paddingHorizontal: 14,
-              borderWidth: 1,
-              borderRadius: 10,
-              marginRight: 8,
-              marginBottom: 8,
-            }}
-          >
-            <Text>Réinitialiser</Text>
-          </Pressable>
+          {hasDraftContent ? (
+            <Pressable
+              onPress={onClearDraft}
+              style={{
+                paddingVertical: 12,
+                paddingHorizontal: 14,
+                borderWidth: 1,
+                borderRadius: 10,
+              }}
+            >
+              <Text style={{ fontWeight: "700" }}>Reset</Text>
+            </Pressable>
+          ) : null}
 
           <Pressable
-            onPress={() => setShowAdvanced((v) => !v)}
+            onPress={onToggleAdvanced}
             style={{
               paddingVertical: 12,
               paddingHorizontal: 14,
               borderWidth: 1,
               borderRadius: 10,
-              marginBottom: 8,
             }}
           >
-            <Text>{showAdvanced ? "Masquer l’avancé" : "Options avancées"}</Text>
+            <Text style={{ fontWeight: "700" }}>
+              {showAdvanced ? "Masquer l’action temporaire" : "Action temporaire"}
+            </Text>
           </Pressable>
         </View>
       </View>
@@ -176,171 +186,144 @@ export function QuickRollSection({
           gap: 8,
         }}
       >
-        <Text style={{ fontSize: 15, fontWeight: "800" }}>Action en cours</Text>
+        <Text style={{ fontSize: 16, fontWeight: "800" }}>Sélection en cours</Text>
 
-        {!selectedGroup ? (
-          <Text style={{ opacity: 0.7 }}>
-            Aucun jet en cours. Ajoute un dé standard pour démarrer.
+        {!selectedGroup || selectedGroup.dice.length === 0 ? (
+          <Text style={{ opacity: 0.72 }}>
+            Aucun dé sélectionné pour le moment.
           </Text>
         ) : (
           <>
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 17, fontWeight: "800" }}>
-                  {selectedGroup.name}
-                </Text>
+            <Text style={{ fontWeight: "700" }}>{selectedGroup.name}</Text>
 
-                <Text style={{ marginTop: 4, opacity: 0.75 }}>
-                  {selectedGroup.dice.length} entrée
-                  {selectedGroup.dice.length > 1 ? "s" : ""} • Règle :{" "}
-                  {getRuleNameFromId(selectedGroup.rule_id, availableRules)}
-                </Text>
-              </View>
-
-              <Pressable
-                onPress={() =>
-                  onRenameDraftGroup(selectedGroup.id, selectedGroup.name)
-                }
+            {selectedGroup.dice.map((die, index) => (
+              <View
+                key={`${selectedGroup.id}-${index}`}
                 style={{
-                  paddingVertical: 10,
-                  paddingHorizontal: 12,
+                  padding: 10,
                   borderWidth: 1,
                   borderRadius: 10,
+                  gap: 4,
                 }}
               >
-                <Text>Renommer</Text>
-              </Pressable>
-            </View>
+                <Text style={{ fontWeight: "700" }}>
+                  {die.qty}d{die.sides}
+                </Text>
 
-            {selectedGroup.dice.length === 0 ? (
-              <Text style={{ opacity: 0.7 }}>
-                Cette action ne contient encore aucun dé.
-              </Text>
-            ) : (
-              <View style={{ gap: 8 }}>
-                {selectedGroup.dice.map((d, index) => (
-                  <View
-                    key={`${selectedGroup.id}-${index}`}
+                <Text style={{ opacity: 0.72 }}>
+                  Signe : {getSignLabel(die.sign)} • Mod : {die.modifier ?? 0}
+                </Text>
+
+                <Text style={{ opacity: 0.72 }}>
+                  Règle : {getRuleNameFromId(die.rule_id, availableRules)}
+                </Text>
+
+                <View
+                  style={{
+                    flexDirection: "row",
+                    flexWrap: "wrap",
+                    gap: 8,
+                    marginTop: 4,
+                  }}
+                >
+                  <Pressable
+                    onPress={() => onEditDraftDie(selectedGroup.id, index)}
                     style={{
-                      padding: 10,
+                      paddingVertical: 8,
+                      paddingHorizontal: 10,
                       borderWidth: 1,
-                      borderRadius: 10,
-                      gap: 4,
+                      borderRadius: 8,
                     }}
                   >
-                    <Text style={{ fontWeight: "700" }}>
-                      {d.qty}d{d.sides}
-                    </Text>
+                    <Text>Modifier</Text>
+                  </Pressable>
 
-                    <Text style={{ opacity: 0.78 }}>
-                      Signe : {getSignLabel(d.sign)} • Mod. : {d.modifier ?? 0}
-                    </Text>
-
-                    <Text style={{ opacity: 0.78 }}>
-                      Règle : {getRuleNameFromId(d.rule_id, availableRules)}
-                    </Text>
-
-                    <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 4 }}>
-                      <Pressable
-                        onPress={() => onEditDraftDie(selectedGroup.id, index)}
-                        style={{
-                          paddingVertical: 8,
-                          paddingHorizontal: 10,
-                          borderWidth: 1,
-                          borderRadius: 8,
-                          marginRight: 8,
-                          marginBottom: 8,
-                        }}
-                      >
-                        <Text>Modifier</Text>
-                      </Pressable>
-
-                      <Pressable
-                        onPress={() => onRemoveDraftDie(selectedGroup.id, index)}
-                        style={{
-                          paddingVertical: 8,
-                          paddingHorizontal: 10,
-                          borderWidth: 1,
-                          borderRadius: 8,
-                          marginBottom: 8,
-                        }}
-                      >
-                        <Text>Supprimer</Text>
-                      </Pressable>
-                    </View>
-                  </View>
-                ))}
+                  <Pressable
+                    onPress={() => onRemoveDraftDie(selectedGroup.id, index)}
+                    style={{
+                      paddingVertical: 8,
+                      paddingHorizontal: 10,
+                      borderWidth: 1,
+                      borderRadius: 8,
+                    }}
+                  >
+                    <Text>Supprimer</Text>
+                  </Pressable>
+                </View>
               </View>
-            )}
+            ))}
           </>
         )}
       </View>
 
-      {selectedGroupResult ? (
-        <View
-          style={{
-            padding: 14,
-            borderWidth: 1,
-            borderRadius: 14,
-            gap: 6,
-          }}
-        >
-          <Text style={{ fontSize: 13, opacity: 0.72 }}>Dernier résultat</Text>
+      <View
+        style={{
+          padding: 14,
+          borderWidth: 1,
+          borderRadius: 14,
+          gap: 8,
+        }}
+      >
+        <Text style={{ fontSize: 16, fontWeight: "800" }}>Résultat</Text>
 
-          <Text style={{ fontSize: 30, fontWeight: "900" }}>
-            {selectedGroupResult.total}
+        {!selectedGroupResult ? (
+          <Text style={{ opacity: 0.72 }}>
+            Lance un jet pour afficher le résultat ici.
           </Text>
+        ) : (
+          <>
+            <Text style={{ fontSize: 34, fontWeight: "900" }}>
+              {selectedGroupResult.total}
+            </Text>
 
-          <Text style={{ opacity: 0.8 }}>
-            Somme des entrées : {selectedGroupResult.entries_total}
-          </Text>
+            <Text style={{ opacity: 0.72 }}>
+              Somme des entrées : {selectedGroupResult.entries_total}
+            </Text>
 
-          <Text style={{ opacity: 0.8 }}>
-            Règle de groupe :{" "}
-            {selectedGroupResult.group_rule
-              ? selectedGroupResult.group_rule.name
-              : "Somme"}
-            {selectedGroupResult.group_eval_result
-              ? ` → ${formatRuleResult(selectedGroupResult.group_eval_result)}`
-              : ""}
-          </Text>
+            <Text style={{ opacity: 0.72 }}>
+              Règle de groupe :{" "}
+              {selectedGroupResult.group_rule
+                ? selectedGroupResult.group_rule.name
+                : "Somme"}
+              {selectedGroupResult.group_eval_result
+                ? ` → ${formatRuleResult(selectedGroupResult.group_eval_result)}`
+                : ""}
+            </Text>
 
-          <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1 }}>
-            {selectedGroupResult.entries.map((e) => (
-              <View key={e.entryId} style={{ marginTop: 8 }}>
-                <Text style={{ fontWeight: "700" }}>
-                  {e.qty}d{e.sides} • signe {getSignLabel(e.sign)} • mod {e.modifier}
-                </Text>
-
-                <Text style={{ marginTop: 2, opacity: 0.8 }}>
-                  Valeurs : [{e.signed_values.join(", ")}]
-                </Text>
-
-                <Text style={{ marginTop: 2, opacity: 0.8 }}>
-                  Règle : {getRuleName(e.rule)}
-                </Text>
-
-                {e.eval_result ? (
-                  <Text style={{ marginTop: 2, opacity: 0.85 }}>
-                    Résultat règle : {formatRuleResult(e.eval_result)}
+            <View style={{ marginTop: 8, gap: 8 }}>
+              {selectedGroupResult.entries.map((entry) => (
+                <View
+                  key={entry.entryId}
+                  style={{
+                    padding: 10,
+                    borderWidth: 1,
+                    borderRadius: 10,
+                    gap: 4,
+                  }}
+                >
+                  <Text style={{ fontWeight: "700" }}>
+                    {entry.qty}d{entry.sides}
                   </Text>
-                ) : null}
 
-                <Text style={{ marginTop: 2, fontWeight: "700" }}>
-                  Final entrée : {e.final_total}
-                </Text>
-              </View>
-            ))}
-          </View>
-        </View>
-      ) : null}
+                  <Text style={{ opacity: 0.72 }}>
+                    Valeurs : [{entry.signed_values.join(", ")}]
+                  </Text>
+
+                  <Text style={{ opacity: 0.72 }}>
+                    Règle : {getRuleName(entry.rule)}
+                  </Text>
+
+                  {entry.eval_result ? (
+                    <Text style={{ opacity: 0.72 }}>
+                      Résultat règle : {formatRuleResult(entry.eval_result)}
+                    </Text>
+                  ) : null}
+                </View>
+              ))}
+            </View>
+          </>
+        )}
+      </View>
 
       {showAdvanced ? (
         <View
@@ -351,13 +334,17 @@ export function QuickRollSection({
             gap: 10,
           }}
         >
-          <Text style={{ fontSize: 15, fontWeight: "800" }}>Options avancées</Text>
-
-          <Text style={{ opacity: 0.75 }}>
-            Crée plusieurs actions temporaires, choisis laquelle modifier, puis sauvegarde si besoin.
+          <Text style={{ fontSize: 16, fontWeight: "800" }}>
+            Action temporaire
           </Text>
 
-          <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+          <View
+            style={{
+              flexDirection: "row",
+              flexWrap: "wrap",
+              gap: 8,
+            }}
+          >
             <Pressable
               onPress={onAddDraftGroup}
               style={{
@@ -365,8 +352,6 @@ export function QuickRollSection({
                 paddingHorizontal: 12,
                 borderWidth: 1,
                 borderRadius: 10,
-                marginRight: 8,
-                marginBottom: 8,
               }}
             >
               <Text style={{ fontWeight: "700" }}>+ Nouvelle action</Text>
@@ -374,7 +359,7 @@ export function QuickRollSection({
           </View>
 
           {draftGroups.length === 0 ? (
-            <Text style={{ opacity: 0.7 }}>
+            <Text style={{ opacity: 0.72 }}>
               Aucune action temporaire pour le moment.
             </Text>
           ) : (
@@ -396,23 +381,19 @@ export function QuickRollSection({
                       flexDirection: "row",
                       justifyContent: "space-between",
                       alignItems: "center",
-                      gap: 10,
+                      gap: 8,
                     }}
                   >
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontWeight: "800", fontSize: 15 }}>
-                        {group.name}
-                      </Text>
+                      <Text style={{ fontWeight: "800" }}>{group.name}</Text>
 
-                      <Text style={{ marginTop: 4, opacity: 0.75 }}>
-                        {group.dice.length} entrée{group.dice.length > 1 ? "s" : ""} • Règle :{" "}
-                        {getRuleNameFromId(group.rule_id, availableRules)}
+                      <Text style={{ marginTop: 4, opacity: 0.72 }}>
+                        {group.dice.length} entrée{group.dice.length > 1 ? "s" : ""} •
+                        Règle : {getRuleNameFromId(group.rule_id, availableRules)}
                       </Text>
                     </View>
 
-                    {isSelected ? (
-                      <Text style={{ opacity: 0.7, fontSize: 12 }}>Active</Text>
-                    ) : (
+                    {!isSelected ? (
                       <Pressable
                         onPress={() => onSelectDraftGroup(group.id)}
                         style={{
@@ -424,10 +405,18 @@ export function QuickRollSection({
                       >
                         <Text>Utiliser</Text>
                       </Pressable>
+                    ) : (
+                      <Text style={{ opacity: 0.72 }}>Active</Text>
                     )}
                   </View>
 
-                  <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      flexWrap: "wrap",
+                      gap: 8,
+                    }}
+                  >
                     <Pressable
                       onPress={() => onRenameDraftGroup(group.id, group.name)}
                       style={{
@@ -435,8 +424,6 @@ export function QuickRollSection({
                         paddingHorizontal: 10,
                         borderWidth: 1,
                         borderRadius: 8,
-                        marginRight: 8,
-                        marginBottom: 8,
                       }}
                     >
                       <Text>Renommer</Text>
@@ -449,8 +436,6 @@ export function QuickRollSection({
                         paddingHorizontal: 10,
                         borderWidth: 1,
                         borderRadius: 8,
-                        marginRight: 8,
-                        marginBottom: 8,
                       }}
                     >
                       <Text>Règle</Text>
@@ -463,7 +448,6 @@ export function QuickRollSection({
                         paddingHorizontal: 10,
                         borderWidth: 1,
                         borderRadius: 8,
-                        marginBottom: 8,
                       }}
                     >
                       <Text>Supprimer</Text>
@@ -491,27 +475,23 @@ export function QuickRollSection({
             <View style={{ gap: 8 }}>
               <Pressable
                 onPress={onReplaceCurrentTable}
+                disabled={tableIsSystem}
                 style={{
-                  padding: 10,
+                  padding: 12,
                   borderWidth: 1,
-                  borderRadius: 8,
+                  borderRadius: 10,
                   opacity: tableIsSystem ? 0.4 : 1,
                 }}
               >
                 <Text>Remplacer la table actuelle</Text>
-                {tableIsSystem ? (
-                  <Text style={{ opacity: 0.7, marginTop: 4 }}>
-                    Table système : remplacement interdit.
-                  </Text>
-                ) : null}
               </Pressable>
 
               <Pressable
                 onPress={onCreateNewTable}
                 style={{
-                  padding: 10,
+                  padding: 12,
                   borderWidth: 1,
-                  borderRadius: 8,
+                  borderRadius: 10,
                 }}
               >
                 <Text>Créer une nouvelle table</Text>

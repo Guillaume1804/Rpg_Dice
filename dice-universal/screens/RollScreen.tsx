@@ -1,29 +1,29 @@
-import { useMemo, useState } from "react";
-import { View, Text, ScrollView } from "react-native";
+import { useEffect, useMemo, useState } from "react";
+import { View, Text, ScrollView, Pressable } from "react-native";
 import { useDb } from "../data/db/DbProvider";
 import { useActiveTable } from "../data/state/ActiveTableProvider";
 
 import { RollModals } from "../features/roll/components/RollModals";
-import { SavedProfilesSection } from "../features/roll/components/SavedProfilesSection";
+import { QuickRollSection } from "../features/roll/components/QuickRollSection";
+import { TableActionSection } from "../features/roll/components/TableActionSection";
+
 import { useDraftTableActions } from "../features/roll/hooks/useDraftTableActions";
 import { useRollExecution } from "../features/roll/hooks/useRollExecution";
 import { useQuickRollDraft } from "../features/roll/hooks/useQuickRollDraft";
-import { QuickRollSection } from "../features/roll/components/QuickRollSection";
 import { useRollTableData } from "../features/roll/hooks/useRollTableData";
+
 import { GroupRollResult } from "../core/roll/roll";
-import { RollHeaderSection } from "../features/roll/components/RollHeaderSection";
-import { RollTabs } from "../features/roll/components/RollTabs";
 
 export default function RollScreen() {
   const db = useDb();
   const { activeTableId, setActiveTableId } = useActiveTable();
-  const [activeTab, setActiveTab] = useState<"quick" | "actions">("quick");
 
   const [results, setResults] = useState<GroupRollResult[]>([]);
-
   const [showSaveOptions, setShowSaveOptions] = useState(false);
   const [showNameModal, setShowNameModal] = useState(false);
   const [newTableName, setNewTableName] = useState("");
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
 
   const STANDARD_DICE = [4, 6, 8, 10, 12, 20, 100];
 
@@ -48,6 +48,18 @@ export default function RollScreen() {
     db,
     tableId,
   });
+
+  useEffect(() => {
+    if (profiles.length === 0) {
+      setSelectedProfileId(null);
+      return;
+    }
+
+    const exists = profiles.some((p) => p.profile.id === selectedProfileId);
+    if (!exists) {
+      setSelectedProfileId(profiles[0].profile.id);
+    }
+  }, [profiles, selectedProfileId]);
 
   const {
     draftGroups,
@@ -136,93 +148,80 @@ export default function RollScreen() {
       setDraftResults([]);
       setSelectedDraftGroupId(null);
       setDraftGroupRuleSelection(null);
+      setShowAdvanced(false);
     },
   });
-
-  const groupCount = useMemo(
-    () => profiles.reduce((acc, p) => acc + p.groups.length, 0),
-    [profiles]
-  );
 
   if (error) {
     return (
       <View style={{ flex: 1, padding: 16 }}>
-        <Text style={{ fontSize: 18, fontWeight: "600" }}>Erreur</Text>
+        <Text style={{ fontSize: 18, fontWeight: "700" }}>Erreur</Text>
         <Text style={{ marginTop: 8 }}>{error}</Text>
       </View>
     );
   }
 
-  if (!tableId) {
-    return (
-      <View style={{ flex: 1, padding: 16, gap: 12 }}>
-        <Text style={{ fontSize: 18, fontWeight: "700" }}>Jet</Text>
-        <Text style={{ opacity: 0.7 }}>
-          Aucune table active. Va dans “Mes tables” et sélectionne une table.
-        </Text>
-      </View>
-    );
-  }
-
-  if (!table) {
-    return (
-      <View style={{ flex: 1, padding: 16, gap: 12 }}>
-        <Text style={{ fontSize: 18, fontWeight: "700" }}>Jet</Text>
-        <Text style={{ opacity: 0.7 }}>
-          Table active introuvable (id: {tableId}).
-        </Text>
-      </View>
-    );
-  }
+  const hasActiveTable = !!table;
 
   return (
-    <View style={{ flex: 1, padding: 16, gap: 12 }}>
-      <RollHeaderSection
-        tableName={table.name}
-        profileCount={profiles.length}
-        groupCount={groupCount}
-      />
-
-      <RollTabs activeTab={activeTab} onChangeTab={setActiveTab} />
-
+    <View style={{ flex: 1 }}>
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 24 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
       >
-        {activeTab === "quick" ? (
-          <QuickRollSection
-            standardDice={STANDARD_DICE}
-            draftGroups={draftGroups}
-            draftResults={draftResults}
-            selectedDraftGroupId={selectedDraftGroupId}
-            tableIsSystem={table.is_system === 1}
-            showSaveOptions={showSaveOptions}
-            onToggleSaveOptions={() => setShowSaveOptions((v) => !v)}
-            onAddDraftGroup={addDraftGroup}
-            onAddDieToDraft={addDieToDraft}
-            onSelectDraftGroup={setSelectedDraftGroupId}
-            onRenameDraftGroup={openRenameDraftGroupModal}
-            onEditDraftGroupRule={openDraftGroupRuleEditor}
-            onRemoveDraftGroup={removeDraftGroup}
-            onEditDraftDie={openDraftEditor}
-            onRemoveDraftDie={removeDraftDie}
-            onRollDraft={rollDraft}
-            onClearDraft={clearDraft}
-            onReplaceCurrentTable={replaceCurrentTable}
-            onCreateNewTable={openCreateTableModal}
-            availableRules={availableRules}
-          />
-        ) : (
-          <SavedProfilesSection
+        {hasActiveTable ? (
+          <View
+            style={{
+              padding: 14,
+              borderWidth: 1,
+              borderRadius: 14,
+            }}
+          >
+            <Text style={{ opacity: 0.72 }}>Table active</Text>
+            <Text style={{ marginTop: 4, fontSize: 24, fontWeight: "900" }}>
+              {table.name}
+            </Text>
+          </View>
+        ) : null}
+
+        {hasActiveTable ? (
+          <TableActionSection
             profiles={profiles}
+            selectedProfileId={selectedProfileId}
             results={results}
-            rulesMap={rulesMap}
+            onSelectProfile={setSelectedProfileId}
             onRollProfile={rollSavedProfile}
             onRollGroup={rollSavedGroup}
             onRollAll={rollSavedTable}
           />
-        )}
+        ) : null}
+
+        <QuickRollSection
+          title={hasActiveTable ? "Jet libre" : "Jet"}
+          standardDice={STANDARD_DICE}
+          draftGroups={draftGroups}
+          draftResults={draftResults}
+          selectedDraftGroupId={selectedDraftGroupId}
+          tableIsSystem={table?.is_system === 1}
+          showSaveOptions={showSaveOptions}
+          showAdvanced={showAdvanced}
+          onToggleSaveOptions={() => setShowSaveOptions((v) => !v)}
+          onToggleAdvanced={() => setShowAdvanced((v) => !v)}
+          onAddDraftGroup={addDraftGroup}
+          onAddDieToDraft={addDieToDraft}
+          onSelectDraftGroup={setSelectedDraftGroupId}
+          onRenameDraftGroup={openRenameDraftGroupModal}
+          onEditDraftGroupRule={openDraftGroupRuleEditor}
+          onRemoveDraftGroup={removeDraftGroup}
+          onEditDraftDie={openDraftEditor}
+          onRemoveDraftDie={removeDraftDie}
+          onRollDraft={rollDraft}
+          onClearDraft={clearDraft}
+          onReplaceCurrentTable={replaceCurrentTable}
+          onCreateNewTable={openCreateTableModal}
+          availableRules={availableRules}
+        />
 
         <RollModals
           draftGroups={draftGroups}
@@ -259,6 +258,24 @@ export default function RollScreen() {
           onSaveNewTable={() => createNewTableFromName(newTableName)}
         />
       </ScrollView>
+
+      <Pressable
+        onPress={() => setShowAdvanced((v) => !v)}
+        style={{
+          position: "absolute",
+          right: 20,
+          bottom: 90,
+          width: 56,
+          height: 56,
+          borderWidth: 1,
+          borderRadius: 999,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "white",
+        }}
+      >
+        <Text style={{ fontSize: 28, fontWeight: "700", lineHeight: 30 }}>+</Text>
+      </Pressable>
     </View>
   );
 }

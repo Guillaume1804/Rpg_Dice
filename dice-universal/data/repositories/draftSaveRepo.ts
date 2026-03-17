@@ -22,7 +22,7 @@ function nowIso() {
 async function assertTableIsNotSystem(db: Db, tableId: string): Promise<void> {
   const rows = await db.getAllAsync<{ is_system: number }>(
     "SELECT is_system FROM tables WHERE id = ? LIMIT 1;",
-    [tableId]
+    [tableId],
   );
 
   if (rows.length && rows[0].is_system === 1) {
@@ -30,7 +30,10 @@ async function assertTableIsNotSystem(db: Db, tableId: string): Promise<void> {
   }
 }
 
-export async function deleteAllProfilesForTable(db: Db, tableId: string): Promise<void> {
+export async function deleteAllProfilesForTable(
+  db: Db,
+  tableId: string,
+): Promise<void> {
   await assertTableIsNotSystem(db, tableId);
   await db.runAsync("DELETE FROM profiles WHERE table_id = ?;", [tableId]);
 }
@@ -41,7 +44,7 @@ export async function createProfileFromDraft(
     tableId: string;
     profileName: string;
     sortOrder?: number;
-  }
+  },
 ): Promise<string> {
   await assertTableIsNotSystem(db, params.tableId);
 
@@ -67,7 +70,7 @@ export async function createProfileFromDraft(
       params.sortOrder ?? 0,
       createdAt,
       createdAt,
-    ]
+    ],
   );
 
   return profileId;
@@ -76,12 +79,13 @@ export async function createProfileFromDraft(
 export async function createGroupFromDraft(
   db: Db,
   params: {
+    tableId: string;
     profileId: string;
     groupName: string;
     groupRuleId?: string | null;
     draftDice: DraftDie[];
     sortOrder?: number;
-  }
+  },
 ): Promise<string> {
   const createdAt = nowIso();
   const groupId = await newId();
@@ -90,6 +94,7 @@ export async function createGroupFromDraft(
     `
     INSERT INTO groups(
       id,
+      table_id,
       profile_id,
       name,
       sort_order,
@@ -97,17 +102,18 @@ export async function createGroupFromDraft(
       created_at,
       updated_at
     )
-    VALUES(?, ?, ?, ?, ?, ?, ?);
+    VALUES(?, ?, ?, ?, ?, ?, ?, ?);
     `,
     [
       groupId,
+      params.tableId,
       params.profileId,
       params.groupName,
       params.sortOrder ?? 0,
       params.groupRuleId ?? null,
       createdAt,
       createdAt,
-    ]
+    ],
   );
 
   let sort = 0;
@@ -142,7 +148,7 @@ export async function createGroupFromDraft(
         d.rule_id ?? null,
         createdAt,
         createdAt,
-      ]
+      ],
     );
   }
 
@@ -152,9 +158,10 @@ export async function createGroupFromDraft(
 export async function createGroupsFromDraft(
   db: Db,
   params: {
+    tableId: string;
     profileId: string;
     groups: DraftGroup[];
-  }
+  },
 ): Promise<string[]> {
   const groupIds: string[] = [];
 
@@ -162,6 +169,7 @@ export async function createGroupsFromDraft(
     const g = params.groups[i];
 
     const groupId = await createGroupFromDraft(db, {
+      tableId: params.tableId,
       profileId: params.profileId,
       groupName: g.name,
       groupRuleId: g.rule_id ?? null,
@@ -183,7 +191,7 @@ export async function createTableWithDraft(
     groupName: string;
     groupRuleId?: string | null;
     draftDice: DraftDie[];
-  }
+  },
 ): Promise<string> {
   const createdAt = nowIso();
   const tableId = await newId();
@@ -193,7 +201,7 @@ export async function createTableWithDraft(
     INSERT INTO tables(id, name, is_system, created_at, updated_at)
     VALUES(?, ?, ?, ?, ?);
     `,
-    [tableId, params.name, 0, createdAt, createdAt]
+    [tableId, params.name, 0, createdAt, createdAt],
   );
 
   const profileId = await createProfileFromDraft(db, {
@@ -203,6 +211,7 @@ export async function createTableWithDraft(
   });
 
   await createGroupFromDraft(db, {
+    tableId,
     profileId,
     groupName: params.groupName,
     groupRuleId: params.groupRuleId ?? null,
@@ -219,7 +228,7 @@ export async function createTableWithDraftGroups(
     name: string;
     profileName?: string;
     groups: DraftGroup[];
-  }
+  },
 ): Promise<string> {
   const createdAt = nowIso();
   const tableId = await newId();
@@ -229,7 +238,7 @@ export async function createTableWithDraftGroups(
     INSERT INTO tables(id, name, is_system, created_at, updated_at)
     VALUES(?, ?, ?, ?, ?);
     `,
-    [tableId, params.name, 0, createdAt, createdAt]
+    [tableId, params.name, 0, createdAt, createdAt],
   );
 
   const profileId = await createProfileFromDraft(db, {
@@ -239,6 +248,7 @@ export async function createTableWithDraftGroups(
   });
 
   await createGroupsFromDraft(db, {
+    tableId,
     profileId,
     groups: params.groups,
   });
@@ -252,7 +262,7 @@ export async function replaceTableWithDraftGroups(
     tableId: string;
     profileName?: string;
     groups: DraftGroup[];
-  }
+  },
 ): Promise<void> {
   await assertTableIsNotSystem(db, params.tableId);
 
@@ -265,6 +275,7 @@ export async function replaceTableWithDraftGroups(
   });
 
   await createGroupsFromDraft(db, {
+    tableId: params.tableId,
     profileId,
     groups: params.groups,
   });

@@ -299,21 +299,20 @@ export function useQuickRollDraft({
   }
 
   function closeDraftGroupRuleModal() {
-  setShowDraftGroupRuleModal(false);
-  setDraftGroupRuleSelection(null);
-}
+    setShowDraftGroupRuleModal(false);
+    setDraftGroupRuleSelection(null);
+  }
 
   async function rollDraft() {
     const nonEmptyGroups = getNonEmptyDraftGroups();
-
+    
     if (nonEmptyGroups.length === 0) return;
-    if (!table) return;
-
+    
     const rolled = nonEmptyGroups.map((group) => {
       const groupRule = group.rule_id
         ? availableRules.find((r) => r.id === group.rule_id) ?? null
         : null;
-
+    
       return rollGroup({
         groupId: group.id,
         label: group.name,
@@ -321,7 +320,7 @@ export function useQuickRollDraft({
           const rule = d.rule_id
             ? availableRules.find((r) => r.id === d.rule_id) ?? null
             : null;
-
+        
           return {
             entryId: `${group.id}-draft-${idx}`,
             sides: d.sides,
@@ -349,25 +348,29 @@ export function useQuickRollDraft({
         evaluateRule,
       });
     });
-
+  
     setDraftResults(rolled);
-
+  
+    if (!table) {
+      return;
+    }
+  
     try {
       const eventId = await newId();
       const createdAt = nowIso();
-
+    
       const payload = {
         type: "draft_multi_groups",
         tableId: table.id,
         tableName: table.name,
         groups: rolled,
       };
-
+    
       const summary = {
         title: `Jet rapide — ${table.name}`,
         lines: rolled.map((r) => `${r.label}: total ${r.total}`),
       };
-
+    
       await insertRollEvent(db, {
         id: eventId,
         table_id: table.id,
