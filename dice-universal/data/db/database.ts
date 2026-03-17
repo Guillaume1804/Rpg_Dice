@@ -135,6 +135,32 @@ export async function initSchema(db: Db): Promise<void> {
     );
   `);
 
+  // --- Migrations légères (ALTER TABLE) ---
+
+  const hasSign = await ensureColumn(db, "group_dice", "sign");
+  if (!hasSign) {
+    await db.execAsync(`
+      ALTER TABLE group_dice
+      ADD COLUMN sign INTEGER NOT NULL DEFAULT 1;
+    `);
+  }
+
+  const hasGroupRuleId = await ensureColumn(db, "groups", "rule_id");
+  if (!hasGroupRuleId) {
+    await db.execAsync(`
+      ALTER TABLE groups
+      ADD COLUMN rule_id TEXT NULL;
+    `);
+  }
+
+  const hasProfileId = await ensureColumn(db, "groups", "profile_id");
+  if (!hasProfileId) {
+    await db.execAsync(`
+      ALTER TABLE groups
+      ADD COLUMN profile_id TEXT NULL;
+    `);
+  }
+
   await db.execAsync(`
     CREATE INDEX IF NOT EXISTS idx_profiles_table
     ON profiles(table_id);
@@ -189,30 +215,4 @@ export async function initSchema(db: Db): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_rules_kind
     ON rules(kind);
   `);
-
-  // --- Migrations légères (ALTER TABLE) ---
-
-  const hasSign = await ensureColumn(db, "group_dice", "sign");
-  if (!hasSign) {
-    await db.execAsync(`
-      ALTER TABLE group_dice
-      ADD COLUMN sign INTEGER NOT NULL DEFAULT 1;
-    `);
-  }
-
-  const hasGroupRuleId = await ensureColumn(db, "groups", "rule_id");
-  if (!hasGroupRuleId) {
-    await db.execAsync(`
-      ALTER TABLE groups
-      ADD COLUMN rule_id TEXT NULL;
-    `);
-  }
-
-  const hasProfileId = await ensureColumn(db, "groups", "profile_id");
-  if (!hasProfileId) {
-    await db.execAsync(`
-      ALTER TABLE groups
-      ADD COLUMN profile_id TEXT NULL;
-    `);
-  }
 }
