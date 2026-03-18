@@ -15,6 +15,9 @@ import { useRollTableData } from "../features/roll/hooks/useRollTableData";
 import { GroupRollResult } from "../core/roll/roll";
 
 export default function RollScreen() {
+  type RollMode = "quick" | "table";
+  const [mode, setMode] = useState<RollMode>("quick");
+
   const db = useDb();
   const { activeTableId, setActiveTableId } = useActiveTable();
 
@@ -23,7 +26,9 @@ export default function RollScreen() {
   const [showNameModal, setShowNameModal] = useState(false);
   const [newTableName, setNewTableName] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(
+    null,
+  );
 
   const STANDARD_DICE = [4, 6, 8, 10, 12, 20, 100];
 
@@ -32,7 +37,7 @@ export default function RollScreen() {
       typeof activeTableId === "string" && activeTableId.length > 0
         ? activeTableId
         : "",
-    [activeTableId]
+    [activeTableId],
   );
 
   const {
@@ -60,6 +65,12 @@ export default function RollScreen() {
       setSelectedProfileId(profiles[0].profile.id);
     }
   }, [profiles, selectedProfileId]);
+
+  useEffect(() => {
+    if (!table) {
+      setMode("quick");
+    }
+  }, [table]);
 
   const {
     draftGroups,
@@ -117,17 +128,15 @@ export default function RollScreen() {
     availableRules,
   });
 
-  const {
-    rollSavedTable,
-    rollSavedProfile,
-    rollSavedGroup,
-  } = useRollExecution({
-    db,
-    table,
-    profiles,
-    rulesMap,
-    setResults,
-  });
+  const { rollSavedTable, rollSavedProfile, rollSavedGroup } = useRollExecution(
+    {
+      db,
+      table,
+      profiles,
+      rulesMap,
+      setResults,
+    },
+  );
 
   const {
     replaceCurrentTable,
@@ -185,7 +194,43 @@ export default function RollScreen() {
           </View>
         ) : null}
 
-        {hasActiveTable ? (
+        <View
+          style={{
+            flexDirection: "row",
+            marginTop: 12,
+            borderWidth: 1,
+            borderRadius: 12,
+            overflow: "hidden",
+          }}
+        >
+          <Pressable
+            onPress={() => setMode("quick")}
+            style={{
+              flex: 1,
+              padding: 10,
+              alignItems: "center",
+              backgroundColor: mode === "quick" ? "#ddd" : "transparent",
+            }}
+          >
+            <Text style={{ fontWeight: "600" }}>⚡ Rapide</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => setMode("table")}
+            disabled={!hasActiveTable}
+            style={{
+              flex: 1,
+              padding: 10,
+              alignItems: "center",
+              opacity: hasActiveTable ? 1 : 0.3,
+              backgroundColor: mode === "table" ? "#ddd" : "transparent",
+            }}
+          >
+            <Text style={{ fontWeight: "600" }}>🎮 Table</Text>
+          </Pressable>
+        </View>
+
+        {mode === "table" && hasActiveTable && (
           <TableActionSection
             profiles={profiles}
             selectedProfileId={selectedProfileId}
@@ -195,33 +240,35 @@ export default function RollScreen() {
             onRollGroup={rollSavedGroup}
             onRollAll={rollSavedTable}
           />
-        ) : null}
+        )}
 
-        <QuickRollSection
-          title={hasActiveTable ? "Jet libre" : "Jet"}
-          standardDice={STANDARD_DICE}
-          draftGroups={draftGroups}
-          draftResults={draftResults}
-          selectedDraftGroupId={selectedDraftGroupId}
-          tableIsSystem={table?.is_system === 1}
-          showSaveOptions={showSaveOptions}
-          showAdvanced={showAdvanced}
-          onToggleSaveOptions={() => setShowSaveOptions((v) => !v)}
-          onToggleAdvanced={() => setShowAdvanced((v) => !v)}
-          onAddDraftGroup={addDraftGroup}
-          onAddDieToDraft={addDieToDraft}
-          onSelectDraftGroup={setSelectedDraftGroupId}
-          onRenameDraftGroup={openRenameDraftGroupModal}
-          onEditDraftGroupRule={openDraftGroupRuleEditor}
-          onRemoveDraftGroup={removeDraftGroup}
-          onEditDraftDie={openDraftEditor}
-          onRemoveDraftDie={removeDraftDie}
-          onRollDraft={rollDraft}
-          onClearDraft={clearDraft}
-          onReplaceCurrentTable={replaceCurrentTable}
-          onCreateNewTable={openCreateTableModal}
-          availableRules={availableRules}
-        />
+        {mode === "quick" && (
+          <QuickRollSection
+            title={hasActiveTable ? "Jet libre" : "Jet"}
+            standardDice={STANDARD_DICE}
+            draftGroups={draftGroups}
+            draftResults={draftResults}
+            selectedDraftGroupId={selectedDraftGroupId}
+            tableIsSystem={table?.is_system === 1}
+            showSaveOptions={showSaveOptions}
+            showAdvanced={showAdvanced}
+            onToggleSaveOptions={() => setShowSaveOptions((v) => !v)}
+            onToggleAdvanced={() => setShowAdvanced((v) => !v)}
+            onAddDraftGroup={addDraftGroup}
+            onAddDieToDraft={addDieToDraft}
+            onSelectDraftGroup={setSelectedDraftGroupId}
+            onRenameDraftGroup={openRenameDraftGroupModal}
+            onEditDraftGroupRule={openDraftGroupRuleEditor}
+            onRemoveDraftGroup={removeDraftGroup}
+            onEditDraftDie={openDraftEditor}
+            onRemoveDraftDie={removeDraftDie}
+            onRollDraft={rollDraft}
+            onClearDraft={clearDraft}
+            onReplaceCurrentTable={replaceCurrentTable}
+            onCreateNewTable={openCreateTableModal}
+            availableRules={availableRules}
+          />
+        )}
 
         <RollModals
           draftGroups={draftGroups}
@@ -274,7 +321,9 @@ export default function RollScreen() {
           backgroundColor: "white",
         }}
       >
-        <Text style={{ fontSize: 28, fontWeight: "700", lineHeight: 30 }}>+</Text>
+        <Text style={{ fontSize: 28, fontWeight: "700", lineHeight: 30 }}>
+          +
+        </Text>
       </Pressable>
     </View>
   );

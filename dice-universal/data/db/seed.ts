@@ -13,10 +13,26 @@ async function findTableIdByName(db: Db, name: string): Promise<string | null> {
   return rows.length ? rows[0].id : null;
 }
 
-async function findGroupId(db: Db, tableId: string, name: string): Promise<string | null> {
+async function findProfileId(
+  db: Db,
+  tableId: string,
+  name: string
+): Promise<string | null> {
   const rows = await db.getAllAsync<{ id: string }>(
-    `SELECT id FROM groups WHERE table_id = ? AND name = ? LIMIT 1;`,
+    `SELECT id FROM profiles WHERE table_id = ? AND name = ? LIMIT 1;`,
     [tableId, name]
+  );
+  return rows.length ? rows[0].id : null;
+}
+
+async function findGroupId(
+  db: Db,
+  profileId: string,
+  name: string
+): Promise<string | null> {
+  const rows = await db.getAllAsync<{ id: string }>(
+    `SELECT id FROM groups WHERE profile_id = ? AND name = ? LIMIT 1;`,
+    [profileId, name]
   );
   return rows.length ? rows[0].id : null;
 }
@@ -29,128 +45,325 @@ async function findRuleIdByName(db: Db, name: string): Promise<string | null> {
   return rows.length ? rows[0].id : null;
 }
 
+async function ensureRule(
+  db: Db,
+  params: {
+    name: string;
+    kind: string;
+    paramsJson: string;
+    isSystem?: number;
+  }
+): Promise<string> {
+  const createdAt = nowIso();
+
+  const existing = await findRuleIdByName(db, params.name);
+  if (existing) return existing;
+
+  const id = await newId();
+  await db.runAsync(
+    `INSERT INTO rules(id, name, kind, params_json, is_system, created_at, updated_at)
+     VALUES(?, ?, ?, ?, ?, ?, ?);`,
+    [
+      id,
+      params.name,
+      params.kind,
+      params.paramsJson,
+      params.isSystem ?? 1,
+      createdAt,
+      createdAt,
+    ]
+  );
+
+  return id;
+}
+
+async function ensureTable(
+  db: Db,
+  name: string,
+  isSystem = 1
+): Promise<string> {
+  const createdAt = nowIso();
+
+  const existing = await findTableIdByName(db, name);
+  if (existing) return existing;
+
+  const id = await newId();
+  await db.runAsync(
+    `INSERT INTO tables(id, name, is_system, created_at, updated_at)
+     VALUES(?, ?, ?, ?, ?);`,
+    [id, name, isSystem, createdAt, createdAt]
+  );
+
+  return id;
+}
+
+async function ensureProfile(
+  db: Db,
+  tableId: string,
+  name: string,
+  sortOrder = 0
+): Promise<string> {
+  const createdAt = nowIso();
+
+  const existing = await findProfileId(db, tableId, name);
+  if (existing) return existing;
+
+  const id = await newId();
+  await db.runAsync(
+    `INSERT INTO profiles(id, table_id, name, sort_order, created_at, updated_at)
+     VALUES(?, ?, ?, ?, ?, ?);`,
+    [id, tableId, name, sortOrder, createdAt, createdAt]
+  );
+
+  return id;
+}
+
+async function ensureGroup(
+  db: Db,
+  params: {
+    tableId: string;
+    profileId: string;
+    name: string;
+    sortOrder?: number;
+    ruleId?: string | null;
+  }
+): Promise<string> {
+  const createdAt = nowIso();
+
+  const existing = await findGroupId(db, params.profileId, params.name);
+  if (existing) return existing;
+
+  const id = await newId();
+  await db.runAsync(
+    `INSERT INTO groups(
+      id,
+      table_id,
+      profile_id,
+      name,
+      sort_order,
+      rule_id,
+      created_at,
+      updated_at
+    )
+    VALUES(?, ?, ?, ?, ?, ?, ?, ?);`,
+    [
+      id,
+      params.tableId,
+      params.profileId,
+      params.name,
+      params.sortOrder ?? 0,
+      params.ruleId ?? null,
+      createdAt,
+      createdAt,
+    ]
+  );
+
+  return id;
+}
+
+async function ensureGroupDie(
+  db: Db,
+  params: {
+    groupId: string;
+    sides: number;
+    qty: number;
+    modifier?: number;
+    sign?: number;
+    sortOrder?: number;
+    ruleId?: string | null;
+  }
+): Promise<void> {
+  const createdAt = nowIso();
+
+  const existing = await db.getAllAsync<{ id: string }>(
+    `SELECT id
+     FROM group_dice
+     WHERE group_id = ?
+       AND sides = ?
+       AND qty = ?
+       AND modifier = ?
+       AND sign = ?
+       AND sort_order = ?
+     LIMIT 1;`,
+    [
+      params.groupId,
+      params.sides,
+      params.qty,
+      params.modifier ?? 0,
+      params.sign ?? 1,
+      params.sortOrder ?? 0,
+    ]
+  );
+
+  if (existing.length) return;
+
+  const id = await newId();
+  await db.runAsync(
+    `INSERT INTO group_dice(
+      id,
+      group_id,
+      sides,
+      qty,
+      modifier,
+      sign,
+      sort_order,
+      rule_id,
+      created_at,
+      updated_at
+    )
+    VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+    [
+      id,
+      params.groupId,
+      params.sides,
+      params.qty,
+      params.modifier ?? 0,
+      params.sign ?? 1,
+      params.sortOrder ?? 0,
+      params.ruleId ?? null,
+      createdAt,
+      createdAt,
+    ]
+  );
+}
+
 export async function runSeedIfNeeded(db: Db): Promise<void> {
   await ensureMetaTable(db);
 
   const done = await getMeta(db, "seed_done");
   if (done === "true") return;
 
-  const createdAt = nowIso();
+  // --- RÈGLES SYSTÈME ---
+  const ruleSumId = await ensureRule(db, {
+    name: "Somme (par défaut)",
+    kind: "sum",
+    paramsJson: "{}",
+    isSystem: 1,
+  });
 
-  // --- TABLES SYSTÈME ---
-  const tableD20Name = "Table par défaut (D20)";
-  const tablePoolName = "Exemple Pool D6";
-  const ruleSumName = "Somme (par défaut)";
-  const ruleD20Name = "D20 (crit 1/20)";
-  const rulePoolName = "Pool D6 (4+ succès, glitch)";
-  
-  let ruleSumId = await findRuleIdByName(db, ruleSumName);
-  if (!ruleSumId) {
-    ruleSumId = await newId();
-    await db.runAsync(
-      `INSERT INTO rules(id, name, kind, params_json, is_system, created_at, updated_at)
-       VALUES(?, ?, ?, ?, ?, ?, ?);`,
-      [ruleSumId, ruleSumName, "sum", "{}", 1, createdAt, createdAt]
-    );
-  }
-  
-  let ruleD20Id = await findRuleIdByName(db, ruleD20Name);
-  if (!ruleD20Id) {
-    ruleD20Id = await newId();
-    await db.runAsync(
-      `INSERT INTO rules(id, name, kind, params_json, is_system, created_at, updated_at)
-       VALUES(?, ?, ?, ?, ?, ?, ?);`,
-      [
-        ruleD20Id,
-        ruleD20Name,
-        "d20",
-        JSON.stringify({ critSuccess: 20, critFailure: 1, successThreshold: null }),
-        1,
-        createdAt,
-        createdAt,
-      ]
-    );
-  }
-  
-  let rulePoolId = await findRuleIdByName(db, rulePoolName);
-  if (!rulePoolId) {
-    rulePoolId = await newId();
-    await db.runAsync(
-      `INSERT INTO rules(id, name, kind, params_json, is_system, created_at, updated_at)
-       VALUES(?, ?, ?, ?, ?, ?, ?);`,
-      [
-        rulePoolId,
-        rulePoolName,
-        "pool",
-        JSON.stringify({ successAtOrAbove: 4, critFailureFace: 1, glitchRule: "ones_gt_successes" }),
-        1,
-        createdAt,
-        createdAt,
-      ]
-    );
-  }
+  const ruleD20Id = await ensureRule(db, {
+    name: "D20 (crit 1/20)",
+    kind: "d20",
+    paramsJson: JSON.stringify({
+      critSuccess: 20,
+      critFailure: 1,
+      successThreshold: null,
+    }),
+    isSystem: 1,
+  });
 
-  let tableD20Id = await findTableIdByName(db, tableD20Name);
-  if (!tableD20Id) {
-    tableD20Id = await newId();
-    await db.runAsync(
-      `INSERT INTO tables(id, name, is_system, created_at, updated_at)
-       VALUES(?, ?, ?, ?, ?);`,
-      [tableD20Id, tableD20Name, 1, createdAt, createdAt]
-    );
-  }
+  // --- TABLE 1 : DÉMO D20 ---
+  const demoD20TableId = await ensureTable(db, "Démo D20", 1);
 
-  let tablePoolId = await findTableIdByName(db, tablePoolName);
-  if (!tablePoolId) {
-    tablePoolId = await newId();
-    await db.runAsync(
-      `INSERT INTO tables(id, name, is_system, created_at, updated_at)
-       VALUES(?, ?, ?, ?, ?);`,
-      [tablePoolId, tablePoolName, 1, createdAt, createdAt]
-    );
-  }
+  const guerrierId = await ensureProfile(db, demoD20TableId, "Guerrier", 0);
+  const archerId = await ensureProfile(db, demoD20TableId, "Archer", 1);
 
-  // --- GROUPES + DÉS ---
-  // D20
-  const g1Name = "Jet D20";
-  let g1 = await findGroupId(db, tableD20Id, g1Name);
-  if (!g1) {
-    g1 = await newId();
-    await db.runAsync(
-      `INSERT INTO groups(id, table_id, name, sort_order, created_at, updated_at)
-       VALUES(?, ?, ?, ?, ?, ?);`,
-      [g1, tableD20Id, g1Name, 0, createdAt, createdAt]
-    );
+  const guerrierAttaqueId = await ensureGroup(db, {
+    tableId: demoD20TableId,
+    profileId: guerrierId,
+    name: "Attaque",
+    sortOrder: 0,
+  });
+  await ensureGroupDie(db, {
+    groupId: guerrierAttaqueId,
+    sides: 20,
+    qty: 1,
+    modifier: 0,
+    sign: 1,
+    sortOrder: 0,
+    ruleId: ruleD20Id,
+  });
 
-    const dieId = await newId();
-    await db.runAsync(
-      `INSERT INTO group_dice(
-        id, group_id, sides, qty, modifier, sign, sort_order, rule_id, created_at, updated_at
-      ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
-      [dieId, g1, 20, 1, 0, 1, 0, ruleD20Id, createdAt, createdAt]
-    );
-  }
+  const guerrierDegatsId = await ensureGroup(db, {
+    tableId: demoD20TableId,
+    profileId: guerrierId,
+    name: "Dégâts",
+    sortOrder: 1,
+  });
+  await ensureGroupDie(db, {
+    groupId: guerrierDegatsId,
+    sides: 8,
+    qty: 1,
+    modifier: 0,
+    sign: 1,
+    sortOrder: 0,
+    ruleId: ruleSumId,
+  });
 
-  // Pool D6
-  const g2Name = "Pool D6 (6 dés)";
-  let g2 = await findGroupId(db, tablePoolId, g2Name);
-  if (!g2) {
-    g2 = await newId();
-    await db.runAsync(
-      `INSERT INTO groups(id, table_id, name, sort_order, created_at, updated_at)
-       VALUES(?, ?, ?, ?, ?, ?);`,
-      [g2, tablePoolId, g2Name, 0, createdAt, createdAt]
-    );
+  const archerTirId = await ensureGroup(db, {
+    tableId: demoD20TableId,
+    profileId: archerId,
+    name: "Tir",
+    sortOrder: 0,
+  });
+  await ensureGroupDie(db, {
+    groupId: archerTirId,
+    sides: 20,
+    qty: 1,
+    modifier: 0,
+    sign: 1,
+    sortOrder: 0,
+    ruleId: ruleD20Id,
+  });
 
-    const dieId = await newId();
-    await db.runAsync(
-      `INSERT INTO group_dice(
-        id, group_id, sides, qty, modifier, sign, sort_order, rule_id, created_at, updated_at
-      ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
-      [dieId, g2, 6, 6, 0, 1, 0, rulePoolId, createdAt, createdAt]
-    );
-  }
+  const archerDegatsId = await ensureGroup(db, {
+    tableId: demoD20TableId,
+    profileId: archerId,
+    name: "Dégâts",
+    sortOrder: 1,
+  });
+  await ensureGroupDie(db, {
+    groupId: archerDegatsId,
+    sides: 6,
+    qty: 1,
+    modifier: 0,
+    sign: 1,
+    sortOrder: 0,
+    ruleId: ruleSumId,
+  });
+
+  // --- TABLE 2 : DÉMO SPÉCIALE ---
+  const demoSpecialTableId = await ensureTable(db, "Démo Spéciale", 1);
+
+  const aventurierId = await ensureProfile(
+    db,
+    demoSpecialTableId,
+    "Aventurier",
+    0
+  );
+
+  const testD20Id = await ensureGroup(db, {
+    tableId: demoSpecialTableId,
+    profileId: aventurierId,
+    name: "Test D20",
+    sortOrder: 0,
+  });
+  await ensureGroupDie(db, {
+    groupId: testD20Id,
+    sides: 20,
+    qty: 1,
+    modifier: 0,
+    sign: 1,
+    sortOrder: 0,
+    ruleId: ruleD20Id,
+  });
+
+  const localisationId = await ensureGroup(db, {
+    tableId: demoSpecialTableId,
+    profileId: aventurierId,
+    name: "Localisation",
+    sortOrder: 1,
+  });
+  await ensureGroupDie(db, {
+    groupId: localisationId,
+    sides: 100,
+    qty: 1,
+    modifier: 0,
+    sign: 1,
+    sortOrder: 0,
+    ruleId: ruleSumId,
+  });
 
   await setMeta(db, "seed_done", "true");
-  await setMeta(db, "content_version", "3");
+  await setMeta(db, "content_version", "4");
 }
