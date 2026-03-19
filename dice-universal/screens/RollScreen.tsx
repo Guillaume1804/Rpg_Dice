@@ -162,10 +162,10 @@ export default function RollScreen() {
     },
   });
 
-  function handleClearQuickRoll() {
-    clearDraft();
-    setQuickModifier(0);
-  }
+  //function handleClearQuickRoll() {
+  //  clearDraft();
+  //  setQuickModifier(0);
+  //}
 
   if (error) {
     return (
