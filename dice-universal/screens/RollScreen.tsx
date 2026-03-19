@@ -244,6 +244,7 @@ export default function RollScreen() {
 
         {mode === "quick" && (
           <QuickRollSection
+            simplified={true}
             title={hasActiveTable ? "Jet libre" : "Jet"}
             standardDice={STANDARD_DICE}
             draftGroups={draftGroups}

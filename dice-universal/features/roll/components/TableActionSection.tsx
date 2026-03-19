@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { ScrollView, View, Text, Pressable } from "react-native";
 import type { GroupRollResult } from "../../../core/roll/roll";
 import type { ProfileRow } from "../../../data/repositories/profilesRepo";
@@ -21,6 +22,16 @@ type Props = {
   onRollAll: () => void;
 };
 
+function getLatestResultForProfile(
+  profile: ProfileWithGroups,
+  results: GroupRollResult[]
+) {
+  const groupIds = new Set(profile.groups.map((entry) => entry.group.id));
+  const matching = results.filter((result) => groupIds.has(result.groupId));
+  if (matching.length === 0) return null;
+  return matching[matching.length - 1];
+}
+
 export function TableActionSection({
   profiles,
   selectedProfileId,
@@ -30,7 +41,15 @@ export function TableActionSection({
   onRollGroup,
   onRollAll,
 }: Props) {
-  if (profiles.length === 0) {
+  const selectedProfile =
+    profiles.find((p) => p.profile.id === selectedProfileId) ?? profiles[0] ?? null;
+
+  const latestResult = useMemo(() => {
+    if (!selectedProfile) return null;
+    return getLatestResultForProfile(selectedProfile, results);
+  }, [selectedProfile, results]);
+
+  if (!selectedProfile) {
     return (
       <View
         style={{
@@ -41,7 +60,7 @@ export function TableActionSection({
           gap: 8,
         }}
       >
-        <Text style={{ fontSize: 16, fontWeight: "800" }}>Table active</Text>
+        <Text style={{ fontSize: 16, fontWeight: "800" }}>Mode Table</Text>
         <Text style={{ opacity: 0.72 }}>
           Cette table ne contient encore aucun profil.
         </Text>
@@ -49,16 +68,8 @@ export function TableActionSection({
     );
   }
 
-  const selectedProfile =
-    profiles.find((p) => p.profile.id === selectedProfileId) ?? profiles[0];
-
   return (
-    <View
-      style={{
-        marginTop: 12,
-        gap: 12,
-      }}
-    >
+    <View style={{ marginTop: 12, gap: 12 }}>
       <View
         style={{
           padding: 14,
@@ -74,13 +85,13 @@ export function TableActionSection({
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ gap: 8 }}
         >
-          {profiles.map((p) => {
-            const isActive = p.profile.id === selectedProfile.profile.id;
+          {profiles.map((profileEntry) => {
+            const isActive = profileEntry.profile.id === selectedProfile.profile.id;
 
             return (
               <Pressable
-                key={p.profile.id}
-                onPress={() => onSelectProfile(p.profile.id)}
+                key={profileEntry.profile.id}
+                onPress={() => onSelectProfile(profileEntry.profile.id)}
                 style={{
                   paddingVertical: 10,
                   paddingHorizontal: 12,
@@ -90,7 +101,7 @@ export function TableActionSection({
                 }}
               >
                 <Text style={{ fontWeight: isActive ? "800" : "600" }}>
-                  {p.profile.name}
+                  {profileEntry.profile.name}
                 </Text>
               </Pressable>
             );
@@ -147,72 +158,84 @@ export function TableActionSection({
             Ce profil ne contient encore aucune action.
           </Text>
         ) : (
-          selectedProfile.groups.map(({ group, dice }) => {
-            const result = results.find((r) => r.groupId === group.id);
-
-            return (
-              <Pressable
-                key={group.id}
-                onPress={() =>
-                  onRollGroup(selectedProfile.profile.id, group.id)
-                }
+          selectedProfile.groups.map(({ group, dice }) => (
+            <View
+              key={group.id}
+              style={{
+                padding: 12,
+                borderWidth: 1,
+                borderRadius: 12,
+                gap: 8,
+              }}
+            >
+              <View
                 style={{
-                  padding: 12,
-                  borderWidth: 1,
-                  borderRadius: 12,
-                  gap: 6,
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 10,
                 }}
               >
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    gap: 8,
-                  }}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 15, fontWeight: "800" }}>
-                      {group.name}
-                    </Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 16, fontWeight: "800" }}>
+                    {group.name}
+                  </Text>
 
-                    <Text style={{ marginTop: 4, opacity: 0.72 }}>
-                      {dice.length} entrée{dice.length > 1 ? "s" : ""}
-                    </Text>
-                  </View>
-
-                  <View
-                    style={{
-                      paddingVertical: 8,
-                      paddingHorizontal: 10,
-                      borderWidth: 1,
-                      borderRadius: 10,
-                    }}
-                  >
-                    <Text style={{ fontWeight: "700" }}>Lancer</Text>
-                  </View>
+                  <Text style={{ marginTop: 4, opacity: 0.72 }}>
+                    {dice.length} entrée{dice.length > 1 ? "s" : ""}
+                  </Text>
                 </View>
 
-                {result ? (
-                  <View
-                    style={{
-                      marginTop: 4,
-                      paddingTop: 8,
-                      borderTopWidth: 1,
-                    }}
-                  >
-                    <Text style={{ opacity: 0.72 }}>Dernier résultat</Text>
-                    <Text style={{ fontSize: 28, fontWeight: "900" }}>
-                      {result.total}
-                    </Text>
-                    <Text style={{ opacity: 0.72 }}>
-                      Somme des entrées : {result.entries_total}
-                    </Text>
-                  </View>
-                ) : null}
-              </Pressable>
-            );
-          })
+                <Pressable
+                  onPress={() => onRollGroup(selectedProfile.profile.id, group.id)}
+                  style={{
+                    paddingVertical: 10,
+                    paddingHorizontal: 12,
+                    borderWidth: 1,
+                    borderRadius: 10,
+                  }}
+                >
+                  <Text style={{ fontWeight: "700" }}>Lancer</Text>
+                </Pressable>
+              </View>
+            </View>
+          ))
+        )}
+      </View>
+
+      <View
+        style={{
+          padding: 14,
+          borderWidth: 1,
+          borderRadius: 14,
+          gap: 8,
+        }}
+      >
+        <Text style={{ fontSize: 16, fontWeight: "800" }}>Dernier résultat</Text>
+
+        {!latestResult ? (
+          <Text style={{ opacity: 0.72 }}>
+            Lance une action du profil pour afficher son résultat ici.
+          </Text>
+        ) : (
+          <>
+            <Text style={{ opacity: 0.72 }}>{latestResult.label}</Text>
+
+            <Text style={{ fontSize: 40, fontWeight: "900" }}>
+              {latestResult.total}
+            </Text>
+
+            <Text style={{ opacity: 0.72 }}>
+              Somme des entrées : {latestResult.entries_total}
+            </Text>
+
+            <Text style={{ opacity: 0.72 }}>
+              Valeurs :{" "}
+              {latestResult.entries
+                .flatMap((entry) => entry.signed_values)
+                .join(" + ")}
+            </Text>
+          </>
         )}
       </View>
     </View>
