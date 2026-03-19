@@ -26,6 +26,7 @@ export default function RollScreen() {
   const [showNameModal, setShowNameModal] = useState(false);
   const [newTableName, setNewTableName] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [quickModifier, setQuickModifier] = useState(0);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(
     null,
   );
@@ -161,6 +162,11 @@ export default function RollScreen() {
     },
   });
 
+  function handleClearQuickRoll() {
+    clearDraft();
+    setQuickModifier(0);
+  }
+
   if (error) {
     return (
       <View style={{ flex: 1, padding: 16 }}>
@@ -253,6 +259,9 @@ export default function RollScreen() {
             tableIsSystem={table?.is_system === 1}
             showSaveOptions={showSaveOptions}
             showAdvanced={showAdvanced}
+            quickModifier={quickModifier}
+            onIncreaseModifier={() => setQuickModifier((prev) => prev + 1)}
+            onDecreaseModifier={() => setQuickModifier((prev) => prev - 1)}
             onToggleSaveOptions={() => setShowSaveOptions((v) => !v)}
             onToggleAdvanced={() => setShowAdvanced((v) => !v)}
             onAddDraftGroup={addDraftGroup}

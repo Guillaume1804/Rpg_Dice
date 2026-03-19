@@ -29,6 +29,9 @@ type QuickRollSectionProps = {
   tableIsSystem: boolean;
   showSaveOptions: boolean;
   showAdvanced: boolean;
+  quickModifier: number;
+  onIncreaseModifier: () => void;
+  onDecreaseModifier: () => void;
   onToggleSaveOptions: () => void;
   onToggleAdvanced: () => void;
   onAddDraftGroup: () => void;
@@ -46,7 +49,10 @@ type QuickRollSectionProps = {
   availableRules: RuleRow[];
 };
 
-function buildDiceSummary(draftGroups: DraftGroupState[]) {
+function buildDiceSummary(
+  draftGroups: DraftGroupState[],
+  quickModifier: number = 0,
+) {
   const flatDice = draftGroups.flatMap((group) => group.dice);
 
   if (flatDice.length === 0) return "Aucun dé sélectionné";
@@ -59,10 +65,16 @@ function buildDiceSummary(draftGroups: DraftGroupState[]) {
     aggregation.set(key, current + (die.qty ?? 1));
   }
 
-  return Array.from(aggregation.entries())
+  const diceSummary = Array.from(aggregation.entries())
     .sort((a, b) => Number(a[0]) - Number(b[0]))
     .map(([sides, qty]) => `${qty}d${sides}`)
     .join(" + ");
+
+  if (quickModifier === 0) {
+    return diceSummary;
+  }
+
+  return `${diceSummary} ${quickModifier > 0 ? "+" : "-"} ${Math.abs(quickModifier)}`;
 }
 
 export function QuickRollSection({
@@ -75,6 +87,9 @@ export function QuickRollSection({
   tableIsSystem,
   showSaveOptions,
   showAdvanced,
+  quickModifier,
+  onIncreaseModifier,
+  onDecreaseModifier,
   onToggleSaveOptions,
   onToggleAdvanced,
   onAddDraftGroup,
@@ -103,28 +118,33 @@ export function QuickRollSection({
 
   const hasDraftContent = useMemo(
     () => draftGroups.some((group) => group.dice.length > 0),
-    [draftGroups]
+    [draftGroups],
   );
 
   const selectionSummary = useMemo(
-    () => buildDiceSummary(draftGroups),
-    [draftGroups]
+    () => buildDiceSummary(draftGroups, quickModifier),
+    [draftGroups, quickModifier],
   );
 
   const aggregatedResult = useMemo(() => {
     if (draftResults.length === 0) return null;
 
-    const total = draftResults.reduce((sum, result) => sum + result.total, 0);
+    const baseTotal = draftResults.reduce(
+      (sum, result) => sum + result.total,
+      0,
+    );
 
     const allValues = draftResults.flatMap((result) =>
-      result.entries.flatMap((entry) => entry.signed_values)
+      result.entries.flatMap((entry) => entry.signed_values),
     );
 
     return {
-      total,
+      baseTotal,
+      total: baseTotal + quickModifier,
       values: allValues,
+      modifier: quickModifier,
     };
-  }, [draftResults]);
+  }, [draftResults, quickModifier]);
 
   if (simplified) {
     return (
@@ -159,7 +179,9 @@ export function QuickRollSection({
                   alignItems: "center",
                 }}
               >
-                <Text style={{ fontWeight: "800", fontSize: 16 }}>d{sides}</Text>
+                <Text style={{ fontWeight: "800", fontSize: 16 }}>
+                  d{sides}
+                </Text>
               </Pressable>
             ))}
           </View>
@@ -180,6 +202,56 @@ export function QuickRollSection({
           <Text style={{ fontSize: 18, fontWeight: "700" }}>
             {selectionSummary}
           </Text>
+
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+              marginTop: 4,
+            }}
+          >
+            <Text style={{ fontWeight: "700" }}>Modificateur :</Text>
+
+            <Pressable
+              onPress={onDecreaseModifier}
+              style={{
+                paddingVertical: 8,
+                paddingHorizontal: 12,
+                borderWidth: 1,
+                borderRadius: 10,
+              }}
+            >
+              <Text style={{ fontWeight: "800" }}>−</Text>
+            </Pressable>
+
+            <View
+              style={{
+                minWidth: 52,
+                paddingVertical: 8,
+                paddingHorizontal: 12,
+                borderWidth: 1,
+                borderRadius: 10,
+                alignItems: "center",
+              }}
+            >
+              <Text style={{ fontWeight: "800" }}>
+                {quickModifier >= 0 ? `+${quickModifier}` : quickModifier}
+              </Text>
+            </View>
+
+            <Pressable
+              onPress={onIncreaseModifier}
+              style={{
+                paddingVertical: 8,
+                paddingHorizontal: 12,
+                borderWidth: 1,
+                borderRadius: 10,
+              }}
+            >
+              <Text style={{ fontWeight: "800" }}>+</Text>
+            </Pressable>
+          </View>
 
           <View
             style={{
@@ -242,6 +314,14 @@ export function QuickRollSection({
                   ? `(${aggregatedResult.values.join(" + ")})`
                   : "Aucune valeur détaillée"}
               </Text>
+
+              {aggregatedResult.modifier !== 0 ? (
+                <Text style={{ opacity: 0.72 }}>
+                  Modificateur global :{" "}
+                  {aggregatedResult.modifier > 0 ? "+" : ""}
+                  {aggregatedResult.modifier}
+                </Text>
+              ) : null}
             </>
           )}
         </View>
@@ -309,8 +389,9 @@ export function QuickRollSection({
                         <Text style={{ fontWeight: "800" }}>{group.name}</Text>
 
                         <Text style={{ marginTop: 4, opacity: 0.72 }}>
-                          {group.dice.length} entrée{group.dice.length > 1 ? "s" : ""} •
-                          Règle : {getRuleNameFromId(group.rule_id, availableRules)}
+                          {group.dice.length} entrée
+                          {group.dice.length > 1 ? "s" : ""} • Règle :{" "}
+                          {getRuleNameFromId(group.rule_id, availableRules)}
                         </Text>
                       </View>
 
@@ -396,7 +477,8 @@ export function QuickRollSection({
                             </Text>
 
                             <Text style={{ opacity: 0.72 }}>
-                              Règle : {getRuleNameFromId(die.rule_id, availableRules)}
+                              Règle :{" "}
+                              {getRuleNameFromId(die.rule_id, availableRules)}
                             </Text>
 
                             <View
@@ -420,7 +502,9 @@ export function QuickRollSection({
                               </Pressable>
 
                               <Pressable
-                                onPress={() => onRemoveDraftDie(group.id, index)}
+                                onPress={() =>
+                                  onRemoveDraftDie(group.id, index)
+                                }
                                 style={{
                                   paddingVertical: 8,
                                   paddingHorizontal: 10,
