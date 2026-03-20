@@ -41,6 +41,7 @@ type QuickRollSectionProps = {
   onEditDraftGroupRule: (groupId: string) => void;
   onRemoveDraftGroup: (groupId: string) => void;
   onEditDraftDie: (groupId: string, index: number) => void;
+  onOpenDieConfig: (sides: number) => void;
   onRemoveDraftDie: (groupId: string, index: number) => void;
   onRollDraft: () => void;
   onClearDraft: () => void;
@@ -99,6 +100,7 @@ export function QuickRollSection({
   onEditDraftGroupRule,
   onRemoveDraftGroup,
   onEditDraftDie,
+  onOpenDieConfig,
   onRemoveDraftDie,
   onRollDraft,
   onClearDraft,
@@ -170,6 +172,8 @@ export function QuickRollSection({
               <Pressable
                 key={sides}
                 onPress={() => onAddDieToDraft(sides)}
+                onLongPress={() => onOpenDieConfig(sides)}
+                delayLongPress={300}
                 style={{
                   minWidth: 64,
                   paddingVertical: 14,

@@ -30,6 +30,8 @@ export default function RollScreen() {
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(
     null,
   );
+  const [editingDieSides, setEditingDieSides] = useState<number | null>(null);
+  const [showDieRuleModal, setShowDieRuleModal] = useState(false);
 
   const STANDARD_DICE = [4, 6, 8, 10, 12, 20, 100];
 
@@ -162,10 +164,15 @@ export default function RollScreen() {
     },
   });
 
-  //function handleClearQuickRoll() {
-  //  clearDraft();
-  //  setQuickModifier(0);
-  //}
+  function handleClearQuickRoll() {
+    clearDraft();
+    setQuickModifier(0);
+  }
+
+  function handleOpenDieConfig(sides: number) {
+    setEditingDieSides(sides);
+    setShowDieRuleModal(true);
+  }
 
   if (error) {
     return (
@@ -271,9 +278,10 @@ export default function RollScreen() {
             onEditDraftGroupRule={openDraftGroupRuleEditor}
             onRemoveDraftGroup={removeDraftGroup}
             onEditDraftDie={openDraftEditor}
+            onOpenDieConfig={handleOpenDieConfig}
             onRemoveDraftDie={removeDraftDie}
             onRollDraft={rollDraft}
-            onClearDraft={clearDraft}
+            onClearDraft={handleClearQuickRoll}
             onReplaceCurrentTable={replaceCurrentTable}
             onCreateNewTable={openCreateTableModal}
             availableRules={availableRules}
@@ -335,6 +343,88 @@ export default function RollScreen() {
           +
         </Text>
       </Pressable>
+
+      {showDieRuleModal && editingDieSides !== null ? (
+        <View
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: "white",
+              borderRadius: 14,
+              padding: 16,
+              gap: 12,
+            }}
+          >
+            <Text style={{ fontSize: 18, fontWeight: "800" }}>
+              Configurer d{editingDieSides}
+            </Text>
+
+            <Text style={{ opacity: 0.7 }}>Type de règle</Text>
+
+            <Pressable
+              onPress={() => {
+                console.log("Règle: critique");
+                setShowDieRuleModal(false);
+              }}
+              style={{
+                padding: 12,
+                borderWidth: 1,
+                borderRadius: 10,
+              }}
+            >
+              <Text>Critique (ex: 20 / 1)</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => {
+                console.log("Règle: succès");
+                setShowDieRuleModal(false);
+              }}
+              style={{
+                padding: 12,
+                borderWidth: 1,
+                borderRadius: 10,
+              }}
+            >
+              <Text>Succès / Échec (seuil)</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => {
+                console.log("Règle: intervalle");
+                setShowDieRuleModal(false);
+              }}
+              style={{
+                padding: 12,
+                borderWidth: 1,
+                borderRadius: 10,
+              }}
+            >
+              <Text>Intervalle</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => setShowDieRuleModal(false)}
+              style={{
+                marginTop: 8,
+                alignItems: "center",
+              }}
+            >
+              <Text style={{ opacity: 0.6 }}>Annuler</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
     </View>
   );
 }
