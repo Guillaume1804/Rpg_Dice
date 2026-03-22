@@ -1,3 +1,4 @@
+// RollScreen.tsx
 import { useEffect, useMemo, useState } from "react";
 import { View, Text, ScrollView, Pressable } from "react-native";
 import { useDb } from "../data/db/DbProvider";
@@ -13,6 +14,7 @@ import { useQuickRollDraft } from "../features/roll/hooks/useQuickRollDraft";
 import { useRollTableData } from "../features/roll/hooks/useRollTableData";
 
 import { GroupRollResult } from "../core/roll/roll";
+import { QUICK_RULE_PRESETS } from "../features/roll/config/quickRulePresets";
 
 export default function RollScreen() {
   type RollMode = "quick" | "table";
@@ -125,6 +127,8 @@ export default function RollScreen() {
     saveDraftGroupRuleEditor,
 
     rollDraft,
+    applyTempRuleToSides,
+    clearTempRuleFromSides,
   } = useQuickRollDraft({
     db,
     table,
@@ -173,6 +177,29 @@ export default function RollScreen() {
     setEditingDieSides(sides);
     setShowDieRuleModal(true);
   }
+
+  function makeTempRule(params: {
+    name: string;
+    kind: string;
+    params: Record<string, unknown>;
+  }) {
+    return {
+      id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name: params.name,
+      kind: params.kind,
+      params_json: JSON.stringify(params.params),
+    };
+  }
+
+  const compatibleQuickRulePresets = useMemo(() => {
+    if (editingDieSides == null) return [];
+
+    return QUICK_RULE_PRESETS.filter(
+      (preset) =>
+        !preset.supportedSides ||
+        preset.supportedSides.includes(editingDieSides),
+    );
+  }, [editingDieSides]);
 
   if (error) {
     return (
@@ -369,54 +396,75 @@ export default function RollScreen() {
               Configurer d{editingDieSides}
             </Text>
 
-            <Text style={{ opacity: 0.7 }}>Type de règle</Text>
+            <Text style={{ opacity: 0.7 }}>
+              Choisis un preset de règle compatible avec ce dé.
+            </Text>
+
+            {compatibleQuickRulePresets.length === 0 ? (
+              <Text style={{ opacity: 0.7 }}>
+                Aucun preset disponible pour ce dé.
+              </Text>
+            ) : (
+              compatibleQuickRulePresets.map((preset) => (
+                <Pressable
+                  key={preset.key}
+                  onPress={() => {
+                    if (editingDieSides == null) return;
+
+                    const built = preset.buildRule(editingDieSides);
+                    const rule = makeTempRule({
+                      name: built.name,
+                      kind: built.kind,
+                      params: built.params,
+                    });
+
+                    addDieToDraft(editingDieSides, rule);
+                    applyTempRuleToSides(editingDieSides, rule);
+                    setShowDieRuleModal(false);
+                    setEditingDieSides(null);
+                  }}
+                  style={{
+                    padding: 12,
+                    borderWidth: 1,
+                    borderRadius: 10,
+                    gap: 4,
+                  }}
+                >
+                  <Text style={{ fontWeight: "700" }}>{preset.label}</Text>
+                  {preset.description ? (
+                    <Text style={{ opacity: 0.7 }}>{preset.description}</Text>
+                  ) : null}
+                </Pressable>
+              ))
+            )}
 
             <Pressable
               onPress={() => {
-                console.log("Règle: critique");
+                if (editingDieSides != null) {
+                  clearTempRuleFromSides(editingDieSides);
+                }
                 setShowDieRuleModal(false);
+                setEditingDieSides(null);
               }}
               style={{
                 padding: 12,
                 borderWidth: 1,
                 borderRadius: 10,
+                alignItems: "center",
               }}
             >
-              <Text>Critique (ex: 20 / 1)</Text>
+              <Text style={{ fontWeight: "700" }}>
+                Réinitialiser la règle de ce dé
+              </Text>
             </Pressable>
 
             <Pressable
               onPress={() => {
-                console.log("Règle: succès");
                 setShowDieRuleModal(false);
+                setEditingDieSides(null);
               }}
               style={{
-                padding: 12,
-                borderWidth: 1,
-                borderRadius: 10,
-              }}
-            >
-              <Text>Succès / Échec (seuil)</Text>
-            </Pressable>
-
-            <Pressable
-              onPress={() => {
-                console.log("Règle: intervalle");
-                setShowDieRuleModal(false);
-              }}
-              style={{
-                padding: 12,
-                borderWidth: 1,
-                borderRadius: 10,
-              }}
-            >
-              <Text>Intervalle</Text>
-            </Pressable>
-
-            <Pressable
-              onPress={() => setShowDieRuleModal(false)}
-              style={{
-                marginTop: 8,
+                marginTop: 4,
                 alignItems: "center",
               }}
             >

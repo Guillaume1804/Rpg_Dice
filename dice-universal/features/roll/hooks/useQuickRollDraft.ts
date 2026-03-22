@@ -1,3 +1,4 @@
+// useQuickRollDraft.ts
 import { useState } from "react";
 
 import { rollGroup, GroupRollResult } from "../../../core/roll/roll";
@@ -8,12 +9,20 @@ import type { Db } from "../../../data/db/database";
 import type { TableRow } from "../../../data/repositories/tablesRepo";
 import type { RuleRow } from "../../../data/repositories/rulesRepo";
 
+export type DraftTempRule = {
+  id: string;
+  name: string;
+  kind: string;
+  params_json: string;
+};
+
 export type DraftDie = {
   sides: number;
   qty: number;
   modifier?: number;
   sign?: number;
   rule_id?: string | null;
+  rule_temp?: DraftTempRule | null;
 };
 
 export type DraftGroupState = {
@@ -49,17 +58,28 @@ export function useQuickRollDraft({
 }: UseQuickRollDraftParams) {
   const [draftGroups, setDraftGroups] = useState<DraftGroupState[]>([]);
   const [draftResults, setDraftResults] = useState<GroupRollResult[]>([]);
-  const [selectedDraftGroupId, setSelectedDraftGroupId] = useState<string | null>(null);
+  const [selectedDraftGroupId, setSelectedDraftGroupId] = useState<
+    string | null
+  >(null);
 
-  const [showRenameDraftGroupModal, setShowRenameDraftGroupModal] = useState(false);
-  const [renamingDraftGroupId, setRenamingDraftGroupId] = useState<string | null>(null);
+  const [showRenameDraftGroupModal, setShowRenameDraftGroupModal] =
+    useState(false);
+  const [renamingDraftGroupId, setRenamingDraftGroupId] = useState<
+    string | null
+  >(null);
   const [renameDraftGroupValue, setRenameDraftGroupValue] = useState("");
 
   const [showDraftGroupRuleModal, setShowDraftGroupRuleModal] = useState(false);
-  const [draftGroupRuleSelection, setDraftGroupRuleSelection] = useState<string | null>(null);
+  const [draftGroupRuleSelection, setDraftGroupRuleSelection] = useState<
+    string | null
+  >(null);
 
-  const [editingDraftGroupId, setEditingDraftGroupId] = useState<string | null>(null);
-  const [editingDraftIndex, setEditingDraftIndex] = useState<number | null>(null);
+  const [editingDraftGroupId, setEditingDraftGroupId] = useState<string | null>(
+    null,
+  );
+  const [editingDraftIndex, setEditingDraftIndex] = useState<number | null>(
+    null,
+  );
   const [draftEditModifier, setDraftEditModifier] = useState("0");
   const [draftEditSign, setDraftEditSign] = useState<"1" | "-1">("1");
   const [draftEditRuleId, setDraftEditRuleId] = useState<string | null>(null);
@@ -102,9 +122,16 @@ export function useQuickRollDraft({
     setDraftResults([]);
   }
 
-  function addDieToDraft(sides: number) {
+  function addDieToDraft(sides: number, forcedTempRule?: DraftTempRule | null) {
     setDraftGroups((prev) => {
       let next = [...prev];
+
+      const existingTempRule =
+        forcedTempRule ??
+        prev
+          .flatMap((group) => group.dice)
+          .find((die) => die.sides === sides && die.rule_temp)?.rule_temp ??
+        null;
 
       if (next.length === 0) {
         const newGroup = createEmptyDraftGroup("Groupe rapide");
@@ -126,12 +153,50 @@ export function useQuickRollDraft({
                   modifier: 0,
                   sign: 1,
                   rule_id: null,
+                  rule_temp: existingTempRule,
                 },
               ],
             }
-          : group
+          : group,
       );
     });
+
+    setDraftResults([]);
+  }
+
+  function applyTempRuleToSides(sides: number, rule: DraftTempRule | null) {
+    setDraftGroups((prev) =>
+      prev.map((group) => ({
+        ...group,
+        dice: group.dice.map((die) =>
+          die.sides === sides
+            ? {
+                ...die,
+                rule_temp: rule,
+                rule_id: rule ? null : (die.rule_id ?? null),
+              }
+            : die,
+        ),
+      })),
+    );
+
+    setDraftResults([]);
+  }
+
+  function clearTempRuleFromSides(sides: number) {
+    setDraftGroups((prev) =>
+      prev.map((group) => ({
+        ...group,
+        dice: group.dice.map((die) =>
+          die.sides === sides
+            ? {
+                ...die,
+                rule_temp: null,
+              }
+            : die,
+        ),
+      })),
+    );
 
     setDraftResults([]);
   }
@@ -142,7 +207,7 @@ export function useQuickRollDraft({
         .map((group) =>
           group.id === groupId
             ? { ...group, dice: group.dice.filter((_, i) => i !== index) }
-            : group
+            : group,
         )
         .filter((group) => group.dice.length > 0 || prev.length === 1);
 
@@ -217,7 +282,7 @@ export function useQuickRollDraft({
     if (!renamingDraftGroupId || !name) return;
 
     setDraftGroups((prev) =>
-      prev.map((g) => (g.id === renamingDraftGroupId ? { ...g, name } : g))
+      prev.map((g) => (g.id === renamingDraftGroupId ? { ...g, name } : g)),
     );
 
     closeRenameDraftGroupModal();
@@ -263,11 +328,11 @@ export function useQuickRollDraft({
                       sign: sign === -1 ? -1 : 1,
                       rule_id: draftEditRuleId ?? null,
                     }
-                  : d
+                  : d,
               ),
             }
-          : group
-      )
+          : group,
+      ),
     );
 
     resetDraftEditorState();
@@ -290,8 +355,8 @@ export function useQuickRollDraft({
       prev.map((group) =>
         group.id === selectedDraftGroupId
           ? { ...group, rule_id: draftGroupRuleSelection ?? null }
-          : group
-      )
+          : group,
+      ),
     );
 
     setShowDraftGroupRuleModal(false);
@@ -305,22 +370,24 @@ export function useQuickRollDraft({
 
   async function rollDraft() {
     const nonEmptyGroups = getNonEmptyDraftGroups();
-    
+
     if (nonEmptyGroups.length === 0) return;
-    
+
     const rolled = nonEmptyGroups.map((group) => {
       const groupRule = group.rule_id
-        ? availableRules.find((r) => r.id === group.rule_id) ?? null
+        ? (availableRules.find((r) => r.id === group.rule_id) ?? null)
         : null;
-    
+
       return rollGroup({
         groupId: group.id,
         label: group.name,
         entries: group.dice.map((d, idx) => {
-          const rule = d.rule_id
-            ? availableRules.find((r) => r.id === d.rule_id) ?? null
-            : null;
-        
+          const rule = d.rule_temp
+            ? d.rule_temp
+            : d.rule_id
+              ? (availableRules.find((r) => r.id === d.rule_id) ?? null)
+              : null;
+
           return {
             entryId: `${group.id}-draft-${idx}`,
             sides: d.sides,
@@ -348,29 +415,29 @@ export function useQuickRollDraft({
         evaluateRule,
       });
     });
-  
+
     setDraftResults(rolled);
-  
+
     if (!table) {
       return;
     }
-  
+
     try {
       const eventId = await newId();
       const createdAt = nowIso();
-    
+
       const payload = {
         type: "draft_multi_groups",
         tableId: table.id,
         tableName: table.name,
         groups: rolled,
       };
-    
+
       const summary = {
         title: `Jet rapide — ${table.name}`,
         lines: rolled.map((r) => `${r.label}: total ${r.total}`),
       };
-    
+
       await insertRollEvent(db, {
         id: eventId,
         table_id: table.id,
@@ -435,5 +502,7 @@ export function useQuickRollDraft({
     saveDraftGroupRuleEditor,
 
     rollDraft,
+    applyTempRuleToSides,
+    clearTempRuleFromSides,
   };
 }

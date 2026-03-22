@@ -1,8 +1,9 @@
+// QuickRollSection.tsx
 import { useMemo } from "react";
 import { View, Text, Pressable } from "react-native";
 import type { GroupRollResult } from "../../../core/roll/roll";
 import type { RuleRow } from "../../../data/repositories/rulesRepo";
-import { getRuleNameFromId } from "../helpers";
+import { getRuleNameFromId, formatRuleResult } from "../helpers";
 
 type DraftDie = {
   sides: number;
@@ -10,6 +11,12 @@ type DraftDie = {
   modifier?: number;
   sign?: number;
   rule_id?: string | null;
+  rule_temp?: {
+    id: string;
+    name: string;
+    kind: string;
+    params_json: string;
+  } | null;
 };
 
 type DraftGroupState = {
@@ -35,7 +42,15 @@ type QuickRollSectionProps = {
   onToggleSaveOptions: () => void;
   onToggleAdvanced: () => void;
   onAddDraftGroup: () => void;
-  onAddDieToDraft: (sides: number) => void;
+  onAddDieToDraft: (
+    sides: number,
+    forcedTempRule?: {
+      id: string;
+      name: string;
+      kind: string;
+      params_json: string;
+    } | null,
+  ) => void;
   onSelectDraftGroup: (groupId: string) => void;
   onRenameDraftGroup: (groupId: string, currentName: string) => void;
   onEditDraftGroupRule: (groupId: string) => void;
@@ -76,6 +91,32 @@ function buildDiceSummary(
   }
 
   return `${diceSummary} ${quickModifier > 0 ? "+" : "-"} ${Math.abs(quickModifier)}`;
+}
+
+function getDieRuleDisplayName(
+  die: DraftDie,
+  availableRules: RuleRow[],
+): string {
+  if (die.rule_temp?.name) return die.rule_temp.name;
+  return getRuleNameFromId(die.rule_id, availableRules);
+}
+
+function extractQuickOutcomeLabels(draftResults: GroupRollResult[]): string[] {
+  const labels: string[] = [];
+
+  for (const groupResult of draftResults) {
+    if (groupResult.group_eval_result) {
+      labels.push(formatRuleResult(groupResult.group_eval_result));
+    }
+
+    for (const entry of groupResult.entries) {
+      if (entry.eval_result) {
+        labels.push(formatRuleResult(entry.eval_result));
+      }
+    }
+  }
+
+  return [...new Set(labels)];
 }
 
 export function QuickRollSection({
@@ -148,6 +189,11 @@ export function QuickRollSection({
     };
   }, [draftResults, quickModifier]);
 
+  const outcomeLabels = useMemo(
+    () => extractQuickOutcomeLabels(draftResults),
+    [draftResults],
+  );
+
   if (simplified) {
     return (
       <View style={{ marginTop: 12, gap: 12 }}>
@@ -168,26 +214,33 @@ export function QuickRollSection({
               gap: 8,
             }}
           >
-            {standardDice.map((sides) => (
-              <Pressable
-                key={sides}
-                onPress={() => onAddDieToDraft(sides)}
-                onLongPress={() => onOpenDieConfig(sides)}
-                delayLongPress={300}
-                style={{
-                  minWidth: 64,
-                  paddingVertical: 14,
-                  paddingHorizontal: 14,
-                  borderWidth: 1,
-                  borderRadius: 12,
-                  alignItems: "center",
-                }}
-              >
-                <Text style={{ fontWeight: "800", fontSize: 16 }}>
-                  d{sides}
-                </Text>
-              </Pressable>
-            ))}
+            {standardDice.map((sides) => {
+              const hasTempRule = draftGroups.some((group) =>
+                group.dice.some((die) => die.sides === sides && die.rule_temp),
+              );
+
+              return (
+                <Pressable
+                  key={sides}
+                  onPress={() => onAddDieToDraft(sides)}
+                  onLongPress={() => onOpenDieConfig(sides)}
+                  delayLongPress={300}
+                  style={{
+                    minWidth: 64,
+                    paddingVertical: 14,
+                    paddingHorizontal: 14,
+                    borderWidth: 1,
+                    borderRadius: 12,
+                    alignItems: "center",
+                    backgroundColor: hasTempRule ? "#e0f2fe" : "transparent",
+                  }}
+                >
+                  <Text style={{ fontWeight: "800", fontSize: 16 }}>
+                    d{sides} {hasTempRule ? "⚙️" : ""}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
         </View>
 
@@ -206,6 +259,20 @@ export function QuickRollSection({
           <Text style={{ fontSize: 18, fontWeight: "700" }}>
             {selectionSummary}
           </Text>
+
+          {draftGroups
+            .flatMap((group) => group.dice)
+            .some((die) => die.rule_temp || die.rule_id) ? (
+            <View style={{ marginTop: 4, gap: 4 }}>
+              {draftGroups
+                .flatMap((group) => group.dice)
+                .map((die, index) => (
+                  <Text key={`${die.sides}-${index}`} style={{ opacity: 0.72 }}>
+                    d{die.sides} → {getDieRuleDisplayName(die, availableRules)}
+                  </Text>
+                ))}
+            </View>
+          ) : null}
 
           <View
             style={{
@@ -325,6 +392,30 @@ export function QuickRollSection({
                   {aggregatedResult.modifier > 0 ? "+" : ""}
                   {aggregatedResult.modifier}
                 </Text>
+              ) : null}
+
+              {outcomeLabels.length > 0 ? (
+                <View
+                  style={{
+                    marginTop: 8,
+                    gap: 6,
+                  }}
+                >
+                  {outcomeLabels.map((label, index) => (
+                    <View
+                      key={`${label}-${index}`}
+                      style={{
+                        paddingVertical: 8,
+                        paddingHorizontal: 10,
+                        borderWidth: 1,
+                        borderRadius: 10,
+                        alignSelf: "flex-start",
+                      }}
+                    >
+                      <Text style={{ fontWeight: "700" }}>{label}</Text>
+                    </View>
+                  ))}
+                </View>
               ) : null}
             </>
           )}
