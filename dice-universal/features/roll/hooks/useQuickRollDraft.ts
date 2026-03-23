@@ -51,6 +51,18 @@ function createEmptyDraftGroup(name?: string): DraftGroupState {
   };
 }
 
+function sameTempRule(
+  a: DraftTempRule | null | undefined,
+  b: DraftTempRule | null | undefined,
+) {
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+
+  return (
+    a.kind === b.kind && a.name === b.name && a.params_json === b.params_json
+  );
+}
+
 export function useQuickRollDraft({
   db,
   table,
@@ -126,7 +138,7 @@ export function useQuickRollDraft({
     setDraftGroups((prev) => {
       let next = [...prev];
 
-      const existingTempRule =
+      const resolvedTempRule =
         forcedTempRule ??
         prev
           .flatMap((group) => group.dice)
@@ -141,24 +153,47 @@ export function useQuickRollDraft({
 
       const targetGroupId = selectedDraftGroupId ?? next[0].id;
 
-      return next.map((group) =>
-        group.id === targetGroupId
-          ? {
-              ...group,
-              dice: [
-                ...group.dice,
-                {
-                  sides,
-                  qty: 1,
-                  modifier: 0,
-                  sign: 1,
-                  rule_id: null,
-                  rule_temp: existingTempRule,
-                },
-              ],
-            }
-          : group,
-      );
+      return next.map((group) => {
+        if (group.id !== targetGroupId) return group;
+
+        const existingIndex = group.dice.findIndex(
+          (die) =>
+            die.sides === sides &&
+            (die.modifier ?? 0) === 0 &&
+            (die.sign ?? 1) === 1 &&
+            (die.rule_id ?? null) === null &&
+            sameTempRule(die.rule_temp ?? null, resolvedTempRule),
+        );
+
+        if (existingIndex >= 0) {
+          return {
+            ...group,
+            dice: group.dice.map((die, index) =>
+              index === existingIndex
+                ? {
+                    ...die,
+                    qty: die.qty + 1,
+                  }
+                : die,
+            ),
+          };
+        }
+
+        return {
+          ...group,
+          dice: [
+            ...group.dice,
+            {
+              sides,
+              qty: 1,
+              modifier: 0,
+              sign: 1,
+              rule_id: null,
+              rule_temp: resolvedTempRule,
+            },
+          ],
+        };
+      });
     });
 
     setDraftResults([]);
@@ -195,6 +230,20 @@ export function useQuickRollDraft({
               }
             : die,
         ),
+      })),
+    );
+
+    setDraftResults([]);
+  }
+
+  function clearAllTempRules() {
+    setDraftGroups((prev) =>
+      prev.map((group) => ({
+        ...group,
+        dice: group.dice.map((die) => ({
+          ...die,
+          rule_temp: null,
+        })),
       })),
     );
 
@@ -504,5 +553,6 @@ export function useQuickRollDraft({
     rollDraft,
     applyTempRuleToSides,
     clearTempRuleFromSides,
+    clearAllTempRules,
   };
 }

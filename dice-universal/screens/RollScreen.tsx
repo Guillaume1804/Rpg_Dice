@@ -34,6 +34,17 @@ export default function RollScreen() {
   );
   const [editingDieSides, setEditingDieSides] = useState<number | null>(null);
   const [showDieRuleModal, setShowDieRuleModal] = useState(false);
+  const [quickDiePresets, setQuickDiePresets] = useState<
+    Record<
+      number,
+      {
+        id: string;
+        name: string;
+        kind: string;
+        params_json: string;
+      }
+    >
+  >({});
 
   const STANDARD_DICE = [4, 6, 8, 10, 12, 20, 100];
 
@@ -129,6 +140,7 @@ export default function RollScreen() {
     rollDraft,
     applyTempRuleToSides,
     clearTempRuleFromSides,
+    clearAllTempRules,
   } = useQuickRollDraft({
     db,
     table,
@@ -176,6 +188,11 @@ export default function RollScreen() {
   function handleOpenDieConfig(sides: number) {
     setEditingDieSides(sides);
     setShowDieRuleModal(true);
+  }
+
+  function handleResetConfiguredDice() {
+    setQuickDiePresets({});
+    clearAllTempRules();
   }
 
   function makeTempRule(params: {
@@ -299,7 +316,9 @@ export default function RollScreen() {
             onToggleSaveOptions={() => setShowSaveOptions((v) => !v)}
             onToggleAdvanced={() => setShowAdvanced((v) => !v)}
             onAddDraftGroup={addDraftGroup}
-            onAddDieToDraft={addDieToDraft}
+            onAddDieToDraft={(sides) =>
+              addDieToDraft(sides, quickDiePresets[sides] ?? null)
+            }
             onSelectDraftGroup={setSelectedDraftGroupId}
             onRenameDraftGroup={openRenameDraftGroupModal}
             onEditDraftGroupRule={openDraftGroupRuleEditor}
@@ -312,6 +331,8 @@ export default function RollScreen() {
             onReplaceCurrentTable={replaceCurrentTable}
             onCreateNewTable={openCreateTableModal}
             availableRules={availableRules}
+            quickDiePresets={quickDiePresets}
+            onResetConfiguredDice={handleResetConfiguredDice}
           />
         )}
 
@@ -417,6 +438,10 @@ export default function RollScreen() {
                       kind: built.kind,
                       params: built.params,
                     });
+                    setQuickDiePresets((prev) => ({
+                      ...prev,
+                      [editingDieSides]: rule,
+                    }));
 
                     addDieToDraft(editingDieSides, rule);
                     applyTempRuleToSides(editingDieSides, rule);
@@ -442,6 +467,12 @@ export default function RollScreen() {
               onPress={() => {
                 if (editingDieSides != null) {
                   clearTempRuleFromSides(editingDieSides);
+
+                  setQuickDiePresets((prev) => {
+                    const next = { ...prev };
+                    delete next[editingDieSides];
+                    return next;
+                  });
                 }
                 setShowDieRuleModal(false);
                 setEditingDieSides(null);

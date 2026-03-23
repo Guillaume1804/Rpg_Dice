@@ -63,6 +63,16 @@ type QuickRollSectionProps = {
   onReplaceCurrentTable: () => void;
   onCreateNewTable: () => void;
   availableRules: RuleRow[];
+  quickDiePresets: Record<
+    number,
+    {
+      id: string;
+      name: string;
+      kind: string;
+      params_json: string;
+    }
+  >;
+  onResetConfiguredDice: () => void;
 };
 
 function buildDiceSummary(
@@ -91,14 +101,6 @@ function buildDiceSummary(
   }
 
   return `${diceSummary} ${quickModifier > 0 ? "+" : "-"} ${Math.abs(quickModifier)}`;
-}
-
-function getDieRuleDisplayName(
-  die: DraftDie,
-  availableRules: RuleRow[],
-): string {
-  if (die.rule_temp?.name) return die.rule_temp.name;
-  return getRuleNameFromId(die.rule_id, availableRules);
 }
 
 function extractQuickOutcomeLabels(draftResults: GroupRollResult[]): string[] {
@@ -148,6 +150,8 @@ export function QuickRollSection({
   onReplaceCurrentTable,
   onCreateNewTable,
   availableRules,
+  quickDiePresets,
+  onResetConfiguredDice,
 }: QuickRollSectionProps) {
   const selectedGroup = useMemo(() => {
     if (draftGroups.length === 0) return null;
@@ -215,9 +219,7 @@ export function QuickRollSection({
             }}
           >
             {standardDice.map((sides) => {
-              const hasTempRule = draftGroups.some((group) =>
-                group.dice.some((die) => die.sides === sides && die.rule_temp),
-              );
+              const hasTempRule = !!quickDiePresets[sides];
 
               return (
                 <Pressable
@@ -260,15 +262,13 @@ export function QuickRollSection({
             {selectionSummary}
           </Text>
 
-          {draftGroups
-            .flatMap((group) => group.dice)
-            .some((die) => die.rule_temp || die.rule_id) ? (
+          {Object.keys(quickDiePresets).length > 0 ? (
             <View style={{ marginTop: 4, gap: 4 }}>
-              {draftGroups
-                .flatMap((group) => group.dice)
-                .map((die, index) => (
-                  <Text key={`${die.sides}-${index}`} style={{ opacity: 0.72 }}>
-                    d{die.sides} → {getDieRuleDisplayName(die, availableRules)}
+              {Object.entries(quickDiePresets)
+                .sort((a, b) => Number(a[0]) - Number(b[0]))
+                .map(([sides, rule]) => (
+                  <Text key={sides} style={{ opacity: 0.72 }}>
+                    d{sides} → {rule.name}
                   </Text>
                 ))}
             </View>
@@ -355,6 +355,22 @@ export function QuickRollSection({
                 }}
               >
                 <Text style={{ fontWeight: "700" }}>Reset</Text>
+              </Pressable>
+            ) : null}
+
+            {Object.keys(quickDiePresets).length > 0 ? (
+              <Pressable
+                onPress={onResetConfiguredDice}
+                style={{
+                  paddingVertical: 12,
+                  paddingHorizontal: 14,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                }}
+              >
+                <Text style={{ fontWeight: "700" }}>
+                  Réinit. dés configurés
+                </Text>
               </Pressable>
             ) : null}
           </View>
