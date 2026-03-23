@@ -209,7 +209,32 @@ export function QuickRollSection({
             gap: 10,
           }}
         >
-          <Text style={{ fontSize: 16, fontWeight: "800" }}>{title}</Text>
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <Text style={{ fontSize: 16, fontWeight: "800" }}>{title}</Text>
+
+            {Object.keys(quickDiePresets).length > 0 ? (
+              <Pressable
+                onPress={onResetConfiguredDice}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderWidth: 1,
+                  borderRadius: 999,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text style={{ fontSize: 18, fontWeight: "700" }}>↻</Text>
+              </Pressable>
+            ) : null}
+          </View>
 
           <View
             style={{
@@ -243,6 +268,16 @@ export function QuickRollSection({
                 </Pressable>
               );
             })}
+
+            {Object.keys(quickDiePresets).length > 0 ? (
+              <Text style={{ opacity: 0.72 }}>
+                Dés configurés :{" "}
+                {Object.keys(quickDiePresets)
+                  .sort((a, b) => Number(a) - Number(b))
+                  .map((sides) => `d${sides}`)
+                  .join(", ")}
+              </Text>
+            ) : null}
           </View>
         </View>
 
@@ -261,18 +296,6 @@ export function QuickRollSection({
           <Text style={{ fontSize: 18, fontWeight: "700" }}>
             {selectionSummary}
           </Text>
-
-          {Object.keys(quickDiePresets).length > 0 ? (
-            <View style={{ marginTop: 4, gap: 4 }}>
-              {Object.entries(quickDiePresets)
-                .sort((a, b) => Number(a[0]) - Number(b[0]))
-                .map(([sides, rule]) => (
-                  <Text key={sides} style={{ opacity: 0.72 }}>
-                    d{sides} → {rule.name}
-                  </Text>
-                ))}
-            </View>
-          ) : null}
 
           <View
             style={{
@@ -355,22 +378,6 @@ export function QuickRollSection({
                 }}
               >
                 <Text style={{ fontWeight: "700" }}>Reset</Text>
-              </Pressable>
-            ) : null}
-
-            {Object.keys(quickDiePresets).length > 0 ? (
-              <Pressable
-                onPress={onResetConfiguredDice}
-                style={{
-                  paddingVertical: 12,
-                  paddingHorizontal: 14,
-                  borderWidth: 1,
-                  borderRadius: 10,
-                }}
-              >
-                <Text style={{ fontWeight: "700" }}>
-                  Réinit. dés configurés
-                </Text>
               </Pressable>
             ) : null}
           </View>
