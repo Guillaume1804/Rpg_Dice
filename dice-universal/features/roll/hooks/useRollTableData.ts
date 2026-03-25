@@ -1,3 +1,4 @@
+// useRollTableData.ts
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Db } from "../../../data/db/database";
 import type { TableRow } from "../../../data/repositories/tablesRepo";
