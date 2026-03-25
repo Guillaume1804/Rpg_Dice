@@ -141,6 +141,9 @@ export default function RollScreen() {
     applyTempRuleToSides,
     clearTempRuleFromSides,
     clearAllTempRules,
+
+    applyTempRuleToSelectedGroup,
+    clearTempRuleFromSelectedGroup,
   } = useQuickRollDraft({
     db,
     table,
@@ -438,13 +441,21 @@ export default function RollScreen() {
                       kind: built.kind,
                       params: built.params,
                     });
+
                     setQuickDiePresets((prev) => ({
                       ...prev,
                       [editingDieSides]: rule,
                     }));
 
-                    addDieToDraft(editingDieSides, rule);
-                    applyTempRuleToSides(editingDieSides, rule);
+                    if (preset.scope === "group") {
+                      addDieToDraft(editingDieSides);
+                      applyTempRuleToSelectedGroup(rule);
+                      clearTempRuleFromSides(editingDieSides);
+                    } else {
+                      addDieToDraft(editingDieSides, rule);
+                      applyTempRuleToSides(editingDieSides, rule);
+                    }
+
                     setShowDieRuleModal(false);
                     setEditingDieSides(null);
                   }}
@@ -467,6 +478,7 @@ export default function RollScreen() {
               onPress={() => {
                 if (editingDieSides != null) {
                   clearTempRuleFromSides(editingDieSides);
+                  clearTempRuleFromSelectedGroup();
 
                   setQuickDiePresets((prev) => {
                     const next = { ...prev };

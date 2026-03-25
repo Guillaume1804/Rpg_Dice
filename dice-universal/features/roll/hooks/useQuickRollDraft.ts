@@ -29,6 +29,7 @@ export type DraftGroupState = {
   id: string;
   name: string;
   rule_id?: string | null;
+  rule_temp?: DraftTempRule | null;
   dice: DraftDie[];
 };
 
@@ -47,6 +48,7 @@ function createEmptyDraftGroup(name?: string): DraftGroupState {
     id: `draft-group-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     name: name ?? "Groupe rapide",
     rule_id: null,
+    rule_temp: null,
     dice: [],
   };
 }
@@ -240,6 +242,7 @@ export function useQuickRollDraft({
     setDraftGroups((prev) =>
       prev.map((group) => ({
         ...group,
+        rule_temp: null,
         dice: group.dice.map((die) => ({
           ...die,
           rule_temp: null,
@@ -423,9 +426,11 @@ export function useQuickRollDraft({
     if (nonEmptyGroups.length === 0) return;
 
     const rolled = nonEmptyGroups.map((group) => {
-      const groupRule = group.rule_id
-        ? (availableRules.find((r) => r.id === group.rule_id) ?? null)
-        : null;
+      const groupRule = group.rule_temp
+        ? group.rule_temp
+        : group.rule_id
+          ? (availableRules.find((r) => r.id === group.rule_id) ?? null)
+          : null;
 
       return rollGroup({
         groupId: group.id,
@@ -499,6 +504,44 @@ export function useQuickRollDraft({
     }
   }
 
+  function applyTempRuleToSelectedGroup(rule: DraftTempRule | null) {
+    setDraftGroups((prev) => {
+      if (prev.length === 0) return prev;
+
+      const targetGroupId = selectedDraftGroupId ?? prev[0].id;
+
+      return prev.map((group) =>
+        group.id === targetGroupId
+          ? {
+              ...group,
+              rule_temp: rule,
+            }
+          : group,
+      );
+    });
+
+    setDraftResults([]);
+  }
+
+  function clearTempRuleFromSelectedGroup() {
+    setDraftGroups((prev) => {
+      if (prev.length === 0) return prev;
+
+      const targetGroupId = selectedDraftGroupId ?? prev[0].id;
+
+      return prev.map((group) =>
+        group.id === targetGroupId
+          ? {
+              ...group,
+              rule_temp: null,
+            }
+          : group,
+      );
+    });
+
+    setDraftResults([]);
+  }
+
   return {
     draftGroups,
     setDraftGroups,
@@ -554,5 +597,8 @@ export function useQuickRollDraft({
     applyTempRuleToSides,
     clearTempRuleFromSides,
     clearAllTempRules,
+
+    applyTempRuleToSelectedGroup,
+    clearTempRuleFromSelectedGroup,
   };
 }

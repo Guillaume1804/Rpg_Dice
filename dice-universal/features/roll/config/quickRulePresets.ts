@@ -1,7 +1,10 @@
+export type QuickRulePresetScope = "entry" | "group";
+
 export type QuickRulePresetDefinition = {
   key: string;
   label: string;
   description?: string;
+  scope: QuickRulePresetScope;
   supportedSides?: number[];
   buildRule: (sides: number) => {
     name: string;
@@ -10,11 +13,22 @@ export type QuickRulePresetDefinition = {
   };
 };
 
+/**
+ * Presets UX du jet rapide.
+ *
+ * - scope "entry" : la règle s’applique à une entrée de dé
+ * - scope "group" : la règle s’applique à l’ensemble du groupe de dés
+ *
+ * Le moteur reste la source de vérité via kind + params_json.
+ * Cette couche sert uniquement à exposer des presets compréhensibles en UX.
+ */
+
 export const QUICK_RULE_PRESETS: QuickRulePresetDefinition[] = [
   {
     key: "d20_critical",
     label: "D20 critique",
     description: "Critique sur la face max, échec critique sur 1.",
+    scope: "entry",
     supportedSides: [20],
     buildRule: (sides) => ({
       name: `Temp D${sides} critique`,
@@ -30,6 +44,7 @@ export const QUICK_RULE_PRESETS: QuickRulePresetDefinition[] = [
     key: "d20_threshold",
     label: "D20 seuil",
     description: "Réussite au-dessus d’un seuil, avec critique et échec critique.",
+    scope: "entry",
     supportedSides: [20],
     buildRule: (sides) => ({
       name: `Temp D${sides} seuil 10+`,
@@ -45,6 +60,7 @@ export const QUICK_RULE_PRESETS: QuickRulePresetDefinition[] = [
     key: "pool_success",
     label: "Pool de succès",
     description: "Compte les succès au-dessus d’un seuil.",
+    scope: "group",
     supportedSides: [6, 8, 10, 12],
     buildRule: (sides) => ({
       name: `Temp D${sides} pool`,
@@ -60,6 +76,7 @@ export const QUICK_RULE_PRESETS: QuickRulePresetDefinition[] = [
     key: "range_table",
     label: "Table d’intervalles",
     description: "Retourne un label selon la plage obtenue.",
+    scope: "entry",
     supportedSides: [6, 20, 100],
     buildRule: (sides) => ({
       name: `Temp D${sides} intervalle`,
