@@ -66,10 +66,13 @@ type QuickRollSectionProps = {
   quickDiePresets: Record<
     number,
     {
-      id: string;
-      name: string;
-      kind: string;
-      params_json: string;
+      scope: "entry" | "group";
+      rule: {
+        id: string;
+        name: string;
+        kind: string;
+        params_json: string;
+      };
     }
   >;
   onResetConfiguredDice: () => void;
@@ -119,6 +122,20 @@ function extractQuickOutcomeLabels(draftResults: GroupRollResult[]): string[] {
   }
 
   return [...new Set(labels)];
+}
+
+function hasGroupResult(draftResults: GroupRollResult[]) {
+  return draftResults.some((group) => !!group.group_eval_result);
+}
+
+function hasEntryResults(draftResults: GroupRollResult[]) {
+  return draftResults.some((group) =>
+    group.entries.some((entry) => !!entry.eval_result),
+  );
+}
+
+function flattenEntries(draftResults: GroupRollResult[]) {
+  return draftResults.flatMap((group) => group.entries);
 }
 
 export function QuickRollSection({
@@ -197,6 +214,18 @@ export function QuickRollSection({
     () => extractQuickOutcomeLabels(draftResults),
     [draftResults],
   );
+
+  const showGroupResultMode = useMemo(
+    () => hasGroupResult(draftResults),
+    [draftResults],
+  );
+
+  const showEntryResultMode = useMemo(
+    () => !showGroupResultMode && hasEntryResults(draftResults),
+    [draftResults, showGroupResultMode],
+  );
+
+  const flatEntries = useMemo(() => flattenEntries(draftResults), [draftResults]);
 
   if (simplified) {
     return (
@@ -399,47 +428,94 @@ export function QuickRollSection({
             </Text>
           ) : (
             <>
-              <Text style={{ fontSize: 40, fontWeight: "900" }}>
-                {aggregatedResult.total}
-              </Text>
-
-              <Text style={{ opacity: 0.72 }}>
-                {aggregatedResult.values.length > 0
-                  ? `(${aggregatedResult.values.join(" + ")})`
-                  : "Aucune valeur détaillée"}
-              </Text>
-
-              {aggregatedResult.modifier !== 0 ? (
-                <Text style={{ opacity: 0.72 }}>
-                  Modificateur global :{" "}
-                  {aggregatedResult.modifier > 0 ? "+" : ""}
-                  {aggregatedResult.modifier}
-                </Text>
-              ) : null}
-
-              {outcomeLabels.length > 0 ? (
-                <View
-                  style={{
-                    marginTop: 8,
-                    gap: 6,
-                  }}
-                >
-                  {outcomeLabels.map((label, index) => (
-                    <View
-                      key={`${label}-${index}`}
-                      style={{
-                        paddingVertical: 8,
-                        paddingHorizontal: 10,
-                        borderWidth: 1,
-                        borderRadius: 10,
-                        alignSelf: "flex-start",
-                      }}
-                    >
-                      <Text style={{ fontWeight: "700" }}>{label}</Text>
+              {showGroupResultMode ? (
+                <>
+                  {outcomeLabels.length > 0 ? (
+                    <View style={{ gap: 6 }}>
+                      {outcomeLabels.map((label, index) => (
+                        <View
+                          key={`${label}-${index}`}
+                          style={{
+                            paddingVertical: 8,
+                            paddingHorizontal: 10,
+                            borderWidth: 1,
+                            borderRadius: 10,
+                            alignSelf: "flex-start",
+                          }}
+                        >
+                          <Text style={{ fontWeight: "700" }}>{label}</Text>
+                        </View>
+                      ))}
                     </View>
-                  ))}
+                  ) : null}
+
+                  <Text style={{ opacity: 0.72, marginTop: 8 }}>
+                    {aggregatedResult.values.length > 0
+                      ? `Valeurs : (${aggregatedResult.values.join(" + ")})`
+                      : "Aucune valeur détaillée"}
+                  </Text>
+
+                  {aggregatedResult.modifier !== 0 ? (
+                    <Text style={{ opacity: 0.72 }}>
+                      Modificateur global : {aggregatedResult.modifier > 0 ? "+" : ""}
+                      {aggregatedResult.modifier}
+                    </Text>
+                  ) : null}
+                </>
+              ) : showEntryResultMode ? (
+                <View style={{ gap: 8 }}>
+                  {flatEntries.map((entry, index) => {
+                    const value =
+                      entry.signed_values.length === 1
+                        ? `${entry.signed_values[0]}`
+                        : entry.signed_values.join(" + ");
+
+                    return (
+                      <View
+                        key={entry.entryId}
+                        style={{
+                          paddingVertical: 8,
+                          borderBottomWidth: index === flatEntries.length - 1 ? 0 : 1,
+                        }}
+                      >
+                        <Text style={{ fontSize: 20, fontWeight: "800" }}>{value}</Text>
+
+                        {entry.eval_result ? (
+                          <Text style={{ marginTop: 2, opacity: 0.85, fontWeight: "700" }}>
+                            {formatRuleResult(entry.eval_result)}
+                          </Text>
+                        ) : null}
+                      </View>
+                    );
+                  })}
+
+                  {aggregatedResult.modifier !== 0 ? (
+                    <Text style={{ opacity: 0.72 }}>
+                      Modificateur global : {aggregatedResult.modifier > 0 ? "+" : ""}
+                      {aggregatedResult.modifier}
+                    </Text>
+                  ) : null}
                 </View>
-              ) : null}
+              ) : (
+                <>
+                  <Text style={{ fontSize: 40, fontWeight: "900" }}>
+                    {aggregatedResult.total}
+                  </Text>
+
+                  <Text style={{ opacity: 0.72 }}>
+                    {aggregatedResult.values.length > 0
+                      ? `(${aggregatedResult.values.join(" + ")})`
+                      : "Aucune valeur détaillée"}
+                  </Text>
+
+                  {aggregatedResult.modifier !== 0 ? (
+                    <Text style={{ opacity: 0.72 }}>
+                      Modificateur global : {aggregatedResult.modifier > 0 ? "+" : ""}
+                      {aggregatedResult.modifier}
+                    </Text>
+                  ) : null}
+                </>
+              )}
             </>
           )}
         </View>

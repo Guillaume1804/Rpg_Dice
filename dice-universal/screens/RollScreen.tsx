@@ -38,10 +38,13 @@ export default function RollScreen() {
     Record<
       number,
       {
-        id: string;
-        name: string;
-        kind: string;
-        params_json: string;
+        scope: "entry" | "group";
+        rule: {
+          id: string;
+          name: string;
+          kind: string;
+          params_json: string;
+        };
       }
     >
   >({});
@@ -319,9 +322,12 @@ export default function RollScreen() {
             onToggleSaveOptions={() => setShowSaveOptions((v) => !v)}
             onToggleAdvanced={() => setShowAdvanced((v) => !v)}
             onAddDraftGroup={addDraftGroup}
-            onAddDieToDraft={(sides) =>
-              addDieToDraft(sides, quickDiePresets[sides] ?? null)
-            }
+            onAddDieToDraft={(sides) => {
+              const preset = quickDiePresets[sides];
+              addDieToDraft(sides, preset?.rule ?? null, {
+                aggregate: preset?.scope !== "entry",
+              });
+            }}
             onSelectDraftGroup={setSelectedDraftGroupId}
             onRenameDraftGroup={openRenameDraftGroupModal}
             onEditDraftGroupRule={openDraftGroupRuleEditor}
@@ -444,16 +450,20 @@ export default function RollScreen() {
 
                     setQuickDiePresets((prev) => ({
                       ...prev,
-                      [editingDieSides]: rule,
+                      [editingDieSides]: {
+                        scope: preset.scope,
+                        rule,
+                      },
                     }));
 
                     if (preset.scope === "group") {
-                      addDieToDraft(editingDieSides);
+                      addDieToDraft(editingDieSides, null, { aggregate: true });
                       applyTempRuleToSelectedGroup(rule);
                       clearTempRuleFromSides(editingDieSides);
                     } else {
-                      addDieToDraft(editingDieSides, rule);
+                      addDieToDraft(editingDieSides, rule, { aggregate: false });
                       applyTempRuleToSides(editingDieSides, rule);
+                      clearTempRuleFromSelectedGroup();
                     }
 
                     setShowDieRuleModal(false);
