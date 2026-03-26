@@ -368,6 +368,14 @@ export default function RollScreen() {
             onAddDraftGroup={addDraftGroup}
             onAddDieToDraft={(sides) => {
               const preset = quickDiePresets[sides];
+
+              if (preset?.scope === "group") {
+                addDieToDraft(sides, null, { aggregate: true });
+                applyTempRuleToSelectedGroup(preset.rule);
+                clearTempRuleFromSides(sides);
+                return;
+              }
+
               addDieToDraft(sides, preset?.rule ?? null, {
                 aggregate: preset?.scope !== "entry",
               });

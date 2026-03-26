@@ -149,15 +149,25 @@ export function rollGroup(params: {
   let total = entries_total;
 
   if (params.groupRule) {
+    const groupCtx =
+      params.groupRule.kind === "pool"
+        ? {
+          values: entryResults.flatMap((e) => e.natural_values),
+          sides: entryResults[0]?.sides ?? 0,
+          modifier: 0,
+          sign: 1 as const,
+        }
+        : {
+          values: entryResults.map((e) => e.final_total),
+          sides: 0,
+          modifier: 0,
+          sign: 1 as const,
+        };
+
     group_eval_result = params.evaluateRule(
       params.groupRule.kind,
       params.groupRule.params_json,
-      {
-        values: entryResults.map((e) => e.final_total),
-        sides: 0,
-        modifier: 0,
-        sign: 1,
-      }
+      groupCtx
     );
 
     const numericFromGroupRule = extractNumericFinalFromEval(group_eval_result);

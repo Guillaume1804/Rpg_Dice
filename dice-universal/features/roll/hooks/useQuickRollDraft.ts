@@ -145,11 +145,11 @@ export function useQuickRollDraft({
       let next = [...prev];
 
       const resolvedTempRule =
-        forcedTempRule ??
-        prev
-          .flatMap((group) => group.dice)
-          .find((die) => die.sides === sides && die.rule_temp)?.rule_temp ??
-        null;
+        forcedTempRule === undefined
+          ? prev
+            .flatMap((group) => group.dice)
+            .find((die) => die.sides === sides && die.rule_temp)?.rule_temp ?? null
+          : forcedTempRule;
 
       const shouldAggregate = options?.aggregate !== false;
 

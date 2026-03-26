@@ -473,6 +473,12 @@ export function QuickRollSection({
                     );
                   })}
                 </View>
+              ) : groupOutcomeLabels.length > 0 ? (
+                <Text style={{ opacity: 0.72, marginTop: 8 }}>
+                  {aggregatedResult.values.length > 0
+                    ? `Valeurs : (${aggregatedResult.values.join(" + ")})`
+                    : "Aucune valeur détaillée"}
+                </Text>
               ) : (
                 <>
                   <Text style={{ fontSize: 40, fontWeight: "900" }}>
