@@ -132,6 +132,7 @@ export default function RollScreen() {
     addDraftGroup,
     addDieToDraft,
     updateDraftDieQty,
+    replaceDraftDieWithQtySplit,
     removeDraftDie,
     removeDraftGroup,
     clearDraft,
@@ -223,7 +224,19 @@ export default function RollScreen() {
 
     if (!Number.isFinite(qty) || qty <= 0) return;
 
-    updateDraftDieQty(editingQuickQtyGroupId, editingQuickQtyIndex, qty);
+    const targetGroup = draftGroups.find((g) => g.id === editingQuickQtyGroupId);
+    const targetDie = targetGroup?.dice[editingQuickQtyIndex];
+
+    if (!targetDie) return;
+
+    const preset = quickDiePresets[targetDie.sides];
+
+    if (preset?.scope === "entry") {
+      replaceDraftDieWithQtySplit(editingQuickQtyGroupId, editingQuickQtyIndex, qty);
+    } else {
+      updateDraftDieQty(editingQuickQtyGroupId, editingQuickQtyIndex, qty);
+    }
+
     handleCloseQuickQtyEditor();
   }
 

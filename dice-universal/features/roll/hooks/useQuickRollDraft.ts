@@ -313,6 +313,40 @@ export function useQuickRollDraft({
     setDraftResults([]);
   }
 
+  function replaceDraftDieWithQtySplit(
+    groupId: string,
+    index: number,
+    qty: number,
+  ) {
+    if (!Number.isFinite(qty) || qty <= 0) return;
+
+    setDraftGroups((prev) =>
+      prev.map((group) => {
+        if (group.id !== groupId) return group;
+
+        const targetDie = group.dice[index];
+        if (!targetDie) return group;
+
+        const nextDice = [...group.dice];
+        nextDice.splice(
+          index,
+          1,
+          ...Array.from({ length: qty }, () => ({
+            ...targetDie,
+            qty: 1,
+          })),
+        );
+
+        return {
+          ...group,
+          dice: nextDice,
+        };
+      }),
+    );
+
+    setDraftResults([]);
+  }
+
   function removeDraftGroup(groupId: string) {
     setDraftGroups((prev) => {
       const next = prev.filter((group) => group.id !== groupId);
@@ -613,6 +647,7 @@ export function useQuickRollDraft({
     addDieToDraft,
     removeDraftDie,
     updateDraftDieQty,
+    replaceDraftDieWithQtySplit,
     removeDraftGroup,
     clearDraft,
 
