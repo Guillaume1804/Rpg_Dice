@@ -1,6 +1,6 @@
 // RollScreen.tsx
 import { useEffect, useMemo, useState } from "react";
-import { View, Text, ScrollView, Pressable } from "react-native";
+import { View, Text, ScrollView, Pressable, TextInput } from "react-native";
 import { useDb } from "../data/db/DbProvider";
 import { useActiveTable } from "../data/state/ActiveTableProvider";
 
@@ -48,6 +48,11 @@ export default function RollScreen() {
       }
     >
   >({});
+
+  const [showQuickQtyModal, setShowQuickQtyModal] = useState(false);
+  const [editingQuickQtyGroupId, setEditingQuickQtyGroupId] = useState<string | null>(null);
+  const [editingQuickQtyIndex, setEditingQuickQtyIndex] = useState<number | null>(null);
+  const [quickQtyValue, setQuickQtyValue] = useState("");
 
   const STANDARD_DICE = [4, 6, 8, 10, 12, 20, 100];
 
@@ -126,6 +131,7 @@ export default function RollScreen() {
 
     addDraftGroup,
     addDieToDraft,
+    updateDraftDieQty,
     removeDraftDie,
     removeDraftGroup,
     clearDraft,
@@ -194,6 +200,31 @@ export default function RollScreen() {
   function handleOpenDieConfig(sides: number) {
     setEditingDieSides(sides);
     setShowDieRuleModal(true);
+  }
+
+  function handleOpenQuickQtyEditor(groupId: string, index: number, currentQty: number) {
+    setEditingQuickQtyGroupId(groupId);
+    setEditingQuickQtyIndex(index);
+    setQuickQtyValue(String(currentQty));
+    setShowQuickQtyModal(true);
+  }
+
+  function handleCloseQuickQtyEditor() {
+    setShowQuickQtyModal(false);
+    setEditingQuickQtyGroupId(null);
+    setEditingQuickQtyIndex(null);
+    setQuickQtyValue("");
+  }
+
+  function handleSaveQuickQtyEditor() {
+    if (editingQuickQtyGroupId == null || editingQuickQtyIndex == null) return;
+
+    const qty = Number(quickQtyValue);
+
+    if (!Number.isFinite(qty) || qty <= 0) return;
+
+    updateDraftDieQty(editingQuickQtyGroupId, editingQuickQtyIndex, qty);
+    handleCloseQuickQtyEditor();
   }
 
   function handleResetConfiguredDice() {
@@ -342,6 +373,7 @@ export default function RollScreen() {
             availableRules={availableRules}
             quickDiePresets={quickDiePresets}
             onResetConfiguredDice={handleResetConfiguredDice}
+            onEditQuickDieQty={handleOpenQuickQtyEditor}
           />
         )}
 
@@ -523,6 +555,87 @@ export default function RollScreen() {
             >
               <Text style={{ opacity: 0.6 }}>Annuler</Text>
             </Pressable>
+          </View>
+        </View>
+      ) : null}
+
+      {showQuickQtyModal ? (
+        <View
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: "white",
+              borderRadius: 14,
+              padding: 16,
+              gap: 12,
+            }}
+          >
+            <Text style={{ fontSize: 18, fontWeight: "800" }}>
+              Modifier la quantité
+            </Text>
+
+            <Text style={{ opacity: 0.72 }}>
+              Saisis le nombre de dés voulu.
+            </Text>
+
+            <View
+              style={{
+                borderWidth: 1,
+                borderRadius: 10,
+                paddingHorizontal: 12,
+                paddingVertical: 10,
+              }}
+            >
+              <TextInput
+                value={quickQtyValue}
+                onChangeText={setQuickQtyValue}
+                keyboardType="number-pad"
+                placeholder="Quantité"
+                style={{ fontSize: 16 }}
+              />
+            </View>
+
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "flex-end",
+                gap: 8,
+              }}
+            >
+              <Pressable
+                onPress={handleCloseQuickQtyEditor}
+                style={{
+                  paddingVertical: 10,
+                  paddingHorizontal: 12,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                }}
+              >
+                <Text>Annuler</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={handleSaveQuickQtyEditor}
+                style={{
+                  paddingVertical: 10,
+                  paddingHorizontal: 12,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                }}
+              >
+                <Text style={{ fontWeight: "700" }}>Valider</Text>
+              </Pressable>
+            </View>
           </View>
         </View>
       ) : null}

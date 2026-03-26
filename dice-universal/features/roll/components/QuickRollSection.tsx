@@ -56,6 +56,7 @@ type QuickRollSectionProps = {
   onEditDraftGroupRule: (groupId: string) => void;
   onRemoveDraftGroup: (groupId: string) => void;
   onEditDraftDie: (groupId: string, index: number) => void;
+  onEditQuickDieQty: (groupId: string, index: number, currentQty: number) => void;
   onOpenDieConfig: (sides: number) => void;
   onRemoveDraftDie: (groupId: string, index: number) => void;
   onRollDraft: () => void;
@@ -160,6 +161,7 @@ export function QuickRollSection({
   onEditDraftGroupRule,
   onRemoveDraftGroup,
   onEditDraftDie,
+  onEditQuickDieQty,
   onOpenDieConfig,
   onRemoveDraftDie,
   onRollDraft,
@@ -325,6 +327,30 @@ export function QuickRollSection({
           <Text style={{ fontSize: 18, fontWeight: "700" }}>
             {selectionSummary}
           </Text>
+
+          {draftGroups.some((group) => group.dice.length > 0) ? (
+            <View style={{ marginTop: 4, gap: 6 }}>
+              {draftGroups.map((group) =>
+                group.dice.map((die, index) => (
+                  <Pressable
+                    key={`${group.id}-${index}`}
+                    onPress={() => onEditQuickDieQty(group.id, index, die.qty)}
+                    style={{
+                      paddingVertical: 8,
+                      paddingHorizontal: 10,
+                      borderWidth: 1,
+                      borderRadius: 10,
+                      alignSelf: "flex-start",
+                    }}
+                  >
+                    <Text style={{ fontWeight: "700" }}>
+                      {die.qty}d{die.sides}
+                    </Text>
+                  </Pressable>
+                )),
+              )}
+            </View>
+          ) : null}
 
           <View
             style={{

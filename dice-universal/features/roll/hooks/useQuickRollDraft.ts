@@ -289,6 +289,30 @@ export function useQuickRollDraft({
     setDraftResults([]);
   }
 
+  function updateDraftDieQty(groupId: string, index: number, qty: number) {
+    if (!Number.isFinite(qty) || qty <= 0) return;
+
+    setDraftGroups((prev) =>
+      prev.map((group) =>
+        group.id === groupId
+          ? {
+            ...group,
+            dice: group.dice.map((die, i) =>
+              i === index
+                ? {
+                  ...die,
+                  qty,
+                }
+                : die,
+            ),
+          }
+          : group,
+      ),
+    );
+
+    setDraftResults([]);
+  }
+
   function removeDraftGroup(groupId: string) {
     setDraftGroups((prev) => {
       const next = prev.filter((group) => group.id !== groupId);
@@ -588,6 +612,7 @@ export function useQuickRollDraft({
     addDraftGroup,
     addDieToDraft,
     removeDraftDie,
+    updateDraftDieQty,
     removeDraftGroup,
     clearDraft,
 
