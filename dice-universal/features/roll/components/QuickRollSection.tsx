@@ -79,34 +79,6 @@ type QuickRollSectionProps = {
   onResetConfiguredDice: () => void;
 };
 
-function buildDiceSummary(
-  draftGroups: DraftGroupState[],
-  quickModifier: number = 0,
-) {
-  const flatDice = draftGroups.flatMap((group) => group.dice);
-
-  if (flatDice.length === 0) return "Aucun dé sélectionné";
-
-  const aggregation = new Map<string, number>();
-
-  for (const die of flatDice) {
-    const key = `${die.sides}`;
-    const current = aggregation.get(key) ?? 0;
-    aggregation.set(key, current + (die.qty ?? 1));
-  }
-
-  const diceSummary = Array.from(aggregation.entries())
-    .sort((a, b) => Number(a[0]) - Number(b[0]))
-    .map(([sides, qty]) => `${qty}d${sides}`)
-    .join(" + ");
-
-  if (quickModifier === 0) {
-    return diceSummary;
-  }
-
-  return `${diceSummary} ${quickModifier > 0 ? "+" : "-"} ${Math.abs(quickModifier)}`;
-}
-
 function extractQuickOutcomeLabels(draftResults: GroupRollResult[]): string[] {
   const labels: string[] = [];
 
@@ -185,11 +157,6 @@ export function QuickRollSection({
   const hasDraftContent = useMemo(
     () => draftGroups.some((group) => group.dice.length > 0),
     [draftGroups],
-  );
-
-  const selectionSummary = useMemo(
-    () => buildDiceSummary(draftGroups, quickModifier),
-    [draftGroups, quickModifier],
   );
 
   const aggregatedResult = useMemo(() => {
@@ -324,23 +291,25 @@ export function QuickRollSection({
             Sélection actuelle
           </Text>
 
-          <Text style={{ fontSize: 18, fontWeight: "700" }}>
-            {selectionSummary}
-          </Text>
-
           {draftGroups.some((group) => group.dice.length > 0) ? (
-            <View style={{ marginTop: 4, gap: 6 }}>
-              {draftGroups.map((group) =>
+            <View
+              style={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                gap: 8,
+                marginTop: 4,
+              }}
+            >
+              {draftGroups.flatMap((group) =>
                 group.dice.map((die, index) => (
                   <Pressable
                     key={`${group.id}-${index}`}
                     onPress={() => onEditQuickDieQty(group.id, index, die.qty)}
                     style={{
-                      paddingVertical: 8,
-                      paddingHorizontal: 10,
+                      paddingVertical: 10,
+                      paddingHorizontal: 12,
                       borderWidth: 1,
-                      borderRadius: 10,
-                      alignSelf: "flex-start",
+                      borderRadius: 999,
                     }}
                   >
                     <Text style={{ fontWeight: "700" }}>
@@ -350,7 +319,11 @@ export function QuickRollSection({
                 )),
               )}
             </View>
-          ) : null}
+          ) : (
+            <Text style={{ opacity: 0.72 }}>
+              Aucun dé sélectionné.
+            </Text>
+          )}
 
           <View
             style={{
