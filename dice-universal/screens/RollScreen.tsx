@@ -229,10 +229,14 @@ export default function RollScreen() {
 
     if (!targetDie) return;
 
-    const preset = quickDiePresets[targetDie.sides];
+    const isEntryScopedDie = !!targetDie.rule_temp || !!targetDie.rule_id;
 
-    if (preset?.scope === "entry") {
-      replaceDraftDieWithQtySplit(editingQuickQtyGroupId, editingQuickQtyIndex, qty);
+    if (isEntryScopedDie) {
+      replaceDraftDieWithQtySplit(
+        editingQuickQtyGroupId,
+        editingQuickQtyIndex,
+        qty,
+      );
     } else {
       updateDraftDieQty(editingQuickQtyGroupId, editingQuickQtyIndex, qty);
     }
@@ -516,7 +520,6 @@ export default function RollScreen() {
                     } else {
                       addDieToDraft(editingDieSides, rule, { aggregate: false });
                       applyTempRuleToSides(editingDieSides, rule);
-                      clearTempRuleFromSelectedGroup();
                     }
 
                     setShowDieRuleModal(false);
@@ -540,8 +543,13 @@ export default function RollScreen() {
             <Pressable
               onPress={() => {
                 if (editingDieSides != null) {
+                  const preset = quickDiePresets[editingDieSides];
+
                   clearTempRuleFromSides(editingDieSides);
-                  clearTempRuleFromSelectedGroup();
+
+                  if (preset?.scope === "group") {
+                    clearTempRuleFromSelectedGroup();
+                  }
 
                   setQuickDiePresets((prev) => {
                     const next = { ...prev };

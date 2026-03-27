@@ -190,6 +190,7 @@ export function QuickRollSection({
         group.entries.map((entry) => ({
           entryId: entry.entryId,
           values: entry.signed_values,
+          total: entry.final_total,
           evalLabel: entry.eval_result ? formatRuleResult(entry.eval_result) : null,
         })),
       ),
@@ -448,9 +449,10 @@ export function QuickRollSection({
                 </View>
               ) : null}
 
-              {entryResultItems.some((item) => item.evalLabel) ? (
+              {entryResultItems.length > 0 ? (
                 <View style={{ gap: 8, marginTop: groupOutcomeLabels.length > 0 ? 8 : 0 }}>
                   {entryResultItems.map((item, index) => {
+                    const hasEval = !!item.evalLabel;
                     const valueText =
                       item.values.length === 1 ? `${item.values[0]}` : item.values.join(" + ");
 
@@ -462,13 +464,21 @@ export function QuickRollSection({
                           borderBottomWidth: index === entryResultItems.length - 1 ? 0 : 1,
                         }}
                       >
-                        <Text style={{ fontSize: 20, fontWeight: "800" }}>{valueText}</Text>
-
-                        {item.evalLabel ? (
-                          <Text style={{ marginTop: 2, opacity: 0.85, fontWeight: "700" }}>
-                            {item.evalLabel}
-                          </Text>
-                        ) : null}
+                        {hasEval ? (
+                          <>
+                            <Text style={{ fontSize: 20, fontWeight: "800" }}>{valueText}</Text>
+                            <Text style={{ marginTop: 2, opacity: 0.85, fontWeight: "700" }}>
+                              {item.evalLabel}
+                            </Text>
+                          </>
+                        ) : (
+                          <>
+                            <Text style={{ fontSize: 20, fontWeight: "800" }}>{item.total}</Text>
+                            <Text style={{ marginTop: 2, opacity: 0.72 }}>
+                              ({valueText})
+                            </Text>
+                          </>
+                        )}
                       </View>
                     );
                   })}
