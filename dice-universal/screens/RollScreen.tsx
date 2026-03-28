@@ -34,20 +34,6 @@ export default function RollScreen() {
   );
   const [editingDieSides, setEditingDieSides] = useState<number | null>(null);
   const [showDieRuleModal, setShowDieRuleModal] = useState(false);
-  const [quickDiePresets, setQuickDiePresets] = useState<
-    Record<
-      number,
-      {
-        scope: "entry" | "group";
-        rule: {
-          id: string;
-          name: string;
-          kind: string;
-          params_json: string;
-        };
-      }
-    >
-  >({});
 
   const [showQuickQtyModal, setShowQuickQtyModal] = useState(false);
   const [editingQuickQtyGroupId, setEditingQuickQtyGroupId] = useState<string | null>(null);
@@ -131,6 +117,8 @@ export default function RollScreen() {
 
     addDraftGroup,
     addDieToDraft,
+    addQuickStandardDie,
+    addQuickPresetDie,
     updateDraftDieQty,
     replaceDraftDieWithQtySplit,
     removeDraftDie,
@@ -242,11 +230,6 @@ export default function RollScreen() {
     }
 
     handleCloseQuickQtyEditor();
-  }
-
-  function handleResetConfiguredDice() {
-    setQuickDiePresets({});
-    clearAllTempRules();
   }
 
   function makeTempRule(params: {
@@ -370,20 +353,7 @@ export default function RollScreen() {
             onToggleSaveOptions={() => setShowSaveOptions((v) => !v)}
             onToggleAdvanced={() => setShowAdvanced((v) => !v)}
             onAddDraftGroup={addDraftGroup}
-            onAddDieToDraft={(sides) => {
-              const preset = quickDiePresets[sides];
-
-              if (preset?.scope === "group") {
-                addDieToDraft(sides, null, { aggregate: true });
-                applyTempRuleToSelectedGroup(preset.rule);
-                clearTempRuleFromSides(sides);
-                return;
-              }
-
-              addDieToDraft(sides, preset?.rule ?? null, {
-                aggregate: preset?.scope !== "entry",
-              });
-            }}
+            onAddQuickStandardDie={addQuickStandardDie}
             onSelectDraftGroup={setSelectedDraftGroupId}
             onRenameDraftGroup={openRenameDraftGroupModal}
             onEditDraftGroupRule={openDraftGroupRuleEditor}
@@ -396,8 +366,6 @@ export default function RollScreen() {
             onReplaceCurrentTable={replaceCurrentTable}
             onCreateNewTable={openCreateTableModal}
             availableRules={availableRules}
-            quickDiePresets={quickDiePresets}
-            onResetConfiguredDice={handleResetConfiguredDice}
             onEditQuickDieQty={handleOpenQuickQtyEditor}
           />
         )}
@@ -505,22 +473,10 @@ export default function RollScreen() {
                       params: built.params,
                     });
 
-                    setQuickDiePresets((prev) => ({
-                      ...prev,
-                      [editingDieSides]: {
-                        scope: preset.scope,
-                        rule,
-                      },
-                    }));
-
-                    if (preset.scope === "group") {
-                      addDieToDraft(editingDieSides, null, { aggregate: true });
-                      applyTempRuleToSelectedGroup(rule);
-                      clearTempRuleFromSides(editingDieSides);
-                    } else {
-                      addDieToDraft(editingDieSides, rule, { aggregate: false });
-                      applyTempRuleToSides(editingDieSides, rule);
-                    }
+                    addQuickPresetDie(editingDieSides, {
+                      scope: preset.scope,
+                      rule,
+                    });
 
                     setShowDieRuleModal(false);
                     setEditingDieSides(null);
@@ -539,38 +495,6 @@ export default function RollScreen() {
                 </Pressable>
               ))
             )}
-
-            <Pressable
-              onPress={() => {
-                if (editingDieSides != null) {
-                  const preset = quickDiePresets[editingDieSides];
-
-                  clearTempRuleFromSides(editingDieSides);
-
-                  if (preset?.scope === "group") {
-                    clearTempRuleFromSelectedGroup();
-                  }
-
-                  setQuickDiePresets((prev) => {
-                    const next = { ...prev };
-                    delete next[editingDieSides];
-                    return next;
-                  });
-                }
-                setShowDieRuleModal(false);
-                setEditingDieSides(null);
-              }}
-              style={{
-                padding: 12,
-                borderWidth: 1,
-                borderRadius: 10,
-                alignItems: "center",
-              }}
-            >
-              <Text style={{ fontWeight: "700" }}>
-                Réinitialiser la règle de ce dé
-              </Text>
-            </Pressable>
 
             <Pressable
               onPress={() => {

@@ -23,6 +23,12 @@ type DraftGroupState = {
   id: string;
   name: string;
   rule_id?: string | null;
+  rule_temp?: {
+    id: string;
+    name: string;
+    kind: string;
+    params_json: string;
+  } | null;
   dice: DraftDie[];
 };
 
@@ -42,15 +48,7 @@ type QuickRollSectionProps = {
   onToggleSaveOptions: () => void;
   onToggleAdvanced: () => void;
   onAddDraftGroup: () => void;
-  onAddDieToDraft: (
-    sides: number,
-    forcedTempRule?: {
-      id: string;
-      name: string;
-      kind: string;
-      params_json: string;
-    } | null,
-  ) => void;
+  onAddQuickStandardDie: (sides: number) => void;
   onSelectDraftGroup: (groupId: string) => void;
   onRenameDraftGroup: (groupId: string, currentName: string) => void;
   onEditDraftGroupRule: (groupId: string) => void;
@@ -64,42 +62,7 @@ type QuickRollSectionProps = {
   onReplaceCurrentTable: () => void;
   onCreateNewTable: () => void;
   availableRules: RuleRow[];
-  quickDiePresets: Record<
-    number,
-    {
-      scope: "entry" | "group";
-      rule: {
-        id: string;
-        name: string;
-        kind: string;
-        params_json: string;
-      };
-    }
-  >;
-  onResetConfiguredDice: () => void;
 };
-
-function extractQuickOutcomeLabels(draftResults: GroupRollResult[]): string[] {
-  const labels: string[] = [];
-
-  for (const groupResult of draftResults) {
-    if (groupResult.group_eval_result) {
-      labels.push(formatRuleResult(groupResult.group_eval_result));
-    }
-
-    for (const entry of groupResult.entries) {
-      if (entry.eval_result) {
-        labels.push(formatRuleResult(entry.eval_result));
-      }
-    }
-  }
-
-  return [...new Set(labels)];
-}
-
-function flattenEntries(draftResults: GroupRollResult[]) {
-  return draftResults.flatMap((group) => group.entries);
-}
 
 export function QuickRollSection({
   simplified = false,
@@ -117,7 +80,7 @@ export function QuickRollSection({
   onToggleSaveOptions,
   onToggleAdvanced,
   onAddDraftGroup,
-  onAddDieToDraft,
+  onAddQuickStandardDie,
   onSelectDraftGroup,
   onRenameDraftGroup,
   onEditDraftGroupRule,
@@ -131,8 +94,6 @@ export function QuickRollSection({
   onReplaceCurrentTable,
   onCreateNewTable,
   availableRules,
-  quickDiePresets,
-  onResetConfiguredDice,
 }: QuickRollSectionProps) {
   const selectedGroup = useMemo(() => {
     if (draftGroups.length === 0) return null;
@@ -169,11 +130,6 @@ export function QuickRollSection({
     };
   }, [draftResults, quickModifier]);
 
-  const outcomeLabels = useMemo(
-    () => extractQuickOutcomeLabels(draftResults),
-    [draftResults],
-  );
-
   const groupOutcomeLabels = useMemo(
     () =>
       draftResults
@@ -187,17 +143,19 @@ export function QuickRollSection({
   const entryResultItems = useMemo(
     () =>
       draftResults.flatMap((group) =>
-        group.entries.map((entry) => ({
-          entryId: entry.entryId,
-          values: entry.signed_values,
-          total: entry.final_total,
-          evalLabel: entry.eval_result ? formatRuleResult(entry.eval_result) : null,
-        })),
+        group.group_eval_result
+          ? []
+          : group.entries.map((entry) => ({
+            entryId: entry.entryId,
+            values: entry.signed_values,
+            total: entry.final_total,
+            evalLabel: entry.eval_result
+              ? formatRuleResult(entry.eval_result)
+              : null,
+          })),
       ),
     [draftResults],
   );
-
-  const flatEntries = useMemo(() => flattenEntries(draftResults), [draftResults]);
 
   if (simplified) {
     return (
@@ -219,22 +177,6 @@ export function QuickRollSection({
             }}
           >
             <Text style={{ fontSize: 16, fontWeight: "800" }}>{title}</Text>
-
-            {Object.keys(quickDiePresets).length > 0 ? (
-              <Pressable
-                onPress={onResetConfiguredDice}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderWidth: 1,
-                  borderRadius: 999,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Text style={{ fontSize: 18, fontWeight: "700" }}>↻</Text>
-              </Pressable>
-            ) : null}
           </View>
 
           <View
@@ -244,41 +186,26 @@ export function QuickRollSection({
               gap: 8,
             }}
           >
-            {standardDice.map((sides) => {
-              const hasTempRule = !!quickDiePresets[sides];
-
-              return (
-                <Pressable
-                  key={sides}
-                  onPress={() => onAddDieToDraft(sides)}
-                  onLongPress={() => onOpenDieConfig(sides)}
-                  delayLongPress={300}
-                  style={{
-                    minWidth: 64,
-                    paddingVertical: 14,
-                    paddingHorizontal: 14,
-                    borderWidth: 1,
-                    borderRadius: 12,
-                    alignItems: "center",
-                    backgroundColor: hasTempRule ? "#e0f2fe" : "transparent",
-                  }}
-                >
-                  <Text style={{ fontWeight: "800", fontSize: 16 }}>
-                    d{sides} {hasTempRule ? "⚙️" : ""}
-                  </Text>
-                </Pressable>
-              );
-            })}
-
-            {Object.keys(quickDiePresets).length > 0 ? (
-              <Text style={{ opacity: 0.72 }}>
-                Dés configurés :{" "}
-                {Object.keys(quickDiePresets)
-                  .sort((a, b) => Number(a) - Number(b))
-                  .map((sides) => `d${sides}`)
-                  .join(", ")}
-              </Text>
-            ) : null}
+            {standardDice.map((sides) => (
+              <Pressable
+                key={sides}
+                onPress={() => onAddQuickStandardDie(sides)}
+                onLongPress={() => onOpenDieConfig(sides)}
+                delayLongPress={300}
+                style={{
+                  minWidth: 64,
+                  paddingVertical: 14,
+                  paddingHorizontal: 14,
+                  borderWidth: 1,
+                  borderRadius: 12,
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ fontWeight: "800", fontSize: 16 }}>
+                  d{sides}
+                </Text>
+              </Pressable>
+            ))}
           </View>
         </View>
 
@@ -316,7 +243,7 @@ export function QuickRollSection({
                     }}
                   >
                     <Text style={{ fontWeight: "700" }}>
-                      {die.qty}d{die.sides}
+                      {die.qty}d{die.sides} {die.rule_temp || group.rule_temp ? "⚙️" : ""}
                     </Text>
                   </Pressable>
                 )),
@@ -779,7 +706,7 @@ export function QuickRollSection({
           {standardDice.map((sides) => (
             <Pressable
               key={sides}
-              onPress={() => onAddDieToDraft(sides)}
+              onPress={() => onAddQuickStandardDie(sides)}
               style={{
                 minWidth: 64,
                 paddingVertical: 12,
