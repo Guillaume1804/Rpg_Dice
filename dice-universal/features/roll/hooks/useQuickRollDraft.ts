@@ -218,111 +218,32 @@ export function useQuickRollDraft({
   }
 
   function addQuickPresetDie(sides: number, preset: QuickPresetSelection) {
-    if (preset.scope === "group") {
-      setDraftGroups((prev) => {
-        let next = [...prev];
+    const newGroup =
+      preset.scope === "group"
+        ? createQuickGroup(`Jet libre — ${preset.rule.name}`, preset.rule)
+        : createQuickGroup(`Jet libre — ${preset.rule.name}`);
 
-        let targetGroup =
-          next.find(
-            (group) =>
-              sameTempRule(group.rule_temp, preset.rule) &&
-              group.dice.every((die) => !die.rule_temp && !die.rule_id),
-          ) ?? null;
-
-        if (!targetGroup) {
-          targetGroup = createQuickGroup(`Jet libre — ${preset.rule.name}`, preset.rule);
-          next = [...next, targetGroup];
-          setSelectedDraftGroupId(targetGroup.id);
+    const newDie: DraftDie =
+      preset.scope === "group"
+        ? {
+          sides,
+          qty: 1,
+          modifier: 0,
+          sign: 1,
+          rule_id: null,
+          rule_temp: null,
         }
+        : {
+          sides,
+          qty: 1,
+          modifier: 0,
+          sign: 1,
+          rule_id: null,
+          rule_temp: preset.rule,
+        };
 
-        const targetGroupId = targetGroup.id;
-
-        return next.map((group) => {
-          if (group.id !== targetGroupId) return group;
-
-          const existingIndex = group.dice.findIndex(
-            (die) =>
-              die.sides === sides &&
-              (die.modifier ?? 0) === 0 &&
-              (die.sign ?? 1) === 1 &&
-              !die.rule_id &&
-              !die.rule_temp,
-          );
-
-          if (existingIndex >= 0) {
-            return {
-              ...group,
-              dice: group.dice.map((die, index) =>
-                index === existingIndex
-                  ? {
-                    ...die,
-                    qty: die.qty + 1,
-                  }
-                  : die,
-              ),
-            };
-          }
-
-          return {
-            ...group,
-            dice: [
-              ...group.dice,
-              {
-                sides,
-                qty: 1,
-                modifier: 0,
-                sign: 1,
-                rule_id: null,
-                rule_temp: null,
-              },
-            ],
-          };
-        });
-      });
-
-      setDraftResults([]);
-      return;
-    }
-
-    setDraftGroups((prev) => {
-      let next = [...prev];
-
-      let targetGroup =
-        next.find(
-          (group) =>
-            !group.rule_id &&
-            !group.rule_temp &&
-            group.name === `Jet libre — ${preset.rule.name}`,
-        ) ?? null;
-
-      if (!targetGroup) {
-        targetGroup = createQuickGroup(`Jet libre — ${preset.rule.name}`);
-        next = [...next, targetGroup];
-        setSelectedDraftGroupId(targetGroup.id);
-      }
-
-      const targetGroupId = targetGroup.id;
-
-      return next.map((group) =>
-        group.id === targetGroupId
-          ? {
-            ...group,
-            dice: [
-              ...group.dice,
-              {
-                sides,
-                qty: 1,
-                modifier: 0,
-                sign: 1,
-                rule_id: null,
-                rule_temp: preset.rule,
-              },
-            ],
-          }
-          : group,
-      );
-    });
-
+    setDraftGroups((prev) => [...prev, { ...newGroup, dice: [newDie] }]);
+    setSelectedDraftGroupId(newGroup.id);
     setDraftResults([]);
   }
 

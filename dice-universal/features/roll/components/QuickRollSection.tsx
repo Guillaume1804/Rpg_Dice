@@ -64,6 +64,10 @@ type QuickRollSectionProps = {
   availableRules: RuleRow[];
 };
 
+function getGroupDisplayValues(result: GroupRollResult): number[] {
+  return result.entries.flatMap((entry) => entry.signed_values);
+}
+
 export function QuickRollSection({
   simplified = false,
   title,
@@ -108,53 +112,6 @@ export function QuickRollSection({
   const hasDraftContent = useMemo(
     () => draftGroups.some((group) => group.dice.length > 0),
     [draftGroups],
-  );
-
-  const aggregatedResult = useMemo(() => {
-    if (draftResults.length === 0) return null;
-
-    const baseTotal = draftResults.reduce(
-      (sum, result) => sum + result.total,
-      0,
-    );
-
-    const allValues = draftResults.flatMap((result) =>
-      result.entries.flatMap((entry) => entry.signed_values),
-    );
-
-    return {
-      baseTotal,
-      total: baseTotal + quickModifier,
-      values: allValues,
-      modifier: quickModifier,
-    };
-  }, [draftResults, quickModifier]);
-
-  const groupOutcomeLabels = useMemo(
-    () =>
-      draftResults
-        .map((group) =>
-          group.group_eval_result ? formatRuleResult(group.group_eval_result) : null,
-        )
-        .filter((label): label is string => !!label),
-    [draftResults],
-  );
-
-  const entryResultItems = useMemo(
-    () =>
-      draftResults.flatMap((group) =>
-        group.group_eval_result
-          ? []
-          : group.entries.map((entry) => ({
-            entryId: entry.entryId,
-            values: entry.signed_values,
-            total: entry.final_total,
-            evalLabel: entry.eval_result
-              ? formatRuleResult(entry.eval_result)
-              : null,
-          })),
-      ),
-    [draftResults],
   );
 
   if (simplified) {
@@ -351,92 +308,118 @@ export function QuickRollSection({
         >
           <Text style={{ fontSize: 16, fontWeight: "800" }}>Résultat</Text>
 
-          {!aggregatedResult ? (
+          {draftResults.length === 0 ? (
             <Text style={{ opacity: 0.72 }}>
               Lance un jet pour afficher le résultat ici.
             </Text>
           ) : (
-            <>
-              {groupOutcomeLabels.length > 0 ? (
-                <View style={{ gap: 6 }}>
-                  {groupOutcomeLabels.map((label, index) => (
-                    <View
-                      key={`${label}-${index}`}
-                      style={{
-                        paddingVertical: 8,
-                        paddingHorizontal: 10,
-                        borderWidth: 1,
-                        borderRadius: 10,
-                        alignSelf: "flex-start",
-                      }}
-                    >
-                      <Text style={{ fontWeight: "700" }}>{label}</Text>
-                    </View>
-                  ))}
-                </View>
-              ) : null}
+            <View style={{ gap: 10 }}>
+              {draftResults.map((result) => {
+                const values = getGroupDisplayValues(result);
+                const hasGroupEval = !!result.group_eval_result;
+                const hasEntryEval = result.entries.some((entry) => !!entry.eval_result);
+                const hasOnlyStandardEntries = !hasGroupEval && !hasEntryEval;
 
-              {entryResultItems.length > 0 ? (
-                <View style={{ gap: 8, marginTop: groupOutcomeLabels.length > 0 ? 8 : 0 }}>
-                  {entryResultItems.map((item, index) => {
-                    const hasEval = !!item.evalLabel;
-                    const valueText =
-                      item.values.length === 1 ? `${item.values[0]}` : item.values.join(" + ");
+                return (
+                  <View
+                    key={result.groupId}
+                    style={{
+                      padding: 12,
+                      borderWidth: 1,
+                      borderRadius: 12,
+                      gap: 6,
+                    }}
+                  >
+                    <Text style={{ fontWeight: "800" }}>{result.label}</Text>
 
-                    return (
-                      <View
-                        key={item.entryId}
-                        style={{
-                          paddingVertical: 8,
-                          borderBottomWidth: index === entryResultItems.length - 1 ? 0 : 1,
-                        }}
-                      >
-                        {hasEval ? (
-                          <>
-                            <Text style={{ fontSize: 20, fontWeight: "800" }}>{valueText}</Text>
-                            <Text style={{ marginTop: 2, opacity: 0.85, fontWeight: "700" }}>
-                              {item.evalLabel}
-                            </Text>
-                          </>
-                        ) : (
-                          <>
-                            <Text style={{ fontSize: 20, fontWeight: "800" }}>{item.total}</Text>
-                            <Text style={{ marginTop: 2, opacity: 0.72 }}>
-                              ({valueText})
-                            </Text>
-                          </>
-                        )}
+                    {hasGroupEval ? (
+                      <>
+                        <View
+                          style={{
+                            paddingVertical: 8,
+                            paddingHorizontal: 10,
+                            borderWidth: 1,
+                            borderRadius: 10,
+                            alignSelf: "flex-start",
+                          }}
+                        >
+                          <Text style={{ fontWeight: "700" }}>
+                            {formatRuleResult(result.group_eval_result!)}
+                          </Text>
+                        </View>
+
+                        <Text style={{ opacity: 0.72 }}>
+                          Valeurs : ({values.join(" + ")})
+                        </Text>
+                      </>
+                    ) : hasEntryEval ? (
+                      <View style={{ gap: 8 }}>
+                        {result.entries.map((entry, index) => {
+                          const valueText =
+                            entry.signed_values.length === 1
+                              ? `${entry.signed_values[0]}`
+                              : entry.signed_values.join(" + ");
+
+                          return (
+                            <View
+                              key={entry.entryId}
+                              style={{
+                                paddingVertical: 6,
+                                borderBottomWidth:
+                                  index === result.entries.length - 1 ? 0 : 1,
+                              }}
+                            >
+                              {entry.eval_result ? (
+                                <>
+                                  <Text style={{ fontSize: 20, fontWeight: "800" }}>
+                                    {valueText}
+                                  </Text>
+                                  <Text
+                                    style={{
+                                      marginTop: 2,
+                                      opacity: 0.85,
+                                      fontWeight: "700",
+                                    }}
+                                  >
+                                    {formatRuleResult(entry.eval_result)}
+                                  </Text>
+                                </>
+                              ) : (
+                                <>
+                                  <Text style={{ fontSize: 20, fontWeight: "800" }}>
+                                    {entry.final_total}
+                                  </Text>
+                                  <Text style={{ marginTop: 2, opacity: 0.72 }}>
+                                    ({valueText})
+                                  </Text>
+                                </>
+                              )}
+                            </View>
+                          );
+                        })}
                       </View>
-                    );
-                  })}
-                </View>
-              ) : groupOutcomeLabels.length > 0 ? (
-                <Text style={{ opacity: 0.72, marginTop: 8 }}>
-                  {aggregatedResult.values.length > 0
-                    ? `Valeurs : (${aggregatedResult.values.join(" + ")})`
-                    : "Aucune valeur détaillée"}
-                </Text>
-              ) : (
-                <>
-                  <Text style={{ fontSize: 40, fontWeight: "900" }}>
-                    {aggregatedResult.total}
-                  </Text>
+                    ) : hasOnlyStandardEntries ? (
+                      <>
+                        <Text style={{ fontSize: 32, fontWeight: "900" }}>
+                          {result.total}
+                        </Text>
 
-                  <Text style={{ opacity: 0.72 }}>
-                    {aggregatedResult.values.length > 0
-                      ? `(${aggregatedResult.values.join(" + ")})`
-                      : "Aucune valeur détaillée"}
-                  </Text>
-                </>
-              )}
+                        <Text style={{ opacity: 0.72 }}>
+                          ({values.join(" + ")})
+                        </Text>
+                      </>
+                    ) : null}
+                  </View>
+                );
+              })}
 
-              {aggregatedResult.modifier !== 0 ? (
-                <Text style={{ opacity: 0.72, marginTop: 6 }}>
-                  Modificateur global : {aggregatedResult.modifier > 0 ? "+" : ""}
-                  {aggregatedResult.modifier}
+              {quickModifier !== 0 ? (
+                <Text style={{ opacity: 0.72 }}>
+                  Modificateur global : {quickModifier > 0 ? "+" : ""}
+                  {quickModifier}
                 </Text>
               ) : null}
-            </>
+            </View>
           )}
         </View>
 
