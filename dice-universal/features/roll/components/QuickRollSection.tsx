@@ -42,9 +42,6 @@ type QuickRollSectionProps = {
   tableIsSystem: boolean;
   showSaveOptions: boolean;
   showAdvanced: boolean;
-  quickModifier: number;
-  onIncreaseModifier: () => void;
-  onDecreaseModifier: () => void;
   onToggleSaveOptions: () => void;
   onToggleAdvanced: () => void;
   onAddDraftGroup: () => void;
@@ -54,7 +51,12 @@ type QuickRollSectionProps = {
   onEditDraftGroupRule: (groupId: string) => void;
   onRemoveDraftGroup: (groupId: string) => void;
   onEditDraftDie: (groupId: string, index: number) => void;
-  onEditQuickDieQty: (groupId: string, index: number, currentQty: number) => void;
+  onEditQuickDieQty: (
+    groupId: string,
+    index: number,
+    currentQty: number,
+    currentModifier: number,
+  ) => void;
   onOpenDieConfig: (sides: number) => void;
   onRemoveDraftDie: (groupId: string, index: number) => void;
   onRollDraft: () => void;
@@ -78,9 +80,6 @@ export function QuickRollSection({
   tableIsSystem,
   showSaveOptions,
   showAdvanced,
-  quickModifier,
-  onIncreaseModifier,
-  onDecreaseModifier,
   onToggleSaveOptions,
   onToggleAdvanced,
   onAddDraftGroup,
@@ -191,7 +190,9 @@ export function QuickRollSection({
                 group.dice.map((die, index) => (
                   <Pressable
                     key={`${group.id}-${index}`}
-                    onPress={() => onEditQuickDieQty(group.id, index, die.qty)}
+                    onPress={() =>
+                      onEditQuickDieQty(group.id, index, die.qty, die.modifier ?? 0)
+                    }
                     style={{
                       paddingVertical: 10,
                       paddingHorizontal: 12,
@@ -200,7 +201,11 @@ export function QuickRollSection({
                     }}
                   >
                     <Text style={{ fontWeight: "700" }}>
-                      {die.qty}d{die.sides} {die.rule_temp || group.rule_temp ? "⚙️" : ""}
+                      {die.qty}d{die.sides}
+                      {die.modifier
+                        ? ` ${die.modifier > 0 ? "+" : ""}${die.modifier}`
+                        : ""}
+                      {die.rule_temp || group.rule_temp ? " ⚙️" : ""}
                     </Text>
                   </Pressable>
                 )),
@@ -211,56 +216,6 @@ export function QuickRollSection({
               Aucun dé sélectionné.
             </Text>
           )}
-
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 8,
-              marginTop: 4,
-            }}
-          >
-            <Text style={{ fontWeight: "700" }}>Modificateur :</Text>
-
-            <Pressable
-              onPress={onDecreaseModifier}
-              style={{
-                paddingVertical: 8,
-                paddingHorizontal: 12,
-                borderWidth: 1,
-                borderRadius: 10,
-              }}
-            >
-              <Text style={{ fontWeight: "800" }}>−</Text>
-            </Pressable>
-
-            <View
-              style={{
-                minWidth: 52,
-                paddingVertical: 8,
-                paddingHorizontal: 12,
-                borderWidth: 1,
-                borderRadius: 10,
-                alignItems: "center",
-              }}
-            >
-              <Text style={{ fontWeight: "800" }}>
-                {quickModifier >= 0 ? `+${quickModifier}` : quickModifier}
-              </Text>
-            </View>
-
-            <Pressable
-              onPress={onIncreaseModifier}
-              style={{
-                paddingVertical: 8,
-                paddingHorizontal: 12,
-                borderWidth: 1,
-                borderRadius: 10,
-              }}
-            >
-              <Text style={{ fontWeight: "800" }}>+</Text>
-            </Pressable>
-          </View>
 
           <View
             style={{
@@ -412,13 +367,6 @@ export function QuickRollSection({
                   </View>
                 );
               })}
-
-              {quickModifier !== 0 ? (
-                <Text style={{ opacity: 0.72 }}>
-                  Modificateur global : {quickModifier > 0 ? "+" : ""}
-                  {quickModifier}
-                </Text>
-              ) : null}
             </View>
           )}
         </View>

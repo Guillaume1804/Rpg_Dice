@@ -28,7 +28,6 @@ export default function RollScreen() {
   const [showNameModal, setShowNameModal] = useState(false);
   const [newTableName, setNewTableName] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [quickModifier, setQuickModifier] = useState(0);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(
     null,
   );
@@ -39,6 +38,7 @@ export default function RollScreen() {
   const [editingQuickQtyGroupId, setEditingQuickQtyGroupId] = useState<string | null>(null);
   const [editingQuickQtyIndex, setEditingQuickQtyIndex] = useState<number | null>(null);
   const [quickQtyValue, setQuickQtyValue] = useState("");
+  const [quickEntryModifierValue, setQuickEntryModifierValue] = useState("0");
 
   const STANDARD_DICE = [4, 6, 8, 10, 12, 20, 100];
 
@@ -120,6 +120,7 @@ export default function RollScreen() {
     addQuickStandardDie,
     addQuickPresetDie,
     updateDraftDieQty,
+    updateDraftDieEntry,
     replaceDraftDieWithQtySplit,
     removeDraftDie,
     removeDraftGroup,
@@ -183,7 +184,6 @@ export default function RollScreen() {
 
   function handleClearQuickRoll() {
     clearDraft();
-    setQuickModifier(0);
   }
 
   function handleOpenDieConfig(sides: number) {
@@ -191,10 +191,16 @@ export default function RollScreen() {
     setShowDieRuleModal(true);
   }
 
-  function handleOpenQuickQtyEditor(groupId: string, index: number, currentQty: number) {
+  function handleOpenQuickQtyEditor(
+    groupId: string,
+    index: number,
+    currentQty: number,
+    currentModifier: number,
+  ) {
     setEditingQuickQtyGroupId(groupId);
     setEditingQuickQtyIndex(index);
     setQuickQtyValue(String(currentQty));
+    setQuickEntryModifierValue(String(currentModifier));
     setShowQuickQtyModal(true);
   }
 
@@ -203,14 +209,17 @@ export default function RollScreen() {
     setEditingQuickQtyGroupId(null);
     setEditingQuickQtyIndex(null);
     setQuickQtyValue("");
+    setQuickEntryModifierValue("0");
   }
 
   function handleSaveQuickQtyEditor() {
     if (editingQuickQtyGroupId == null || editingQuickQtyIndex == null) return;
 
     const qty = Number(quickQtyValue);
+    const modifier = Number(quickEntryModifierValue);
 
     if (!Number.isFinite(qty) || qty <= 0) return;
+    if (!Number.isFinite(modifier)) return;
 
     const targetGroup = draftGroups.find((g) => g.id === editingQuickQtyGroupId);
     const targetDie = targetGroup?.dice[editingQuickQtyIndex];
@@ -224,9 +233,14 @@ export default function RollScreen() {
         editingQuickQtyGroupId,
         editingQuickQtyIndex,
         qty,
+        modifier,
       );
+
     } else {
-      updateDraftDieQty(editingQuickQtyGroupId, editingQuickQtyIndex, qty);
+      updateDraftDieEntry(editingQuickQtyGroupId, editingQuickQtyIndex, {
+        qty,
+        modifier,
+      });
     }
 
     handleCloseQuickQtyEditor();
@@ -347,9 +361,6 @@ export default function RollScreen() {
             tableIsSystem={table?.is_system === 1}
             showSaveOptions={showSaveOptions}
             showAdvanced={showAdvanced}
-            quickModifier={quickModifier}
-            onIncreaseModifier={() => setQuickModifier((prev) => prev + 1)}
-            onDecreaseModifier={() => setQuickModifier((prev) => prev - 1)}
             onToggleSaveOptions={() => setShowSaveOptions((v) => !v)}
             onToggleAdvanced={() => setShowAdvanced((v) => !v)}
             onAddDraftGroup={addDraftGroup}
@@ -554,6 +565,27 @@ export default function RollScreen() {
                 onChangeText={setQuickQtyValue}
                 keyboardType="number-pad"
                 placeholder="Quantité"
+                style={{ fontSize: 16 }}
+              />
+            </View>
+
+            <Text style={{ opacity: 0.72 }}>
+              Modificateur appliqué à cette entrée uniquement.
+            </Text>
+
+            <View
+              style={{
+                borderWidth: 1,
+                borderRadius: 10,
+                paddingHorizontal: 12,
+                paddingVertical: 10,
+              }}
+            >
+              <TextInput
+                value={quickEntryModifierValue}
+                onChangeText={setQuickEntryModifierValue}
+                keyboardType="numbers-and-punctuation"
+                placeholder="Modificateur"
                 style={{ fontSize: 16 }}
               />
             </View>
