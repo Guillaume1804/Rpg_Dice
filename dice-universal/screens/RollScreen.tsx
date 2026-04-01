@@ -215,6 +215,30 @@ export default function RollScreen() {
     setQuickEntryModifierValue("0");
   }
 
+  function handleAdjustQuickDieQty(
+    groupId: string,
+    index: number,
+    delta: number,
+  ) {
+    const targetGroup = draftGroups.find((g) => g.id === groupId);
+    const targetDie = targetGroup?.dice[index];
+
+    if (!targetDie) return;
+
+    const nextQty = Math.max(1, (targetDie.qty ?? 1) + delta);
+
+    const isEntryScopedDie = !!targetDie.rule_temp || !!targetDie.rule_id;
+
+    if (isEntryScopedDie) {
+      replaceDraftDieWithQtySplit(groupId, index, nextQty, targetDie.modifier ?? 0);
+    } else {
+      updateDraftDieEntry(groupId, index, {
+        qty: nextQty,
+        modifier: targetDie.modifier ?? 0,
+      });
+    }
+  }
+
   function handleSaveQuickQtyEditor() {
     if (editingQuickQtyGroupId == null || editingQuickQtyIndex == null) return;
 
@@ -383,6 +407,7 @@ export default function RollScreen() {
             onCreateNewTable={openCreateTableModal}
             availableRules={availableRules}
             onEditQuickDieQty={handleOpenQuickQtyEditor}
+            onAdjustQuickDieQty={handleAdjustQuickDieQty}
           />
         )}
 

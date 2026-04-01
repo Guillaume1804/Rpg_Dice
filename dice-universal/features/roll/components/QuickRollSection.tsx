@@ -57,6 +57,7 @@ type QuickRollSectionProps = {
     currentQty: number,
     currentModifier: number,
   ) => void;
+  onAdjustQuickDieQty: (groupId: string, index: number, delta: number) => void;
   onOpenDieConfig: (sides: number) => void;
   onRemoveDraftDie: (groupId: string, index: number) => void;
   onRollDraft: () => void;
@@ -83,6 +84,14 @@ function getResultForGroup(
   return draftResults.find((result) => result.groupId === groupId) ?? null;
 }
 
+function getEntryResultForIndex(
+  result: GroupRollResult | null,
+  index: number,
+) {
+  if (!result) return null;
+  return result.entries[index] ?? null;
+}
+
 export function QuickRollSection({
   simplified = false,
   title,
@@ -103,6 +112,7 @@ export function QuickRollSection({
   onRemoveDraftGroup,
   onEditDraftDie,
   onEditQuickDieQty,
+  onAdjustQuickDieQty,
   onOpenDieConfig,
   onRemoveDraftDie,
   onRollDraft,
@@ -136,6 +146,14 @@ export function QuickRollSection({
   const configuredQuickGroups = useMemo(
     () => draftGroups.filter((group) => !isStandardQuickGroup(group)),
     [draftGroups],
+  );
+
+  const standardQuickGroupResult = useMemo(
+    () =>
+      standardQuickGroup
+        ? getResultForGroup(standardQuickGroup.id, draftResults)
+        : null,
+    [standardQuickGroup, draftResults],
   );
 
   if (simplified) {
@@ -205,83 +223,94 @@ export function QuickRollSection({
               <Text style={{ opacity: 0.72 }}>Aucun dé standard sélectionné.</Text>
             ) : (
               <View style={{ gap: 8 }}>
-                {standardQuickGroup.dice.map((die, index) => (
-                  <View
-                    key={`${standardQuickGroup.id}-${index}`}
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: 8,
-                      padding: 10,
-                      borderWidth: 1,
-                      borderRadius: 12,
-                    }}
-                  >
-                    <Pressable
-                      onPress={() =>
-                        onEditQuickDieQty(
-                          standardQuickGroup.id,
-                          index,
-                          die.qty,
-                          die.modifier ?? 0,
-                        )
-                      }
-                      style={{ flex: 1 }}
+                {standardQuickGroup.dice.map((die, index) => {
+                  const entryResult = getEntryResultForIndex(standardQuickGroupResult, index);
+
+                  return (
+                    <View
+                      key={`${standardQuickGroup.id}-${index}`}
+                      style={{
+                        padding: 10,
+                        borderWidth: 1,
+                        borderRadius: 12,
+                        gap: 8,
+                      }}
                     >
-                      <Text style={{ fontWeight: "700" }}>
-                        {die.qty}d{die.sides}
-                        {die.modifier
-                          ? ` ${die.modifier > 0 ? "+" : ""}${die.modifier}`
-                          : ""}
-                      </Text>
-                    </Pressable>
-
-                    <View style={{ flexDirection: "row", gap: 8 }}>
-                      <Pressable
-                        onPress={() =>
-                          onEditQuickDieQty(
-                            standardQuickGroup.id,
-                            index,
-                            Math.max(1, die.qty - 1),
-                            die.modifier ?? 0,
-                          )
-                        }
+                      <View
                         style={{
-                          width: 32,
-                          height: 32,
-                          borderWidth: 1,
-                          borderRadius: 999,
+                          flexDirection: "row",
                           alignItems: "center",
-                          justifyContent: "center",
+                          justifyContent: "space-between",
+                          gap: 8,
                         }}
                       >
-                        <Text style={{ fontWeight: "800" }}>−</Text>
-                      </Pressable>
+                        <Pressable
+                          onPress={() =>
+                            onEditQuickDieQty(
+                              standardQuickGroup.id,
+                              index,
+                              die.qty,
+                              die.modifier ?? 0,
+                            )
+                          }
+                          style={{ flex: 1 }}
+                        >
+                          <Text style={{ fontWeight: "700" }}>
+                            {die.qty}d{die.sides}
+                            {die.modifier
+                              ? ` ${die.modifier > 0 ? "+" : ""}${die.modifier}`
+                              : ""}
+                          </Text>
+                        </Pressable>
 
-                      <Pressable
-                        onPress={() =>
-                          onEditQuickDieQty(
-                            standardQuickGroup.id,
-                            index,
-                            die.qty + 1,
-                            die.modifier ?? 0,
-                          )
-                        }
-                        style={{
-                          width: 32,
-                          height: 32,
-                          borderWidth: 1,
-                          borderRadius: 999,
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        <Text style={{ fontWeight: "800" }}>+</Text>
-                      </Pressable>
+                        <View style={{ flexDirection: "row", gap: 8 }}>
+                          <Pressable
+                            onPress={() => onAdjustQuickDieQty(standardQuickGroup.id, index, -1)}
+                            style={{
+                              width: 32,
+                              height: 32,
+                              borderWidth: 1,
+                              borderRadius: 999,
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            <Text style={{ fontWeight: "800" }}>−</Text>
+                          </Pressable>
+
+                          <Pressable
+                            onPress={() => onAdjustQuickDieQty(standardQuickGroup.id, index, 1)}
+                            style={{
+                              width: 32,
+                              height: 32,
+                              borderWidth: 1,
+                              borderRadius: 999,
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            <Text style={{ fontWeight: "800" }}>+</Text>
+                          </Pressable>
+                        </View>
+                      </View>
+
+                      {entryResult ? (
+                        <View style={{ paddingTop: 6, borderTopWidth: 1 }}>
+                          <Text style={{ fontSize: 20, fontWeight: "800" }}>
+                            {entryResult.final_total}
+                          </Text>
+
+                          <Text style={{ opacity: 0.72 }}>
+                            ({entryResult.signed_values.join(" + ")})
+                            {die.modifier
+                              ? ` ${die.modifier > 0 ? "+" : ""}${die.modifier}`
+                              : ""}
+                          </Text>
+                        </View>
+                      ) : null}
                     </View>
-                  </View>
-                ))}
+                  );
+                })}
               </View>
             )}
 
@@ -331,74 +360,136 @@ export function QuickRollSection({
           >
             <Text style={{ fontSize: 16, fontWeight: "800" }}>{group.name}</Text>
 
-            {group.dice.map((die, index) => (
-              <View
-                key={`${group.id}-${index}`}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 8,
-                  padding: 10,
-                  borderWidth: 1,
-                  borderRadius: 12,
-                }}
-              >
-                <Pressable
-                  onPress={() =>
-                    onEditQuickDieQty(group.id, index, die.qty, die.modifier ?? 0)
-                  }
-                  style={{ flex: 1 }}
+            {group.dice.map((die, index) => {
+              const groupResult = getResultForGroup(group.id, draftResults);
+              const entryResult = getEntryResultForIndex(groupResult, index);
+
+              return (
+                <View
+                  key={`${group.id}-${index}`}
+                  style={{
+                    padding: 10,
+                    borderWidth: 1,
+                    borderRadius: 12,
+                    gap: 8,
+                  }}
                 >
-                  <Text style={{ fontWeight: "700" }}>
-                    {die.qty}d{die.sides}
-                    {die.modifier
-                      ? ` ${die.modifier > 0 ? "+" : ""}${die.modifier}`
-                      : ""}
-                    {die.rule_temp || group.rule_temp ? " ⚙️" : ""}
-                  </Text>
-                </Pressable>
-
-                <View style={{ flexDirection: "row", gap: 8 }}>
-                  <Pressable
-                    onPress={() =>
-                      onEditQuickDieQty(
-                        group.id,
-                        index,
-                        Math.max(1, die.qty - 1),
-                        die.modifier ?? 0,
-                      )
-                    }
+                  <View
                     style={{
-                      width: 32,
-                      height: 32,
-                      borderWidth: 1,
-                      borderRadius: 999,
+                      flexDirection: "row",
                       alignItems: "center",
-                      justifyContent: "center",
+                      justifyContent: "space-between",
+                      gap: 8,
                     }}
                   >
-                    <Text style={{ fontWeight: "800" }}>−</Text>
-                  </Pressable>
+                    <Pressable
+                      onPress={() =>
+                        onEditQuickDieQty(group.id, index, die.qty, die.modifier ?? 0)
+                      }
+                      style={{ flex: 1 }}
+                    >
+                      <Text style={{ fontWeight: "700" }}>
+                        {die.qty}d{die.sides}
+                        {die.modifier
+                          ? ` ${die.modifier > 0 ? "+" : ""}${die.modifier}`
+                          : ""}
+                        {die.rule_temp || group.rule_temp ? " ⚙️" : ""}
+                      </Text>
+                    </Pressable>
 
-                  <Pressable
-                    onPress={() =>
-                      onEditQuickDieQty(group.id, index, die.qty + 1, die.modifier ?? 0)
-                    }
-                    style={{
-                      width: 32,
-                      height: 32,
-                      borderWidth: 1,
-                      borderRadius: 999,
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Text style={{ fontWeight: "800" }}>+</Text>
-                  </Pressable>
+                    <View style={{ flexDirection: "row", gap: 8 }}>
+                      <Pressable
+                        onPress={() => onAdjustQuickDieQty(group.id, index, -1)}
+                        style={{
+                          width: 32,
+                          height: 32,
+                          borderWidth: 1,
+                          borderRadius: 999,
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <Text style={{ fontWeight: "800" }}>−</Text>
+                      </Pressable>
+
+                      <Pressable
+                        onPress={() => onAdjustQuickDieQty(group.id, index, 1)}
+                        style={{
+                          width: 32,
+                          height: 32,
+                          borderWidth: 1,
+                          borderRadius: 999,
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <Text style={{ fontWeight: "800" }}>+</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+
+                  {groupResult?.group_eval_result && index === 0 ? (
+                    <View style={{ paddingTop: 6, borderTopWidth: 1 }}>
+                      <View
+                        style={{
+                          paddingVertical: 8,
+                          paddingHorizontal: 10,
+                          borderWidth: 1,
+                          borderRadius: 10,
+                          alignSelf: "flex-start",
+                        }}
+                      >
+                        <Text style={{ fontWeight: "700" }}>
+                          {formatRuleResult(groupResult.group_eval_result)}
+                        </Text>
+                      </View>
+
+                      <Text style={{ opacity: 0.72, marginTop: 6 }}>
+                        Valeurs : ({getGroupDisplayValues(groupResult).join(" + ")})
+                      </Text>
+                    </View>
+                  ) : entryResult ? (
+                    <View style={{ paddingTop: 6, borderTopWidth: 1 }}>
+                      {entryResult.eval_result ? (
+                        <>
+                          <Text style={{ opacity: 0.72 }}>
+                            Naturel : {entryResult.natural_values.join(" + ")}
+                          </Text>
+
+                          <Text style={{ marginTop: 2, fontWeight: "700" }}>
+                            {formatRuleResult(entryResult.eval_result)}
+                          </Text>
+
+                          <Text style={{ fontSize: 20, fontWeight: "800", marginTop: 4 }}>
+                            Final : {entryResult.final_total}
+                          </Text>
+
+                          <Text style={{ opacity: 0.72 }}>
+                            ({entryResult.signed_values.join(" + ")})
+                            {die.modifier
+                              ? ` ${die.modifier > 0 ? "+" : ""}${die.modifier}`
+                              : ""}
+                          </Text>
+                        </>
+                      ) : (
+                        <>
+                          <Text style={{ fontSize: 20, fontWeight: "800" }}>
+                            {entryResult.final_total}
+                          </Text>
+
+                          <Text style={{ opacity: 0.72 }}>
+                            ({entryResult.signed_values.join(" + ")})
+                            {die.modifier
+                              ? ` ${die.modifier > 0 ? "+" : ""}${die.modifier}`
+                              : ""}
+                          </Text>
+                        </>
+                      )}
+                    </View>
+                  ) : null}
                 </View>
-              </View>
-            ))}
+              );
+            })}
 
             <View
               style={{
@@ -433,124 +524,6 @@ export function QuickRollSection({
             </View>
           </View>
         ))}
-
-        <View
-          style={{
-            padding: 14,
-            borderWidth: 1,
-            borderRadius: 14,
-            gap: 8,
-          }}
-        >
-          <Text style={{ fontSize: 16, fontWeight: "800" }}>Résultat</Text>
-
-          {draftResults.length === 0 ? (
-            <Text style={{ opacity: 0.72 }}>
-              Lance un jet pour afficher le résultat ici.
-            </Text>
-          ) : (
-            <View style={{ gap: 10 }}>
-              {draftResults.map((result) => {
-                const values = getGroupDisplayValues(result);
-                const hasGroupEval = !!result.group_eval_result;
-                const hasEntryEval = result.entries.some((entry) => !!entry.eval_result);
-                const hasOnlyStandardEntries = !hasGroupEval && !hasEntryEval;
-
-                return (
-                  <View
-                    key={result.groupId}
-                    style={{
-                      padding: 12,
-                      borderWidth: 1,
-                      borderRadius: 12,
-                      gap: 6,
-                    }}
-                  >
-                    <Text style={{ fontWeight: "800" }}>{result.label}</Text>
-
-                    {hasGroupEval ? (
-                      <>
-                        <View
-                          style={{
-                            paddingVertical: 8,
-                            paddingHorizontal: 10,
-                            borderWidth: 1,
-                            borderRadius: 10,
-                            alignSelf: "flex-start",
-                          }}
-                        >
-                          <Text style={{ fontWeight: "700" }}>
-                            {formatRuleResult(result.group_eval_result!)}
-                          </Text>
-                        </View>
-
-                        <Text style={{ opacity: 0.72 }}>
-                          Valeurs : ({values.join(" + ")})
-                        </Text>
-                      </>
-                    ) : hasEntryEval ? (
-                      <View style={{ gap: 8 }}>
-                        {result.entries.map((entry, index) => {
-                          const valueText =
-                            entry.signed_values.length === 1
-                              ? `${entry.signed_values[0]}`
-                              : entry.signed_values.join(" + ");
-
-                          return (
-                            <View
-                              key={entry.entryId}
-                              style={{
-                                paddingVertical: 6,
-                                borderBottomWidth:
-                                  index === result.entries.length - 1 ? 0 : 1,
-                              }}
-                            >
-                              {entry.eval_result ? (
-                                <>
-                                  <Text style={{ fontSize: 20, fontWeight: "800" }}>
-                                    {valueText}
-                                  </Text>
-                                  <Text
-                                    style={{
-                                      marginTop: 2,
-                                      opacity: 0.85,
-                                      fontWeight: "700",
-                                    }}
-                                  >
-                                    {formatRuleResult(entry.eval_result)}
-                                  </Text>
-                                </>
-                              ) : (
-                                <>
-                                  <Text style={{ fontSize: 20, fontWeight: "800" }}>
-                                    {entry.final_total}
-                                  </Text>
-                                  <Text style={{ marginTop: 2, opacity: 0.72 }}>
-                                    ({valueText})
-                                  </Text>
-                                </>
-                              )}
-                            </View>
-                          );
-                        })}
-                      </View>
-                    ) : hasOnlyStandardEntries ? (
-                      <>
-                        <Text style={{ fontSize: 32, fontWeight: "900" }}>
-                          {result.total}
-                        </Text>
-
-                        <Text style={{ opacity: 0.72 }}>
-                          ({values.join(" + ")})
-                        </Text>
-                      </>
-                    ) : null}
-                  </View>
-                );
-              })}
-            </View>
-          )}
-        </View>
 
         {showAdvanced ? (
           <View
