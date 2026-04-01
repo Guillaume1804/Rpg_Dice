@@ -73,6 +73,16 @@ function getGroupDisplayValues(result: GroupRollResult): number[] {
   return result.entries.flatMap((entry) => entry.signed_values);
 }
 
+function getDisplayedRuleName(
+  die: DraftDie,
+  group: DraftGroupState,
+  availableRules: RuleRow[],
+) {
+  if (die.rule_temp?.name) return die.rule_temp.name;
+  if (group.rule_temp?.name) return group.rule_temp.name;
+  return getRuleNameFromId(die.rule_id ?? group.rule_id ?? null, availableRules);
+}
+
 function isStandardQuickGroup(group: DraftGroupState) {
   return !group.rule_id && !group.rule_temp && group.name === "Jet libre";
 }
@@ -590,7 +600,8 @@ export function QuickRollSection({
                         <Text style={{ marginTop: 4, opacity: 0.72 }}>
                           {group.dice.length} entrée
                           {group.dice.length > 1 ? "s" : ""} • Règle :{" "}
-                          {getRuleNameFromId(group.rule_id, availableRules)}
+                          {group.rule_temp?.name ??
+                            getRuleNameFromId(group.rule_id, availableRules)}
                         </Text>
                       </View>
 
@@ -676,8 +687,7 @@ export function QuickRollSection({
                             </Text>
 
                             <Text style={{ opacity: 0.72 }}>
-                              Règle :{" "}
-                              {getRuleNameFromId(die.rule_id, availableRules)}
+                              Règle : {getDisplayedRuleName(die, group, availableRules)}
                             </Text>
 
                             <View
