@@ -137,6 +137,9 @@ export default function RollScreen() {
     saveDraftGroupRuleEditor,
 
     rollDraft,
+    rollSingleDraftGroup,
+    clearDraftGroup,
+
     applyTempRuleToSides,
     clearTempRuleFromSides,
     clearAllTempRules,
@@ -373,6 +376,8 @@ export default function RollScreen() {
             onOpenDieConfig={handleOpenDieConfig}
             onRemoveDraftDie={removeDraftDie}
             onRollDraft={rollDraft}
+            onRollQuickGroup={rollSingleDraftGroup}
+            onClearQuickGroup={clearDraftGroup}
             onClearDraft={handleClearQuickRoll}
             onReplaceCurrentTable={replaceCurrentTable}
             onCreateNewTable={openCreateTableModal}

@@ -718,6 +718,99 @@ export function useQuickRollDraft({
     }
   }
 
+  async function rollSingleDraftGroup(groupId: string) {
+    const group = draftGroups.find((g) => g.id === groupId);
+    if (!group || group.dice.length === 0) return;
+
+    const groupRule = group.rule_temp
+      ? group.rule_temp
+      : group.rule_id
+        ? (availableRules.find((r) => r.id === group.rule_id) ?? null)
+        : null;
+
+    const rolled = [
+      rollGroup({
+        groupId: group.id,
+        label: group.name,
+        entries: group.dice.map((d, idx) => {
+          const rule = d.rule_temp
+            ? d.rule_temp
+            : d.rule_id
+              ? (availableRules.find((r) => r.id === d.rule_id) ?? null)
+              : null;
+
+          return {
+            entryId: `${group.id}-draft-${idx}`,
+            sides: d.sides,
+            qty: d.qty,
+            modifier: d.modifier ?? 0,
+            sign: d.sign ?? 1,
+            rule: rule
+              ? {
+                id: rule.id,
+                name: rule.name,
+                kind: rule.kind,
+                params_json: rule.params_json,
+              }
+              : null,
+          };
+        }),
+        groupRule: groupRule
+          ? {
+            id: groupRule.id,
+            name: groupRule.name,
+            kind: groupRule.kind,
+            params_json: groupRule.params_json,
+          }
+          : null,
+        evaluateRule,
+      }),
+    ];
+
+    setDraftResults((prev) => {
+      const remaining = prev.filter((r) => r.groupId !== groupId);
+      return [...remaining, ...rolled];
+    });
+
+    if (!table) return;
+
+    try {
+      const eventId = await newId();
+      const createdAt = nowIso();
+
+      const payload = {
+        type: "draft_single_group",
+        tableId: table.id,
+        tableName: table.name,
+        groups: rolled,
+      };
+
+      const summary = {
+        title: `Jet rapide — ${group.name}`,
+        lines: rolled.map((r) => `${r.label}: total ${r.total}`),
+      };
+
+      await insertRollEvent(db, {
+        id: eventId,
+        table_id: table.id,
+        created_at: createdAt,
+        payload_json: JSON.stringify(payload),
+        summary_json: JSON.stringify(summary),
+      });
+    } catch (e) {
+      console.warn("insertRollEvent (draft single-group) failed", e);
+    }
+  }
+
+  function clearDraftGroup(groupId: string) {
+    setDraftGroups((prev) => prev.filter((group) => group.id !== groupId));
+    setDraftResults((prev) => prev.filter((result) => result.groupId !== groupId));
+
+    if (selectedDraftGroupId === groupId) {
+      setSelectedDraftGroupId(null);
+    }
+  }
+
   function applyTempRuleToSelectedGroup(rule: DraftTempRule | null) {
     setDraftGroups((prev) => {
       if (prev.length === 0) return prev;
@@ -813,6 +906,9 @@ export function useQuickRollDraft({
     saveDraftGroupRuleEditor,
 
     rollDraft,
+    rollSingleDraftGroup,
+    clearDraftGroup,
+
     applyTempRuleToSides,
     clearTempRuleFromSides,
     clearAllTempRules,
