@@ -24,6 +24,13 @@ type UseRollTableDataParams = {
   tableId: string;
 };
 
+const MODERN_RULE_KINDS = new Set([
+  "single_check",
+  "success_pool",
+  "table_lookup",
+  "pipeline",
+]);
+
 export function useRollTableData({ db, tableId }: UseRollTableDataParams) {
   const [table, setTable] = useState<TableRow | null>(null);
   const [profiles, setProfiles] = useState<ProfileWithGroups[]>([]);
@@ -114,12 +121,12 @@ export function useRollTableData({ db, tableId }: UseRollTableDataParams) {
   }, [tableId, loadAvailableRules, loadTableData]);
 
   const pipelineRules = useMemo(
-    () => availableRules.filter((r) => r.kind === "pipeline"),
+    () => availableRules.filter((r) => MODERN_RULE_KINDS.has(r.kind)),
     [availableRules]
   );
 
   const legacyRules = useMemo(
-    () => availableRules.filter((r) => r.kind !== "pipeline"),
+    () => availableRules.filter((r) => !MODERN_RULE_KINDS.has(r.kind)),
     [availableRules]
   );
 

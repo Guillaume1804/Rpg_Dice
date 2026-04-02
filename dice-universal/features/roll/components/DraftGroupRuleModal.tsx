@@ -1,3 +1,5 @@
+// DraftGroupRuleModal.tsx
+
 import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 import type { RuleRow } from "../../../data/repositories/rulesRepo";
 
@@ -59,7 +61,7 @@ export function DraftGroupRuleModal({
           </Pressable>
 
           <ScrollView style={{ marginTop: 12, maxHeight: 300 }}>
-            <Text style={{ fontWeight: "700" }}>Pipelines</Text>
+            <Text style={{ fontWeight: "700" }}>Règles disponibles</Text>
 
             {pipelineRules.map((rule) => (
               <Pressable
@@ -84,7 +86,7 @@ export function DraftGroupRuleModal({
 
             {legacyRules.length > 0 ? (
               <View style={{ marginTop: 16 }}>
-                <Text style={{ fontWeight: "700" }}>Compatibilité</Text>
+                <Text style={{ fontWeight: "700" }}>Anciennes règles</Text>
                 {legacyRules.map((rule) => (
                   <Pressable
                     key={rule.id}
@@ -101,7 +103,7 @@ export function DraftGroupRuleModal({
                       {rule.name}
                     </Text>
                     <Text style={{ marginTop: 2, opacity: 0.7, fontSize: 12 }}>
-                      type: {rule.kind}
+                      famille : {rule.kind}
                     </Text>
                   </Pressable>
                 ))}

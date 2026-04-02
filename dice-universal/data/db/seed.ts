@@ -241,13 +241,54 @@ export async function runSeedIfNeeded(db: Db): Promise<void> {
     isSystem: 1,
   });
 
-  const ruleD20Id = await ensureRule(db, {
-    name: "D20 (crit 1/20)",
-    kind: "d20",
+  const ruleSingleCheckCritId = await ensureRule(db, {
+    name: "Test critique naturel",
+    kind: "single_check",
     paramsJson: JSON.stringify({
-      critSuccess: 20,
-      critFailure: 1,
-      successThreshold: null,
+      compare: "gte",
+      success_threshold: null,
+      crit_success_faces: [20],
+      crit_failure_faces: [1],
+    }),
+    isSystem: 1,
+  });
+
+  const ruleSingleCheckThresholdId = await ensureRule(db, {
+    name: "Test à seuil haut (10+)",
+    kind: "single_check",
+    paramsJson: JSON.stringify({
+      compare: "gte",
+      success_threshold: 10,
+      crit_success_faces: [20],
+      crit_failure_faces: [1],
+    }),
+    isSystem: 1,
+  });
+
+  const ruleSuccessPoolD6Id = await ensureRule(db, {
+    name: "Pool de succès D6",
+    kind: "success_pool",
+    paramsJson: JSON.stringify({
+      success_at_or_above: 5,
+      fail_faces: [1],
+      glitch_rule: "ones_gt_successes",
+    }),
+    isSystem: 1,
+  });
+
+  const ruleLocationD100Id = await ensureRule(db, {
+    name: "Localisation D100",
+    kind: "table_lookup",
+    paramsJson: JSON.stringify({
+      ranges: [
+        { min: 1, max: 10, label: "Tête" },
+        { min: 11, max: 35, label: "Bras gauche" },
+        { min: 36, max: 60, label: "Bras droit" },
+        { min: 61, max: 80, label: "Torse" },
+        { min: 81, max: 90, label: "Jambe gauche" },
+        { min: 91, max: 100, label: "Jambe droite" },
+      ],
+      defaultLabel: "Zone inconnue",
     }),
     isSystem: 1,
   });
@@ -271,7 +312,7 @@ export async function runSeedIfNeeded(db: Db): Promise<void> {
     modifier: 0,
     sign: 1,
     sortOrder: 0,
-    ruleId: ruleD20Id,
+    ruleId: ruleSingleCheckCritId,
   });
 
   const guerrierDegatsId = await ensureGroup(db, {
@@ -303,7 +344,7 @@ export async function runSeedIfNeeded(db: Db): Promise<void> {
     modifier: 0,
     sign: 1,
     sortOrder: 0,
-    ruleId: ruleD20Id,
+    ruleId: ruleSingleCheckCritId,
   });
 
   const archerDegatsId = await ensureGroup(db, {
@@ -345,14 +386,31 @@ export async function runSeedIfNeeded(db: Db): Promise<void> {
     modifier: 0,
     sign: 1,
     sortOrder: 0,
-    ruleId: ruleD20Id,
+    ruleId: ruleSingleCheckCritId,
+  });
+
+  const rafaleId = await ensureGroup(db, {
+    tableId: demoSpecialTableId,
+    profileId: aventurierId,
+    name: "Rafale",
+    sortOrder: 1,
+  });
+
+  await ensureGroupDie(db, {
+    groupId: rafaleId,
+    sides: 6,
+    qty: 6,
+    modifier: 0,
+    sign: 1,
+    sortOrder: 0,
+    ruleId: ruleSuccessPoolD6Id,
   });
 
   const localisationId = await ensureGroup(db, {
     tableId: demoSpecialTableId,
     profileId: aventurierId,
     name: "Localisation",
-    sortOrder: 1,
+    sortOrder: 2,
   });
   await ensureGroupDie(db, {
     groupId: localisationId,
@@ -361,9 +419,9 @@ export async function runSeedIfNeeded(db: Db): Promise<void> {
     modifier: 0,
     sign: 1,
     sortOrder: 0,
-    ruleId: ruleSumId,
+    ruleId: ruleLocationD100Id,
   });
 
   await setMeta(db, "seed_done", "true");
-  await setMeta(db, "content_version", "4");
+  await setMeta(db, "content_version", "5");
 }
