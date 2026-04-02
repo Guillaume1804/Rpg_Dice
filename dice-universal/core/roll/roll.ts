@@ -78,9 +78,17 @@ function randInt(min: number, max: number) {
 function extractNumericFinalFromEval(res: any): number | null {
   if (!res) return null;
 
-  if (res.kind === "sum" && typeof res.total === "number") return res.total;
-  if (res.kind === "d20" && typeof res.final === "number") return res.final;
-  if (res.kind === "pipeline" && typeof res.final === "number") return res.final;
+  if (res.kind === "sum" && typeof res.total === "number") {
+    return res.total;
+  }
+
+  if (res.kind === "single_check" && typeof res.final === "number") {
+    return res.final;
+  }
+
+  if (res.kind === "pipeline" && typeof res.final === "number") {
+    return res.final;
+  }
 
   return null;
 }
@@ -149,20 +157,22 @@ export function rollGroup(params: {
   let total = entries_total;
 
   if (params.groupRule) {
-    const groupCtx =
-      params.groupRule.kind === "pool"
-        ? {
-          values: entryResults.flatMap((e) => e.natural_values),
-          sides: entryResults[0]?.sides ?? 0,
-          modifier: 0,
-          sign: 1 as const,
-        }
-        : {
-          values: entryResults.map((e) => e.final_total),
-          sides: 0,
-          modifier: 0,
-          sign: 1 as const,
-        };
+    const isSuccessPoolGroup =
+      params.groupRule.kind === "success_pool" || params.groupRule.kind === "pool";
+
+    const groupCtx = isSuccessPoolGroup
+      ? {
+        values: entryResults.flatMap((e) => e.natural_values),
+        sides: entryResults[0]?.sides ?? 0,
+        modifier: 0,
+        sign: 1 as const,
+      }
+      : {
+        values: entryResults.map((e) => e.final_total),
+        sides: 0,
+        modifier: 0,
+        sign: 1 as const,
+      };
 
     group_eval_result = params.evaluateRule(
       params.groupRule.kind,

@@ -1,5 +1,7 @@
 // core/rules/evaluate.ts
 
+import type { PipelineParams } from "./types";
+
 export type EvalContext = {
   // valeurs naturelles (1..sides), déjà mappées sur l'entrée de dé
   values: number[];
@@ -13,26 +15,28 @@ export type EvalContext = {
 export type RuleResult =
   | { kind: "sum"; total: number; values: number[] }
   | {
-      kind: "d20";
-      outcome: "crit_success" | "crit_failure" | "success" | "failure";
-      threshold: number | null;
-      natural: number;
-      final: number;
-    }
+    kind: "single_check";
+    outcome: "crit_success" | "crit_failure" | "success" | "failure";
+    threshold: number | null;
+    natural: number;
+    final: number;
+    compare: "gte" | "lte";
+  }
   | {
-      kind: "pool";
-      outcome: "success" | "failure" | "glitch" | "crit_glitch";
-      successes: number;
-      ones: number;
-    }
+    kind: "success_pool";
+    outcome: "success" | "failure" | "glitch" | "crit_glitch";
+    successes: number;
+    fail_count: number;
+    fail_faces: number[];
+  }
   | { kind: "table_lookup"; label: string; value: number }
   | {
-      kind: "pipeline";
-      values: number[];
-      kept: number[];
-      final: number | null;
-      meta: any;
-    }
+    kind: "pipeline";
+    values: number[];
+    kept: number[];
+    final: number | null;
+    meta: any;
+  }
   | { kind: "unknown"; message: string };
 
 function safeParse(json: string) {
@@ -52,52 +56,6 @@ function applySignModifier(values: number[], sign: number, modifier: number) {
 // --------------------------------------------------
 // PIPELINE ENGINE
 // --------------------------------------------------
-
-export type PipelineStep =
-  | { op: "keep_highest"; n: number }
-  | { op: "keep_lowest"; n: number }
-  | { op: "drop_highest"; n: number }
-  | { op: "drop_lowest"; n: number }
-  | { op: "take"; index: number }
-  | { op: "sort_asc" }
-  | { op: "sort_desc" }
-  | { op: "reroll"; faces: number[]; once?: boolean; max_rerolls?: number }
-  | { op: "explode"; faces: number[]; max_explosions?: number }
-  | { op: "count_successes"; at_or_above: number }
-  | { op: "count_equal"; faces: number[] }
-  | { op: "count_range"; min: number; max: number }
-  | { op: "lookup"; ranges: { min: number; max: number; label: string }[] }
-  | { op: "sum" };
-
-export type PipelineParams = {
-  steps: PipelineStep[];
-
-  /**
-   * Détermine ce que représente la sortie finale
-   * - sum           => somme des kept avec sign/modifier
-   * - successes     => utilise meta.successes
-   * - count_equal   => utilise meta.count_equal
-   * - count_range   => utilise meta.count_range
-   * - first_value   => 1ère valeur de kept
-   * - values        => garde les valeurs, final sera null
-   * - lookup_label  => texte lookup, final null
-   * - lookup_value  => valeur lookup, final numérique si dispo
-   */
-  output?:
-    | "sum"
-    | "successes"
-    | "count_equal"
-    | "count_range"
-    | "first_value"
-    | "values"
-    | "lookup_label"
-    | "lookup_value";
-
-  // critique / seuil génériques
-  crit_success_faces?: number[];
-  crit_failure_faces?: number[];
-  success_threshold?: number | null;
-};
 
 function randInt(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -385,47 +343,95 @@ export function evaluateRule(kind: string, params_json: string, ctx: EvalContext
     return { kind: "sum", total: sum, values: ctx.values };
   }
 
-  if (kind === "d20") {
-    // d20 historique : crit sur NATURAL, succès sur (natural + mod) vs threshold
+  if (kind === "single_check" || kind === "d20") {
     const natural = ctx.values[0] ?? 0;
     const final = natural * sign + modifier;
 
-    const critSuccess = Number(p.critSuccess ?? 20);
-    const critFailure = Number(p.critFailure ?? 1);
-    const threshold = p.successThreshold == null ? null : Number(p.successThreshold);
+    const compare: "gte" | "lte" = p.compare === "lte" ? "lte" : "gte";
+    const critSuccessFaces = Array.isArray(p.crit_success_faces)
+      ? p.crit_success_faces.map(Number)
+      : [Number(p.critSuccess ?? 20)];
+    const critFailureFaces = Array.isArray(p.crit_failure_faces)
+      ? p.crit_failure_faces.map(Number)
+      : [Number(p.critFailure ?? 1)];
 
-    if (natural === critSuccess) {
-      return { kind: "d20", outcome: "crit_success", threshold, natural, final };
+    const threshold =
+      p.success_threshold != null
+        ? Number(p.success_threshold)
+        : p.successThreshold != null
+          ? Number(p.successThreshold)
+          : null;
+
+    if (critSuccessFaces.includes(natural)) {
+      return {
+        kind: "single_check",
+        outcome: "crit_success",
+        threshold,
+        natural,
+        final,
+        compare,
+      };
     }
 
-    if (natural === critFailure) {
-      return { kind: "d20", outcome: "crit_failure", threshold, natural, final };
+    if (critFailureFaces.includes(natural)) {
+      return {
+        kind: "single_check",
+        outcome: "crit_failure",
+        threshold,
+        natural,
+        final,
+        compare,
+      };
     }
 
     if (threshold == null) {
-      return { kind: "d20", outcome: "success", threshold: null, natural, final };
+      return {
+        kind: "single_check",
+        outcome: "success",
+        threshold: null,
+        natural,
+        final,
+        compare,
+      };
     }
 
+    const isSuccess =
+      compare === "lte" ? final <= threshold : final >= threshold;
+
     return {
-      kind: "d20",
-      outcome: final >= threshold ? "success" : "failure",
+      kind: "single_check",
+      outcome: isSuccess ? "success" : "failure",
       threshold,
       natural,
       final,
+      compare,
     };
   }
 
-  if (kind === "pool") {
-    const at = Number(p.successAtOrAbove ?? 4);
-    const critFace = Number(p.critFailureFace ?? 1);
-    const glitchRule = String(p.glitchRule ?? "ones_gt_successes");
+  if (kind === "success_pool" || kind === "pool") {
+    const at =
+      p.success_at_or_above != null
+        ? Number(p.success_at_or_above)
+        : Number(p.successAtOrAbove ?? 4);
+
+    const failFaces = Array.isArray(p.fail_faces)
+      ? p.fail_faces.map(Number)
+      : [Number(p.critFailureFace ?? 1)];
+
+    const glitchRule = String(
+      p.glitch_rule ?? p.glitchRule ?? "ones_gt_successes",
+    );
 
     const values = ctx.values;
     const successes = values.filter((v) => v >= at).length;
-    const ones = values.filter((v) => v === critFace).length;
+    const failCount = values.filter((v) => failFaces.includes(v)).length;
 
     const isGlitch =
-      glitchRule === "ones_gte_successes" ? ones >= successes : ones > successes;
+      glitchRule === "ones_gte_successes"
+        ? failCount >= successes
+        : glitchRule === "none"
+          ? false
+          : failCount > successes;
 
     const outcome =
       successes > 0
@@ -433,24 +439,39 @@ export function evaluateRule(kind: string, params_json: string, ctx: EvalContext
           ? "glitch"
           : "success"
         : isGlitch
-        ? "crit_glitch"
-        : "failure";
+          ? "crit_glitch"
+          : "failure";
 
-    return { kind: "pool", outcome, successes, ones };
+    return {
+      kind: "success_pool",
+      outcome,
+      successes,
+      fail_count: failCount,
+      fail_faces: failFaces,
+    };
   }
 
   if (kind === "table_lookup") {
     const v = ctx.values[0] ?? 0;
-    const mapping = Array.isArray(p.mapping) ? p.mapping : [];
-    const hit = mapping.find(
+    const ranges = Array.isArray(p.ranges)
+      ? p.ranges
+      : Array.isArray(p.mapping)
+        ? p.mapping
+        : [];
+
+    const hit = ranges.find(
       (r: any) =>
         typeof r?.min === "number" &&
         typeof r?.max === "number" &&
         v >= r.min &&
-        v <= r.max
+        v <= r.max,
     );
 
-    return { kind: "table_lookup", value: v, label: hit?.label ?? "—" };
+    return {
+      kind: "table_lookup",
+      value: v,
+      label: hit?.label ?? p.defaultLabel ?? "—",
+    };
   }
 
   if (kind === "pipeline") {

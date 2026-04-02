@@ -6,10 +6,12 @@ export function getRuleName(rule: any | null) {
 
 export function getRuleNameFromId(
   ruleId: string | null | undefined,
-  availableRules: RuleRow[]
+  availableRules: RuleRow[],
 ) {
   if (!ruleId) return "Somme (par défaut)";
-  return availableRules.find((r) => r.id === ruleId)?.name ?? "Règle introuvable";
+  return (
+    availableRules.find((r) => r.id === ruleId)?.name ?? "Règle introuvable"
+  );
 }
 
 export function getSignLabel(sign?: number) {
@@ -19,34 +21,58 @@ export function getSignLabel(sign?: number) {
 export function formatRuleResult(res: any): string {
   if (!res) return "";
 
-  if (res.kind === "sum") return `Somme = ${res.total}`;
+  if (res.kind === "sum") {
+    return `Somme = ${res.total}`;
+  }
 
   if (res.kind === "pipeline") {
-    const outcome = res?.meta?.outcome != null ? ` | outcome: ${res.meta.outcome}` : "";
+    const outcome =
+      res?.meta?.outcome != null ? ` — ${formatOutcomeLabel(res.meta.outcome)}` : "";
+
+    if (res.final == null) {
+      return `Pipeline${outcome}`;
+    }
+
     return `Pipeline = ${res.final}${outcome}`;
   }
 
-  if (res.kind === "d20") {
+  if (res.kind === "single_check") {
     if (res.outcome === "crit_success") return "Réussite critique";
     if (res.outcome === "crit_failure") return "Échec critique";
     if (res.threshold == null) return "Résultat";
     return res.outcome === "success" ? "Réussite" : "Échec";
   }
 
-  if (res.kind === "pool") {
+  if (res.kind === "success_pool") {
     const label =
       res.outcome === "crit_glitch"
-        ? "Échec critique (glitch)"
+        ? "Échec critique"
         : res.outcome === "glitch"
-        ? "Glitch"
-        : res.outcome === "success"
-        ? "Réussite"
-        : "Échec";
-    return `${label} — succès: ${res.successes} / ones: ${res.ones}`;
+          ? "Complication"
+          : res.outcome === "success"
+            ? "Réussite"
+            : "Échec";
+
+    return `${label} — succès: ${res.successes} / échecs spéciaux: ${res.fail_count}`;
   }
 
-  if (res.kind === "table_lookup") return res.label;
-  if (res.kind === "unknown") return res.message;
+  if (res.kind === "table_lookup") {
+    return res.label;
+  }
+
+  if (res.kind === "unknown") {
+    return res.message;
+  }
 
   return "";
+}
+
+function formatOutcomeLabel(outcome: string): string {
+  if (outcome === "crit_success") return "Réussite critique";
+  if (outcome === "crit_failure") return "Échec critique";
+  if (outcome === "success") return "Réussite";
+  if (outcome === "failure") return "Échec";
+  if (outcome === "glitch") return "Complication";
+  if (outcome === "crit_glitch") return "Échec critique";
+  return outcome;
 }

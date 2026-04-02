@@ -1,58 +1,151 @@
+// core/rules/builtins.ts 
+
 import { registerRule } from "./registry";
-import type { RuleEvaluator } from "./types";
+import type {
+  RuleEvaluator,
+  SingleCheckParams,
+  SuccessPoolParams,
+  TableLookupParams,
+} from "./types";
 
 // --- SUM (par défaut) ---
 const evalSum: RuleEvaluator = (_params, input) => {
   const total = input.values.reduce((a, b) => a + b, 0);
-  return { kind: "sum", total };
+  return { kind: "sum", total, values: input.values };
 };
 
-// --- D20 ---
-const evalD20: RuleEvaluator = (params, input) => {
-  const v = input.values[0] ?? 0;
-  const critSuccess = Number(params?.critSuccess ?? 20);
-  const critFailure = Number(params?.critFailure ?? 1);
-  const threshold = params?.successThreshold == null ? null : Number(params.successThreshold);
+// --- SINGLE CHECK ---
+const evalSingleCheck: RuleEvaluator<SingleCheckParams & Record<string, unknown>> = (
+  params,
+  input,
+) => {
+  const natural = input.values[0] ?? 0;
+  const modifier = Number(input.modifier ?? 0);
+  const sign = Number(input.sign ?? 1);
+  const final = natural * sign + modifier;
 
-  if (v === critSuccess) return { kind: "d20", value: v, outcome: "crit_success", threshold };
-  if (v === critFailure) return { kind: "d20", value: v, outcome: "crit_failure", threshold };
+  const compare: "gte" | "lte" = params?.compare === "lte" ? "lte" : "gte";
+
+  const critSuccessFaces = Array.isArray(params?.crit_success_faces)
+    ? params.crit_success_faces.map(Number)
+    : [Number(params?.critSuccess ?? 20)];
+
+  const critFailureFaces = Array.isArray(params?.crit_failure_faces)
+    ? params.crit_failure_faces.map(Number)
+    : [Number(params?.critFailure ?? 1)];
+
+  const threshold =
+    params?.success_threshold != null
+      ? Number(params.success_threshold)
+      : params?.successThreshold != null
+        ? Number(params.successThreshold)
+        : null;
+
+  if (critSuccessFaces.includes(natural)) {
+    return {
+      kind: "single_check",
+      natural,
+      final,
+      threshold,
+      compare,
+      outcome: "crit_success",
+    };
+  }
+
+  if (critFailureFaces.includes(natural)) {
+    return {
+      kind: "single_check",
+      natural,
+      final,
+      threshold,
+      compare,
+      outcome: "crit_failure",
+    };
+  }
 
   if (threshold == null) {
-    // si pas de seuil, on renvoie "success" par défaut (tu peux changer plus tard)
-    return { kind: "d20", value: v, outcome: "success", threshold: null };
+    return {
+      kind: "single_check",
+      natural,
+      final,
+      threshold: null,
+      compare,
+      outcome: "success",
+    };
   }
 
-  return { kind: "d20", value: v, outcome: v >= threshold ? "success" : "failure", threshold };
+  const success = compare === "lte" ? final <= threshold : final >= threshold;
+
+  return {
+    kind: "single_check",
+    natural,
+    final,
+    threshold,
+    compare,
+    outcome: success ? "success" : "failure",
+  };
 };
 
-// --- POOL (Shadowrun-like / pool D6, etc.) ---
-const evalPool: RuleEvaluator = (params, input) => {
-  const successAtOrAbove = Number(params?.successAtOrAbove ?? 5); // ex: Shadowrun 5+
-  const critFailureFace = Number(params?.critFailureFace ?? 1);   // ex: 1
-  const glitchRule = String(params?.glitchRule ?? "ones_gt_successes"); // ones_gt_successes
+// --- SUCCESS POOL ---
+const evalSuccessPool: RuleEvaluator<SuccessPoolParams & Record<string, unknown>> = (
+  params,
+  input,
+) => {
+  const successAtOrAbove =
+    params?.success_at_or_above != null
+      ? Number(params.success_at_or_above)
+      : Number(params?.successAtOrAbove ?? 5);
+
+  const failFaces = Array.isArray(params?.fail_faces)
+    ? params.fail_faces.map(Number)
+    : [Number(params?.critFailureFace ?? 1)];
+
+  const glitchRule = String(
+    params?.glitch_rule ?? params?.glitchRule ?? "ones_gt_successes",
+  );
 
   const successes = input.values.filter((v) => v >= successAtOrAbove).length;
-  const ones = input.values.filter((v) => v === critFailureFace).length;
+  const failCount = input.values.filter((v) => failFaces.includes(v)).length;
 
-  // outcome
   let outcome: "crit_glitch" | "glitch" | "success" | "failure" = "success";
 
-  if (glitchRule === "ones_gt_successes") {
-    if (ones > successes) outcome = successes === 0 ? "crit_glitch" : "glitch";
-    else outcome = successes > 0 ? "success" : "failure";
-  } else {
-    // fallback
+  if (glitchRule === "ones_gte_successes") {
+    if (failCount >= successes) {
+      outcome = successes === 0 ? "crit_glitch" : "glitch";
+    } else {
+      outcome = successes > 0 ? "success" : "failure";
+    }
+  } else if (glitchRule === "none") {
     outcome = successes > 0 ? "success" : "failure";
+  } else {
+    if (failCount > successes) {
+      outcome = successes === 0 ? "crit_glitch" : "glitch";
+    } else {
+      outcome = successes > 0 ? "success" : "failure";
+    }
   }
 
-  return { kind: "pool", successes, ones, outcome };
+  return {
+    kind: "success_pool",
+    successes,
+    fail_count: failCount,
+    fail_faces: failFaces,
+    outcome,
+  };
 };
 
-// --- TABLE LOOKUP (localisation, tables de crit, etc.) ---
-// params: { ranges: [{min,max,label}], defaultLabel? }
-const evalTableLookup: RuleEvaluator = (params, input) => {
+// --- TABLE LOOKUP ---
+const evalTableLookup: RuleEvaluator<TableLookupParams & Record<string, unknown>> = (
+  params,
+  input,
+) => {
   const v = input.values[0] ?? 0;
-  const ranges = Array.isArray(params?.ranges) ? params.ranges : [];
+  const ranges = Array.isArray(params?.ranges)
+    ? params.ranges
+    : Array.isArray(params?.mapping)
+      ? params.mapping
+      : [];
+
   const defaultLabel = String(params?.defaultLabel ?? "Normal");
 
   for (const r of ranges) {
@@ -60,15 +153,25 @@ const evalTableLookup: RuleEvaluator = (params, input) => {
     const max = Number(r?.max);
     const label = String(r?.label ?? "");
     if (Number.isFinite(min) && Number.isFinite(max) && v >= min && v <= max) {
-      return { kind: "table_lookup", value: v, label: label || defaultLabel };
+      return {
+        kind: "table_lookup",
+        value: v,
+        label: label || defaultLabel,
+      };
     }
   }
+
   return { kind: "table_lookup", value: v, label: defaultLabel };
 };
 
 export function registerBuiltins() {
   registerRule("sum", evalSum);
-  registerRule("d20", evalD20);
-  registerRule("pool", evalPool);
+
+  registerRule("single_check", evalSingleCheck);
+  registerRule("success_pool", evalSuccessPool);
   registerRule("table_lookup", evalTableLookup);
+
+  // Compat legacy temporaire
+  registerRule("d20", evalSingleCheck);
+  registerRule("pool", evalSuccessPool);
 }

@@ -1,11 +1,16 @@
-import type { RuleEvaluator } from "./types";
+// core/rules/registry.ts
 
-const registry = new Map<string, RuleEvaluator>();
+import type { RuleEvaluator, UniversalRuleParams } from "./types";
 
-export function registerRule(mode: string, evaluator: RuleEvaluator) {
-  registry.set(mode, evaluator);
+const registry = new Map<string, RuleEvaluator<any>>();
+
+export function registerRule<TParams = UniversalRuleParams>(
+  mode: string,
+  evaluator: RuleEvaluator<TParams>,
+) {
+  registry.set(mode, evaluator as RuleEvaluator<any>);
 }
 
-export function getRule(mode: string): RuleEvaluator | null {
+export function getRule(mode: string): RuleEvaluator<any> | null {
   return registry.get(mode) ?? null;
 }
