@@ -299,6 +299,7 @@ function runPipeline(
     const naturalFirst = initialNatural[0] ?? 0;
     const critSuccessFaces = new Set(params.crit_success_faces || []);
     const critFailureFaces = new Set(params.crit_failure_faces || []);
+    const compare: "gte" | "lte" = params.compare === "lte" ? "lte" : "gte";
 
     if (critSuccessFaces.has(naturalFirst)) {
       return {
@@ -306,7 +307,7 @@ function runPipeline(
         values: initialNatural,
         kept,
         final,
-        meta: { ...meta, outcome: "crit_success" },
+        meta: { ...meta, outcome: "crit_success", compare },
       };
     }
 
@@ -316,17 +317,21 @@ function runPipeline(
         values: initialNatural,
         kept,
         final,
-        meta: { ...meta, outcome: "crit_failure" },
+        meta: { ...meta, outcome: "crit_failure", compare },
       };
     }
 
-    const ok = final >= params.success_threshold;
+    const ok =
+      compare === "lte"
+        ? final <= params.success_threshold
+        : final >= params.success_threshold;
+
     return {
       kind: "pipeline",
       values: initialNatural,
       kept,
       final,
-      meta: { ...meta, outcome: ok ? "success" : "failure" },
+      meta: { ...meta, outcome: ok ? "success" : "failure", compare },
     };
   }
 
@@ -489,14 +494,22 @@ export function evaluateRule(kind: string, params_json: string, ctx: EvalContext
 
     const critSuccessFaces = Array.isArray(p.crit_success_faces)
       ? p.crit_success_faces.map(Number)
-      : [];
+      : p.critSuccess != null
+        ? [Number(p.critSuccess)]
+        : [];
 
     const critFailureFaces = Array.isArray(p.crit_failure_faces)
       ? p.crit_failure_faces.map(Number)
-      : [];
+      : p.critFailure != null
+        ? [Number(p.critFailure)]
+        : [];
 
     const threshold =
-      p.success_threshold != null ? Number(p.success_threshold) : null;
+      p.success_threshold != null
+        ? Number(p.success_threshold)
+        : p.successThreshold != null
+          ? Number(p.successThreshold)
+          : null;
 
     if (critSuccessFaces.includes(kept)) {
       return {
@@ -575,10 +588,15 @@ export function evaluateRule(kind: string, params_json: string, ctx: EvalContext
     const params: PipelineParams = {
       steps: Array.isArray(p.steps) ? p.steps : [],
       output: p.output,
-      crit_success_faces: Array.isArray(p.crit_success_faces) ? p.crit_success_faces : undefined,
-      crit_failure_faces: Array.isArray(p.crit_failure_faces) ? p.crit_failure_faces : undefined,
+      crit_success_faces: Array.isArray(p.crit_success_faces)
+        ? p.crit_success_faces
+        : undefined,
+      crit_failure_faces: Array.isArray(p.crit_failure_faces)
+        ? p.crit_failure_faces
+        : undefined,
       success_threshold:
         p.success_threshold == null ? undefined : Number(p.success_threshold),
+      compare: p.compare === "lte" ? "lte" : "gte",
     };
 
     return runPipeline(ctx.values, ctx, params);

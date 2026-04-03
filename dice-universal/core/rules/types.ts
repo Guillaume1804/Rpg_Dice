@@ -79,6 +79,7 @@ export type PipelineParams = {
   crit_success_faces?: number[];
   crit_failure_faces?: number[];
   success_threshold?: number | null;
+  compare?: "gte" | "lte";
 };
 
 export type UniversalRuleParams =

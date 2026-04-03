@@ -215,16 +215,22 @@ const evalHighestOfPool: RuleEvaluator<
 
   const critSuccessFaces = Array.isArray(params?.crit_success_faces)
     ? params.crit_success_faces.map(Number)
-    : [];
+    : params?.critSuccess != null
+      ? [Number(params.critSuccess)]
+      : [];
 
   const critFailureFaces = Array.isArray(params?.crit_failure_faces)
     ? params.crit_failure_faces.map(Number)
-    : [];
+    : params?.critFailure != null
+      ? [Number(params.critFailure)]
+      : [];
 
   const threshold =
     params?.success_threshold != null
       ? Number(params.success_threshold)
-      : null;
+      : params?.successThreshold != null
+        ? Number(params.successThreshold)
+        : null;
 
   if (critSuccessFaces.includes(kept)) {
     return {

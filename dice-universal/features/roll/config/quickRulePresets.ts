@@ -92,6 +92,42 @@ export const QUICK_RULE_PRESETS: QuickRulePresetDefinition[] = [
     }),
   },
   {
+    key: "banded_sum",
+    label: "Somme à bandes",
+    description: "Additionne les dés puis retourne un résultat par intervalle.",
+    scope: "entry",
+    supportedSides: [6],
+    buildRule: (sides) => ({
+      name: `Temp ${2}d${sides} somme à bandes`,
+      kind: "banded_sum",
+      params: {
+        bands: [
+          { min: 2, max: 6, label: "Échec" },
+          { min: 7, max: 9, label: "Réussite partielle" },
+          { min: 10, max: 12, label: "Réussite" },
+        ],
+        defaultLabel: "—",
+      },
+    }),
+  },
+  {
+    key: "highest_of_pool",
+    label: "Meilleur dé",
+    description: "Garde le meilleur résultat du pool, avec seuil et critiques.",
+    scope: "entry",
+    supportedSides: [6, 8, 10, 12, 20],
+    buildRule: (sides) => ({
+      name: `Temp meilleur d${sides}`,
+      kind: "highest_of_pool",
+      params: {
+        compare: "gte",
+        success_threshold: Math.max(2, Math.ceil(sides * 0.7)),
+        crit_success_faces: [sides],
+        crit_failure_faces: [1],
+      },
+    }),
+  },
+  {
     key: "range_table",
     label: "Table d’intervalles",
     description: "Retourne un label selon la plage obtenue.",
