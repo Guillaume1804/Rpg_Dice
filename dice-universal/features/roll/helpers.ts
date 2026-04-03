@@ -56,6 +56,17 @@ export function formatRuleResult(res: any): string {
     return `${label} — succès: ${res.successes} / échecs spéciaux: ${res.fail_count}`;
   }
 
+  if (res.kind === "banded_sum") {
+    return `${res.label} — total: ${res.total}`;
+  }
+
+  if (res.kind === "highest_of_pool") {
+    if (res.outcome === "crit_success") return "Réussite critique";
+    if (res.outcome === "crit_failure") return "Échec critique";
+    if (res.threshold == null) return "Résultat";
+    return res.outcome === "success" ? "Réussite" : "Échec";
+  }
+
   if (res.kind === "table_lookup") {
     return res.label;
   }

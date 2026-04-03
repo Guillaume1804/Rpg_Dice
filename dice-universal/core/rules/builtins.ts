@@ -6,6 +6,8 @@ import type {
   SingleCheckParams,
   SuccessPoolParams,
   TableLookupParams,
+  BandedSumParams,
+  HighestOfPoolParams,
 } from "./types";
 
 // --- SUM (par défaut) ---
@@ -164,11 +166,122 @@ const evalTableLookup: RuleEvaluator<TableLookupParams & Record<string, unknown>
   return { kind: "table_lookup", value: v, label: defaultLabel };
 };
 
+// --- BANDED SUM ---
+const evalBandedSum: RuleEvaluator<BandedSumParams & Record<string, unknown>> = (
+  params,
+  input,
+) => {
+  const modifier = Number(input.modifier ?? 0);
+  const sign = Number(input.sign ?? 1);
+  const total =
+    input.values.map((v) => v * sign).reduce((a, b) => a + b, 0) + modifier;
+
+  const bands = Array.isArray(params?.bands) ? params.bands : [];
+  const defaultLabel = String(params?.defaultLabel ?? "—");
+
+  for (const band of bands) {
+    const min = Number(band?.min);
+    const max = Number(band?.max);
+    const label = String(band?.label ?? "");
+
+    if (Number.isFinite(min) && Number.isFinite(max) && total >= min && total <= max) {
+      return {
+        kind: "banded_sum",
+        total,
+        label: label || defaultLabel,
+      };
+    }
+  }
+
+  return {
+    kind: "banded_sum",
+    total,
+    label: defaultLabel,
+  };
+};
+
+// --- HIGHEST OF POOL ---
+const evalHighestOfPool: RuleEvaluator<
+  HighestOfPoolParams & Record<string, unknown>
+> = (params, input) => {
+  const naturalValues = Array.isArray(input.values) ? input.values : [];
+  const kept = naturalValues.length > 0 ? Math.max(...naturalValues) : 0;
+
+  const modifier = Number(input.modifier ?? 0);
+  const sign = Number(input.sign ?? 1);
+  const final = kept * sign + modifier;
+
+  const compare: "gte" | "lte" = params?.compare === "lte" ? "lte" : "gte";
+
+  const critSuccessFaces = Array.isArray(params?.crit_success_faces)
+    ? params.crit_success_faces.map(Number)
+    : [];
+
+  const critFailureFaces = Array.isArray(params?.crit_failure_faces)
+    ? params.crit_failure_faces.map(Number)
+    : [];
+
+  const threshold =
+    params?.success_threshold != null
+      ? Number(params.success_threshold)
+      : null;
+
+  if (critSuccessFaces.includes(kept)) {
+    return {
+      kind: "highest_of_pool",
+      kept,
+      natural_values: naturalValues,
+      threshold,
+      final,
+      compare,
+      outcome: "crit_success",
+    };
+  }
+
+  if (critFailureFaces.includes(kept)) {
+    return {
+      kind: "highest_of_pool",
+      kept,
+      natural_values: naturalValues,
+      threshold,
+      final,
+      compare,
+      outcome: "crit_failure",
+    };
+  }
+
+  if (threshold == null) {
+    return {
+      kind: "highest_of_pool",
+      kept,
+      natural_values: naturalValues,
+      threshold: null,
+      final,
+      compare,
+      outcome: "success",
+    };
+  }
+
+  const success = compare === "lte" ? final <= threshold : final >= threshold;
+
+  return {
+    kind: "highest_of_pool",
+    kept,
+    natural_values: naturalValues,
+    threshold,
+    final,
+    compare,
+    outcome: success ? "success" : "failure",
+  };
+};
+
 export function registerBuiltins() {
   registerRule("sum", evalSum);
 
   registerRule("single_check", evalSingleCheck);
   registerRule("success_pool", evalSuccessPool);
+  registerRule("banded_sum", evalBandedSum);
+  registerRule("highest_of_pool", evalHighestOfPool);
   registerRule("table_lookup", evalTableLookup);
 
   // Compat legacy temporaire

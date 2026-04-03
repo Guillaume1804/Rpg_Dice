@@ -30,6 +30,16 @@ export type RuleResult =
     fail_faces: number[];
   }
   | { kind: "table_lookup"; label: string; value: number }
+  | { kind: "banded_sum"; total: number; label: string }
+  | {
+    kind: "highest_of_pool";
+    kept: number;
+    natural_values: number[];
+    threshold: number | null;
+    final: number;
+    compare: "gte" | "lte";
+    outcome: "crit_success" | "crit_failure" | "success" | "failure";
+  }
   | {
     kind: "pipeline";
     values: number[];
@@ -448,6 +458,93 @@ export function evaluateRule(kind: string, params_json: string, ctx: EvalContext
       successes,
       fail_count: failCount,
       fail_faces: failFaces,
+    };
+  }
+
+  if (kind === "banded_sum") {
+    const { sum } = applySignModifier(ctx.values, sign, modifier);
+
+    const bands = Array.isArray(p.bands) ? p.bands : [];
+    const hit = bands.find(
+      (band: any) =>
+        typeof band?.min === "number" &&
+        typeof band?.max === "number" &&
+        sum >= band.min &&
+        sum <= band.max,
+    );
+
+    return {
+      kind: "banded_sum",
+      total: sum,
+      label: hit?.label ?? p.defaultLabel ?? "—",
+    };
+  }
+
+  if (kind === "highest_of_pool") {
+    const naturalValues = Array.isArray(ctx.values) ? ctx.values : [];
+    const kept = naturalValues.length > 0 ? Math.max(...naturalValues) : 0;
+    const final = kept * sign + modifier;
+
+    const compare: "gte" | "lte" = p.compare === "lte" ? "lte" : "gte";
+
+    const critSuccessFaces = Array.isArray(p.crit_success_faces)
+      ? p.crit_success_faces.map(Number)
+      : [];
+
+    const critFailureFaces = Array.isArray(p.crit_failure_faces)
+      ? p.crit_failure_faces.map(Number)
+      : [];
+
+    const threshold =
+      p.success_threshold != null ? Number(p.success_threshold) : null;
+
+    if (critSuccessFaces.includes(kept)) {
+      return {
+        kind: "highest_of_pool",
+        kept,
+        natural_values: naturalValues,
+        threshold,
+        final,
+        compare,
+        outcome: "crit_success",
+      };
+    }
+
+    if (critFailureFaces.includes(kept)) {
+      return {
+        kind: "highest_of_pool",
+        kept,
+        natural_values: naturalValues,
+        threshold,
+        final,
+        compare,
+        outcome: "crit_failure",
+      };
+    }
+
+    if (threshold == null) {
+      return {
+        kind: "highest_of_pool",
+        kept,
+        natural_values: naturalValues,
+        threshold: null,
+        final,
+        compare,
+        outcome: "success",
+      };
+    }
+
+    const isSuccess =
+      compare === "lte" ? final <= threshold : final >= threshold;
+
+    return {
+      kind: "highest_of_pool",
+      kept,
+      natural_values: naturalValues,
+      threshold,
+      final,
+      compare,
+      outcome: isSuccess ? "success" : "failure",
     };
   }
 

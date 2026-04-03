@@ -31,6 +31,24 @@ export type TableLookupParams = {
   defaultLabel?: string;
 };
 
+export type BandedSumBand = {
+  min: number;
+  max: number;
+  label: string;
+};
+
+export type BandedSumParams = {
+  bands: BandedSumBand[];
+  defaultLabel?: string;
+};
+
+export type HighestOfPoolParams = {
+  compare?: "gte" | "lte";
+  success_threshold?: number | null;
+  crit_success_faces?: number[];
+  crit_failure_faces?: number[];
+};
+
 export type PipelineStep =
   | { op: "keep_highest"; n: number }
   | { op: "keep_lowest"; n: number }
@@ -67,6 +85,8 @@ export type UniversalRuleParams =
   | SingleCheckParams
   | SuccessPoolParams
   | TableLookupParams
+  | BandedSumParams
+  | HighestOfPoolParams
   | PipelineParams
   | Record<string, unknown>;
 
@@ -88,6 +108,16 @@ export type RuleResult =
     outcome: "crit_glitch" | "glitch" | "success" | "failure";
   }
   | { kind: "table_lookup"; value: number; label: string }
+  | { kind: "banded_sum"; total: number; label: string }
+  | {
+    kind: "highest_of_pool";
+    kept: number;
+    natural_values: number[];
+    threshold: number | null;
+    final: number;
+    compare: "gte" | "lte";
+    outcome: "crit_success" | "crit_failure" | "success" | "failure";
+  }
   | {
     kind: "pipeline";
     values: number[];

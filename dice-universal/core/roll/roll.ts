@@ -86,6 +86,14 @@ function extractNumericFinalFromEval(res: any): number | null {
     return res.final;
   }
 
+  if (res.kind === "highest_of_pool" && typeof res.final === "number") {
+    return res.final;
+  }
+
+  if (res.kind === "banded_sum" && typeof res.total === "number") {
+    return res.total;
+  }
+
   if (res.kind === "pipeline" && typeof res.final === "number") {
     return res.final;
   }
