@@ -6,7 +6,7 @@ import type { RuleRow } from "../../../data/repositories/rulesRepo";
 type Props = {
   visible: boolean;
   selectedRuleId: string | null;
-  pipelineRules: RuleRow[];
+  modernRules: RuleRow[];
   legacyRules: RuleRow[];
   onSelectRule: (ruleId: string | null) => void;
   onCancel: () => void;
@@ -16,7 +16,7 @@ type Props = {
 export function DraftGroupRuleModal({
   visible,
   selectedRuleId,
-  pipelineRules,
+  modernRules,
   legacyRules,
   onSelectRule,
   onCancel,
@@ -63,7 +63,7 @@ export function DraftGroupRuleModal({
           <ScrollView style={{ marginTop: 12, maxHeight: 300 }}>
             <Text style={{ fontWeight: "700" }}>Règles disponibles</Text>
 
-            {pipelineRules.map((rule) => (
+            {modernRules.map((rule) => (
               <Pressable
                 key={rule.id}
                 onPress={() => onSelectRule(rule.id)}

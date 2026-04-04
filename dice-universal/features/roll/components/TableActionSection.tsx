@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { ScrollView, View, Text, Pressable } from "react-native";
-import type { GroupRollResult } from "../../../core/roll/roll";
+import { View, Text, Pressable } from "react-native";
+import type { GroupRollResult, EntryRollResult } from "../../../core/roll/roll";
 import type { ProfileRow } from "../../../data/repositories/profilesRepo";
 import type { GroupRow, GroupDieRow } from "../../../data/repositories/groupsRepo";
 import { formatRuleResult } from "../helpers";
@@ -30,6 +30,324 @@ function getGroupResult(
   results: GroupRollResult[],
 ): GroupRollResult | null {
   return results.find((result) => result.groupId === groupId) ?? null;
+}
+
+function renderSignedValues(values: number[]) {
+  if (values.length === 0) return "—";
+  return values.join(" + ");
+}
+
+function renderNaturalValues(values: number[]) {
+  if (values.length === 0) return "—";
+  return values.join(" + ");
+}
+
+function renderEntryResult(entry: EntryRollResult) {
+  if (!entry.eval_result) {
+    return (
+      <View
+        style={{
+          padding: 12,
+          borderWidth: 1,
+          borderRadius: 12,
+          gap: 4,
+        }}
+      >
+        <Text style={{ fontWeight: "800" }}>
+          {entry.qty}d{entry.sides}
+        </Text>
+
+        <Text style={{ fontSize: 22, fontWeight: "900" }}>
+          {entry.final_total}
+        </Text>
+
+        <Text style={{ opacity: 0.72 }}>
+          ({renderSignedValues(entry.signed_values)})
+          {entry.modifier
+            ? ` ${entry.modifier > 0 ? "+" : ""}${entry.modifier}`
+            : ""}
+        </Text>
+      </View>
+    );
+  }
+
+  const res = entry.eval_result;
+
+  if (res.kind === "single_check") {
+    return (
+      <View
+        style={{
+          padding: 12,
+          borderWidth: 1,
+          borderRadius: 12,
+          gap: 4,
+        }}
+      >
+        <Text style={{ fontWeight: "800" }}>
+          {entry.qty}d{entry.sides}
+        </Text>
+
+        <Text style={{ opacity: 0.72 }}>
+          Naturel : {res.natural}
+        </Text>
+
+        <Text style={{ fontWeight: "700" }}>
+          {formatRuleResult(res)}
+        </Text>
+
+        <Text style={{ fontSize: 22, fontWeight: "900" }}>
+          Final : {res.final}
+        </Text>
+
+        <Text style={{ opacity: 0.72 }}>
+          ({renderSignedValues(entry.signed_values)})
+          {entry.modifier
+            ? ` ${entry.modifier > 0 ? "+" : ""}${entry.modifier}`
+            : ""}
+        </Text>
+      </View>
+    );
+  }
+
+  if (res.kind === "highest_of_pool") {
+    return (
+      <View
+        style={{
+          padding: 12,
+          borderWidth: 1,
+          borderRadius: 12,
+          gap: 4,
+        }}
+      >
+        <Text style={{ fontWeight: "800" }}>
+          {entry.qty}d{entry.sides}
+        </Text>
+
+        <Text style={{ opacity: 0.72 }}>
+          Dés lancés : {renderNaturalValues(res.natural_values)}
+        </Text>
+
+        <Text style={{ opacity: 0.72 }}>
+          Meilleur gardé : {res.kept}
+        </Text>
+
+        <Text style={{ fontWeight: "700" }}>
+          {formatRuleResult(res)}
+        </Text>
+
+        <Text style={{ fontSize: 22, fontWeight: "900" }}>
+          Final : {res.final}
+        </Text>
+      </View>
+    );
+  }
+
+  if (res.kind === "banded_sum") {
+    return (
+      <View
+        style={{
+          padding: 12,
+          borderWidth: 1,
+          borderRadius: 12,
+          gap: 4,
+        }}
+      >
+        <Text style={{ fontWeight: "800" }}>
+          {entry.qty}d{entry.sides}
+        </Text>
+
+        <Text style={{ opacity: 0.72 }}>
+          Valeurs : {renderSignedValues(entry.signed_values)}
+        </Text>
+
+        <Text style={{ fontWeight: "700" }}>
+          {formatRuleResult(res)}
+        </Text>
+
+        <Text style={{ fontSize: 22, fontWeight: "900" }}>
+          Total : {res.total}
+        </Text>
+      </View>
+    );
+  }
+
+  if (res.kind === "table_lookup") {
+    return (
+      <View
+        style={{
+          padding: 12,
+          borderWidth: 1,
+          borderRadius: 12,
+          gap: 4,
+        }}
+      >
+        <Text style={{ fontWeight: "800" }}>
+          {entry.qty}d{entry.sides}
+        </Text>
+
+        <Text style={{ opacity: 0.72 }}>
+          Valeur : {res.value}
+        </Text>
+
+        <Text style={{ fontWeight: "700" }}>{res.label}</Text>
+      </View>
+    );
+  }
+
+  if (res.kind === "pipeline") {
+    return (
+      <View
+        style={{
+          padding: 12,
+          borderWidth: 1,
+          borderRadius: 12,
+          gap: 4,
+        }}
+      >
+        <Text style={{ fontWeight: "800" }}>
+          {entry.qty}d{entry.sides}
+        </Text>
+
+        <Text style={{ opacity: 0.72 }}>
+          Dés lancés : {renderNaturalValues(res.values)}
+        </Text>
+
+        <Text style={{ opacity: 0.72 }}>
+          Conservés : {renderNaturalValues(res.kept)}
+        </Text>
+
+        <Text style={{ fontWeight: "700" }}>
+          {formatRuleResult(res)}
+        </Text>
+
+        {res.final != null ? (
+          <Text style={{ fontSize: 22, fontWeight: "900" }}>
+            Final : {res.final}
+          </Text>
+        ) : null}
+      </View>
+    );
+  }
+
+  return (
+    <View
+      style={{
+        padding: 12,
+        borderWidth: 1,
+        borderRadius: 12,
+        gap: 4,
+      }}
+    >
+      <Text style={{ fontWeight: "800" }}>
+        {entry.qty}d{entry.sides}
+      </Text>
+
+      <Text style={{ fontWeight: "700" }}>
+        {formatRuleResult(res)}
+      </Text>
+    </View>
+  );
+}
+
+function renderGroupResult(result: GroupRollResult) {
+  if (result.group_eval_result) {
+    const res = result.group_eval_result;
+
+    if (res.kind === "success_pool") {
+      return (
+        <View
+          style={{
+            padding: 12,
+            borderWidth: 1,
+            borderRadius: 12,
+            gap: 6,
+          }}
+        >
+          <Text style={{ fontWeight: "800" }}>Résultat de groupe</Text>
+
+          <Text style={{ fontWeight: "700" }}>
+            {formatRuleResult(res)}
+          </Text>
+
+          <Text style={{ opacity: 0.72 }}>
+            Valeurs : {result.entries
+              .flatMap((entry) => entry.natural_values)
+              .join(" + ")}
+          </Text>
+        </View>
+      );
+    }
+
+    if (res.kind === "pipeline") {
+      return (
+        <View
+          style={{
+            padding: 12,
+            borderWidth: 1,
+            borderRadius: 12,
+            gap: 6,
+          }}
+        >
+          <Text style={{ fontWeight: "800" }}>Résultat de groupe</Text>
+
+          <Text style={{ fontWeight: "700" }}>
+            {formatRuleResult(res)}
+          </Text>
+
+          <Text style={{ opacity: 0.72 }}>
+            Dés lancés : {renderNaturalValues(res.values)}
+          </Text>
+
+          <Text style={{ opacity: 0.72 }}>
+            Conservés : {renderNaturalValues(res.kept)}
+          </Text>
+
+          {res.final != null ? (
+            <Text style={{ fontSize: 22, fontWeight: "900" }}>
+              Final : {res.final}
+            </Text>
+          ) : null}
+        </View>
+      );
+    }
+
+    return (
+      <View
+        style={{
+          padding: 12,
+          borderWidth: 1,
+          borderRadius: 12,
+          gap: 6,
+        }}
+      >
+        <Text style={{ fontWeight: "800" }}>Résultat de groupe</Text>
+        <Text style={{ fontWeight: "700" }}>
+          {formatRuleResult(res)}
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <View
+      style={{
+        padding: 12,
+        borderWidth: 1,
+        borderRadius: 12,
+        gap: 6,
+      }}
+    >
+      <Text style={{ fontWeight: "800" }}>Résultat global</Text>
+
+      <Text style={{ fontSize: 32, fontWeight: "900" }}>
+        {result.total}
+      </Text>
+
+      <Text style={{ opacity: 0.72 }}>
+        Valeurs : {result.entries.flatMap((entry) => entry.signed_values).join(" + ")}
+      </Text>
+    </View>
+  );
 }
 
 export function TableActionSection({
@@ -304,52 +622,33 @@ export function TableActionSection({
           <Text style={{ fontWeight: "800" }}>Lancer</Text>
         </Pressable>
 
-        <View
-          style={{
-            padding: 12,
-            borderWidth: 1,
-            borderRadius: 12,
-            gap: 6,
-          }}
-        >
-          <Text style={{ fontWeight: "800" }}>Résultat</Text>
-
-          {!selectedActionResult ? (
+        {!selectedActionResult ? (
+          <View
+            style={{
+              padding: 12,
+              borderWidth: 1,
+              borderRadius: 12,
+              gap: 6,
+            }}
+          >
+            <Text style={{ fontWeight: "800" }}>Résultat</Text>
             <Text style={{ opacity: 0.72 }}>
               Lance l’action pour afficher son résultat ici.
             </Text>
-          ) : (
-            <>
-              <Text style={{ fontSize: 40, fontWeight: "900" }}>
-                {selectedActionResult.total}
-              </Text>
+          </View>
+        ) : (
+          <>
+            {renderGroupResult(selectedActionResult)}
 
-              <Text style={{ opacity: 0.72 }}>
-                {selectedActionResult.entries
-                  .flatMap((entry) => entry.signed_values)
-                  .join(" + ")}
-              </Text>
-
-              {selectedActionResult.group_eval_result ? (
-                <Text style={{ fontWeight: "700" }}>
-                  {formatRuleResult(selectedActionResult.group_eval_result)}
-                </Text>
-              ) : null}
-
-              {selectedActionResult.entries.some((entry) => entry.eval_result) ? (
-                <View style={{ gap: 4, marginTop: 4 }}>
-                  {selectedActionResult.entries.map((entry) =>
-                    entry.eval_result ? (
-                      <Text key={entry.entryId} style={{ opacity: 0.85 }}>
-                        {formatRuleResult(entry.eval_result)}
-                      </Text>
-                    ) : null,
-                  )}
+            <View style={{ gap: 8 }}>
+              {selectedActionResult.entries.map((entry) => (
+                <View key={entry.entryId}>
+                  {renderEntryResult(entry)}
                 </View>
-              ) : null}
-            </>
-          )}
-        </View>
+              ))}
+            </View>
+          </>
+        )}
       </View>
     );
   }

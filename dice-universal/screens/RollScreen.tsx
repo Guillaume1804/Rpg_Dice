@@ -55,7 +55,7 @@ export default function RollScreen() {
     profiles,
     rulesMap,
     availableRules,
-    pipelineRules,
+    modernRules,
     legacyRules,
     error,
     reloadGroups,
@@ -420,7 +420,7 @@ export default function RollScreen() {
           draftEditQty={draftEditQty}
           draftEditModifier={draftEditModifier}
           draftEditRuleId={draftEditRuleId}
-          pipelineRules={pipelineRules}
+          modernRules={modernRules}
           legacyRules={legacyRules}
           onChangeSign={setDraftEditSign}
           onChangeSides={setDraftEditSides}

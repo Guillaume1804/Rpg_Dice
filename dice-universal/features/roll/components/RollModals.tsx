@@ -30,7 +30,7 @@ type RollModalsProps = {
   draftEditQty: string;
   draftEditModifier: string;
   draftEditRuleId: string | null;
-  pipelineRules: RuleRow[];
+  modernRules: RuleRow[];
   legacyRules: RuleRow[];
   onChangeSign: (value: "1" | "-1") => void;
   onChangeSides: (value: string) => void;
@@ -65,7 +65,7 @@ export function RollModals({
   draftEditQty,
   draftEditModifier,
   draftEditRuleId,
-  pipelineRules,
+  modernRules,
   legacyRules,
   onChangeSign,
   onChangeSides,
@@ -93,10 +93,10 @@ export function RollModals({
   const entryLabel =
     editingDraftGroupId != null && editingDraftIndex != null
       ? (() => {
-          const group = draftGroups.find((g) => g.id === editingDraftGroupId);
-          const die = group?.dice[editingDraftIndex];
-          return die ? `${die.qty}d${die.sides}` : null;
-        })()
+        const group = draftGroups.find((g) => g.id === editingDraftGroupId);
+        const die = group?.dice[editingDraftIndex];
+        return die ? `${die.qty}d${die.sides}` : null;
+      })()
       : null;
 
   return (
@@ -109,7 +109,7 @@ export function RollModals({
         draftEditQty={draftEditQty}
         draftEditModifier={draftEditModifier}
         draftEditRuleId={draftEditRuleId}
-        pipelineRules={pipelineRules}
+        modernRules={modernRules}
         legacyRules={legacyRules}
         onChangeSign={onChangeSign}
         onChangeSides={onChangeSides}
@@ -123,7 +123,7 @@ export function RollModals({
       <DraftGroupRuleModal
         visible={showDraftGroupRuleModal}
         selectedRuleId={draftGroupRuleSelection}
-        pipelineRules={pipelineRules}
+        modernRules={modernRules}
         legacyRules={legacyRules}
         onSelectRule={onSelectDraftGroupRule}
         onCancel={onCancelDraftGroupRule}

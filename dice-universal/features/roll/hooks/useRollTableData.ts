@@ -28,6 +28,8 @@ const MODERN_RULE_KINDS = new Set([
   "single_check",
   "success_pool",
   "table_lookup",
+  "banded_sum",
+  "highest_of_pool",
   "pipeline",
 ]);
 
@@ -120,7 +122,7 @@ export function useRollTableData({ db, tableId }: UseRollTableDataParams) {
     })();
   }, [tableId, loadAvailableRules, loadTableData]);
 
-  const pipelineRules = useMemo(
+  const modernRules = useMemo(
     () => availableRules.filter((r) => MODERN_RULE_KINDS.has(r.kind)),
     [availableRules]
   );
@@ -135,7 +137,7 @@ export function useRollTableData({ db, tableId }: UseRollTableDataParams) {
     profiles,
     rulesMap,
     availableRules,
-    pipelineRules,
+    modernRules,
     legacyRules,
     error,
     reloadGroups,

@@ -11,7 +11,7 @@ type Props = {
   draftEditQty: string;
   draftEditModifier: string;
   draftEditRuleId: string | null;
-  pipelineRules: RuleRow[];
+  modernRules: RuleRow[];
   legacyRules: RuleRow[];
   onChangeSign: (value: "1" | "-1") => void;
   onChangeSides: (value: string) => void;
@@ -30,7 +30,7 @@ export function DraftDieEditorModal({
   draftEditQty,
   draftEditModifier,
   draftEditRuleId,
-  pipelineRules,
+  modernRules,
   legacyRules,
   onChangeSign,
   onChangeSides,
@@ -140,7 +140,7 @@ export function DraftDieEditorModal({
 
           <ScrollView style={{ marginTop: 12, maxHeight: 260 }}>
             <Text style={{ fontWeight: "700" }}>Règles disponibles</Text>
-            {pipelineRules.map((rule) => (
+            {modernRules.map((rule) => (
               <Pressable
                 key={rule.id}
                 onPress={() => onChangeRuleId(rule.id)}
