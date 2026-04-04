@@ -19,19 +19,21 @@ export type QuickRulePresetDefinition = {
  * - scope "entry" : la règle s’applique à une entrée de dé
  * - scope "group" : la règle s’applique à l’ensemble du groupe de dés
  *
- * Le moteur reste la source de vérité via kind + params_json.
- * Cette couche sert uniquement à exposer des presets compréhensibles en UX.
+ * Important :
+ * certains presets "entry" sont pensés pour être utilisés
+ * comme un bloc agrégé côté UX (ex: meilleur dé, somme à bandes),
+ * même si le moteur reste basé sur une règle portée par l’entrée.
  */
 
 export const QUICK_RULE_PRESETS: QuickRulePresetDefinition[] = [
   {
     key: "single_check_critical",
-    label: "Critique naturel",
-    description: "Critique sur la face max, échec critique sur 1.",
+    label: "Jet avec critique",
+    description: "Un jet simple avec critique sur la face max et échec critique sur 1.",
     scope: "entry",
     supportedSides: [20],
     buildRule: (sides) => ({
-      name: `Temp D${sides} critique`,
+      name: `Jet D${sides} critique`,
       kind: "single_check",
       params: {
         compare: "gte",
@@ -43,12 +45,12 @@ export const QUICK_RULE_PRESETS: QuickRulePresetDefinition[] = [
   },
   {
     key: "single_check_threshold_high",
-    label: "Seuil haut",
+    label: "Jet à seuil haut",
     description: "Réussite si le résultat final atteint ou dépasse un seuil.",
     scope: "entry",
     supportedSides: [20, 100],
     buildRule: (sides) => ({
-      name: `Temp D${sides} seuil haut`,
+      name: `Jet D${sides} seuil haut`,
       kind: "single_check",
       params: {
         compare: "gte",
@@ -60,12 +62,12 @@ export const QUICK_RULE_PRESETS: QuickRulePresetDefinition[] = [
   },
   {
     key: "single_check_threshold_low",
-    label: "Seuil bas",
+    label: "Jet à seuil bas",
     description: "Réussite si le résultat final est inférieur ou égal au seuil.",
     scope: "entry",
     supportedSides: [20, 100],
     buildRule: (sides) => ({
-      name: `Temp D${sides} seuil bas`,
+      name: `Jet D${sides} seuil bas`,
       kind: "single_check",
       params: {
         compare: "lte",
@@ -78,11 +80,11 @@ export const QUICK_RULE_PRESETS: QuickRulePresetDefinition[] = [
   {
     key: "success_pool",
     label: "Pool de succès",
-    description: "Compte les succès au-dessus d’un seuil, avec gestion des faces d’échec.",
+    description: "Lance plusieurs dés et compte les succès selon un seuil.",
     scope: "group",
     supportedSides: [6, 8, 10, 12],
     buildRule: (sides) => ({
-      name: `Temp D${sides} pool`,
+      name: `Pool D${sides}`,
       kind: "success_pool",
       params: {
         success_at_or_above: Math.max(4, Math.ceil(sides * 0.66)),
@@ -93,12 +95,12 @@ export const QUICK_RULE_PRESETS: QuickRulePresetDefinition[] = [
   },
   {
     key: "banded_sum",
-    label: "Somme à bandes",
-    description: "Additionne les dés puis retourne un résultat par intervalle.",
+    label: "Somme à résultats",
+    description: "Additionne les dés puis associe le total à un résultat par intervalle.",
     scope: "entry",
     supportedSides: [6],
     buildRule: (sides) => ({
-      name: `Temp ${2}d${sides} somme à bandes`,
+      name: `Somme D${sides} à résultats`,
       kind: "banded_sum",
       params: {
         bands: [
@@ -112,12 +114,12 @@ export const QUICK_RULE_PRESETS: QuickRulePresetDefinition[] = [
   },
   {
     key: "highest_of_pool",
-    label: "Meilleur dé",
-    description: "Garde le meilleur résultat du pool, avec seuil et critiques.",
+    label: "Garder le meilleur",
+    description: "Lance plusieurs dés, garde le meilleur résultat, puis applique seuil et critiques.",
     scope: "entry",
     supportedSides: [6, 8, 10, 12, 20],
     buildRule: (sides) => ({
-      name: `Temp meilleur d${sides}`,
+      name: `Meilleur D${sides}`,
       kind: "highest_of_pool",
       params: {
         compare: "gte",
@@ -129,12 +131,12 @@ export const QUICK_RULE_PRESETS: QuickRulePresetDefinition[] = [
   },
   {
     key: "range_table",
-    label: "Table d’intervalles",
-    description: "Retourne un label selon la plage obtenue.",
+    label: "Table de résultats",
+    description: "Retourne un résultat selon l’intervalle obtenu.",
     scope: "entry",
     supportedSides: [6, 20, 100],
     buildRule: (sides) => ({
-      name: `Temp D${sides} intervalle`,
+      name: `Table D${sides}`,
       kind: "table_lookup",
       params: {
         ranges: [

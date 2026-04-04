@@ -80,6 +80,38 @@ function sameTempRule(
   );
 }
 
+function isSplitEntryDie(die: DraftDie) {
+  return !!die.rule_temp || !!die.rule_id;
+}
+
+function findQuickGroupByTempRule(
+  groups: DraftGroupState[],
+  rule: DraftTempRule,
+): DraftGroupState | null {
+  return (
+    groups.find(
+      (group) =>
+        !!group.rule_temp &&
+        sameTempRule(group.rule_temp, rule),
+    ) ?? null
+  );
+}
+
+function findQuickEntryIndexByTempRule(
+  group: DraftGroupState,
+  sides: number,
+  rule: DraftTempRule,
+): number {
+  return group.dice.findIndex(
+    (die) =>
+      die.sides === sides &&
+      (die.modifier ?? 0) === 0 &&
+      (die.sign ?? 1) === 1 &&
+      !die.rule_id &&
+      sameTempRule(die.rule_temp, rule),
+  );
+}
+
 export function useQuickRollDraft({
   db,
   table,
@@ -452,6 +484,52 @@ export function useQuickRollDraft({
           }
           : group,
       ),
+    );
+
+    setDraftResults([]);
+  }
+
+  function adjustDraftDieQty(
+    groupId: string,
+    index: number,
+    delta: number,
+  ) {
+    setDraftGroups((prev) =>
+      prev.map((group) => {
+        if (group.id !== groupId) return group;
+
+        const targetDie = group.dice[index];
+        if (!targetDie) return group;
+
+        const nextQty = Math.max(1, (targetDie.qty ?? 1) + delta);
+
+        if (!isSplitEntryDie(targetDie)) {
+          return {
+            ...group,
+            dice: group.dice.map((die, i) =>
+              i === index
+                ? {
+                  ...die,
+                  qty: nextQty,
+                }
+                : die,
+            ),
+          };
+        }
+
+        const baseDie = {
+          ...targetDie,
+          qty: 1,
+        };
+
+        const nextDice = [...group.dice];
+        nextDice.splice(index, 1, ...Array.from({ length: nextQty }, () => ({ ...baseDie })));
+
+        return {
+          ...group,
+          dice: nextDice,
+        };
+      }),
     );
 
     setDraftResults([]);
@@ -891,6 +969,7 @@ export function useQuickRollDraft({
     removeDraftDie,
     updateDraftDieQty,
     updateDraftDieEntry,
+    adjustDraftDieQty,
     replaceDraftDieWithQtySplit,
     removeDraftGroup,
     clearDraft,
