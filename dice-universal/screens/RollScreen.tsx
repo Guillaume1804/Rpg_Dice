@@ -35,8 +35,12 @@ export default function RollScreen() {
   const [showDieRuleModal, setShowDieRuleModal] = useState(false);
 
   const [showQuickQtyModal, setShowQuickQtyModal] = useState(false);
-  const [editingQuickQtyGroupId, setEditingQuickQtyGroupId] = useState<string | null>(null);
-  const [editingQuickQtyIndex, setEditingQuickQtyIndex] = useState<number | null>(null);
+  const [editingQuickQtyGroupId, setEditingQuickQtyGroupId] = useState<
+    string | null
+  >(null);
+  const [editingQuickQtyIndex, setEditingQuickQtyIndex] = useState<
+    number | null
+  >(null);
   const [quickQtyValue, setQuickQtyValue] = useState("");
   const [quickEntryModifierValue, setQuickEntryModifierValue] = useState("0");
 
@@ -233,21 +237,30 @@ export default function RollScreen() {
     if (!Number.isFinite(qty) || qty <= 0) return;
     if (!Number.isFinite(modifier)) return;
 
-    const targetGroup = draftGroups.find((g) => g.id === editingQuickQtyGroupId);
+    const targetGroup = draftGroups.find(
+      (g) => g.id === editingQuickQtyGroupId,
+    );
     const targetDie = targetGroup?.dice[editingQuickQtyIndex];
 
     if (!targetDie) return;
 
-    const isEntryScopedDie = !!targetDie.rule_temp || !!targetDie.rule_id;
+    const resolvedRuleKind =
+      targetDie.rule_temp?.kind ??
+      (targetDie.rule_id
+        ? (availableRules.find((rule) => rule.id === targetDie.rule_id)?.kind ??
+          null)
+        : null);
 
-    if (isEntryScopedDie) {
+    const shouldSplit =
+      resolvedRuleKind === "single_check" || resolvedRuleKind === "d20";
+
+    if (shouldSplit) {
       replaceDraftDieWithQtySplit(
         editingQuickQtyGroupId,
         editingQuickQtyIndex,
         qty,
         modifier,
       );
-
     } else {
       updateDraftDieEntry(editingQuickQtyGroupId, editingQuickQtyIndex, {
         qty,
