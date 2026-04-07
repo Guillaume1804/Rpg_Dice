@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { View, Text, Pressable } from "react-native";
-import type { GroupRollResult, EntryRollResult } from "../../../core/roll/roll";
+import type { GroupRollResult } from "../../../core/roll/roll";
 import type { ProfileRow } from "../../../data/repositories/profilesRepo";
-import type { GroupRow, GroupDieRow } from "../../../data/repositories/groupsRepo";
+import type {
+  GroupRow,
+  GroupDieRow,
+} from "../../../data/repositories/groupsRepo";
 import { formatRuleResult } from "../helpers";
 
 type ProfileWithGroups = {
@@ -32,323 +35,6 @@ function getGroupResult(
   return results.find((result) => result.groupId === groupId) ?? null;
 }
 
-function renderSignedValues(values: number[]) {
-  if (values.length === 0) return "—";
-  return values.join(" + ");
-}
-
-function renderNaturalValues(values: number[]) {
-  if (values.length === 0) return "—";
-  return values.join(" + ");
-}
-
-function renderEntryResult(entry: EntryRollResult) {
-  if (!entry.eval_result) {
-    return (
-      <View
-        style={{
-          padding: 12,
-          borderWidth: 1,
-          borderRadius: 12,
-          gap: 4,
-        }}
-      >
-        <Text style={{ fontWeight: "800" }}>
-          {entry.qty}d{entry.sides}
-        </Text>
-
-        <Text style={{ fontSize: 22, fontWeight: "900" }}>
-          {entry.final_total}
-        </Text>
-
-        <Text style={{ opacity: 0.72 }}>
-          ({renderSignedValues(entry.signed_values)})
-          {entry.modifier
-            ? ` ${entry.modifier > 0 ? "+" : ""}${entry.modifier}`
-            : ""}
-        </Text>
-      </View>
-    );
-  }
-
-  const res = entry.eval_result;
-
-  if (res.kind === "single_check") {
-    return (
-      <View
-        style={{
-          padding: 12,
-          borderWidth: 1,
-          borderRadius: 12,
-          gap: 4,
-        }}
-      >
-        <Text style={{ fontWeight: "800" }}>
-          {entry.qty}d{entry.sides}
-        </Text>
-
-        <Text style={{ opacity: 0.72 }}>
-          Naturel : {res.natural}
-        </Text>
-
-        <Text style={{ fontWeight: "700" }}>
-          {formatRuleResult(res)}
-        </Text>
-
-        <Text style={{ fontSize: 22, fontWeight: "900" }}>
-          Final : {res.final}
-        </Text>
-
-        <Text style={{ opacity: 0.72 }}>
-          ({renderSignedValues(entry.signed_values)})
-          {entry.modifier
-            ? ` ${entry.modifier > 0 ? "+" : ""}${entry.modifier}`
-            : ""}
-        </Text>
-      </View>
-    );
-  }
-
-  if (res.kind === "highest_of_pool") {
-    return (
-      <View
-        style={{
-          padding: 12,
-          borderWidth: 1,
-          borderRadius: 12,
-          gap: 4,
-        }}
-      >
-        <Text style={{ fontWeight: "800" }}>
-          {entry.qty}d{entry.sides}
-        </Text>
-
-        <Text style={{ opacity: 0.72 }}>
-          Dés lancés : {renderNaturalValues(res.natural_values)}
-        </Text>
-
-        <Text style={{ opacity: 0.72 }}>
-          Meilleur gardé : {res.kept}
-        </Text>
-
-        <Text style={{ fontWeight: "700" }}>
-          {formatRuleResult(res)}
-        </Text>
-
-        <Text style={{ fontSize: 22, fontWeight: "900" }}>
-          Final : {res.final}
-        </Text>
-      </View>
-    );
-  }
-
-  if (res.kind === "banded_sum") {
-    return (
-      <View
-        style={{
-          padding: 12,
-          borderWidth: 1,
-          borderRadius: 12,
-          gap: 4,
-        }}
-      >
-        <Text style={{ fontWeight: "800" }}>
-          {entry.qty}d{entry.sides}
-        </Text>
-
-        <Text style={{ opacity: 0.72 }}>
-          Valeurs : {renderSignedValues(entry.signed_values)}
-        </Text>
-
-        <Text style={{ fontWeight: "700" }}>
-          {formatRuleResult(res)}
-        </Text>
-
-        <Text style={{ fontSize: 22, fontWeight: "900" }}>
-          Total : {res.total}
-        </Text>
-      </View>
-    );
-  }
-
-  if (res.kind === "table_lookup") {
-    return (
-      <View
-        style={{
-          padding: 12,
-          borderWidth: 1,
-          borderRadius: 12,
-          gap: 4,
-        }}
-      >
-        <Text style={{ fontWeight: "800" }}>
-          {entry.qty}d{entry.sides}
-        </Text>
-
-        <Text style={{ opacity: 0.72 }}>
-          Valeur : {res.value}
-        </Text>
-
-        <Text style={{ fontWeight: "700" }}>{res.label}</Text>
-      </View>
-    );
-  }
-
-  if (res.kind === "pipeline") {
-    return (
-      <View
-        style={{
-          padding: 12,
-          borderWidth: 1,
-          borderRadius: 12,
-          gap: 4,
-        }}
-      >
-        <Text style={{ fontWeight: "800" }}>
-          {entry.qty}d{entry.sides}
-        </Text>
-
-        <Text style={{ opacity: 0.72 }}>
-          Dés lancés : {renderNaturalValues(res.values)}
-        </Text>
-
-        <Text style={{ opacity: 0.72 }}>
-          Conservés : {renderNaturalValues(res.kept)}
-        </Text>
-
-        <Text style={{ fontWeight: "700" }}>
-          {formatRuleResult(res)}
-        </Text>
-
-        {res.final != null ? (
-          <Text style={{ fontSize: 22, fontWeight: "900" }}>
-            Final : {res.final}
-          </Text>
-        ) : null}
-      </View>
-    );
-  }
-
-  return (
-    <View
-      style={{
-        padding: 12,
-        borderWidth: 1,
-        borderRadius: 12,
-        gap: 4,
-      }}
-    >
-      <Text style={{ fontWeight: "800" }}>
-        {entry.qty}d{entry.sides}
-      </Text>
-
-      <Text style={{ fontWeight: "700" }}>
-        {formatRuleResult(res)}
-      </Text>
-    </View>
-  );
-}
-
-function renderGroupResult(result: GroupRollResult) {
-  if (result.group_eval_result) {
-    const res = result.group_eval_result;
-
-    if (res.kind === "success_pool") {
-      return (
-        <View
-          style={{
-            padding: 12,
-            borderWidth: 1,
-            borderRadius: 12,
-            gap: 6,
-          }}
-        >
-          <Text style={{ fontWeight: "800" }}>Résultat de groupe</Text>
-
-          <Text style={{ fontWeight: "700" }}>
-            {formatRuleResult(res)}
-          </Text>
-
-          <Text style={{ opacity: 0.72 }}>
-            Valeurs : {result.entries
-              .flatMap((entry) => entry.natural_values)
-              .join(" + ")}
-          </Text>
-        </View>
-      );
-    }
-
-    if (res.kind === "pipeline") {
-      return (
-        <View
-          style={{
-            padding: 12,
-            borderWidth: 1,
-            borderRadius: 12,
-            gap: 6,
-          }}
-        >
-          <Text style={{ fontWeight: "800" }}>Résultat de groupe</Text>
-
-          <Text style={{ fontWeight: "700" }}>
-            {formatRuleResult(res)}
-          </Text>
-
-          <Text style={{ opacity: 0.72 }}>
-            Dés lancés : {renderNaturalValues(res.values)}
-          </Text>
-
-          <Text style={{ opacity: 0.72 }}>
-            Conservés : {renderNaturalValues(res.kept)}
-          </Text>
-
-          {res.final != null ? (
-            <Text style={{ fontSize: 22, fontWeight: "900" }}>
-              Final : {res.final}
-            </Text>
-          ) : null}
-        </View>
-      );
-    }
-
-    return (
-      <View
-        style={{
-          padding: 12,
-          borderWidth: 1,
-          borderRadius: 12,
-          gap: 6,
-        }}
-      >
-        <Text style={{ fontWeight: "800" }}>Résultat de groupe</Text>
-        <Text style={{ fontWeight: "700" }}>
-          {formatRuleResult(res)}
-        </Text>
-      </View>
-    );
-  }
-
-  return (
-    <View
-      style={{
-        padding: 12,
-        borderWidth: 1,
-        borderRadius: 12,
-        gap: 6,
-      }}
-    >
-      <Text style={{ fontWeight: "800" }}>Résultat global</Text>
-
-      <Text style={{ fontSize: 32, fontWeight: "900" }}>
-        {result.total}
-      </Text>
-
-      <Text style={{ opacity: 0.72 }}>
-        Valeurs : {result.entries.flatMap((entry) => entry.signed_values).join(" + ")}
-      </Text>
-    </View>
-  );
-}
 
 export function TableActionSection({
   profiles,
@@ -361,10 +47,14 @@ export function TableActionSection({
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 
   const selectedProfile =
-    profiles.find((p) => p.profile.id === selectedProfileId) ?? profiles[0] ?? null;
+    profiles.find((p) => p.profile.id === selectedProfileId) ??
+    profiles[0] ??
+    null;
 
   const selectedAction =
-    selectedProfile?.groups.find((entry) => entry.group.id === selectedGroupId) ?? null;
+    selectedProfile?.groups.find(
+      (entry) => entry.group.id === selectedGroupId,
+    ) ?? null;
 
   const selectedActionResult = useMemo(() => {
     if (!selectedGroupId) return null;
@@ -490,9 +180,7 @@ export function TableActionSection({
               Profil — {selectedProfile.profile.name}
             </Text>
 
-            <Text style={{ opacity: 0.72 }}>
-              Choisis une action à lancer.
-            </Text>
+            <Text style={{ opacity: 0.72 }}>Choisis une action à lancer.</Text>
           </View>
 
           <Pressable
@@ -530,7 +218,8 @@ export function TableActionSection({
                 </Text>
 
                 <Text style={{ opacity: 0.72 }}>
-                  {dice.map((die) => `${die.qty}d${die.sides}`).join(" + ") || "Aucun dé"}
+                  {dice.map((die) => `${die.qty}d${die.sides}`).join(" + ") ||
+                    "Aucun dé"}
                 </Text>
               </Pressable>
             ))}
@@ -569,9 +258,7 @@ export function TableActionSection({
               {selectedProfile.profile.name} — {group.name}
             </Text>
 
-            <Text style={{ opacity: 0.72 }}>
-              Lance cette action.
-            </Text>
+            <Text style={{ opacity: 0.72 }}>Lance cette action.</Text>
           </View>
 
           <Pressable
@@ -603,7 +290,9 @@ export function TableActionSection({
             dice.map((die, index) => (
               <Text key={`${group.id}-${index}`} style={{ opacity: 0.72 }}>
                 {die.qty}d{die.sides}
-                {die.modifier ? ` ${die.modifier > 0 ? "+" : ""}${die.modifier}` : ""}
+                {die.modifier
+                  ? ` ${die.modifier > 0 ? "+" : ""}${die.modifier}`
+                  : ""}
               </Text>
             ))
           )}
@@ -622,33 +311,104 @@ export function TableActionSection({
           <Text style={{ fontWeight: "800" }}>Lancer</Text>
         </Pressable>
 
-        {!selectedActionResult ? (
-          <View
-            style={{
-              padding: 12,
-              borderWidth: 1,
-              borderRadius: 12,
-              gap: 6,
-            }}
-          >
-            <Text style={{ fontWeight: "800" }}>Résultat</Text>
+        <View
+          style={{
+            padding: 12,
+            borderWidth: 1,
+            borderRadius: 12,
+            gap: 8,
+          }}
+        >
+          <Text style={{ fontWeight: "800" }}>Résultat</Text>
+
+          {!selectedActionResult ? (
             <Text style={{ opacity: 0.72 }}>
               Lance l’action pour afficher son résultat ici.
             </Text>
-          </View>
-        ) : (
-          <>
-            {renderGroupResult(selectedActionResult)}
+          ) : (
+            <>
+              {selectedActionResult.group_eval_result ? (
+                <View
+                  style={{
+                    padding: 10,
+                    borderWidth: 1,
+                    borderRadius: 10,
+                    gap: 6,
+                  }}
+                >
+                  <Text style={{ fontWeight: "800" }}>Résultat de groupe</Text>
 
-            <View style={{ gap: 8 }}>
-              {selectedActionResult.entries.map((entry) => (
-                <View key={entry.entryId}>
-                  {renderEntryResult(entry)}
+                  <Text style={{ fontWeight: "700" }}>
+                    {formatRuleResult(selectedActionResult.group_eval_result)}
+                  </Text>
+
+                  <Text style={{ opacity: 0.72 }}>
+                    Valeurs :{" "}
+                    {selectedActionResult.entries
+                      .flatMap((entry) => entry.natural_values)
+                      .join(" + ")}
+                  </Text>
+
+                  <Text style={{ opacity: 0.72 }}>
+                    Total du groupe : {selectedActionResult.total}
+                  </Text>
                 </View>
-              ))}
-            </View>
-          </>
-        )}
+              ) : null}
+
+              <View style={{ gap: 8 }}>
+                {selectedActionResult.entries.map((entry) => (
+                  <View
+                    key={entry.entryId}
+                    style={{
+                      padding: 10,
+                      borderWidth: 1,
+                      borderRadius: 10,
+                      gap: 4,
+                    }}
+                  >
+                    <Text style={{ fontWeight: "800" }}>
+                      {entry.qty}d{entry.sides}
+                      {entry.modifier
+                        ? ` ${entry.modifier > 0 ? "+" : ""}${entry.modifier}`
+                        : ""}
+                    </Text>
+
+                    <Text style={{ opacity: 0.72 }}>
+                      Naturel : {entry.natural_values.join(" + ")}
+                    </Text>
+
+                    <Text style={{ opacity: 0.72 }}>
+                      Signé : {entry.signed_values.join(" + ")}
+                    </Text>
+
+                    <Text style={{ opacity: 0.72 }}>
+                      Total entrée : {entry.final_total}
+                    </Text>
+
+                    {entry.eval_result ? (
+                      <Text style={{ fontWeight: "700" }}>
+                        {formatRuleResult(entry.eval_result)}
+                      </Text>
+                    ) : null}
+                  </View>
+                ))}
+              </View>
+
+              {!selectedActionResult.group_eval_result ? (
+                <View
+                  style={{
+                    paddingTop: 8,
+                    borderTopWidth: 1,
+                  }}
+                >
+                  <Text style={{ fontSize: 28, fontWeight: "900" }}>
+                    Total : {selectedActionResult.total}
+                  </Text>
+                </View>
+              ) : null}
+            </>
+          )}
+        </View>
       </View>
     );
   }

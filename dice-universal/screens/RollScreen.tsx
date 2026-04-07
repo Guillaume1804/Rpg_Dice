@@ -120,10 +120,10 @@ export default function RollScreen() {
     getNonEmptyDraftGroups,
 
     addDraftGroup,
-    addDieToDraft,
+    // addDieToDraft,
     addQuickStandardDie,
     addQuickPresetDie,
-    updateDraftDieQty,
+    // updateDraftDieQty,
     updateDraftDieEntry,
     adjustDraftDieQty,
     replaceDraftDieWithQtySplit,
@@ -145,12 +145,12 @@ export default function RollScreen() {
     rollSingleDraftGroup,
     clearDraftGroup,
 
-    applyTempRuleToSides,
-    clearTempRuleFromSides,
-    clearAllTempRules,
+    // applyTempRuleToSides,
+    // clearTempRuleFromSides,
+    // clearAllTempRules,
 
-    applyTempRuleToSelectedGroup,
-    clearTempRuleFromSelectedGroup,
+    // applyTempRuleToSelectedGroup,
+    // clearTempRuleFromSelectedGroup,
   } = useQuickRollDraft({
     db,
     table,

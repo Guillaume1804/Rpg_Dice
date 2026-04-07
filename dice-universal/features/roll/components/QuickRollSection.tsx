@@ -1,4 +1,3 @@
-// QuickRollSection.tsx
 import { useMemo } from "react";
 import { View, Text, Pressable } from "react-native";
 import type { GroupRollResult } from "../../../core/roll/roll";
@@ -69,10 +68,6 @@ type QuickRollSectionProps = {
   availableRules: RuleRow[];
 };
 
-function getGroupDisplayValues(result: GroupRollResult): number[] {
-  return result.entries.flatMap((entry) => entry.signed_values);
-}
-
 function getDisplayedRuleName(
   die: DraftDie,
   group: DraftGroupState,
@@ -80,7 +75,10 @@ function getDisplayedRuleName(
 ) {
   if (die.rule_temp?.name) return die.rule_temp.name;
   if (group.rule_temp?.name) return group.rule_temp.name;
-  return getRuleNameFromId(die.rule_id ?? group.rule_id ?? null, availableRules);
+  return getRuleNameFromId(
+    die.rule_id ?? group.rule_id ?? null,
+    availableRules,
+  );
 }
 
 function isStandardQuickGroup(group: DraftGroupState) {
@@ -94,12 +92,215 @@ function getResultForGroup(
   return draftResults.find((result) => result.groupId === groupId) ?? null;
 }
 
-function getEntryResultForIndex(
-  result: GroupRollResult | null,
-  index: number,
-) {
+function getEntryResultForIndex(result: GroupRollResult | null, index: number) {
   if (!result) return null;
   return result.entries[index] ?? null;
+}
+
+function formatValueList(values: number[]) {
+  if (!values || values.length === 0) return "—";
+  return values.join(" + ");
+}
+
+function renderEntryRuleDetails(
+  entryResult: GroupRollResult["entries"][number],
+) {
+  const res = entryResult.eval_result;
+
+  if (!res) {
+    return (
+      <>
+        <Text style={{ fontSize: 20, fontWeight: "800" }}>
+          {entryResult.final_total}
+        </Text>
+
+        <Text style={{ opacity: 0.72 }}>
+          ({formatValueList(entryResult.signed_values)})
+        </Text>
+      </>
+    );
+  }
+
+  if (res.kind === "sum") {
+    return (
+      <>
+        <Text style={{ fontSize: 20, fontWeight: "800" }}>{res.total}</Text>
+
+        <Text style={{ opacity: 0.72 }}>
+          ({formatValueList(entryResult.signed_values)})
+        </Text>
+      </>
+    );
+  }
+
+  if (res.kind === "single_check") {
+    return (
+      <>
+        <Text style={{ opacity: 0.72 }}>Naturel : {res.natural}</Text>
+
+        <Text style={{ marginTop: 2, fontWeight: "700" }}>
+          {formatRuleResult(res)}
+        </Text>
+
+        <Text style={{ fontSize: 20, fontWeight: "800", marginTop: 4 }}>
+          Final : {res.final}
+        </Text>
+
+        <Text style={{ opacity: 0.72 }}>
+          ({formatValueList(entryResult.signed_values)})
+        </Text>
+      </>
+    );
+  }
+
+  if (res.kind === "highest_of_pool") {
+    return (
+      <>
+        <Text style={{ opacity: 0.72 }}>
+          Jets : {formatValueList(res.natural_values)}
+        </Text>
+
+        <Text style={{ opacity: 0.72 }}>Meilleur : {res.kept}</Text>
+
+        <Text style={{ marginTop: 2, fontWeight: "700" }}>
+          {formatRuleResult(res)}
+        </Text>
+
+        <Text style={{ fontSize: 20, fontWeight: "800", marginTop: 4 }}>
+          Final : {res.final}
+        </Text>
+      </>
+    );
+  }
+
+  if (res.kind === "banded_sum") {
+    return (
+      <>
+        <Text style={{ opacity: 0.72 }}>
+          Valeurs : {formatValueList(entryResult.natural_values)}
+        </Text>
+
+        <Text style={{ marginTop: 2, fontWeight: "700" }}>
+          {formatRuleResult(res)}
+        </Text>
+
+        <Text style={{ fontSize: 20, fontWeight: "800", marginTop: 4 }}>
+          Total : {res.total}
+        </Text>
+      </>
+    );
+  }
+
+  if (res.kind === "table_lookup") {
+    return (
+      <>
+        <Text style={{ opacity: 0.72 }}>Valeur : {res.value}</Text>
+
+        <Text style={{ marginTop: 2, fontWeight: "700" }}>{res.label}</Text>
+      </>
+    );
+  }
+
+  if (res.kind === "pipeline") {
+    return (
+      <>
+        <Text style={{ opacity: 0.72 }}>
+          Valeurs : {formatValueList(res.values)}
+        </Text>
+
+        <Text style={{ opacity: 0.72 }}>
+          Conservés : {formatValueList(res.kept)}
+        </Text>
+
+        <Text style={{ marginTop: 2, fontWeight: "700" }}>
+          {formatRuleResult(res)}
+        </Text>
+
+        {res.final != null ? (
+          <Text style={{ fontSize: 20, fontWeight: "800", marginTop: 4 }}>
+            Final : {res.final}
+          </Text>
+        ) : null}
+      </>
+    );
+  }
+
+  if (res.kind === "success_pool") {
+    return (
+      <>
+        <Text style={{ opacity: 0.72 }}>
+          Jets : {formatValueList(entryResult.natural_values)}
+        </Text>
+
+        <Text style={{ marginTop: 2, fontWeight: "700" }}>
+          {formatRuleResult(res)}
+        </Text>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Text style={{ fontSize: 20, fontWeight: "800" }}>
+        {entryResult.final_total}
+      </Text>
+
+      <Text style={{ opacity: 0.72 }}>
+        ({formatValueList(entryResult.signed_values)})
+      </Text>
+    </>
+  );
+}
+
+function renderGroupRuleDetails(result: GroupRollResult) {
+  const res = result.group_eval_result;
+  if (!res) return null;
+
+  if (res.kind === "success_pool") {
+    return (
+      <>
+        <View
+          style={{
+            paddingVertical: 8,
+            paddingHorizontal: 10,
+            borderWidth: 1,
+            borderRadius: 10,
+            alignSelf: "flex-start",
+          }}
+        >
+          <Text style={{ fontWeight: "700" }}>{formatRuleResult(res)}</Text>
+        </View>
+
+        <Text style={{ opacity: 0.72, marginTop: 6 }}>
+          Jets :{" "}
+          {result.entries.flatMap((entry) => entry.natural_values).join(" + ")}
+        </Text>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <View
+        style={{
+          paddingVertical: 8,
+          paddingHorizontal: 10,
+          borderWidth: 1,
+          borderRadius: 10,
+          alignSelf: "flex-start",
+        }}
+      >
+        <Text style={{ fontWeight: "700" }}>{formatRuleResult(res)}</Text>
+      </View>
+
+      <Text style={{ opacity: 0.72, marginTop: 6 }}>
+        Valeurs :{" "}
+        {result.entries.flatMap((entry) => entry.natural_values).join(" + ")}
+      </Text>
+
+      <Text style={{ opacity: 0.72 }}>Total : {result.total}</Text>
+    </>
+  );
 }
 
 export function QuickRollSection({
@@ -230,11 +431,16 @@ export function QuickRollSection({
             <Text style={{ fontSize: 16, fontWeight: "800" }}>Jet libre</Text>
 
             {standardQuickGroup.dice.length === 0 ? (
-              <Text style={{ opacity: 0.72 }}>Aucun dé standard sélectionné.</Text>
+              <Text style={{ opacity: 0.72 }}>
+                Aucun dé standard sélectionné.
+              </Text>
             ) : (
               <View style={{ gap: 8 }}>
                 {standardQuickGroup.dice.map((die, index) => {
-                  const entryResult = getEntryResultForIndex(standardQuickGroupResult, index);
+                  const entryResult = getEntryResultForIndex(
+                    standardQuickGroupResult,
+                    index,
+                  );
 
                   return (
                     <View
@@ -275,7 +481,13 @@ export function QuickRollSection({
 
                         <View style={{ flexDirection: "row", gap: 8 }}>
                           <Pressable
-                            onPress={() => onAdjustQuickDieQty(standardQuickGroup.id, index, -1)}
+                            onPress={() =>
+                              onAdjustQuickDieQty(
+                                standardQuickGroup.id,
+                                index,
+                                -1,
+                              )
+                            }
                             style={{
                               width: 32,
                               height: 32,
@@ -289,7 +501,13 @@ export function QuickRollSection({
                           </Pressable>
 
                           <Pressable
-                            onPress={() => onAdjustQuickDieQty(standardQuickGroup.id, index, 1)}
+                            onPress={() =>
+                              onAdjustQuickDieQty(
+                                standardQuickGroup.id,
+                                index,
+                                1,
+                              )
+                            }
                             style={{
                               width: 32,
                               height: 32,
@@ -306,16 +524,7 @@ export function QuickRollSection({
 
                       {entryResult ? (
                         <View style={{ paddingTop: 6, borderTopWidth: 1 }}>
-                          <Text style={{ fontSize: 20, fontWeight: "800" }}>
-                            {entryResult.final_total}
-                          </Text>
-
-                          <Text style={{ opacity: 0.72 }}>
-                            ({entryResult.signed_values.join(" + ")})
-                            {die.modifier
-                              ? ` ${die.modifier > 0 ? "+" : ""}${die.modifier}`
-                              : ""}
-                          </Text>
+                          {renderEntryRuleDetails(entryResult)}
                         </View>
                       ) : null}
                     </View>
@@ -368,7 +577,9 @@ export function QuickRollSection({
               gap: 10,
             }}
           >
-            <Text style={{ fontSize: 16, fontWeight: "800" }}>{group.name}</Text>
+            <Text style={{ fontSize: 16, fontWeight: "800" }}>
+              {group.name}
+            </Text>
 
             {group.dice.map((die, index) => {
               const groupResult = getResultForGroup(group.id, draftResults);
@@ -394,7 +605,12 @@ export function QuickRollSection({
                   >
                     <Pressable
                       onPress={() =>
-                        onEditQuickDieQty(group.id, index, die.qty, die.modifier ?? 0)
+                        onEditQuickDieQty(
+                          group.id,
+                          index,
+                          die.qty,
+                          die.modifier ?? 0,
+                        )
                       }
                       style={{ flex: 1 }}
                     >
@@ -440,61 +656,11 @@ export function QuickRollSection({
 
                   {groupResult?.group_eval_result && index === 0 ? (
                     <View style={{ paddingTop: 6, borderTopWidth: 1 }}>
-                      <View
-                        style={{
-                          paddingVertical: 8,
-                          paddingHorizontal: 10,
-                          borderWidth: 1,
-                          borderRadius: 10,
-                          alignSelf: "flex-start",
-                        }}
-                      >
-                        <Text style={{ fontWeight: "700" }}>
-                          {formatRuleResult(groupResult.group_eval_result)}
-                        </Text>
-                      </View>
-
-                      <Text style={{ opacity: 0.72, marginTop: 6 }}>
-                        Valeurs : ({getGroupDisplayValues(groupResult).join(" + ")})
-                      </Text>
+                      {renderGroupRuleDetails(groupResult)}
                     </View>
                   ) : entryResult ? (
                     <View style={{ paddingTop: 6, borderTopWidth: 1 }}>
-                      {entryResult.eval_result ? (
-                        <>
-                          <Text style={{ opacity: 0.72 }}>
-                            Naturel : {entryResult.natural_values.join(" + ")}
-                          </Text>
-
-                          <Text style={{ marginTop: 2, fontWeight: "700" }}>
-                            {formatRuleResult(entryResult.eval_result)}
-                          </Text>
-
-                          <Text style={{ fontSize: 20, fontWeight: "800", marginTop: 4 }}>
-                            Final : {entryResult.final_total}
-                          </Text>
-
-                          <Text style={{ opacity: 0.72 }}>
-                            ({entryResult.signed_values.join(" + ")})
-                            {die.modifier
-                              ? ` ${die.modifier > 0 ? "+" : ""}${die.modifier}`
-                              : ""}
-                          </Text>
-                        </>
-                      ) : (
-                        <>
-                          <Text style={{ fontSize: 20, fontWeight: "800" }}>
-                            {entryResult.final_total}
-                          </Text>
-
-                          <Text style={{ opacity: 0.72 }}>
-                            ({entryResult.signed_values.join(" + ")})
-                            {die.modifier
-                              ? ` ${die.modifier > 0 ? "+" : ""}${die.modifier}`
-                              : ""}
-                          </Text>
-                        </>
-                      )}
+                      {renderEntryRuleDetails(entryResult)}
                     </View>
                   ) : null}
                 </View>
@@ -687,7 +853,8 @@ export function QuickRollSection({
                             </Text>
 
                             <Text style={{ opacity: 0.72 }}>
-                              Règle : {getDisplayedRuleName(die, group, availableRules)}
+                              Règle :{" "}
+                              {getDisplayedRuleName(die, group, availableRules)}
                             </Text>
 
                             <View

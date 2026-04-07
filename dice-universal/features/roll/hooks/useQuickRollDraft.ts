@@ -99,31 +99,31 @@ function getDraftDieRuleKind(
   return null;
 }
 
-function findQuickGroupByTempRule(
-  groups: DraftGroupState[],
-  rule: DraftTempRule,
-): DraftGroupState | null {
-  return (
-    groups.find(
-      (group) => !!group.rule_temp && sameTempRule(group.rule_temp, rule),
-    ) ?? null
-  );
-}
+// function findQuickGroupByTempRule(
+//   groups: DraftGroupState[],
+//   rule: DraftTempRule,
+// ): DraftGroupState | null {
+//   return (
+//     groups.find(
+//       (group) => !!group.rule_temp && sameTempRule(group.rule_temp, rule),
+//     ) ?? null
+//   );
+// }
 
-function findQuickEntryIndexByTempRule(
-  group: DraftGroupState,
-  sides: number,
-  rule: DraftTempRule,
-): number {
-  return group.dice.findIndex(
-    (die) =>
-      die.sides === sides &&
-      (die.modifier ?? 0) === 0 &&
-      (die.sign ?? 1) === 1 &&
-      !die.rule_id &&
-      sameTempRule(die.rule_temp, rule),
-  );
-}
+// function findQuickEntryIndexByTempRule(
+//   group: DraftGroupState,
+//   sides: number,
+//   rule: DraftTempRule,
+// ): number {
+//   return group.dice.findIndex(
+//     (die) =>
+//       die.sides === sides &&
+//       (die.modifier ?? 0) === 0 &&
+//       (die.sign ?? 1) === 1 &&
+//       !die.rule_id &&
+//       sameTempRule(die.rule_temp, rule),
+//   );
+// }
 
 export function useQuickRollDraft({
   db,
