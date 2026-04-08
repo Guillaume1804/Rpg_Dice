@@ -3,7 +3,8 @@ import { newId } from "../../core/types/ids";
 
 export type GroupRow = {
   id: string;
-  profile_id: string;
+  table_id: string;
+  profile_id: string | null;
   name: string;
   sort_order: number;
   rule_id: string | null;
@@ -28,7 +29,10 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-async function assertTableIsNotSystemFromGroup(db: Db, groupId: string): Promise<void> {
+async function assertTableIsNotSystemFromGroup(
+  db: Db,
+  groupId: string,
+): Promise<void> {
   const rows = await db.getAllAsync<{ is_system: number }>(
     `
     SELECT t.is_system
@@ -38,7 +42,7 @@ async function assertTableIsNotSystemFromGroup(db: Db, groupId: string): Promise
     WHERE g.id = ?
     LIMIT 1;
     `,
-    [groupId]
+    [groupId],
   );
 
   if (rows.length && rows[0].is_system === 1) {
@@ -46,7 +50,32 @@ async function assertTableIsNotSystemFromGroup(db: Db, groupId: string): Promise
   }
 }
 
-async function assertTableIsNotSystemFromDie(db: Db, dieId: string): Promise<void> {
+async function getTableIdFromProfile(
+  db: Db,
+  profileId: string,
+): Promise<string> {
+  const rows = await db.getAllAsync<{ table_id: string }>(
+    `
+    SELECT table_id
+    FROM profiles
+    WHERE id = ?
+    LIMIT 1;
+    `,
+    [profileId],
+  );
+
+  const tableId = rows[0]?.table_id;
+  if (!tableId) {
+    throw new Error("Profil introuvable ou sans table liée");
+  }
+
+  return tableId;
+}
+
+async function assertTableIsNotSystemFromDie(
+  db: Db,
+  dieId: string,
+): Promise<void> {
   const rows = await db.getAllAsync<{ is_system: number }>(
     `
     SELECT t.is_system
@@ -57,7 +86,7 @@ async function assertTableIsNotSystemFromDie(db: Db, dieId: string): Promise<voi
     WHERE gd.id = ?
     LIMIT 1;
     `,
-    [dieId]
+    [dieId],
   );
 
   if (rows.length && rows[0].is_system === 1) {
@@ -65,7 +94,10 @@ async function assertTableIsNotSystemFromDie(db: Db, dieId: string): Promise<voi
   }
 }
 
-async function assertTableIsNotSystemFromProfile(db: Db, profileId: string): Promise<void> {
+async function assertTableIsNotSystemFromProfile(
+  db: Db,
+  profileId: string,
+): Promise<void> {
   const rows = await db.getAllAsync<{ is_system: number }>(
     `
     SELECT t.is_system
@@ -74,7 +106,7 @@ async function assertTableIsNotSystemFromProfile(db: Db, profileId: string): Pro
     WHERE p.id = ?
     LIMIT 1;
     `,
-    [profileId]
+    [profileId],
   );
 
   if (rows.length && rows[0].is_system === 1) {
@@ -82,7 +114,10 @@ async function assertTableIsNotSystemFromProfile(db: Db, profileId: string): Pro
   }
 }
 
-export async function listGroupsByProfileId(db: Db, profileId: string): Promise<GroupRow[]> {
+export async function listGroupsByProfileId(
+  db: Db,
+  profileId: string,
+): Promise<GroupRow[]> {
   return db.getAllAsync<GroupRow>(
     `
     SELECT *
@@ -90,11 +125,14 @@ export async function listGroupsByProfileId(db: Db, profileId: string): Promise<
     WHERE profile_id = ?
     ORDER BY sort_order ASC, created_at ASC;
     `,
-    [profileId]
+    [profileId],
   );
 }
 
-export async function getGroupById(db: Db, groupId: string): Promise<GroupRow | null> {
+export async function getGroupById(
+  db: Db,
+  groupId: string,
+): Promise<GroupRow | null> {
   const rows = await db.getAllAsync<GroupRow>(
     `
     SELECT *
@@ -102,13 +140,16 @@ export async function getGroupById(db: Db, groupId: string): Promise<GroupRow | 
     WHERE id = ?
     LIMIT 1;
     `,
-    [groupId]
+    [groupId],
   );
 
   return rows.length ? rows[0] : null;
 }
 
-export async function listDiceByGroupId(db: Db, groupId: string): Promise<GroupDieRow[]> {
+export async function listDiceByGroupId(
+  db: Db,
+  groupId: string,
+): Promise<GroupDieRow[]> {
   return db.getAllAsync<GroupDieRow>(
     `
     SELECT *
@@ -116,7 +157,7 @@ export async function listDiceByGroupId(db: Db, groupId: string): Promise<GroupD
     WHERE group_id = ?
     ORDER BY sort_order ASC, created_at ASC;
     `,
-    [groupId]
+    [groupId],
   );
 }
 
@@ -126,10 +167,11 @@ export async function createGroup(
     profileId: string;
     name: string;
     rule_id?: string | null;
-  }
+  },
 ): Promise<string> {
   await assertTableIsNotSystemFromProfile(db, params.profileId);
 
+  const tableId = await getTableIdFromProfile(db, params.profileId);
   const createdAt = nowIso();
   const id = await newId();
 
@@ -139,7 +181,7 @@ export async function createGroup(
     FROM groups
     WHERE profile_id = ?;
     `,
-    [params.profileId]
+    [params.profileId],
   );
 
   const nextSort = (rows[0]?.max_sort ?? -1) + 1;
@@ -148,6 +190,7 @@ export async function createGroup(
     `
     INSERT INTO groups(
       id,
+      table_id,
       profile_id,
       name,
       sort_order,
@@ -155,17 +198,18 @@ export async function createGroup(
       created_at,
       updated_at
     )
-    VALUES(?, ?, ?, ?, ?, ?, ?);
+    VALUES(?, ?, ?, ?, ?, ?, ?, ?);
     `,
     [
       id,
+      tableId,
       params.profileId,
       params.name,
       nextSort,
       params.rule_id ?? null,
       createdAt,
       createdAt,
-    ]
+    ],
   );
 
   return id;
@@ -185,7 +229,7 @@ export async function createGroupDie(
     modifier?: number;
     sign?: number;
     rule_id?: string | null;
-  }
+  },
 ): Promise<string> {
   await assertTableIsNotSystemFromGroup(db, params.groupId);
 
@@ -198,7 +242,7 @@ export async function createGroupDie(
     FROM group_dice
     WHERE group_id = ?;
     `,
-    [params.groupId]
+    [params.groupId],
   );
 
   const nextSort = (rows[0]?.max_sort ?? -1) + 1;
@@ -230,7 +274,7 @@ export async function createGroupDie(
       params.rule_id ?? null,
       createdAt,
       createdAt,
-    ]
+    ],
   );
 
   return id;
@@ -244,7 +288,7 @@ export async function deleteGroupDie(db: Db, dieId: string): Promise<void> {
 export async function updateGroupDieRuleId(
   db: Db,
   dieId: string,
-  ruleId: string | null
+  ruleId: string | null,
 ): Promise<void> {
   await assertTableIsNotSystemFromDie(db, dieId);
 
@@ -256,7 +300,7 @@ export async function updateGroupDieRuleId(
     SET rule_id = ?, updated_at = ?
     WHERE id = ?;
     `,
-    [ruleId, now, dieId]
+    [ruleId, now, dieId],
   );
 }
 
@@ -269,7 +313,7 @@ export async function updateGroupDie(
     modifier?: number;
     sign?: number;
     rule_id?: string | null;
-  }
+  },
 ): Promise<void> {
   await assertTableIsNotSystemFromDie(db, dieId);
 
@@ -295,14 +339,14 @@ export async function updateGroupDie(
       params.rule_id ?? null,
       now,
       dieId,
-    ]
+    ],
   );
 }
 
 export async function updateGroupRuleId(
   db: Db,
   groupId: string,
-  ruleId: string | null
+  ruleId: string | null,
 ): Promise<void> {
   await assertTableIsNotSystemFromGroup(db, groupId);
 
@@ -314,14 +358,14 @@ export async function updateGroupRuleId(
     SET rule_id = ?, updated_at = ?
     WHERE id = ?;
     `,
-    [ruleId, now, groupId]
+    [ruleId, now, groupId],
   );
 }
 
 export async function updateGroupName(
   db: Db,
   groupId: string,
-  name: string
+  name: string,
 ): Promise<void> {
   await assertTableIsNotSystemFromGroup(db, groupId);
 
@@ -333,14 +377,14 @@ export async function updateGroupName(
     SET name = ?, updated_at = ?
     WHERE id = ?;
     `,
-    [name, now, groupId]
+    [name, now, groupId],
   );
 }
 
 export async function updateGroupOrder(
   db: Db,
   groupId: string,
-  sortOrder: number
+  sortOrder: number,
 ): Promise<void> {
   await assertTableIsNotSystemFromGroup(db, groupId);
 
@@ -352,6 +396,6 @@ export async function updateGroupOrder(
     SET sort_order = ?, updated_at = ?
     WHERE id = ?;
     `,
-    [sortOrder, now, groupId]
+    [sortOrder, now, groupId],
   );
 }

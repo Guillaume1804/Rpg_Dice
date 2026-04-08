@@ -1,6 +1,9 @@
 import { View, Text, Pressable } from "react-native";
 import type { ProfileRow } from "../../../data/repositories/profilesRepo";
-import type { GroupRow, GroupDieRow } from "../../../data/repositories/groupsRepo";
+import type {
+  GroupRow,
+  GroupDieRow,
+} from "../../../data/repositories/groupsRepo";
 
 type GroupWithDice = {
   group: GroupRow;
@@ -27,6 +30,16 @@ type Props = {
   onDeleteDie: (die: GroupDieRow) => void;
 };
 
+function formatDieLine(die: GroupDieRow) {
+  const signPrefix = die.sign === -1 ? "-" : "";
+  const modifier =
+    die.modifier && die.modifier !== 0
+      ? ` ${die.modifier > 0 ? "+" : ""}${die.modifier}`
+      : "";
+
+  return `${signPrefix}${die.qty}d${die.sides}${modifier}`;
+}
+
 export function TableProfilesSection({
   profiles,
   isSystem,
@@ -42,26 +55,52 @@ export function TableProfilesSection({
   onDeleteDie,
 }: Props) {
   return (
-    <View style={{ padding: 12, borderWidth: 1, borderRadius: 12 }}>
-      <Text style={{ fontWeight: "700" }}>Profils</Text>
+    <View
+      style={{
+        padding: 14,
+        borderWidth: 1,
+        borderRadius: 14,
+        gap: 12,
+      }}
+    >
+      <Text style={{ fontSize: 16, fontWeight: "800" }}>Profils</Text>
 
       {profiles.length === 0 ? (
         <Text style={{ marginTop: 8, opacity: 0.7 }}>Aucun profil.</Text>
       ) : (
         profiles.map(({ profile, groups }) => (
-          <View key={profile.id} style={{ marginTop: 16, paddingTop: 12, borderTopWidth: 1 }}>
-            <Text style={{ fontSize: 17, fontWeight: "800" }}>{profile.name}</Text>
+          <View
+            key={profile.id}
+            style={{
+              padding: 14,
+              borderWidth: 1,
+              borderRadius: 14,
+              gap: 10,
+            }}
+          >
+            <Text style={{ fontSize: 17, fontWeight: "800" }}>
+              {profile.name}
+            </Text>
+
+            <Text style={{ opacity: 0.72 }}>
+              {groups.length} action{groups.length > 1 ? "s" : ""}
+            </Text>
 
             {!isSystem ? (
-              <View style={{ flexDirection: "row", marginTop: 8, flexWrap: "wrap" }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  flexWrap: "wrap",
+                  gap: 8,
+                }}
+              >
                 <Pressable
                   onPress={() => onRenameProfile(profile)}
                   style={{
-                    padding: 8,
+                    paddingVertical: 8,
+                    paddingHorizontal: 10,
                     borderWidth: 1,
                     borderRadius: 8,
-                    marginRight: 8,
-                    marginBottom: 8,
                   }}
                 >
                   <Text>Renommer le profil</Text>
@@ -70,11 +109,10 @@ export function TableProfilesSection({
                 <Pressable
                   onPress={() => onCreateGroup(profile)}
                   style={{
-                    padding: 8,
+                    paddingVertical: 8,
+                    paddingHorizontal: 10,
                     borderWidth: 1,
                     borderRadius: 8,
-                    marginRight: 8,
-                    marginBottom: 8,
                   }}
                 >
                   <Text>Créer une action</Text>
@@ -83,10 +121,10 @@ export function TableProfilesSection({
                 <Pressable
                   onPress={() => onDeleteProfile(profile)}
                   style={{
-                    padding: 8,
+                    paddingVertical: 8,
+                    paddingHorizontal: 10,
                     borderWidth: 1,
                     borderRadius: 8,
-                    marginBottom: 8,
                   }}
                 >
                   <Text>Supprimer le profil</Text>
@@ -100,24 +138,36 @@ export function TableProfilesSection({
               groups.map(({ group, dice }) => (
                 <View
                   key={group.id}
-                  style={{ marginTop: 12, padding: 12, borderWidth: 1, borderRadius: 12 }}
+                  style={{
+                    padding: 12,
+                    borderWidth: 1,
+                    borderRadius: 12,
+                    gap: 8,
+                  }}
                 >
-                  <Text style={{ fontSize: 16, fontWeight: "700" }}>{group.name}</Text>
+                  <Text style={{ fontSize: 16, fontWeight: "700" }}>
+                    {group.name}
+                  </Text>
 
-                  <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                    règle de groupe : {getRuleName(group.rule_id)}
+                  <Text style={{ opacity: 0.72 }}>
+                    Règle de l’action : {getRuleName(group.rule_id)}
                   </Text>
 
                   {!isSystem ? (
-                    <View style={{ flexDirection: "row", marginTop: 8, flexWrap: "wrap" }}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        flexWrap: "wrap",
+                        gap: 8,
+                      }}
+                    >
                       <Pressable
                         onPress={() => onRenameGroup(group)}
                         style={{
-                          padding: 8,
+                          paddingVertical: 8,
+                          paddingHorizontal: 10,
                           borderWidth: 1,
                           borderRadius: 8,
-                          marginRight: 8,
-                          marginBottom: 8,
                         }}
                       >
                         <Text>Renommer l’action</Text>
@@ -126,11 +176,10 @@ export function TableProfilesSection({
                       <Pressable
                         onPress={() => onEditGroupRule(group)}
                         style={{
-                          padding: 8,
+                          paddingVertical: 8,
+                          paddingHorizontal: 10,
                           borderWidth: 1,
                           borderRadius: 8,
-                          marginRight: 8,
-                          marginBottom: 8,
                         }}
                       >
                         <Text>Règle de l’action</Text>
@@ -139,11 +188,10 @@ export function TableProfilesSection({
                       <Pressable
                         onPress={() => onCreateDie(group)}
                         style={{
-                          padding: 8,
+                          paddingVertical: 8,
+                          paddingHorizontal: 10,
                           borderWidth: 1,
                           borderRadius: 8,
-                          marginRight: 8,
-                          marginBottom: 8,
                         }}
                       >
                         <Text>Ajouter une entrée</Text>
@@ -152,10 +200,10 @@ export function TableProfilesSection({
                       <Pressable
                         onPress={() => onDeleteGroup(group)}
                         style={{
-                          padding: 8,
+                          paddingVertical: 8,
+                          paddingHorizontal: 10,
                           borderWidth: 1,
                           borderRadius: 8,
-                          marginBottom: 8,
                         }}
                       >
                         <Text>Supprimer l’action</Text>
@@ -164,35 +212,43 @@ export function TableProfilesSection({
                   ) : null}
 
                   {dice.length === 0 ? (
-                    <Text style={{ marginTop: 8, opacity: 0.7 }}>Aucune entrée.</Text>
+                    <Text style={{ marginTop: 8, opacity: 0.7 }}>
+                      Aucune entrée.
+                    </Text>
                   ) : (
                     dice.map((d) => (
                       <View
                         key={d.id}
-                        style={{ marginTop: 10, padding: 10, borderWidth: 1, borderRadius: 10 }}
+                        style={{
+                          marginTop: 10,
+                          padding: 10,
+                          borderWidth: 1,
+                          borderRadius: 10,
+                        }}
                       >
                         <Text style={{ fontWeight: "700" }}>
-                          {d.qty}d{d.sides}
+                          {formatDieLine(d)}
                         </Text>
 
-                        <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                          signe : {d.sign === -1 ? "-" : "+"} | mod : {d.modifier}
-                        </Text>
-
-                        <Text style={{ marginTop: 4, opacity: 0.8 }}>
-                          règle d’entrée : {getRuleName(d.rule_id)}
+                        <Text style={{ opacity: 0.72 }}>
+                          Règle d’entrée : {getRuleName(d.rule_id)}
                         </Text>
 
                         {!isSystem ? (
-                          <View style={{ flexDirection: "row", marginTop: 8, flexWrap: "wrap" }}>
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              flexWrap: "wrap",
+                              gap: 8,
+                            }}
+                          >
                             <Pressable
                               onPress={() => onEditDie(d)}
                               style={{
-                                padding: 8,
+                                paddingVertical: 8,
+                                paddingHorizontal: 10,
                                 borderWidth: 1,
                                 borderRadius: 8,
-                                marginRight: 8,
-                                marginBottom: 8,
                               }}
                             >
                               <Text>Éditer l’entrée</Text>
@@ -201,10 +257,10 @@ export function TableProfilesSection({
                             <Pressable
                               onPress={() => onDeleteDie(d)}
                               style={{
-                                padding: 8,
+                                paddingVertical: 8,
+                                paddingHorizontal: 10,
                                 borderWidth: 1,
                                 borderRadius: 8,
-                                marginBottom: 8,
                               }}
                             >
                               <Text>Supprimer l’entrée</Text>

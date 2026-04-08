@@ -1,5 +1,12 @@
 import { useState, useCallback } from "react";
-import { View, Text, FlatList, Pressable } from "react-native";
+import {
+  View,
+  Text,
+  FlatList,
+  Pressable,
+  Modal,
+  TextInput,
+} from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useDb } from "../data/db/DbProvider";
@@ -10,6 +17,7 @@ import {
   TableRow,
   TableStats,
   deleteTable,
+  createTable,
 } from "../data/repositories/tablesRepo";
 
 type TableListItem = {
@@ -26,25 +34,58 @@ export default function TablesScreen() {
   const [tables, setTables] = useState<TableListItem[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newTableName, setNewTableName] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+
+  async function loadTables() {
+    const rows = await listTables(db);
+
+    const enriched: TableListItem[] = [];
+    for (const table of rows) {
+      const stats = await getTableStats(db, table.id);
+      enriched.push({ table, stats });
+    }
+
+    setTables(enriched);
+  }
+
   async function handleDeleteTable(tableId: string) {
     try {
+      setError(null);
+
       await deleteTable(db, tableId);
 
       if (activeTableId === tableId) {
         await clearActiveTableId();
       }
 
-      const rows = await listTables(db);
-
-      const enriched: TableListItem[] = [];
-      for (const table of rows) {
-        const stats = await getTableStats(db, table.id);
-        enriched.push({ table, stats });
-      }
-
-      setTables(enriched);
+      await loadTables();
     } catch (e: any) {
       setError(e?.message ?? String(e));
+    }
+  }
+
+  async function handleCreateTable() {
+    try {
+      setError(null);
+      setIsCreating(true);
+
+      const createdId = await createTable(db, {
+        name: newTableName,
+        is_system: 0,
+      });
+
+      setNewTableName("");
+      setShowCreateModal(false);
+
+      await loadTables();
+      await setActiveTableId(createdId);
+      router.push(`/tables/${createdId}` as any);
+    } catch (e: any) {
+      setError(e?.message ?? String(e));
+    } finally {
+      setIsCreating(false);
     }
   }
 
@@ -88,6 +129,20 @@ export default function TablesScreen() {
       <View style={{ flex: 1, padding: 16 }}>
         <Text style={{ fontSize: 18, fontWeight: "600" }}>Erreur</Text>
         <Text style={{ marginTop: 8 }}>{error}</Text>
+
+        <Pressable
+          onPress={() => setError(null)}
+          style={{
+            marginTop: 16,
+            paddingVertical: 10,
+            paddingHorizontal: 12,
+            borderWidth: 1,
+            borderRadius: 10,
+            alignSelf: "flex-start",
+          }}
+        >
+          <Text style={{ fontWeight: "700" }}>Fermer</Text>
+        </Pressable>
       </View>
     );
   }
@@ -138,20 +193,43 @@ export default function TablesScreen() {
         )}
       </View>
 
-      <Pressable
-        onPress={() => router.push("/rules" as any)}
+      <View
         style={{
+          flexDirection: "row",
+          gap: 10,
           marginTop: 16,
-          padding: 12,
-          borderWidth: 1,
-          borderRadius: 12,
         }}
       >
-        <Text style={{ fontWeight: "600" }}>Gérer les règles</Text>
-        <Text style={{ marginTop: 4, opacity: 0.7 }}>
-          Créer, modifier et consulter les règles disponibles.
-        </Text>
-      </Pressable>
+        <Pressable
+          onPress={() => setShowCreateModal(true)}
+          style={{
+            flex: 1,
+            padding: 12,
+            borderWidth: 1,
+            borderRadius: 12,
+          }}
+        >
+          <Text style={{ fontWeight: "600" }}>Créer une table</Text>
+          <Text style={{ marginTop: 4, opacity: 0.7 }}>
+            Ajouter une nouvelle table perso.
+          </Text>
+        </Pressable>
+
+        <Pressable
+          onPress={() => router.push("/rules" as any)}
+          style={{
+            flex: 1,
+            padding: 12,
+            borderWidth: 1,
+            borderRadius: 12,
+          }}
+        >
+          <Text style={{ fontWeight: "600" }}>Gérer les règles</Text>
+          <Text style={{ marginTop: 4, opacity: 0.7 }}>
+            Créer, modifier et consulter les règles disponibles.
+          </Text>
+        </Pressable>
+      </View>
 
       {tables.length === 0 ? (
         <View
@@ -166,7 +244,7 @@ export default function TablesScreen() {
             Aucune table disponible
           </Text>
           <Text style={{ marginTop: 6, opacity: 0.7 }}>
-            Crée une table depuis le jet libre ou ajoute-en une plus tard.
+            Crée ta première table personnalisée.
           </Text>
         </View>
       ) : (
@@ -288,6 +366,98 @@ export default function TablesScreen() {
           }}
         />
       )}
+
+      <Modal
+        visible={showCreateModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (!isCreating) {
+            setShowCreateModal(false);
+          }
+        }}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            justifyContent: "center",
+            padding: 16,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: "white",
+              borderRadius: 12,
+              padding: 16,
+              borderWidth: 1,
+              gap: 12,
+            }}
+          >
+            <Text style={{ fontSize: 16, fontWeight: "700" }}>
+              Créer une table
+            </Text>
+
+            <Text style={{ opacity: 0.72 }}>
+              Donne un nom à ta nouvelle table personnalisée.
+            </Text>
+
+            <TextInput
+              value={newTableName}
+              onChangeText={setNewTableName}
+              placeholder="Nom de la table"
+              editable={!isCreating}
+              style={{
+                borderWidth: 1,
+                borderRadius: 10,
+                paddingHorizontal: 12,
+                paddingVertical: 10,
+              }}
+            />
+
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "flex-end",
+                gap: 8,
+              }}
+            >
+              <Pressable
+                onPress={() => {
+                  if (!isCreating) {
+                    setShowCreateModal(false);
+                    setNewTableName("");
+                  }
+                }}
+                style={{
+                  paddingVertical: 10,
+                  paddingHorizontal: 12,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                }}
+              >
+                <Text>Annuler</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={handleCreateTable}
+                disabled={isCreating}
+                style={{
+                  paddingVertical: 10,
+                  paddingHorizontal: 12,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  opacity: isCreating ? 0.6 : 1,
+                }}
+              >
+                <Text style={{ fontWeight: "700" }}>
+                  {isCreating ? "Création..." : "Créer"}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

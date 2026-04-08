@@ -79,7 +79,6 @@ export async function createProfileFromDraft(
 export async function createGroupFromDraft(
   db: Db,
   params: {
-    tableId: string;
     profileId: string;
     groupName: string;
     groupRuleId?: string | null;
@@ -89,6 +88,7 @@ export async function createGroupFromDraft(
 ): Promise<string> {
   const createdAt = nowIso();
   const groupId = await newId();
+  const tableId = await getTableIdFromProfile(db, params.profileId);
 
   await db.runAsync(
     `
@@ -106,7 +106,7 @@ export async function createGroupFromDraft(
     `,
     [
       groupId,
-      params.tableId,
+      tableId,
       params.profileId,
       params.groupName,
       params.sortOrder ?? 0,
@@ -169,7 +169,6 @@ export async function createGroupsFromDraft(
     const g = params.groups[i];
 
     const groupId = await createGroupFromDraft(db, {
-      tableId: params.tableId,
       profileId: params.profileId,
       groupName: g.name,
       groupRuleId: g.rule_id ?? null,
@@ -211,7 +210,6 @@ export async function createTableWithDraft(
   });
 
   await createGroupFromDraft(db, {
-    tableId,
     profileId,
     groupName: params.groupName,
     groupRuleId: params.groupRuleId ?? null,
@@ -279,4 +277,26 @@ export async function replaceTableWithDraftGroups(
     profileId,
     groups: params.groups,
   });
+}
+
+async function getTableIdFromProfile(
+  db: Db,
+  profileId: string,
+): Promise<string> {
+  const rows = await db.getAllAsync<{ table_id: string }>(
+    `
+    SELECT table_id
+    FROM profiles
+    WHERE id = ?
+    LIMIT 1;
+    `,
+    [profileId],
+  );
+
+  const tableId = rows[0]?.table_id;
+  if (!tableId) {
+    throw new Error("Profil introuvable ou sans table liée");
+  }
+
+  return tableId;
 }
