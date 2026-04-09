@@ -27,6 +27,21 @@ export default function RollScreen() {
   const [showSaveOptions, setShowSaveOptions] = useState(false);
   const [showNameModal, setShowNameModal] = useState(false);
   const [newTableName, setNewTableName] = useState("");
+  const [newProfileName, setNewProfileName] = useState("Profil principal");
+  const [availableSaveTargets, setAvailableSaveTargets] = useState<
+    {
+      table: {
+        id: string;
+        name: string;
+        is_system: number;
+      };
+      profiles: {
+        id: string;
+        name: string;
+      }[];
+    }[]
+  >([]);
+  const [loadingSaveTargets, setLoadingSaveTargets] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(
     null,
@@ -169,8 +184,11 @@ export default function RollScreen() {
 
   const {
     replaceCurrentTable,
-    openCreateTableModal,
+    // openCreateTableModal,
     createNewTableFromName,
+    appendDraftToExistingTableNewProfile,
+    appendDraftToExistingProfile,
+    getAvailableSaveTargets,
     closeCreateTableModal,
   } = useDraftTableActions({
     db,
@@ -187,11 +205,72 @@ export default function RollScreen() {
       setSelectedDraftGroupId(null);
       setDraftGroupRuleSelection(null);
       setShowAdvanced(false);
+      setShowNameModal(false);
+      setShowSaveOptions(false);
+      setNewTableName("");
+      setNewProfileName("Profil principal");
+      setAvailableSaveTargets([]);
+      setLoadingSaveTargets(false);
     },
   });
 
   function handleClearQuickRoll() {
     clearDraft();
+  }
+
+  async function handleOpenSaveDraftModal() {
+    const nonEmptyGroups = getNonEmptyDraftGroups();
+    if (nonEmptyGroups.length === 0) return;
+
+    setLoadingSaveTargets(true);
+
+    try {
+      const targets = await getAvailableSaveTargets();
+      setAvailableSaveTargets(targets);
+      setNewTableName(`Nouvelle table (${new Date().toLocaleDateString()})`);
+      setNewProfileName("Profil principal");
+      setShowSaveOptions(false);
+      setShowNameModal(true);
+    } finally {
+      setLoadingSaveTargets(false);
+    }
+  }
+
+  async function handleSaveDraftTarget(params: {
+    mode:
+    | "new_table_new_profile"
+    | "existing_table_new_profile"
+    | "existing_table_existing_profile";
+    tableName?: string;
+    profileName?: string;
+    tableId?: string;
+    profileId?: string;
+  }) {
+    if (params.mode === "new_table_new_profile") {
+      await createNewTableFromName(
+        params.tableName ?? "",
+        params.profileName ?? "Profil principal",
+      );
+      return;
+    }
+
+    if (params.mode === "existing_table_new_profile") {
+      if (!params.tableId) {
+        throw new Error("Table cible manquante.");
+      }
+
+      await appendDraftToExistingTableNewProfile(
+        params.tableId,
+        params.profileName ?? "Profil principal",
+      );
+      return;
+    }
+
+    if (!params.tableId || !params.profileId) {
+      throw new Error("Table ou profil cible manquant.");
+    }
+
+    await appendDraftToExistingProfile(params.tableId, params.profileId);
   }
 
   function handleOpenDieConfig(sides: number) {
@@ -402,7 +481,7 @@ export default function RollScreen() {
             onClearQuickGroup={clearDraftGroup}
             onClearDraft={handleClearQuickRoll}
             onReplaceCurrentTable={replaceCurrentTable}
-            onCreateNewTable={openCreateTableModal}
+            onCreateNewTable={handleOpenSaveDraftModal}
             availableRules={availableRules}
             onEditQuickDieQty={handleOpenQuickQtyEditor}
             onAdjustQuickDieQty={handleAdjustQuickDieQty}
@@ -439,9 +518,11 @@ export default function RollScreen() {
           onSaveRenameDraftGroup={saveRenameDraftGroup}
           showNameModal={showNameModal}
           newTableName={newTableName}
-          onChangeNewTableName={setNewTableName}
+          newProfileName={newProfileName}
+          availableSaveTargets={availableSaveTargets}
+          loadingSaveTargets={loadingSaveTargets}
           onCancelNewTable={closeCreateTableModal}
-          onSaveNewTable={() => createNewTableFromName(newTableName)}
+          onSaveDraftTarget={handleSaveDraftTarget}
         />
       </ScrollView>
 

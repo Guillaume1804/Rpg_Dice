@@ -1,9 +1,9 @@
-// app/roll/components/RollModals.tsx
+// features/roll/components/RollModals.tsx
 import React from "react";
 import { RenameDraftGroupModal } from "./RenameDraftGroupModal";
 import { DraftGroupRuleModal } from "./DraftGroupRuleModal";
 import { DraftDieEditorModal } from "./DraftDieEditorModal";
-import { NewTableModal } from "./NewTableModal";
+import { SaveDraftModal } from "./SaveDraftModal";
 import type { RuleRow } from "../../../data/repositories/rulesRepo";
 
 type DraftDie = {
@@ -51,9 +51,30 @@ type RollModalsProps = {
   onSaveRenameDraftGroup: () => void;
   showNameModal: boolean;
   newTableName: string;
-  onChangeNewTableName: (value: string) => void;
+  newProfileName: string;
+  availableSaveTargets: {
+    table: {
+      id: string;
+      name: string;
+      is_system: number;
+    };
+    profiles: {
+      id: string;
+      name: string;
+    }[];
+  }[];
+  loadingSaveTargets: boolean;
   onCancelNewTable: () => void;
-  onSaveNewTable: () => void | Promise<void>;
+  onSaveDraftTarget: (params: {
+    mode:
+    | "new_table_new_profile"
+    | "existing_table_new_profile"
+    | "existing_table_existing_profile";
+    tableName?: string;
+    profileName?: string;
+    tableId?: string;
+    profileId?: string;
+  }) => void | Promise<void>;
 };
 
 export function RollModals({
@@ -86,9 +107,11 @@ export function RollModals({
   onSaveRenameDraftGroup,
   showNameModal,
   newTableName,
-  onChangeNewTableName,
+  newProfileName,
+  availableSaveTargets,
+  loadingSaveTargets,
   onCancelNewTable,
-  onSaveNewTable,
+  onSaveDraftTarget,
 }: RollModalsProps) {
   const entryLabel =
     editingDraftGroupId != null && editingDraftIndex != null
@@ -138,12 +161,14 @@ export function RollModals({
         onSave={onSaveRenameDraftGroup}
       />
 
-      <NewTableModal
+      <SaveDraftModal
         visible={showNameModal}
-        value={newTableName}
-        onChangeValue={onChangeNewTableName}
+        initialTableName={newTableName}
+        initialProfileName={newProfileName}
+        availableTargets={availableSaveTargets}
+        loadingTargets={loadingSaveTargets}
         onCancel={onCancelNewTable}
-        onSave={onSaveNewTable}
+        onConfirm={onSaveDraftTarget}
       />
     </>
   );
