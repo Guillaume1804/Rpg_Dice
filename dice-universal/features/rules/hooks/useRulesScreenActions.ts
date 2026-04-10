@@ -1,9 +1,9 @@
-// app/rules/hooks/useRulesScreenActions.ts
 import type { RuleRow } from "../../../data/repositories/rulesRepo";
 
 type SaveRuleFn = (params: {
   editingRule: RuleRow | null;
   name: string;
+  kind: string;
   params_json: string;
 }) => Promise<void>;
 
@@ -12,7 +12,10 @@ type RemoveRuleFn = (ruleId: string) => Promise<void>;
 type UseRulesScreenActionsParams = {
   editingRule: RuleRow | null;
   formName: string;
-  getParamsJson: () => string;
+  getRulePayload: () => {
+    kind: string;
+    params_json: string;
+  };
   saveRule: SaveRuleFn;
   removeRule: RemoveRuleFn;
   closeEditor: () => void;
@@ -21,17 +24,20 @@ type UseRulesScreenActionsParams = {
 export function useRulesScreenActions({
   editingRule,
   formName,
-  getParamsJson,
+  getRulePayload,
   saveRule,
   removeRule,
   closeEditor,
 }: UseRulesScreenActionsParams) {
   async function handleSave() {
     try {
+      const payload = getRulePayload();
+
       await saveRule({
         editingRule,
         name: formName,
-        params_json: getParamsJson(),
+        kind: payload.kind,
+        params_json: payload.params_json,
       });
 
       closeEditor();

@@ -15,8 +15,18 @@ type UseRulesDataParams = {
 type SaveRuleParams = {
   editingRule: RuleRow | null;
   name: string;
+  kind: string;
   params_json: string;
 };
+
+const MODERN_RULE_KINDS = new Set([
+  "single_check",
+  "success_pool",
+  "table_lookup",
+  "banded_sum",
+  "highest_of_pool",
+  "pipeline",
+]);
 
 export function useRulesData({ db }: UseRulesDataParams) {
   const [rules, setRules] = useState<RuleRow[]>([]);
@@ -36,18 +46,28 @@ export function useRulesData({ db }: UseRulesDataParams) {
     load();
   }, [load]);
 
-  const pipelineRules = useMemo(
-    () => rules.filter((r) => r.kind === "pipeline"),
-    [rules]
+  const systemRules = useMemo(
+    () => rules.filter((r) => r.is_system === 1),
+    [rules],
+  );
+
+  const customRules = useMemo(
+    () => rules.filter((r) => r.is_system !== 1),
+    [rules],
+  );
+
+  const modernRules = useMemo(
+    () => rules.filter((r) => MODERN_RULE_KINDS.has(r.kind)),
+    [rules],
   );
 
   const legacyRules = useMemo(
-    () => rules.filter((r) => r.kind !== "pipeline"),
-    [rules]
+    () => rules.filter((r) => !MODERN_RULE_KINDS.has(r.kind)),
+    [rules],
   );
 
   const saveRule = useCallback(
-    async ({ editingRule, name, params_json }: SaveRuleParams) => {
+    async ({ editingRule, name, kind, params_json }: SaveRuleParams) => {
       const trimmedName = name.trim();
       if (!trimmedName) return;
 
@@ -57,13 +77,13 @@ export function useRulesData({ db }: UseRulesDataParams) {
         if (editingRule) {
           await updateRule(db, editingRule.id, {
             name: trimmedName,
-            kind: "pipeline",
+            kind,
             params_json,
           });
         } else {
           await createRule(db, {
             name: trimmedName,
-            kind: "pipeline",
+            kind,
             params_json,
             is_system: 0,
           });
@@ -75,7 +95,7 @@ export function useRulesData({ db }: UseRulesDataParams) {
         throw e;
       }
     },
-    [db, load]
+    [db, load],
   );
 
   const removeRule = useCallback(
@@ -89,14 +109,16 @@ export function useRulesData({ db }: UseRulesDataParams) {
         throw e;
       }
     },
-    [db, load]
+    [db, load],
   );
 
   return {
     rules,
     error,
     load,
-    pipelineRules,
+    systemRules,
+    customRules,
+    modernRules,
     legacyRules,
     saveRule,
     removeRule,
