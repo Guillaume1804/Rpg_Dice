@@ -25,6 +25,15 @@ type UseTableDetailDataParams = {
   tableId: string;
 };
 
+const MODERN_RULE_KINDS = new Set([
+  "single_check",
+  "success_pool",
+  "table_lookup",
+  "banded_sum",
+  "highest_of_pool",
+  "pipeline",
+]);
+
 export function useTableDetailData({ db, tableId }: UseTableDetailDataParams) {
   const [table, setTable] = useState<TableRow | null>(null);
   const [profiles, setProfiles] = useState<ProfileWithGroups[]>([]);
@@ -82,17 +91,17 @@ export function useTableDetailData({ db, tableId }: UseTableDetailDataParams) {
       if (!ruleId) return "Somme (par défaut)";
       return rules.find((r) => r.id === ruleId)?.name ?? "Somme (par défaut)";
     },
-    [rules]
+    [rules],
   );
 
-  const pipelineRules = useMemo(
-    () => rules.filter((r) => r.kind === "pipeline"),
-    [rules]
+  const modernRules = useMemo(
+    () => rules.filter((r) => MODERN_RULE_KINDS.has(r.kind)),
+    [rules],
   );
 
   const legacyRules = useMemo(
-    () => rules.filter((r) => r.kind !== "pipeline"),
-    [rules]
+    () => rules.filter((r) => !MODERN_RULE_KINDS.has(r.kind)),
+    [rules],
   );
 
   return {
@@ -102,7 +111,7 @@ export function useTableDetailData({ db, tableId }: UseTableDetailDataParams) {
     error,
     load,
     getRuleName,
-    pipelineRules,
+    modernRules,
     legacyRules,
   };
 }

@@ -26,19 +26,19 @@ export default function TableDetailScreen() {
     setRenameValue,
     showRenameModal,
     setShowRenameModal,
-    
+
     showCreateProfileModal,
     setShowCreateProfileModal,
     newProfileName,
     setNewProfileName,
-    
+
     showRenameProfileModal,
     setShowRenameProfileModal,
     editingProfile,
     setEditingProfile,
     renameProfileValue,
     setRenameProfileValue,
-    
+
     showCreateGroupModal,
     setShowCreateGroupModal,
     targetProfileForNewGroup,
@@ -47,21 +47,21 @@ export default function TableDetailScreen() {
     setNewGroupName,
     newGroupRuleId,
     setNewGroupRuleId,
-    
+
     showRenameGroupModal,
     setShowRenameGroupModal,
     editingGroup,
     setEditingGroup,
     renameGroupValue,
     setRenameGroupValue,
-    
+
     showEditGroupRuleModal,
     setShowEditGroupRuleModal,
     editingGroupForRule,
     setEditingGroupForRule,
     selectedGroupRuleId,
     setSelectedGroupRuleId,
-    
+
     showCreateDieModal,
     setShowCreateDieModal,
     targetGroupForNewDie,
@@ -76,7 +76,7 @@ export default function TableDetailScreen() {
     setNewDieSign,
     newDieRuleId,
     setNewDieRuleId,
-    
+
     editingDie,
     setEditingDie,
     editDieSides,
@@ -89,7 +89,7 @@ export default function TableDetailScreen() {
     setEditDieSign,
     selectedRuleId,
     setSelectedRuleId,
-    
+
     resetCreateProfileForm,
     resetCreateGroupForm,
     resetCreateDieForm,
@@ -100,22 +100,22 @@ export default function TableDetailScreen() {
 
     openRenameTableModal,
     closeRenameTableModal,
-      
+
     openCreateProfileModal,
     closeCreateProfileModal,
-      
+
     closeRenameProfileModal,
-      
+
     openCreateGroupModal,
     closeCreateGroupModal,
-      
+
     closeRenameGroupModal,
-      
+
     closeEditGroupRuleModal,
-      
+
     openCreateDieModal,
     closeCreateDieModal,
-      
+
     closeEditDieModal,
   } = useTableDetailUi();
 
@@ -125,7 +125,7 @@ export default function TableDetailScreen() {
     error,
     load,
     getRuleName,
-    pipelineRules,
+    modernRules,
     legacyRules,
   } = useTableDetailData({
     db,
@@ -258,7 +258,7 @@ export default function TableDetailScreen() {
         targetProfileForNewGroup={targetProfileForNewGroup}
         newGroupName={newGroupName}
         newGroupRuleId={newGroupRuleId}
-        pipelineRules={pipelineRules}
+        modernRules={modernRules}
         legacyRules={legacyRules}
         onChangeNewGroupName={setNewGroupName}
         onSelectNewGroupRuleId={setNewGroupRuleId}
@@ -298,7 +298,7 @@ export default function TableDetailScreen() {
         newDieModifier={newDieModifier}
         newDieSign={newDieSign}
         newDieRuleId={newDieRuleId}
-        pipelineRules={pipelineRules}
+        modernRules={modernRules}
         legacyRules={legacyRules}
         onChangeNewDieSides={setNewDieSides}
         onChangeNewDieQty={setNewDieQty}

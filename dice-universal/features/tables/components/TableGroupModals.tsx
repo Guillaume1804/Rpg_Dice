@@ -8,7 +8,7 @@ type Props = {
   targetProfileForNewGroup: ProfileRow | null;
   newGroupName: string;
   newGroupRuleId: string | null;
-  pipelineRules: RuleRow[];
+  modernRules: RuleRow[];
   legacyRules: RuleRow[];
   onChangeNewGroupName: (value: string) => void;
   onSelectNewGroupRuleId: (value: string | null) => void;
@@ -34,7 +34,7 @@ export function TableGroupModals({
   targetProfileForNewGroup,
   newGroupName,
   newGroupRuleId,
-  pipelineRules,
+  modernRules,
   legacyRules,
   onChangeNewGroupName,
   onSelectNewGroupRuleId,
@@ -111,8 +111,8 @@ export function TableGroupModals({
                 </Text>
               </Pressable>
 
-              <Text style={{ marginTop: 12, fontWeight: "700" }}>Pipelines</Text>
-              {pipelineRules.map((rule) => (
+              <Text style={{ marginTop: 12, fontWeight: "700" }}>Règles disponibles</Text>
+              {modernRules.map((rule) => (
                 <Pressable
                   key={rule.id}
                   onPress={() => onSelectNewGroupRuleId(rule.id)}
@@ -132,7 +132,7 @@ export function TableGroupModals({
 
               {legacyRules.length > 0 ? (
                 <View style={{ marginTop: 12 }}>
-                  <Text style={{ fontWeight: "700" }}>Compatibilité</Text>
+                  <Text style={{ fontWeight: "700" }}>Anciennes règles</Text>
                   {legacyRules.map((rule) => (
                     <Pressable
                       key={rule.id}
@@ -272,8 +272,8 @@ export function TableGroupModals({
                 </Text>
               </Pressable>
 
-              <Text style={{ marginTop: 12, fontWeight: "700" }}>Pipelines</Text>
-              {pipelineRules.map((rule) => (
+              <Text style={{ marginTop: 12, fontWeight: "700" }}>Règles Disponibles</Text>
+              {modernRules.map((rule) => (
                 <Pressable
                   key={rule.id}
                   onPress={() => onSelectGroupRuleId(rule.id)}

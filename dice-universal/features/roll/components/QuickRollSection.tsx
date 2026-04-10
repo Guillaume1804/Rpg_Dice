@@ -524,7 +524,13 @@ export function QuickRollSection({
 
                       {entryResult ? (
                         <View style={{ paddingTop: 6, borderTopWidth: 1 }}>
-                          {renderEntryRuleDetails(entryResult)}
+                          <Text style={{ fontSize: 20, fontWeight: "800" }}>
+                            {entryResult.final_total}
+                          </Text>
+
+                          <Text style={{ opacity: 0.72 }}>
+                            ({formatValueList(entryResult.signed_values)})
+                          </Text>
                         </View>
                       ) : null}
                     </View>
@@ -567,139 +573,146 @@ export function QuickRollSection({
           </View>
         ) : null}
 
-        {configuredQuickGroups.map((group) => (
-          <View
-            key={group.id}
-            style={{
-              padding: 14,
-              borderWidth: 1,
-              borderRadius: 14,
-              gap: 10,
-            }}
-          >
-            <Text style={{ fontSize: 16, fontWeight: "800" }}>
-              {group.name}
-            </Text>
+        {configuredQuickGroups.map((group) => {
+          const groupResult = getResultForGroup(group.id, draftResults);
 
-            {group.dice.map((die, index) => {
-              const groupResult = getResultForGroup(group.id, draftResults);
-              const entryResult = getEntryResultForIndex(groupResult, index);
+          return (
+            <View
+              key={group.id}
+              style={{
+                padding: 14,
+                borderWidth: 1,
+                borderRadius: 14,
+                gap: 10,
+              }}
+            >
+              <Text style={{ fontSize: 16, fontWeight: "800" }}>
+                {group.name}
+              </Text>
 
-              return (
-                <View
-                  key={`${group.id}-${index}`}
-                  style={{
-                    padding: 10,
-                    borderWidth: 1,
-                    borderRadius: 12,
-                    gap: 8,
-                  }}
-                >
+              {group.dice.map((die, index) => {
+                const entryResult = getEntryResultForIndex(groupResult, index);
+
+                return (
                   <View
+                    key={`${group.id}-${index}`}
                     style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "space-between",
+                      padding: 10,
+                      borderWidth: 1,
+                      borderRadius: 12,
                       gap: 8,
                     }}
                   >
-                    <Pressable
-                      onPress={() =>
-                        onEditQuickDieQty(
-                          group.id,
-                          index,
-                          die.qty,
-                          die.modifier ?? 0,
-                        )
-                      }
-                      style={{ flex: 1 }}
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 8,
+                      }}
                     >
-                      <Text style={{ fontWeight: "700" }}>
-                        {die.qty}d{die.sides}
-                        {die.modifier
-                          ? ` ${die.modifier > 0 ? "+" : ""}${die.modifier}`
-                          : ""}
-                        {die.rule_temp || group.rule_temp ? " ⚙️" : ""}
-                      </Text>
-                    </Pressable>
-
-                    <View style={{ flexDirection: "row", gap: 8 }}>
                       <Pressable
-                        onPress={() => onAdjustQuickDieQty(group.id, index, -1)}
-                        style={{
-                          width: 32,
-                          height: 32,
-                          borderWidth: 1,
-                          borderRadius: 999,
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
+                        onPress={() =>
+                          onEditQuickDieQty(
+                            group.id,
+                            index,
+                            die.qty,
+                            die.modifier ?? 0,
+                          )
+                        }
+                        style={{ flex: 1 }}
                       >
-                        <Text style={{ fontWeight: "800" }}>−</Text>
+                        <Text style={{ fontWeight: "700" }}>
+                          {die.qty}d{die.sides}
+                          {die.modifier
+                            ? ` ${die.modifier > 0 ? "+" : ""}${die.modifier}`
+                            : ""}
+                          {die.rule_temp || group.rule_temp ? " ⚙️" : ""}
+                        </Text>
+
+                        <Text style={{ marginTop: 2, opacity: 0.72 }}>
+                          {getDisplayedRuleName(die, group, availableRules)}
+                        </Text>
                       </Pressable>
 
-                      <Pressable
-                        onPress={() => onAdjustQuickDieQty(group.id, index, 1)}
-                        style={{
-                          width: 32,
-                          height: 32,
-                          borderWidth: 1,
-                          borderRadius: 999,
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        <Text style={{ fontWeight: "800" }}>+</Text>
-                      </Pressable>
+                      <View style={{ flexDirection: "row", gap: 8 }}>
+                        <Pressable
+                          onPress={() => onAdjustQuickDieQty(group.id, index, -1)}
+                          style={{
+                            width: 32,
+                            height: 32,
+                            borderWidth: 1,
+                            borderRadius: 999,
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <Text style={{ fontWeight: "800" }}>−</Text>
+                        </Pressable>
+
+                        <Pressable
+                          onPress={() => onAdjustQuickDieQty(group.id, index, 1)}
+                          style={{
+                            width: 32,
+                            height: 32,
+                            borderWidth: 1,
+                            borderRadius: 999,
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <Text style={{ fontWeight: "800" }}>+</Text>
+                        </Pressable>
+                      </View>
                     </View>
+
+                    {groupResult?.group_eval_result && index === 0 ? (
+                      <View style={{ paddingTop: 6, borderTopWidth: 1 }}>
+                        {renderGroupRuleDetails(groupResult)}
+                      </View>
+                    ) : entryResult ? (
+                      <View style={{ paddingTop: 6, borderTopWidth: 1 }}>
+                        {renderEntryRuleDetails(entryResult)}
+                      </View>
+                    ) : null}
                   </View>
+                );
+              })}
 
-                  {groupResult?.group_eval_result && index === 0 ? (
-                    <View style={{ paddingTop: 6, borderTopWidth: 1 }}>
-                      {renderGroupRuleDetails(groupResult)}
-                    </View>
-                  ) : entryResult ? (
-                    <View style={{ paddingTop: 6, borderTopWidth: 1 }}>
-                      {renderEntryRuleDetails(entryResult)}
-                    </View>
-                  ) : null}
-                </View>
-              );
-            })}
-
-            <View
-              style={{
-                flexDirection: "row",
-                flexWrap: "wrap",
-                gap: 8,
-              }}
-            >
-              <Pressable
-                onPress={() => onRollQuickGroup(group.id)}
+              <View
                 style={{
-                  paddingVertical: 12,
-                  paddingHorizontal: 14,
-                  borderWidth: 1,
-                  borderRadius: 10,
+                  flexDirection: "row",
+                  flexWrap: "wrap",
+                  gap: 8,
                 }}
               >
-                <Text style={{ fontWeight: "800" }}>Lancer</Text>
-              </Pressable>
+                <Pressable
+                  onPress={() => onRollQuickGroup(group.id)}
+                  style={{
+                    paddingVertical: 12,
+                    paddingHorizontal: 14,
+                    borderWidth: 1,
+                    borderRadius: 10,
+                  }}
+                >
+                  <Text style={{ fontWeight: "800" }}>Lancer</Text>
+                </Pressable>
 
-              <Pressable
-                onPress={() => onClearQuickGroup(group.id)}
-                style={{
-                  paddingVertical: 12,
-                  paddingHorizontal: 14,
-                  borderWidth: 1,
-                  borderRadius: 10,
-                }}
-              >
-                <Text style={{ fontWeight: "700" }}>Reset</Text>
-              </Pressable>
+                <Pressable
+                  onPress={() => onClearQuickGroup(group.id)}
+                  style={{
+                    paddingVertical: 12,
+                    paddingHorizontal: 14,
+                    borderWidth: 1,
+                    borderRadius: 10,
+                  }}
+                >
+                  <Text style={{ fontWeight: "700" }}>Reset</Text>
+                </Pressable>
+              </View>
             </View>
-          </View>
-        ))}
+          );
+        })}
 
         {showAdvanced ? (
           <View
@@ -878,9 +891,7 @@ export function QuickRollSection({
                               </Pressable>
 
                               <Pressable
-                                onPress={() =>
-                                  onRemoveDraftDie(group.id, index)
-                                }
+                                onPress={() => onRemoveDraftDie(group.id, index)}
                                 style={{
                                   paddingVertical: 8,
                                   paddingHorizontal: 10,

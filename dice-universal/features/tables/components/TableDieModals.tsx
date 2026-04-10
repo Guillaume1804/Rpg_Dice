@@ -10,7 +10,7 @@ type Props = {
   newDieModifier: string;
   newDieSign: "1" | "-1";
   newDieRuleId: string | null;
-  pipelineRules: RuleRow[];
+  modernRules: RuleRow[];
   legacyRules: RuleRow[];
   onChangeNewDieSides: (value: string) => void;
   onChangeNewDieQty: (value: string) => void;
@@ -43,7 +43,7 @@ export function TableDieModals({
   newDieModifier,
   newDieSign,
   newDieRuleId,
-  pipelineRules,
+  modernRules,
   legacyRules,
   onChangeNewDieSides,
   onChangeNewDieQty,
@@ -172,8 +172,8 @@ export function TableDieModals({
                 </Text>
               </Pressable>
 
-              <Text style={{ marginTop: 12, fontWeight: "700" }}>Pipelines</Text>
-              {pipelineRules.map((rule) => (
+              <Text style={{ fontWeight: "700" }}>Règles disponibles</Text>
+              {modernRules.map((rule) => (
                 <Pressable
                   key={rule.id}
                   onPress={() => onChangeNewDieRuleId(rule.id)}
@@ -193,7 +193,7 @@ export function TableDieModals({
 
               {legacyRules.length > 0 ? (
                 <View style={{ marginTop: 12 }}>
-                  <Text style={{ fontWeight: "700" }}>Compatibilité</Text>
+                  <Text style={{ fontWeight: "700" }}>Anciennes Règles</Text>
                   {legacyRules.map((rule) => (
                     <Pressable
                       key={rule.id}
@@ -332,8 +332,8 @@ export function TableDieModals({
                 </Text>
               </Pressable>
 
-              <Text style={{ marginTop: 12, fontWeight: "700" }}>Pipelines</Text>
-              {pipelineRules.map((rule) => (
+              <Text style={{ fontWeight: "700" }}>Règles disponibles</Text>
+              {modernRules.map((rule) => (
                 <Pressable
                   key={rule.id}
                   onPress={() => onChangeSelectedRuleId(rule.id)}
@@ -356,7 +356,7 @@ export function TableDieModals({
 
               {legacyRules.length > 0 ? (
                 <View style={{ marginTop: 16 }}>
-                  <Text style={{ fontWeight: "700" }}>Compatibilité</Text>
+                  <Text style={{ fontWeight: "700" }}>Anciennes Règles</Text>
                   {legacyRules.map((rule) => (
                     <Pressable
                       key={rule.id}
