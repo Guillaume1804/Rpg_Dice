@@ -1,5 +1,12 @@
-import { Modal, Pressable, ScrollView, Text, TextInput, View } from "react-native";
-import type { RuleRow } from "../../../data/repositories/rulesRepo";
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import type { RuleRow, RuleScope } from "../../../data/repositories/rulesRepo";
 import { RULE_FAMILIES } from "../config/ruleFamilies";
 import type { RuleFormState } from "../helpers/ruleForm";
 
@@ -33,6 +40,23 @@ type Props = {
   onSave: () => void;
 };
 
+function isScopeLocked(family: RuleFormState["family"]) {
+  return family === "success_pool";
+}
+
+function getForcedScopeForFamily(
+  family: RuleFormState["family"],
+): RuleScope | null {
+  if (family === "success_pool") return "group";
+  return null;
+}
+
+function getScopeLabel(scope: RuleScope) {
+  if (scope === "entry") return "Entrée";
+  if (scope === "group") return "Groupe";
+  return "Les deux";
+}
+
 export function HumanRuleEditorModal({
   visible,
   editingRule,
@@ -55,8 +79,16 @@ export function HumanRuleEditorModal({
   onClose,
   onSave,
 }: Props) {
+  const lockedScope = getForcedScopeForFamily(form.family);
+  const displayedScope = lockedScope ?? form.scope;
+
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
       <View
         style={{
           flex: 1,
@@ -84,10 +116,22 @@ export function HumanRuleEditorModal({
               value={form.name}
               onChangeText={(value) => onUpdateForm("name", value)}
               placeholder="Ex: Test d’attaque D20"
-              style={{ marginTop: 8, borderWidth: 1, borderRadius: 10, padding: 10 }}
+              style={{
+                marginTop: 8,
+                borderWidth: 1,
+                borderRadius: 10,
+                padding: 10,
+              }}
             />
 
-            <Text style={{ marginTop: 16, fontWeight: "700" }}>Famille de règle</Text>
+            <Text style={{ marginTop: 16, fontWeight: "700" }}>
+              Famille de règle
+            </Text>
+            <Text style={{ opacity: 0.7, marginTop: 4 }}>
+              Choisis d’abord le type de comportement que cette règle doit
+              avoir.
+            </Text>
+
             {RULE_FAMILIES.map((family) => (
               <Pressable
                 key={family.key}
@@ -100,16 +144,94 @@ export function HumanRuleEditorModal({
                   opacity: form.family === family.key ? 1 : 0.7,
                 }}
               >
-                <Text style={{ fontWeight: form.family === family.key ? "700" : "400" }}>
+                <Text
+                  style={{
+                    fontWeight: form.family === family.key ? "700" : "400",
+                  }}
+                >
                   {family.label}
                 </Text>
-                <Text style={{ opacity: 0.7, marginTop: 2 }}>{family.description}</Text>
+                <Text style={{ opacity: 0.7, marginTop: 2 }}>
+                  {family.description}
+                </Text>
               </Pressable>
             ))}
 
-            {(form.family === "single_check" || form.family === "highest_of_pool") ? (
+            <Text style={{ marginTop: 16, fontWeight: "700" }}>
+              Dés compatibles
+            </Text>
+            <Text style={{ opacity: 0.7, marginTop: 4 }}>
+              Indique les types de dés utilisables avec cette règle, séparés par
+              des virgules.
+            </Text>
+            <TextInput
+              value={form.supportedSidesText}
+              onChangeText={(value) =>
+                onUpdateForm("supportedSidesText", value)
+              }
+              placeholder="Ex: 6 ou 20, 100"
+              style={{
+                marginTop: 8,
+                borderWidth: 1,
+                borderRadius: 10,
+                padding: 10,
+              }}
+            />
+
+            <Text style={{ marginTop: 16, fontWeight: "700" }}>Portée</Text>
+            <Text style={{ opacity: 0.7, marginTop: 4 }}>
+              Détermine si la règle s’applique à une entrée de dés, à un groupe
+              complet, ou aux deux.
+            </Text>
+
+            {isScopeLocked(form.family) ? (
+              <View
+                style={{
+                  marginTop: 8,
+                  padding: 10,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  opacity: 0.8,
+                }}
+              >
+                <Text style={{ fontWeight: "700" }}>
+                  {getScopeLabel(displayedScope)}
+                </Text>
+                <Text style={{ opacity: 0.7, marginTop: 4 }}>
+                  Cette famille impose automatiquement une portée de groupe.
+                </Text>
+              </View>
+            ) : (
+              <View style={{ marginTop: 8, gap: 8 }}>
+                {(["entry", "group", "both"] as RuleScope[]).map((scope) => (
+                  <Pressable
+                    key={scope}
+                    onPress={() => onUpdateForm("scope", scope)}
+                    style={{
+                      padding: 10,
+                      borderWidth: 1,
+                      borderRadius: 10,
+                      opacity: form.scope === scope ? 1 : 0.7,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontWeight: form.scope === scope ? "700" : "400",
+                      }}
+                    >
+                      {getScopeLabel(scope)}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+
+            {(form.family === "single_check" ||
+              form.family === "highest_of_pool") && (
               <>
-                <Text style={{ marginTop: 16, fontWeight: "700" }}>Comparaison</Text>
+                <Text style={{ marginTop: 16, fontWeight: "700" }}>
+                  Comparaison
+                </Text>
 
                 <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
                   <Pressable
@@ -140,41 +262,73 @@ export function HumanRuleEditorModal({
                 <Text style={{ marginTop: 12 }}>Seuil de réussite</Text>
                 <TextInput
                   value={form.successThreshold}
-                  onChangeText={(value) => onUpdateForm("successThreshold", value)}
+                  onChangeText={(value) =>
+                    onUpdateForm("successThreshold", value)
+                  }
                   placeholder="10"
                   keyboardType="numeric"
-                  style={{ marginTop: 8, borderWidth: 1, borderRadius: 10, padding: 10 }}
+                  style={{
+                    marginTop: 8,
+                    borderWidth: 1,
+                    borderRadius: 10,
+                    padding: 10,
+                  }}
                 />
 
-                <Text style={{ marginTop: 12 }}>Faces de réussite critique</Text>
+                <Text style={{ marginTop: 12 }}>
+                  Faces de réussite critique
+                </Text>
                 <TextInput
                   value={form.critSuccessFaces}
-                  onChangeText={(value) => onUpdateForm("critSuccessFaces", value)}
+                  onChangeText={(value) =>
+                    onUpdateForm("critSuccessFaces", value)
+                  }
                   placeholder="20"
-                  style={{ marginTop: 8, borderWidth: 1, borderRadius: 10, padding: 10 }}
+                  style={{
+                    marginTop: 8,
+                    borderWidth: 1,
+                    borderRadius: 10,
+                    padding: 10,
+                  }}
                 />
 
                 <Text style={{ marginTop: 12 }}>Faces d’échec critique</Text>
                 <TextInput
                   value={form.critFailureFaces}
-                  onChangeText={(value) => onUpdateForm("critFailureFaces", value)}
+                  onChangeText={(value) =>
+                    onUpdateForm("critFailureFaces", value)
+                  }
                   placeholder="1"
-                  style={{ marginTop: 8, borderWidth: 1, borderRadius: 10, padding: 10 }}
+                  style={{
+                    marginTop: 8,
+                    borderWidth: 1,
+                    borderRadius: 10,
+                    padding: 10,
+                  }}
                 />
               </>
-            ) : null}
+            )}
 
-            {form.family === "success_pool" ? (
+            {form.family === "success_pool" && (
               <>
-                <Text style={{ marginTop: 16, fontWeight: "700" }}>Pool de succès</Text>
+                <Text style={{ marginTop: 16, fontWeight: "700" }}>
+                  Pool de succès
+                </Text>
 
                 <Text style={{ marginTop: 12 }}>Réussite à partir de</Text>
                 <TextInput
                   value={form.successAtOrAbove}
-                  onChangeText={(value) => onUpdateForm("successAtOrAbove", value)}
+                  onChangeText={(value) =>
+                    onUpdateForm("successAtOrAbove", value)
+                  }
                   placeholder="5"
                   keyboardType="numeric"
-                  style={{ marginTop: 8, borderWidth: 1, borderRadius: 10, padding: 10 }}
+                  style={{
+                    marginTop: 8,
+                    borderWidth: 1,
+                    borderRadius: 10,
+                    padding: 10,
+                  }}
                 />
 
                 <Text style={{ marginTop: 12 }}>Faces d’échec spécial</Text>
@@ -182,19 +336,38 @@ export function HumanRuleEditorModal({
                   value={form.failFaces}
                   onChangeText={(value) => onUpdateForm("failFaces", value)}
                   placeholder="1"
-                  style={{ marginTop: 8, borderWidth: 1, borderRadius: 10, padding: 10 }}
+                  style={{
+                    marginTop: 8,
+                    borderWidth: 1,
+                    borderRadius: 10,
+                    padding: 10,
+                  }}
                 />
 
                 <Text style={{ marginTop: 12 }}>Règle de complication</Text>
 
                 {[
-                  { key: "ones_gt_successes", label: "Complication si échecs spéciaux > réussites" },
-                  { key: "ones_gte_successes", label: "Complication si échecs spéciaux ≥ réussites" },
-                  { key: "none", label: "Aucune complication" },
+                  {
+                    key: "ones_gt_successes",
+                    label: "Complication si échecs spéciaux > réussites",
+                  },
+                  {
+                    key: "ones_gte_successes",
+                    label: "Complication si échecs spéciaux ≥ réussites",
+                  },
+                  {
+                    key: "none",
+                    label: "Aucune complication",
+                  },
                 ].map((option) => (
                   <Pressable
                     key={option.key}
-                    onPress={() => onUpdateForm("glitchRule", option.key as RuleFormState["glitchRule"])}
+                    onPress={() =>
+                      onUpdateForm(
+                        "glitchRule",
+                        option.key as RuleFormState["glitchRule"],
+                      )
+                    }
                     style={{
                       marginTop: 8,
                       padding: 10,
@@ -207,12 +380,16 @@ export function HumanRuleEditorModal({
                   </Pressable>
                 ))}
               </>
-            ) : null}
+            )}
 
-            {(form.family === "banded_sum" || form.family === "table_lookup") ? (
+            {(form.family === "banded_sum" ||
+              form.family === "table_lookup") && (
               <>
                 <Text style={{ marginTop: 16, fontWeight: "700" }}>
                   {form.family === "banded_sum" ? "Paliers" : "Intervalles"}
+                </Text>
+                <Text style={{ opacity: 0.7, marginTop: 4 }}>
+                  Définis les plages numériques et le résultat associé.
                 </Text>
 
                 {form.ranges.map((row, index) => (
@@ -228,30 +405,52 @@ export function HumanRuleEditorModal({
                   >
                     <TextInput
                       value={row.min}
-                      onChangeText={(value) => onUpdateRangeRow(index, "min", value)}
+                      onChangeText={(value) =>
+                        onUpdateRangeRow(index, "min", value)
+                      }
                       placeholder="Min"
                       keyboardType="numeric"
-                      style={{ borderWidth: 1, borderRadius: 8, padding: 8 }}
+                      style={{
+                        borderWidth: 1,
+                        borderRadius: 8,
+                        padding: 8,
+                      }}
                     />
 
                     <TextInput
                       value={row.max}
-                      onChangeText={(value) => onUpdateRangeRow(index, "max", value)}
+                      onChangeText={(value) =>
+                        onUpdateRangeRow(index, "max", value)
+                      }
                       placeholder="Max"
                       keyboardType="numeric"
-                      style={{ borderWidth: 1, borderRadius: 8, padding: 8 }}
+                      style={{
+                        borderWidth: 1,
+                        borderRadius: 8,
+                        padding: 8,
+                      }}
                     />
 
                     <TextInput
                       value={row.label}
-                      onChangeText={(value) => onUpdateRangeRow(index, "label", value)}
+                      onChangeText={(value) =>
+                        onUpdateRangeRow(index, "label", value)
+                      }
                       placeholder="Label"
-                      style={{ borderWidth: 1, borderRadius: 8, padding: 8 }}
+                      style={{
+                        borderWidth: 1,
+                        borderRadius: 8,
+                        padding: 8,
+                      }}
                     />
 
                     <Pressable
                       onPress={() => onRemoveRangeRow(index)}
-                      style={{ padding: 8, borderWidth: 1, borderRadius: 8 }}
+                      style={{
+                        padding: 8,
+                        borderWidth: 1,
+                        borderRadius: 8,
+                      }}
                     >
                       <Text>Supprimer cette ligne</Text>
                     </Pressable>
@@ -270,16 +469,27 @@ export function HumanRuleEditorModal({
                   <Text>Ajouter une ligne</Text>
                 </Pressable>
               </>
-            ) : null}
+            )}
 
-            <Text style={{ marginTop: 18, fontWeight: "800" }}>Prévisualisation</Text>
+            <Text style={{ marginTop: 18, fontWeight: "800" }}>
+              Prévisualisation
+            </Text>
+            <Text style={{ opacity: 0.7, marginTop: 4 }}>
+              Tu peux simuler un résultat pour vérifier que la règle se comporte
+              comme prévu.
+            </Text>
 
             <Text style={{ marginTop: 12 }}>Valeurs test</Text>
             <TextInput
               value={previewValues}
               onChangeText={onChangePreviewValues}
               placeholder="1, 4, 6"
-              style={{ marginTop: 8, borderWidth: 1, borderRadius: 10, padding: 10 }}
+              style={{
+                marginTop: 8,
+                borderWidth: 1,
+                borderRadius: 10,
+                padding: 10,
+              }}
             />
 
             <Text style={{ marginTop: 12 }}>Faces</Text>
@@ -288,7 +498,12 @@ export function HumanRuleEditorModal({
               onChangeText={onChangePreviewSides}
               placeholder="6"
               keyboardType="numeric"
-              style={{ marginTop: 8, borderWidth: 1, borderRadius: 10, padding: 10 }}
+              style={{
+                marginTop: 8,
+                borderWidth: 1,
+                borderRadius: 10,
+                padding: 10,
+              }}
             />
 
             <Text style={{ marginTop: 12 }}>Modificateur</Text>
@@ -296,7 +511,12 @@ export function HumanRuleEditorModal({
               value={previewModifier}
               onChangeText={onChangePreviewModifier}
               placeholder="0"
-              style={{ marginTop: 8, borderWidth: 1, borderRadius: 10, padding: 10 }}
+              style={{
+                marginTop: 8,
+                borderWidth: 1,
+                borderRadius: 10,
+                padding: 10,
+              }}
             />
 
             <Text style={{ marginTop: 12 }}>Signe</Text>

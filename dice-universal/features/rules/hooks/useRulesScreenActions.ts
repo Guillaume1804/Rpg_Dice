@@ -1,10 +1,12 @@
-import type { RuleRow } from "../../../data/repositories/rulesRepo";
+import type { RuleRow, RuleScope } from "../../../data/repositories/rulesRepo";
 
 type SaveRuleFn = (params: {
   editingRule: RuleRow | null;
   name: string;
   kind: string;
   params_json: string;
+  supported_sides_json: string;
+  scope: RuleScope;
 }) => Promise<void>;
 
 type RemoveRuleFn = (ruleId: string) => Promise<void>;
@@ -13,8 +15,11 @@ type UseRulesScreenActionsParams = {
   editingRule: RuleRow | null;
   formName: string;
   getRulePayload: () => {
+    name: string;
     kind: string;
     params_json: string;
+    supported_sides_json: string;
+    scope: RuleScope;
   };
   saveRule: SaveRuleFn;
   removeRule: RemoveRuleFn;
@@ -35,9 +40,11 @@ export function useRulesScreenActions({
 
       await saveRule({
         editingRule,
-        name: formName,
+        name: payload.name,
         kind: payload.kind,
         params_json: payload.params_json,
+        supported_sides_json: payload.supported_sides_json,
+        scope: payload.scope,
       });
 
       closeEditor();

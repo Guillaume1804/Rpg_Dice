@@ -24,20 +24,30 @@ export async function ensureMetaTable(db: Db): Promise<void> {
 export async function getMeta(db: Db, key: string): Promise<string | null> {
   const rows = await db.getAllAsync<{ value: string }>(
     "SELECT value FROM meta WHERE key = ? LIMIT 1;",
-    [key]
+    [key],
   );
   return rows.length ? rows[0].value : null;
 }
 
-export async function setMeta(db: Db, key: string, value: string): Promise<void> {
-  await db.runAsync(
-    "INSERT OR REPLACE INTO meta(key, value) VALUES(?, ?);",
-    [key, value]
-  );
+export async function setMeta(
+  db: Db,
+  key: string,
+  value: string,
+): Promise<void> {
+  await db.runAsync("INSERT OR REPLACE INTO meta(key, value) VALUES(?, ?);", [
+    key,
+    value,
+  ]);
 }
 
-async function ensureColumn(db: Db, table: string, column: string): Promise<boolean> {
-  const rows = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(${table});`);
+async function ensureColumn(
+  db: Db,
+  table: string,
+  column: string,
+): Promise<boolean> {
+  const rows = await db.getAllAsync<{ name: string }>(
+    `PRAGMA table_info(${table});`,
+  );
   return rows.some((r) => r.name === column);
 }
 
@@ -74,6 +84,8 @@ export async function initSchema(db: Db): Promise<void> {
       kind TEXT NOT NULL,
       params_json TEXT NOT NULL DEFAULT '{}',
       is_system INTEGER NOT NULL DEFAULT 0,
+      supported_sides_json TEXT NOT NULL DEFAULT '[]',
+      scope TEXT NOT NULL DEFAULT 'entry',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -161,6 +173,26 @@ export async function initSchema(db: Db): Promise<void> {
     `);
   }
 
+  const hasRuleSupportedSides = await ensureColumn(
+    db,
+    "rules",
+    "supported_sides_json",
+  );
+  if (!hasRuleSupportedSides) {
+    await db.execAsync(`
+      ALTER TABLE rules
+      ADD COLUMN supported_sides_json TEXT NOT NULL DEFAULT '[]';
+    `);
+  }
+
+  const hasRuleScope = await ensureColumn(db, "rules", "scope");
+  if (!hasRuleScope) {
+    await db.execAsync(`
+      ALTER TABLE rules
+      ADD COLUMN scope TEXT NOT NULL DEFAULT 'entry';
+    `);
+  }
+
   await db.execAsync(`
     CREATE INDEX IF NOT EXISTS idx_profiles_table
     ON profiles(table_id);
@@ -214,5 +246,15 @@ export async function initSchema(db: Db): Promise<void> {
   await db.execAsync(`
     CREATE INDEX IF NOT EXISTS idx_rules_kind
     ON rules(kind);
+  `);
+
+  await db.execAsync(`
+    CREATE INDEX IF NOT EXISTS idx_rules_scope
+    ON rules(scope);
+  `);
+
+  await db.execAsync(`
+    CREATE INDEX IF NOT EXISTS idx_rules_system_kind
+    ON rules(is_system, kind);
   `);
 }

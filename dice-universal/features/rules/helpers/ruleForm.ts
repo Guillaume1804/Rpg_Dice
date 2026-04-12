@@ -1,3 +1,4 @@
+import type { RuleScope } from "../../../data/repositories/rulesRepo";
 import type { RuleFamilyKey } from "../config/ruleFamilies";
 
 export type RuleRangeFormRow = {
@@ -9,13 +10,19 @@ export type RuleRangeFormRow = {
 export type RuleFormState = {
   name: string;
   family: RuleFamilyKey;
+
+  supportedSidesText: string;
+  scope: RuleScope;
+
   compare: "gte" | "lte";
   successThreshold: string;
   critSuccessFaces: string;
   critFailureFaces: string;
+
   successAtOrAbove: string;
   failFaces: string;
   glitchRule: "ones_gt_successes" | "ones_gte_successes" | "none";
+
   ranges: RuleRangeFormRow[];
 };
 
@@ -23,13 +30,19 @@ export function createDefaultRuleFormState(): RuleFormState {
   return {
     name: "",
     family: "single_check",
+
+    supportedSidesText: "20",
+    scope: "entry",
+
     compare: "gte",
     successThreshold: "",
     critSuccessFaces: "",
     critFailureFaces: "",
+
     successAtOrAbove: "5",
     failFaces: "1",
     glitchRule: "ones_gt_successes",
+
     ranges: [
       { min: "1", max: "3", label: "Bas" },
       { min: "4", max: "6", label: "Moyen" },
@@ -47,16 +60,57 @@ function parseNumberList(value: string): number[] {
     .filter((n) => Number.isFinite(n));
 }
 
+function normalizeScopeForFamily(
+  family: RuleFamilyKey,
+  requestedScope: RuleScope,
+): RuleScope {
+  if (family === "success_pool") {
+    return "group";
+  }
+
+  return requestedScope;
+}
+
+function defaultScopeForFamily(family: RuleFamilyKey): RuleScope {
+  if (family === "success_pool") {
+    return "group";
+  }
+
+  return "entry";
+}
+
+function defaultSupportedSidesForFamily(family: RuleFamilyKey): string {
+  switch (family) {
+    case "single_check":
+      return "20";
+    case "success_pool":
+      return "6";
+    case "banded_sum":
+      return "6";
+    case "highest_of_pool":
+      return "6";
+    case "table_lookup":
+      return "100";
+    default:
+      return "";
+  }
+}
+
 export function buildRulePayloadFromForm(state: RuleFormState): {
   name: string;
   kind: string;
   params_json: string;
+  supported_sides_json: string;
+  scope: RuleScope;
 } {
   const name = state.name.trim();
 
   if (!name) {
     throw new Error("Le nom de la règle est obligatoire.");
   }
+
+  const supportedSides = parseNumberList(state.supportedSidesText);
+  const scope = normalizeScopeForFamily(state.family, state.scope);
 
   if (state.family === "single_check") {
     const threshold =
@@ -77,6 +131,8 @@ export function buildRulePayloadFromForm(state: RuleFormState): {
         crit_success_faces: parseNumberList(state.critSuccessFaces),
         crit_failure_faces: parseNumberList(state.critFailureFaces),
       }),
+      supported_sides_json: JSON.stringify(supportedSides),
+      scope,
     };
   }
 
@@ -84,7 +140,9 @@ export function buildRulePayloadFromForm(state: RuleFormState): {
     const successAtOrAbove = Number(state.successAtOrAbove);
 
     if (!Number.isFinite(successAtOrAbove)) {
-      throw new Error("Le seuil de réussite du pool doit être un nombre valide.");
+      throw new Error(
+        "Le seuil de réussite du pool doit être un nombre valide.",
+      );
     }
 
     return {
@@ -95,6 +153,8 @@ export function buildRulePayloadFromForm(state: RuleFormState): {
         fail_faces: parseNumberList(state.failFaces),
         glitch_rule: state.glitchRule,
       }),
+      supported_sides_json: JSON.stringify(supportedSides),
+      scope: "group",
     };
   }
 
@@ -123,6 +183,8 @@ export function buildRulePayloadFromForm(state: RuleFormState): {
         bands,
         defaultLabel: "—",
       }),
+      supported_sides_json: JSON.stringify(supportedSides),
+      scope,
     };
   }
 
@@ -145,6 +207,8 @@ export function buildRulePayloadFromForm(state: RuleFormState): {
         crit_success_faces: parseNumberList(state.critSuccessFaces),
         crit_failure_faces: parseNumberList(state.critFailureFaces),
       }),
+      supported_sides_json: JSON.stringify(supportedSides),
+      scope,
     };
   }
 
@@ -172,6 +236,8 @@ export function buildRulePayloadFromForm(state: RuleFormState): {
       ranges,
       defaultLabel: "—",
     }),
+    supported_sides_json: JSON.stringify(supportedSides),
+    scope,
   };
 }
 
@@ -179,6 +245,8 @@ export function fillRuleFormFromExistingRule(rule: {
   name: string;
   kind: string;
   params_json: string;
+  supported_sides_json?: string;
+  scope?: RuleScope;
 }): RuleFormState {
   const base = createDefaultRuleFormState();
 
@@ -189,14 +257,32 @@ export function fillRuleFormFromExistingRule(rule: {
     parsed = {};
   }
 
+  let supportedSidesText = "";
+  try {
+    const parsedSides = JSON.parse(rule.supported_sides_json || "[]");
+    supportedSidesText = Array.isArray(parsedSides)
+      ? parsedSides.join(", ")
+      : "";
+  } catch {
+    supportedSidesText = "";
+  }
+
   if (rule.kind === "single_check") {
     return {
       ...base,
       name: rule.name,
       family: "single_check",
+      supportedSidesText:
+        supportedSidesText || defaultSupportedSidesForFamily("single_check"),
+      scope: normalizeScopeForFamily(
+        "single_check",
+        rule.scope ?? defaultScopeForFamily("single_check"),
+      ),
       compare: parsed.compare === "lte" ? "lte" : "gte",
       successThreshold:
-        parsed.success_threshold == null ? "" : String(parsed.success_threshold),
+        parsed.success_threshold == null
+          ? ""
+          : String(parsed.success_threshold),
       critSuccessFaces: Array.isArray(parsed.crit_success_faces)
         ? parsed.crit_success_faces.join(", ")
         : "",
@@ -211,6 +297,9 @@ export function fillRuleFormFromExistingRule(rule: {
       ...base,
       name: rule.name,
       family: "success_pool",
+      supportedSidesText:
+        supportedSidesText || defaultSupportedSidesForFamily("success_pool"),
+      scope: "group",
       successAtOrAbove:
         parsed.success_at_or_above == null
           ? "5"
@@ -231,6 +320,12 @@ export function fillRuleFormFromExistingRule(rule: {
       ...base,
       name: rule.name,
       family: "banded_sum",
+      supportedSidesText:
+        supportedSidesText || defaultSupportedSidesForFamily("banded_sum"),
+      scope: normalizeScopeForFamily(
+        "banded_sum",
+        rule.scope ?? defaultScopeForFamily("banded_sum"),
+      ),
       ranges: Array.isArray(parsed.bands)
         ? parsed.bands.map((row: any) => ({
             min: String(row?.min ?? ""),
@@ -246,9 +341,17 @@ export function fillRuleFormFromExistingRule(rule: {
       ...base,
       name: rule.name,
       family: "highest_of_pool",
+      supportedSidesText:
+        supportedSidesText || defaultSupportedSidesForFamily("highest_of_pool"),
+      scope: normalizeScopeForFamily(
+        "highest_of_pool",
+        rule.scope ?? defaultScopeForFamily("highest_of_pool"),
+      ),
       compare: parsed.compare === "lte" ? "lte" : "gte",
       successThreshold:
-        parsed.success_threshold == null ? "" : String(parsed.success_threshold),
+        parsed.success_threshold == null
+          ? ""
+          : String(parsed.success_threshold),
       critSuccessFaces: Array.isArray(parsed.crit_success_faces)
         ? parsed.crit_success_faces.join(", ")
         : "",
@@ -262,6 +365,12 @@ export function fillRuleFormFromExistingRule(rule: {
     ...base,
     name: rule.name,
     family: "table_lookup",
+    supportedSidesText:
+      supportedSidesText || defaultSupportedSidesForFamily("table_lookup"),
+    scope: normalizeScopeForFamily(
+      "table_lookup",
+      rule.scope ?? defaultScopeForFamily("table_lookup"),
+    ),
     ranges: Array.isArray(parsed.ranges)
       ? parsed.ranges.map((row: any) => ({
           min: String(row?.min ?? ""),

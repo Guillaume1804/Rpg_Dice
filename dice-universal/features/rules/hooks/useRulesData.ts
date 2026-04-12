@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Db } from "../../../data/db/database";
-import type { RuleRow } from "../../../data/repositories/rulesRepo";
+import type { RuleRow, RuleScope } from "../../../data/repositories/rulesRepo";
 import {
   listRules,
   createRule,
@@ -17,14 +17,16 @@ type SaveRuleParams = {
   name: string;
   kind: string;
   params_json: string;
+  supported_sides_json: string;
+  scope: RuleScope;
 };
 
 const MODERN_RULE_KINDS = new Set([
   "single_check",
   "success_pool",
-  "table_lookup",
   "banded_sum",
   "highest_of_pool",
+  "table_lookup",
   "pipeline",
 ]);
 
@@ -46,16 +48,6 @@ export function useRulesData({ db }: UseRulesDataParams) {
     load();
   }, [load]);
 
-  const systemRules = useMemo(
-    () => rules.filter((r) => r.is_system === 1),
-    [rules],
-  );
-
-  const customRules = useMemo(
-    () => rules.filter((r) => r.is_system !== 1),
-    [rules],
-  );
-
   const modernRules = useMemo(
     () => rules.filter((r) => MODERN_RULE_KINDS.has(r.kind)),
     [rules],
@@ -67,7 +59,14 @@ export function useRulesData({ db }: UseRulesDataParams) {
   );
 
   const saveRule = useCallback(
-    async ({ editingRule, name, kind, params_json }: SaveRuleParams) => {
+    async ({
+      editingRule,
+      name,
+      kind,
+      params_json,
+      supported_sides_json,
+      scope,
+    }: SaveRuleParams) => {
       const trimmedName = name.trim();
       if (!trimmedName) return;
 
@@ -79,6 +78,8 @@ export function useRulesData({ db }: UseRulesDataParams) {
             name: trimmedName,
             kind,
             params_json,
+            supported_sides_json,
+            scope,
           });
         } else {
           await createRule(db, {
@@ -86,6 +87,8 @@ export function useRulesData({ db }: UseRulesDataParams) {
             kind,
             params_json,
             is_system: 0,
+            supported_sides_json,
+            scope,
           });
         }
 
@@ -116,8 +119,6 @@ export function useRulesData({ db }: UseRulesDataParams) {
     rules,
     error,
     load,
-    systemRules,
-    customRules,
     modernRules,
     legacyRules,
     saveRule,

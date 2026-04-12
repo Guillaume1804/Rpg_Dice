@@ -1,3 +1,5 @@
+// dice-universal\features\rules\hooks\useHumanRuleEditor.ts
+
 import { useMemo, useState } from "react";
 import type { RuleRow } from "../../../data/repositories/rulesRepo";
 import {

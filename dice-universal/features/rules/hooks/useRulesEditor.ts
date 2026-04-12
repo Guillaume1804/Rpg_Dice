@@ -1,64 +1,15 @@
 import { useState } from "react";
-import { RuleRow } from "../../../data/repositories/rulesRepo";
 import { evaluateRule } from "../../../core/rules/evaluate";
-
-export type RangeRow = { min: string; max: string; label: string };
-
-export type PipelineStep =
-  | { op: "keep_highest"; n: number }
-  | { op: "keep_lowest"; n: number }
-  | { op: "drop_highest"; n: number }
-  | { op: "drop_lowest"; n: number }
-  | { op: "take"; index: number }
-  | { op: "sort_asc" }
-  | { op: "sort_desc" }
-  | { op: "reroll"; faces: number[]; once?: boolean; max_rerolls?: number }
-  | { op: "explode"; faces: number[]; max_explosions?: number }
-  | { op: "count_successes"; at_or_above: number }
-  | { op: "count_equal"; faces: number[] }
-  | { op: "count_range"; min: number; max: number }
-  | { op: "lookup"; ranges: { min: number; max: number; label: string }[] }
-  | { op: "sum" };
-
-export type PipelineOutput =
-  | "sum"
-  | "successes"
-  | "count_equal"
-  | "count_range"
-  | "first_value"
-  | "values"
-  | "lookup_label"
-  | "lookup_value";
-
-export type PipelineParams = {
-  steps: PipelineStep[];
-  output?: PipelineOutput;
-  crit_success_faces?: number[];
-  crit_failure_faces?: number[];
-  success_threshold?: number | null;
-};
-
-function safeParse(json: string) {
-  try {
-    return JSON.parse(json || "{}");
-  } catch {
-    return {};
-  }
-}
-
-function stringifyPipeline(p: PipelineParams) {
-  return JSON.stringify(
-    {
-      steps: p.steps ?? [],
-      output: p.output ?? "sum",
-      crit_success_faces: p.crit_success_faces ?? [],
-      crit_failure_faces: p.crit_failure_faces ?? [],
-      success_threshold: p.success_threshold ?? null,
-    },
-    null,
-    2
-  );
-}
+import type { RuleRow, RuleScope } from "../../../data/repositories/rulesRepo";
+import { parseSupportedSides } from "../../../data/repositories/rulesRepo";
+import type { RuleFamilyKey } from "../config/ruleFamilies";
+import {
+  createDefaultRuleFormState,
+  buildRulePayloadFromForm,
+  fillRuleFormFromExistingRule,
+  type RuleFormState,
+  type RuleRangeFormRow,
+} from "../helpers/ruleForm";
 
 function formatPreviewResult(res: any): string {
   if (!res) return "";
@@ -67,7 +18,7 @@ function formatPreviewResult(res: any): string {
     return `Somme = ${res.total}`;
   }
 
-  if (res.kind === "d20") {
+  if (res.kind === "single_check") {
     return JSON.stringify(
       {
         kind: res.kind,
@@ -75,27 +26,65 @@ function formatPreviewResult(res: any): string {
         natural: res.natural,
         final: res.final,
         threshold: res.threshold,
+        compare: res.compare,
       },
       null,
-      2
+      2,
     );
   }
 
-  if (res.kind === "pool") {
+  if (res.kind === "success_pool") {
     return JSON.stringify(
       {
         kind: res.kind,
         outcome: res.outcome,
         successes: res.successes,
-        ones: res.ones,
+        fail_count: res.fail_count,
+        fail_faces: res.fail_faces,
       },
       null,
-      2
+      2,
+    );
+  }
+
+  if (res.kind === "banded_sum") {
+    return JSON.stringify(
+      {
+        kind: res.kind,
+        total: res.total,
+        label: res.label,
+      },
+      null,
+      2,
+    );
+  }
+
+  if (res.kind === "highest_of_pool") {
+    return JSON.stringify(
+      {
+        kind: res.kind,
+        outcome: res.outcome,
+        kept: res.kept,
+        natural_values: res.natural_values,
+        final: res.final,
+        threshold: res.threshold,
+        compare: res.compare,
+      },
+      null,
+      2,
     );
   }
 
   if (res.kind === "table_lookup") {
-    return `Lookup → ${res.label} (${res.value})`;
+    return JSON.stringify(
+      {
+        kind: res.kind,
+        value: res.value,
+        label: res.label,
+      },
+      null,
+      2,
+    );
   }
 
   if (res.kind === "pipeline") {
@@ -108,39 +97,40 @@ function formatPreviewResult(res: any): string {
         meta: res.meta,
       },
       null,
-      2
+      2,
     );
   }
 
   return JSON.stringify(res, null, 2);
 }
 
+function normalizeSidesInput(value: string): string {
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .join(", ");
+}
+
+function parseSupportedSidesInput(value: string): number[] {
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => Number(item))
+    .filter((n) => Number.isFinite(n) && n > 0);
+}
+
 export function useRulesEditor() {
   const [showEditModal, setShowEditModal] = useState(false);
-
   const [editingRule, setEditingRule] = useState<RuleRow | null>(null);
-  const [formName, setFormName] = useState("");
 
-  const [pipeOutput, setPipeOutput] = useState<PipelineOutput>("sum");
-  const [successThreshold, setSuccessThreshold] = useState("");
-  const [critSuccessFaces, setCritSuccessFaces] = useState("");
-  const [critFailureFaces, setCritFailureFaces] = useState("");
+  const [formState, setFormState] = useState<RuleFormState>(
+    createDefaultRuleFormState(),
+  );
 
-  const [steps, setSteps] = useState<PipelineStep[]>([]);
-
-  const [keepN, setKeepN] = useState("5");
-  const [successAt, setSuccessAt] = useState("5");
-  const [takeIndex, setTakeIndex] = useState("0");
-  const [facesInput, setFacesInput] = useState("1");
-  const [rangeMin, setRangeMin] = useState("1");
-  const [rangeMax, setRangeMax] = useState("10");
-
-  const [ranges, setRanges] = useState<RangeRow[]>([
-    { min: "1", max: "20", label: "Tête" },
-    { min: "21", max: "50", label: "Torse" },
-    { min: "51", max: "80", label: "Bras" },
-    { min: "81", max: "100", label: "Jambes" },
-  ]);
+  const [scope, setScope] = useState<RuleScope>("entry");
+  const [supportedSidesInput, setSupportedSidesInput] = useState("");
 
   const [previewValues, setPreviewValues] = useState("4, 6, 1, 5");
   const [previewSides, setPreviewSides] = useState("20");
@@ -150,28 +140,9 @@ export function useRulesEditor() {
 
   function resetForm() {
     setEditingRule(null);
-    setFormName("");
-
-    setPipeOutput("sum");
-    setSuccessThreshold("");
-    setCritSuccessFaces("");
-    setCritFailureFaces("");
-    setSteps([]);
-
-    setKeepN("5");
-    setSuccessAt("5");
-    setTakeIndex("0");
-    setFacesInput("1");
-    setRangeMin("1");
-    setRangeMax("10");
-
-    setRanges([
-      { min: "1", max: "20", label: "Tête" },
-      { min: "21", max: "50", label: "Torse" },
-      { min: "51", max: "80", label: "Bras" },
-      { min: "81", max: "100", label: "Jambes" },
-    ]);
-
+    setFormState(createDefaultRuleFormState());
+    setScope("entry");
+    setSupportedSidesInput("");
     setPreviewValues("4, 6, 1, 5");
     setPreviewSides("20");
     setPreviewModifier("0");
@@ -179,65 +150,20 @@ export function useRulesEditor() {
     setPreviewResult("");
   }
 
-  function toFacesArray(input: string): number[] {
-    return input
-      .split(",")
-      .map((x) => x.trim())
-      .filter(Boolean)
-      .map((x) => Number(x))
-      .filter((n) => Number.isFinite(n));
-  }
-
-  function buildPipelineParams(): PipelineParams {
-    const threshold = successThreshold.trim() === "" ? null : Number(successThreshold);
-    const cs = toFacesArray(critSuccessFaces);
-    const cf = toFacesArray(critFailureFaces);
-
-    return {
-      steps,
-      output: pipeOutput,
-      crit_success_faces: cs,
-      crit_failure_faces: cf,
-      success_threshold: threshold,
-    };
-  }
-
-  function getParamsJson() {
-    return stringifyPipeline(buildPipelineParams());
-  }
-
   function openCreate() {
     resetForm();
-    setFormName("Nouvelle règle");
-    setPipeOutput("sum");
-    setSteps([{ op: "sum" }]);
+    setFormState((prev) => ({
+      ...prev,
+      name: "Nouvelle règle",
+    }));
     setShowEditModal(true);
   }
 
   function openEdit(rule: RuleRow) {
     setEditingRule(rule);
-    setFormName(rule.name);
-
-    const p = safeParse(rule.params_json);
-
-    if (rule.kind === "pipeline") {
-      setSteps(Array.isArray(p.steps) ? p.steps : []);
-      setPipeOutput((p.output as PipelineOutput) ?? "sum");
-      setSuccessThreshold(p.success_threshold == null ? "" : String(p.success_threshold));
-      setCritSuccessFaces(
-        Array.isArray(p.crit_success_faces) ? p.crit_success_faces.join(", ") : ""
-      );
-      setCritFailureFaces(
-        Array.isArray(p.crit_failure_faces) ? p.crit_failure_faces.join(", ") : ""
-      );
-    } else {
-      setSteps([{ op: "sum" }]);
-      setPipeOutput("sum");
-      setSuccessThreshold("");
-      setCritSuccessFaces("");
-      setCritFailureFaces("");
-    }
-
+    setFormState(fillRuleFormFromExistingRule(rule));
+    setScope(rule.scope ?? "entry");
+    setSupportedSidesInput(parseSupportedSides(rule).join(", "));
     setPreviewResult("");
     setShowEditModal(true);
   }
@@ -247,147 +173,104 @@ export function useRulesEditor() {
     resetForm();
   }
 
-  function applyPreset(
-    preset:
-      | "SUM"
-      | "D20"
-      | "D100_CRIT"
-      | "D100_LOC"
-      | "KEEP_HIGHEST"
-      | "SUCCESS_POOL"
+  function setRuleName(value: string) {
+    setFormState((prev) => ({ ...prev, name: value }));
+  }
+
+  function setRuleFamily(value: RuleFamilyKey) {
+    setFormState((prev) => ({ ...prev, family: value }));
+  }
+
+  function setCompare(value: "gte" | "lte") {
+    setFormState((prev) => ({ ...prev, compare: value }));
+  }
+
+  function setSuccessThreshold(value: string) {
+    setFormState((prev) => ({ ...prev, successThreshold: value }));
+  }
+
+  function setCritSuccessFaces(value: string) {
+    setFormState((prev) => ({ ...prev, critSuccessFaces: value }));
+  }
+
+  function setCritFailureFaces(value: string) {
+    setFormState((prev) => ({ ...prev, critFailureFaces: value }));
+  }
+
+  function setSuccessAtOrAbove(value: string) {
+    setFormState((prev) => ({ ...prev, successAtOrAbove: value }));
+  }
+
+  function setFailFaces(value: string) {
+    setFormState((prev) => ({ ...prev, failFaces: value }));
+  }
+
+  function setGlitchRule(
+    value: "ones_gt_successes" | "ones_gte_successes" | "none",
   ) {
-    setPreviewResult("");
-
-    if (preset === "SUM") {
-      setFormName("Somme (pipeline)");
-      setPipeOutput("sum");
-      setSteps([{ op: "sum" }]);
-      setSuccessThreshold("");
-      setCritSuccessFaces("");
-      setCritFailureFaces("");
-      return;
-    }
-
-    if (preset === "D20") {
-      setFormName("D20 (crit 1/20) — pipeline");
-      setPipeOutput("sum");
-      setSteps([{ op: "take", index: 0 }, { op: "sum" }]);
-      setSuccessThreshold("");
-      setCritSuccessFaces("20");
-      setCritFailureFaces("1");
-      return;
-    }
-
-    if (preset === "D100_CRIT") {
-      setFormName("D100 (crit 95-100 / 1-5) — pipeline");
-      setPipeOutput("sum");
-      setSteps([{ op: "take", index: 0 }, { op: "sum" }]);
-      setSuccessThreshold("");
-      setCritSuccessFaces("95,96,97,98,99,100");
-      setCritFailureFaces("1,2,3,4,5");
-      return;
-    }
-
-    if (preset === "D100_LOC") {
-      setFormName("D100 localisation — pipeline");
-      setPipeOutput("lookup_label");
-      setSteps([
-        {
-          op: "lookup",
-          ranges: ranges.map((r) => ({
-            min: Number(r.min),
-            max: Number(r.max),
-            label: r.label,
-          })),
-        },
-      ]);
-      setSuccessThreshold("");
-      setCritSuccessFaces("");
-      setCritFailureFaces("");
-      return;
-    }
-
-    if (preset === "KEEP_HIGHEST") {
-      setFormName("Keep highest — pipeline");
-      setPipeOutput("sum");
-      setSteps([
-        { op: "keep_highest", n: Math.max(0, Number(keepN || "0")) },
-        { op: "sum" },
-      ]);
-      setSuccessThreshold("");
-      setCritSuccessFaces("");
-      setCritFailureFaces("");
-      return;
-    }
-
-    if (preset === "SUCCESS_POOL") {
-      setFormName("Pool à succès — pipeline");
-      setPipeOutput("successes");
-      setSteps([
-        {
-          op: "count_successes",
-          at_or_above: Math.max(0, Number(successAt || "0")),
-        },
-      ]);
-      setSuccessThreshold("");
-      setCritSuccessFaces("");
-      setCritFailureFaces("");
-    }
+    setFormState((prev) => ({ ...prev, glitchRule: value }));
   }
 
-  function addStep(step: PipelineStep) {
-    setSteps((prev) => [...prev, step]);
-    setPreviewResult("");
+  function setRanges(
+    updater:
+      | RuleRangeFormRow[]
+      | ((prev: RuleRangeFormRow[]) => RuleRangeFormRow[]),
+  ) {
+    setFormState((prev) => ({
+      ...prev,
+      ranges: typeof updater === "function" ? updater(prev.ranges) : updater,
+    }));
   }
 
-  function removeStepAt(index: number) {
-    setSteps((prev) => prev.filter((_, i) => i !== index));
-    setPreviewResult("");
+  function addRangeRow() {
+    setRanges((prev) => [...prev, { min: "", max: "", label: "" }]);
   }
 
-  function moveStepUp(index: number) {
-    if (index <= 0) return;
-    setSteps((prev) => {
-      const next = [...prev];
-      [next[index - 1], next[index]] = [next[index], next[index - 1]];
-      return next;
-    });
-    setPreviewResult("");
+  function removeRangeRow(index: number) {
+    setRanges((prev) => prev.filter((_, i) => i !== index));
   }
 
-  function moveStepDown(index: number) {
-    setSteps((prev) => {
-      if (index >= prev.length - 1) return prev;
-      const next = [...prev];
-      [next[index], next[index + 1]] = [next[index + 1], next[index]];
-      return next;
-    });
-    setPreviewResult("");
+  function updateRangeRow(index: number, patch: Partial<RuleRangeFormRow>) {
+    setRanges((prev) =>
+      prev.map((row, i) => (i === index ? { ...row, ...patch } : row)),
+    );
+  }
+
+  function getRulePayload() {
+    const base = buildRulePayloadFromForm(formState);
+
+    return {
+      ...base,
+      supported_sides_json: JSON.stringify(
+        parseSupportedSidesInput(supportedSidesInput),
+      ),
+      scope,
+    };
   }
 
   function computePreview() {
     try {
+      const payload = getRulePayload();
+
       const values = previewValues
         .split(",")
-        .map((x) => x.trim())
+        .map((item) => item.trim())
         .filter(Boolean)
-        .map((x) => Number(x))
+        .map((item) => Number(item))
         .filter((n) => Number.isFinite(n));
-
-      const params_json = getParamsJson();
 
       const sides = Number(previewSides || "0");
       const modifier = Number(previewModifier || "0");
       const sign = Number(previewSign || "1");
 
-      const res = evaluateRule("pipeline", params_json, {
+      const result = evaluateRule(payload.kind, payload.params_json, {
         values,
         sides,
         modifier,
         sign,
       });
 
-      setPreviewResult(formatPreviewResult(res));
+      setPreviewResult(formatPreviewResult(result));
     } catch (e: any) {
       setPreviewResult(e?.message ?? "Erreur preview");
     }
@@ -398,33 +281,49 @@ export function useRulesEditor() {
     setShowEditModal,
 
     editingRule,
-    formName,
-    setFormName,
 
-    pipeOutput,
-    setPipeOutput,
-    successThreshold,
+    formState,
+    setFormState,
+
+    ruleName: formState.name,
+    setRuleName,
+
+    ruleFamily: formState.family,
+    setRuleFamily,
+
+    compare: formState.compare,
+    setCompare,
+
+    successThreshold: formState.successThreshold,
     setSuccessThreshold,
-    critSuccessFaces,
+
+    critSuccessFaces: formState.critSuccessFaces,
     setCritSuccessFaces,
-    critFailureFaces,
+
+    critFailureFaces: formState.critFailureFaces,
     setCritFailureFaces,
 
-    steps,
-    keepN,
-    setKeepN,
-    successAt,
-    setSuccessAt,
-    takeIndex,
-    setTakeIndex,
-    facesInput,
-    setFacesInput,
-    rangeMin,
-    setRangeMin,
-    rangeMax,
-    setRangeMax,
-    ranges,
+    successAtOrAbove: formState.successAtOrAbove,
+    setSuccessAtOrAbove,
+
+    failFaces: formState.failFaces,
+    setFailFaces,
+
+    glitchRule: formState.glitchRule,
+    setGlitchRule,
+
+    ranges: formState.ranges,
     setRanges,
+    addRangeRow,
+    removeRangeRow,
+    updateRangeRow,
+
+    scope,
+    setScope,
+
+    supportedSidesInput,
+    setSupportedSidesInput: (value: string) =>
+      setSupportedSidesInput(normalizeSidesInput(value)),
 
     previewValues,
     setPreviewValues,
@@ -437,17 +336,10 @@ export function useRulesEditor() {
     previewResult,
 
     resetForm,
-    toFacesArray,
-    buildPipelineParams,
-    getParamsJson,
     openCreate,
     openEdit,
     closeEditor,
-    applyPreset,
-    addStep,
-    removeStepAt,
-    moveStepUp,
-    moveStepDown,
+    getRulePayload,
     computePreview,
   };
 }
