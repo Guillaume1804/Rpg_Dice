@@ -1,10 +1,12 @@
+// dice-universal\screens\RulesScreen.tsx
+
 import { View, Text, Pressable } from "react-native";
 import { useDb } from "../data/db/DbProvider";
 import { useRulesData } from "../features/rules/hooks/useRulesData";
-import { RulesListSection } from "../features/rules/components/RulesListSection";
-import { useRulesScreenActions } from "../features/rules/hooks/useRulesScreenActions";
 import { useHumanRuleEditor } from "../features/rules/hooks/useHumanRuleEditor";
 import { HumanRuleEditorModal } from "../features/rules/components/HumanRuleEditorModal";
+import { RulesListSection } from "../features/rules/components/RulesListSection";
+import { useRulesScreenActions } from "../features/rules/hooks/useRulesScreenActions";
 
 export default function RulesScreen() {
   const db = useDb();
@@ -13,7 +15,6 @@ export default function RulesScreen() {
     error,
     systemRules,
     customRules,
-    legacyRules,
     saveRule,
     removeRule,
   } = useRulesData({ db });
@@ -22,7 +23,6 @@ export default function RulesScreen() {
     showEditModal,
     editingRule,
     form,
-    formName,
     previewValues,
     previewSides,
     previewModifier,
@@ -46,7 +46,6 @@ export default function RulesScreen() {
 
   const { handleSave, handleDeleteRule } = useRulesScreenActions({
     editingRule,
-    formName,
     getRulePayload,
     saveRule,
     removeRule,
@@ -76,7 +75,6 @@ export default function RulesScreen() {
       <RulesListSection
         systemRules={systemRules}
         customRules={customRules}
-        legacyRules={legacyRules}
         onEditRule={openEdit}
         onDeleteRule={handleDeleteRule}
       />

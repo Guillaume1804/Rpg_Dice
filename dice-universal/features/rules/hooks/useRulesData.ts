@@ -12,8 +12,7 @@ type UseRulesDataParams = {
   db: Db;
 };
 
-type SaveRuleParams = {
-  editingRule: RuleRow | null;
+type SaveRulePayload = {
   name: string;
   kind: string;
   params_json: string;
@@ -21,14 +20,10 @@ type SaveRuleParams = {
   scope: RuleScope;
 };
 
-const MODERN_RULE_KINDS = new Set([
-  "single_check",
-  "success_pool",
-  "banded_sum",
-  "highest_of_pool",
-  "table_lookup",
-  "pipeline",
-]);
+type SaveRuleParams = {
+  editingRule: RuleRow | null;
+  payload: SaveRulePayload;
+};
 
 export function useRulesData({ db }: UseRulesDataParams) {
   const [rules, setRules] = useState<RuleRow[]>([]);
@@ -48,26 +43,19 @@ export function useRulesData({ db }: UseRulesDataParams) {
     load();
   }, [load]);
 
-  const modernRules = useMemo(
-    () => rules.filter((r) => MODERN_RULE_KINDS.has(r.kind)),
+  const systemRules = useMemo(
+    () => rules.filter((rule) => rule.is_system === 1),
     [rules],
   );
 
-  const legacyRules = useMemo(
-    () => rules.filter((r) => !MODERN_RULE_KINDS.has(r.kind)),
+  const customRules = useMemo(
+    () => rules.filter((rule) => rule.is_system !== 1),
     [rules],
   );
 
   const saveRule = useCallback(
-    async ({
-      editingRule,
-      name,
-      kind,
-      params_json,
-      supported_sides_json,
-      scope,
-    }: SaveRuleParams) => {
-      const trimmedName = name.trim();
+    async ({ editingRule, payload }: SaveRuleParams) => {
+      const trimmedName = payload.name.trim();
       if (!trimmedName) return;
 
       try {
@@ -76,19 +64,19 @@ export function useRulesData({ db }: UseRulesDataParams) {
         if (editingRule) {
           await updateRule(db, editingRule.id, {
             name: trimmedName,
-            kind,
-            params_json,
-            supported_sides_json,
-            scope,
+            kind: payload.kind,
+            params_json: payload.params_json,
+            supported_sides_json: payload.supported_sides_json,
+            scope: payload.scope,
           });
         } else {
           await createRule(db, {
             name: trimmedName,
-            kind,
-            params_json,
+            kind: payload.kind,
+            params_json: payload.params_json,
             is_system: 0,
-            supported_sides_json,
-            scope,
+            supported_sides_json: payload.supported_sides_json,
+            scope: payload.scope,
           });
         }
 
@@ -119,8 +107,8 @@ export function useRulesData({ db }: UseRulesDataParams) {
     rules,
     error,
     load,
-    modernRules,
-    legacyRules,
+    systemRules,
+    customRules,
     saveRule,
     removeRule,
   };

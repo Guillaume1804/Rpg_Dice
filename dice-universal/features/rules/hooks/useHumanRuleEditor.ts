@@ -1,7 +1,5 @@
-// dice-universal\features\rules\hooks\useHumanRuleEditor.ts
-
 import { useMemo, useState } from "react";
-import type { RuleRow } from "../../../data/repositories/rulesRepo";
+import type { RuleRow, RuleScope } from "../../../data/repositories/rulesRepo";
 import {
   buildRulePayloadFromForm,
   createDefaultRuleFormState,
@@ -15,10 +13,24 @@ function safeNumber(value: string, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+function parsePreviewValues(value: string): number[] {
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => Number(item))
+    .filter((n) => Number.isFinite(n));
+}
+
+function stringifyPreviewResult(result: any): string {
+  return JSON.stringify(result, null, 2);
+}
+
 export function useHumanRuleEditor() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingRule, setEditingRule] = useState<RuleRow | null>(null);
   const [form, setForm] = useState<RuleFormState>(createDefaultRuleFormState());
+
   const [previewValues, setPreviewValues] = useState("1, 2, 3");
   const [previewSides, setPreviewSides] = useState("6");
   const [previewModifier, setPreviewModifier] = useState("0");
@@ -92,6 +104,20 @@ export function useHumanRuleEditor() {
     }));
   }
 
+  function setScope(scope: RuleScope) {
+    setForm((prev) => ({
+      ...prev,
+      scope,
+    }));
+  }
+
+  function setSupportedSidesText(value: string) {
+    setForm((prev) => ({
+      ...prev,
+      supportedSidesText: value,
+    }));
+  }
+
   function getRulePayload() {
     setFormError(null);
     return buildRulePayloadFromForm(form);
@@ -100,14 +126,9 @@ export function useHumanRuleEditor() {
   function computePreview() {
     try {
       setFormError(null);
-      const payload = buildRulePayloadFromForm(form);
 
-      const values = previewValues
-        .split(",")
-        .map((item) => item.trim())
-        .filter(Boolean)
-        .map((item) => Number(item))
-        .filter((n) => Number.isFinite(n));
+      const payload = buildRulePayloadFromForm(form);
+      const values = parsePreviewValues(previewValues);
 
       const result = evaluateRule(payload.kind, payload.params_json, {
         values,
@@ -116,7 +137,7 @@ export function useHumanRuleEditor() {
         sign: previewSign === "-1" ? -1 : 1,
       });
 
-      setPreviewResult(JSON.stringify(result, null, 2));
+      setPreviewResult(stringifyPreviewResult(result));
     } catch (e: any) {
       const message = e?.message ?? "Erreur de prévisualisation.";
       setFormError(message);
@@ -146,10 +167,14 @@ export function useHumanRuleEditor() {
     openCreate,
     openEdit,
     closeEditor,
+
     updateForm,
     updateRangeRow,
     addRangeRow,
     removeRangeRow,
+    setScope,
+    setSupportedSidesText,
+
     getRulePayload,
     computePreview,
   };

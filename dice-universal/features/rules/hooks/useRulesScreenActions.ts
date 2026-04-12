@@ -1,26 +1,23 @@
-import type { RuleRow, RuleScope } from "../../../data/repositories/rulesRepo";
+import type { RuleRow } from "../../../data/repositories/rulesRepo";
 
-type SaveRuleFn = (params: {
-  editingRule: RuleRow | null;
+type RulePayload = {
   name: string;
   kind: string;
   params_json: string;
   supported_sides_json: string;
-  scope: RuleScope;
+  scope: "entry" | "group" | "both";
+};
+
+type SaveRuleFn = (params: {
+  editingRule: RuleRow | null;
+  payload: RulePayload;
 }) => Promise<void>;
 
 type RemoveRuleFn = (ruleId: string) => Promise<void>;
 
 type UseRulesScreenActionsParams = {
   editingRule: RuleRow | null;
-  formName: string;
-  getRulePayload: () => {
-    name: string;
-    kind: string;
-    params_json: string;
-    supported_sides_json: string;
-    scope: RuleScope;
-  };
+  getRulePayload: () => RulePayload;
   saveRule: SaveRuleFn;
   removeRule: RemoveRuleFn;
   closeEditor: () => void;
@@ -28,7 +25,6 @@ type UseRulesScreenActionsParams = {
 
 export function useRulesScreenActions({
   editingRule,
-  formName,
   getRulePayload,
   saveRule,
   removeRule,
@@ -40,16 +36,12 @@ export function useRulesScreenActions({
 
       await saveRule({
         editingRule,
-        name: payload.name,
-        kind: payload.kind,
-        params_json: payload.params_json,
-        supported_sides_json: payload.supported_sides_json,
-        scope: payload.scope,
+        payload,
       });
 
       closeEditor();
     } catch {
-      // erreur déjà gérée dans useRulesData
+      // erreur déjà gérée plus haut
     }
   }
 
@@ -57,7 +49,7 @@ export function useRulesScreenActions({
     try {
       await removeRule(ruleId);
     } catch {
-      // erreur déjà gérée dans useRulesData
+      // erreur déjà gérée plus haut
     }
   }
 
