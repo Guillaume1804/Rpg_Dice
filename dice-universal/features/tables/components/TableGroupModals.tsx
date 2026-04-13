@@ -1,7 +1,9 @@
+import { useMemo } from "react";
 import { View, Text, Pressable, TextInput, Modal, ScrollView } from "react-native";
 import type { ProfileRow } from "../../../data/repositories/profilesRepo";
 import type { GroupRow } from "../../../data/repositories/groupsRepo";
 import type { RuleRow } from "../../../data/repositories/rulesRepo";
+import { getRulesForScope } from "../../rules/helpers/ruleCompatibility";
 
 type Props = {
   showCreateGroupModal: boolean;
@@ -52,6 +54,16 @@ export function TableGroupModals({
   onCloseEditGroupRuleModal,
   onSubmitEditGroupRule,
 }: Props) {
+  const compatibleModernRules = useMemo(
+    () => getRulesForScope(modernRules, "group"),
+    [modernRules],
+  );
+
+  const compatibleLegacyRules = useMemo(
+    () => getRulesForScope(legacyRules, "group"),
+    [legacyRules],
+  );
+
   return (
     <>
       <Modal
@@ -77,7 +89,9 @@ export function TableGroupModals({
               maxHeight: "90%",
             }}
           >
-            <Text style={{ fontSize: 16, fontWeight: "700" }}>Créer une action</Text>
+            <Text style={{ fontSize: 16, fontWeight: "700" }}>
+              Créer une action
+            </Text>
 
             {targetProfileForNewGroup ? (
               <Text style={{ marginTop: 8, opacity: 0.7 }}>
@@ -91,10 +105,17 @@ export function TableGroupModals({
                 value={newGroupName}
                 onChangeText={onChangeNewGroupName}
                 placeholder="Ex: Attaque, Esquive, Dégâts..."
-                style={{ marginTop: 6, borderWidth: 1, borderRadius: 10, padding: 10 }}
+                style={{
+                  marginTop: 6,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  padding: 10,
+                }}
               />
 
-              <Text style={{ marginTop: 12, fontWeight: "700" }}>Règle de groupe</Text>
+              <Text style={{ marginTop: 12, fontWeight: "700" }}>
+                Règle de groupe
+              </Text>
 
               <Pressable
                 onPress={() => onSelectNewGroupRuleId(null)}
@@ -111,8 +132,18 @@ export function TableGroupModals({
                 </Text>
               </Pressable>
 
-              <Text style={{ marginTop: 12, fontWeight: "700" }}>Règles disponibles</Text>
-              {modernRules.map((rule) => (
+              <Text style={{ marginTop: 12, fontWeight: "700" }}>
+                Règles disponibles
+              </Text>
+
+              {compatibleModernRules.length === 0 &&
+                compatibleLegacyRules.length === 0 ? (
+                <Text style={{ marginTop: 8, opacity: 0.7 }}>
+                  Aucune règle de groupe disponible.
+                </Text>
+              ) : null}
+
+              {compatibleModernRules.map((rule) => (
                 <Pressable
                   key={rule.id}
                   onPress={() => onSelectNewGroupRuleId(rule.id)}
@@ -130,10 +161,10 @@ export function TableGroupModals({
                 </Pressable>
               ))}
 
-              {legacyRules.length > 0 ? (
+              {compatibleLegacyRules.length > 0 ? (
                 <View style={{ marginTop: 12 }}>
                   <Text style={{ fontWeight: "700" }}>Anciennes règles</Text>
-                  {legacyRules.map((rule) => (
+                  {compatibleLegacyRules.map((rule) => (
                     <Pressable
                       key={rule.id}
                       onPress={() => onSelectNewGroupRuleId(rule.id)}
@@ -154,10 +185,21 @@ export function TableGroupModals({
               ) : null}
             </ScrollView>
 
-            <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 12 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "flex-end",
+                marginTop: 12,
+              }}
+            >
               <Pressable
                 onPress={onCloseCreateGroupModal}
-                style={{ padding: 10, borderWidth: 1, borderRadius: 10, marginRight: 10 }}
+                style={{
+                  padding: 10,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  marginRight: 10,
+                }}
               >
                 <Text>Annuler</Text>
               </Pressable>
@@ -195,19 +237,37 @@ export function TableGroupModals({
               borderWidth: 1,
             }}
           >
-            <Text style={{ fontSize: 16, fontWeight: "700" }}>Renommer l’action</Text>
+            <Text style={{ fontSize: 16, fontWeight: "700" }}>
+              Renommer l’action
+            </Text>
 
             <TextInput
               value={renameGroupValue}
               onChangeText={onChangeRenameGroupValue}
               placeholder="Nouveau nom de l’action..."
-              style={{ marginTop: 12, borderWidth: 1, borderRadius: 10, padding: 10 }}
+              style={{
+                marginTop: 12,
+                borderWidth: 1,
+                borderRadius: 10,
+                padding: 10,
+              }}
             />
 
-            <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 12 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "flex-end",
+                marginTop: 12,
+              }}
+            >
               <Pressable
                 onPress={onCloseRenameGroupModal}
-                style={{ padding: 10, borderWidth: 1, borderRadius: 10, marginRight: 10 }}
+                style={{
+                  padding: 10,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  marginRight: 10,
+                }}
               >
                 <Text>Annuler</Text>
               </Pressable>
@@ -272,8 +332,18 @@ export function TableGroupModals({
                 </Text>
               </Pressable>
 
-              <Text style={{ marginTop: 12, fontWeight: "700" }}>Règles Disponibles</Text>
-              {modernRules.map((rule) => (
+              <Text style={{ marginTop: 12, fontWeight: "700" }}>
+                Règles disponibles
+              </Text>
+
+              {compatibleModernRules.length === 0 &&
+                compatibleLegacyRules.length === 0 ? (
+                <Text style={{ marginTop: 8, opacity: 0.7 }}>
+                  Aucune règle de groupe disponible.
+                </Text>
+              ) : null}
+
+              {compatibleModernRules.map((rule) => (
                 <Pressable
                   key={rule.id}
                   onPress={() => onSelectGroupRuleId(rule.id)}
@@ -291,10 +361,10 @@ export function TableGroupModals({
                 </Pressable>
               ))}
 
-              {legacyRules.length > 0 ? (
+              {compatibleLegacyRules.length > 0 ? (
                 <View style={{ marginTop: 12 }}>
                   <Text style={{ fontWeight: "700" }}>Compatibilité</Text>
-                  {legacyRules.map((rule) => (
+                  {compatibleLegacyRules.map((rule) => (
                     <Pressable
                       key={rule.id}
                       onPress={() => onSelectGroupRuleId(rule.id)}
@@ -315,10 +385,21 @@ export function TableGroupModals({
               ) : null}
             </ScrollView>
 
-            <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 16 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "flex-end",
+                marginTop: 16,
+              }}
+            >
               <Pressable
                 onPress={onCloseEditGroupRuleModal}
-                style={{ padding: 10, borderWidth: 1, borderRadius: 8, marginRight: 10 }}
+                style={{
+                  padding: 10,
+                  borderWidth: 1,
+                  borderRadius: 8,
+                  marginRight: 10,
+                }}
               >
                 <Text>Annuler</Text>
               </Pressable>
