@@ -1,6 +1,8 @@
+import { useMemo } from "react";
 import { View, Text, Pressable, TextInput, Modal, ScrollView } from "react-native";
 import type { GroupRow, GroupDieRow } from "../../../data/repositories/groupsRepo";
 import type { RuleRow } from "../../../data/repositories/rulesRepo";
+import { getCompatibleRulesForContext } from "../../rules/helpers/ruleCompatibility";
 
 type Props = {
   showCreateDieModal: boolean;
@@ -66,6 +68,54 @@ export function TableDieModals({
   onCloseEditDieModal,
   onSubmitEditDie,
 }: Props) {
+
+  const createSides = Number(newDieSides);
+  const editSides = Number(editDieSides);
+
+  const compatibleModernRulesForCreate = useMemo(() => {
+    if (!Number.isFinite(createSides) || createSides <= 0) {
+      return modernRules;
+    }
+
+    return getCompatibleRulesForContext(modernRules, {
+      scope: "entry",
+      sides: [createSides],
+    });
+  }, [modernRules, createSides]);
+
+  const compatibleLegacyRulesForCreate = useMemo(() => {
+    if (!Number.isFinite(createSides) || createSides <= 0) {
+      return legacyRules;
+    }
+
+    return getCompatibleRulesForContext(legacyRules, {
+      scope: "entry",
+      sides: [createSides],
+    });
+  }, [legacyRules, createSides]);
+
+  const compatibleModernRulesForEdit = useMemo(() => {
+    if (!Number.isFinite(editSides) || editSides <= 0) {
+      return modernRules;
+    }
+
+    return getCompatibleRulesForContext(modernRules, {
+      scope: "entry",
+      sides: [editSides],
+    });
+  }, [modernRules, editSides]);
+
+  const compatibleLegacyRulesForEdit = useMemo(() => {
+    if (!Number.isFinite(editSides) || editSides <= 0) {
+      return legacyRules;
+    }
+
+    return getCompatibleRulesForContext(legacyRules, {
+      scope: "entry",
+      sides: [editSides],
+    });
+  }, [legacyRules, editSides]);
+
   return (
     <>
       <Modal
@@ -91,7 +141,9 @@ export function TableDieModals({
               maxHeight: "90%",
             }}
           >
-            <Text style={{ fontSize: 16, fontWeight: "700" }}>Ajouter une entrée</Text>
+            <Text style={{ fontSize: 16, fontWeight: "700" }}>
+              Ajouter une entrée
+            </Text>
 
             {targetGroupForNewDie ? (
               <Text style={{ marginTop: 8, opacity: 0.7 }}>
@@ -106,7 +158,12 @@ export function TableDieModals({
                 onChangeText={onChangeNewDieSides}
                 placeholder="6"
                 keyboardType="numeric"
-                style={{ marginTop: 6, borderWidth: 1, borderRadius: 10, padding: 10 }}
+                style={{
+                  marginTop: 6,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  padding: 10,
+                }}
               />
 
               <Text style={{ marginTop: 12 }}>Quantité</Text>
@@ -115,7 +172,12 @@ export function TableDieModals({
                 onChangeText={onChangeNewDieQty}
                 placeholder="1"
                 keyboardType="numeric"
-                style={{ marginTop: 6, borderWidth: 1, borderRadius: 10, padding: 10 }}
+                style={{
+                  marginTop: 6,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  padding: 10,
+                }}
               />
 
               <Text style={{ marginTop: 12 }}>Modificateur</Text>
@@ -124,7 +186,12 @@ export function TableDieModals({
                 onChangeText={onChangeNewDieModifier}
                 placeholder="0"
                 keyboardType="numeric"
-                style={{ marginTop: 6, borderWidth: 1, borderRadius: 10, padding: 10 }}
+                style={{
+                  marginTop: 6,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  padding: 10,
+                }}
               />
 
               <Text style={{ marginTop: 12 }}>Signe</Text>
@@ -139,7 +206,9 @@ export function TableDieModals({
                     opacity: newDieSign === "1" ? 1 : 0.6,
                   }}
                 >
-                  <Text style={{ fontWeight: newDieSign === "1" ? "700" : "400" }}>+</Text>
+                  <Text style={{ fontWeight: newDieSign === "1" ? "700" : "400" }}>
+                    +
+                  </Text>
                 </Pressable>
 
                 <Pressable
@@ -151,11 +220,15 @@ export function TableDieModals({
                     opacity: newDieSign === "-1" ? 1 : 0.6,
                   }}
                 >
-                  <Text style={{ fontWeight: newDieSign === "-1" ? "700" : "400" }}>-</Text>
+                  <Text style={{ fontWeight: newDieSign === "-1" ? "700" : "400" }}>
+                    -
+                  </Text>
                 </Pressable>
               </View>
 
-              <Text style={{ marginTop: 12, fontWeight: "700" }}>Règle d’entrée</Text>
+              <Text style={{ marginTop: 12, fontWeight: "700" }}>
+                Règle d’entrée
+              </Text>
 
               <Pressable
                 onPress={() => onChangeNewDieRuleId(null)}
@@ -172,8 +245,18 @@ export function TableDieModals({
                 </Text>
               </Pressable>
 
-              <Text style={{ fontWeight: "700" }}>Règles disponibles</Text>
-              {modernRules.map((rule) => (
+              <Text style={{ marginTop: 12, fontWeight: "700" }}>
+                Règles disponibles
+              </Text>
+
+              {compatibleModernRulesForCreate.length === 0 &&
+                compatibleLegacyRulesForCreate.length === 0 ? (
+                <Text style={{ marginTop: 8, opacity: 0.7 }}>
+                  Aucune règle compatible avec ce type de dé.
+                </Text>
+              ) : null}
+
+              {compatibleModernRulesForCreate.map((rule) => (
                 <Pressable
                   key={rule.id}
                   onPress={() => onChangeNewDieRuleId(rule.id)}
@@ -188,13 +271,16 @@ export function TableDieModals({
                   <Text style={{ fontWeight: newDieRuleId === rule.id ? "700" : "400" }}>
                     {rule.name}
                   </Text>
+                  <Text style={{ marginTop: 2, opacity: 0.7, fontSize: 12 }}>
+                    {rule.is_system === 1 ? "système" : "perso"}
+                  </Text>
                 </Pressable>
               ))}
 
-              {legacyRules.length > 0 ? (
+              {compatibleLegacyRulesForCreate.length > 0 ? (
                 <View style={{ marginTop: 12 }}>
-                  <Text style={{ fontWeight: "700" }}>Anciennes Règles</Text>
-                  {legacyRules.map((rule) => (
+                  <Text style={{ fontWeight: "700" }}>Anciennes règles</Text>
+                  {compatibleLegacyRulesForCreate.map((rule) => (
                     <Pressable
                       key={rule.id}
                       onPress={() => onChangeNewDieRuleId(rule.id)}
@@ -209,16 +295,30 @@ export function TableDieModals({
                       <Text style={{ fontWeight: newDieRuleId === rule.id ? "700" : "400" }}>
                         {rule.name}
                       </Text>
+                      <Text style={{ marginTop: 2, opacity: 0.7, fontSize: 12 }}>
+                        type : {rule.kind}
+                      </Text>
                     </Pressable>
                   ))}
                 </View>
               ) : null}
             </ScrollView>
 
-            <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 16 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "flex-end",
+                marginTop: 16,
+              }}
+            >
               <Pressable
                 onPress={onCloseCreateDieModal}
-                style={{ padding: 10, borderWidth: 1, borderRadius: 8, marginRight: 10 }}
+                style={{
+                  padding: 10,
+                  borderWidth: 1,
+                  borderRadius: 8,
+                  marginRight: 10,
+                }}
               >
                 <Text>Annuler</Text>
               </Pressable>
@@ -257,7 +357,9 @@ export function TableDieModals({
               maxHeight: "90%",
             }}
           >
-            <Text style={{ fontSize: 16, fontWeight: "700" }}>Éditer l’entrée</Text>
+            <Text style={{ fontSize: 16, fontWeight: "700" }}>
+              Éditer l’entrée
+            </Text>
 
             <ScrollView style={{ marginTop: 12 }}>
               <Text>Faces du dé</Text>
@@ -266,7 +368,12 @@ export function TableDieModals({
                 onChangeText={onChangeEditDieSides}
                 placeholder="6"
                 keyboardType="numeric"
-                style={{ marginTop: 6, borderWidth: 1, borderRadius: 10, padding: 10 }}
+                style={{
+                  marginTop: 6,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  padding: 10,
+                }}
               />
 
               <Text style={{ marginTop: 12 }}>Quantité</Text>
@@ -275,7 +382,12 @@ export function TableDieModals({
                 onChangeText={onChangeEditDieQty}
                 placeholder="1"
                 keyboardType="numeric"
-                style={{ marginTop: 6, borderWidth: 1, borderRadius: 10, padding: 10 }}
+                style={{
+                  marginTop: 6,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  padding: 10,
+                }}
               />
 
               <Text style={{ marginTop: 12 }}>Modificateur</Text>
@@ -284,7 +396,12 @@ export function TableDieModals({
                 onChangeText={onChangeEditDieModifier}
                 placeholder="0"
                 keyboardType="numeric"
-                style={{ marginTop: 6, borderWidth: 1, borderRadius: 10, padding: 10 }}
+                style={{
+                  marginTop: 6,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  padding: 10,
+                }}
               />
 
               <Text style={{ marginTop: 12 }}>Signe</Text>
@@ -299,7 +416,9 @@ export function TableDieModals({
                     opacity: editDieSign === "1" ? 1 : 0.6,
                   }}
                 >
-                  <Text style={{ fontWeight: editDieSign === "1" ? "700" : "400" }}>+</Text>
+                  <Text style={{ fontWeight: editDieSign === "1" ? "700" : "400" }}>
+                    +
+                  </Text>
                 </Pressable>
 
                 <Pressable
@@ -311,11 +430,15 @@ export function TableDieModals({
                     opacity: editDieSign === "-1" ? 1 : 0.6,
                   }}
                 >
-                  <Text style={{ fontWeight: editDieSign === "-1" ? "700" : "400" }}>-</Text>
+                  <Text style={{ fontWeight: editDieSign === "-1" ? "700" : "400" }}>
+                    -
+                  </Text>
                 </Pressable>
               </View>
 
-              <Text style={{ marginTop: 12, fontWeight: "700" }}>Règle d’entrée</Text>
+              <Text style={{ marginTop: 12, fontWeight: "700" }}>
+                Règle d’entrée
+              </Text>
 
               <Pressable
                 onPress={() => onChangeSelectedRuleId(null)}
@@ -332,8 +455,18 @@ export function TableDieModals({
                 </Text>
               </Pressable>
 
-              <Text style={{ fontWeight: "700" }}>Règles disponibles</Text>
-              {modernRules.map((rule) => (
+              <Text style={{ marginTop: 12, fontWeight: "700" }}>
+                Règles disponibles
+              </Text>
+
+              {compatibleModernRulesForEdit.length === 0 &&
+                compatibleLegacyRulesForEdit.length === 0 ? (
+                <Text style={{ marginTop: 8, opacity: 0.7 }}>
+                  Aucune règle compatible avec ce type de dé.
+                </Text>
+              ) : null}
+
+              {compatibleModernRulesForEdit.map((rule) => (
                 <Pressable
                   key={rule.id}
                   onPress={() => onChangeSelectedRuleId(rule.id)}
@@ -354,10 +487,10 @@ export function TableDieModals({
                 </Pressable>
               ))}
 
-              {legacyRules.length > 0 ? (
+              {compatibleLegacyRulesForEdit.length > 0 ? (
                 <View style={{ marginTop: 16 }}>
-                  <Text style={{ fontWeight: "700" }}>Anciennes Règles</Text>
-                  {legacyRules.map((rule) => (
+                  <Text style={{ fontWeight: "700" }}>Anciennes règles</Text>
+                  {compatibleLegacyRulesForEdit.map((rule) => (
                     <Pressable
                       key={rule.id}
                       onPress={() => onChangeSelectedRuleId(rule.id)}
@@ -373,7 +506,7 @@ export function TableDieModals({
                         {rule.name}
                       </Text>
                       <Text style={{ marginTop: 2, opacity: 0.7, fontSize: 12 }}>
-                        type: {rule.kind}
+                        type : {rule.kind}
                       </Text>
                     </Pressable>
                   ))}
@@ -381,10 +514,21 @@ export function TableDieModals({
               ) : null}
             </ScrollView>
 
-            <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 16 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "flex-end",
+                marginTop: 16,
+              }}
+            >
               <Pressable
                 onPress={onCloseEditDieModal}
-                style={{ padding: 10, borderWidth: 1, borderRadius: 8, marginRight: 10 }}
+                style={{
+                  padding: 10,
+                  borderWidth: 1,
+                  borderRadius: 8,
+                  marginRight: 10,
+                }}
               >
                 <Text>Annuler</Text>
               </Pressable>
