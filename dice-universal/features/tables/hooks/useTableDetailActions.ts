@@ -11,7 +11,6 @@ import {
   deleteProfile,
 } from "../../../data/repositories/profilesRepo";
 import {
-  createGroup,
   updateGroupName,
   updateGroupRuleId,
   deleteGroup,
@@ -38,12 +37,6 @@ type ProfileUiActions = {
 };
 
 type GroupUiActions = {
-  targetProfileForNewGroup: ProfileRow | null;
-  newGroupName: string;
-  newGroupRuleId: string | null;
-  resetCreateGroupForm: () => void;
-  setShowCreateGroupModal: (value: boolean) => void;
-
   editingGroup: GroupRow | null;
   renameGroupValue: string;
   setShowRenameGroupModal: (value: boolean) => void;
@@ -141,21 +134,6 @@ export function useTableDetailActions({
     await load();
   }
 
-  async function submitCreateGroup() {
-    const name = groupUi.newGroupName.trim();
-    if (!name || !groupUi.targetProfileForNewGroup) return;
-
-    await createGroup(db, {
-      profileId: groupUi.targetProfileForNewGroup.id,
-      name,
-      rule_id: groupUi.newGroupRuleId ?? null,
-    });
-
-    groupUi.setShowCreateGroupModal(false);
-    groupUi.resetCreateGroupForm();
-    await load();
-  }
-
   async function submitRenameGroup() {
     const name = groupUi.renameGroupValue.trim();
     if (!groupUi.editingGroup || !name) return;
@@ -247,7 +225,6 @@ export function useTableDetailActions({
     submitCreateProfile,
     submitRenameProfile,
     submitDeleteProfile,
-    submitCreateGroup,
     submitRenameGroup,
     submitEditGroupRule,
     submitDeleteGroup,

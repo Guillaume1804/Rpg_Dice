@@ -13,11 +13,6 @@ export function useTableDetailUi() {
   const [editingProfile, setEditingProfile] = useState<ProfileRow | null>(null);
   const [renameProfileValue, setRenameProfileValue] = useState("");
 
-  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
-  const [targetProfileForNewGroup, setTargetProfileForNewGroup] = useState<ProfileRow | null>(null);
-  const [newGroupName, setNewGroupName] = useState("");
-  const [newGroupRuleId, setNewGroupRuleId] = useState<string | null>(null);
-
   const [showRenameGroupModal, setShowRenameGroupModal] = useState(false);
   const [editingGroup, setEditingGroup] = useState<GroupRow | null>(null);
   const [renameGroupValue, setRenameGroupValue] = useState("");
@@ -47,12 +42,6 @@ export function useTableDetailUi() {
 
   function resetCreateProfileForm() {
     setNewProfileName("");
-  }
-
-  function resetCreateGroupForm() {
-    setTargetProfileForNewGroup(null);
-    setNewGroupName("");
-    setNewGroupRuleId(null);
   }
 
   function resetCreateDieForm() {
@@ -93,18 +82,6 @@ export function useTableDetailUi() {
     setShowRenameProfileModal(false);
     setEditingProfile(null);
     setRenameProfileValue("");
-  }
-
-  function openCreateGroupModal(profile: ProfileRow) {
-    setTargetProfileForNewGroup(profile);
-    setNewGroupName("");
-    setNewGroupRuleId(null);
-    setShowCreateGroupModal(true);
-  }
-
-  function closeCreateGroupModal() {
-    setShowCreateGroupModal(false);
-    resetCreateGroupForm();
   }
 
   function openCreateActionWizard(profile: ProfileRow) {
@@ -188,15 +165,6 @@ export function useTableDetailUi() {
     renameProfileValue,
     setRenameProfileValue,
 
-    showCreateGroupModal,
-    setShowCreateGroupModal,
-    targetProfileForNewGroup,
-    setTargetProfileForNewGroup,
-    newGroupName,
-    setNewGroupName,
-    newGroupRuleId,
-    setNewGroupRuleId,
-
     showRenameGroupModal,
     setShowRenameGroupModal,
     editingGroup,
@@ -240,7 +208,6 @@ export function useTableDetailUi() {
     setSelectedRuleId,
 
     resetCreateProfileForm,
-    resetCreateGroupForm,
     resetCreateDieForm,
 
     openRenameTableModal,
@@ -251,9 +218,6 @@ export function useTableDetailUi() {
 
     openRenameProfileModal,
     closeRenameProfileModal,
-
-    openCreateGroupModal,
-    closeCreateGroupModal,
 
     openRenameGroupModal,
     closeRenameGroupModal,
