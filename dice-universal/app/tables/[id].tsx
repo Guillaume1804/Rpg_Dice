@@ -4,6 +4,8 @@ import { useMemo } from "react";
 import { View, Text, ScrollView } from "react-native";
 import { useDb } from "../../data/db/DbProvider";
 
+import type { ProfileRow } from "../../data/repositories/profilesRepo";
+
 import { useTableDetailData } from "../../features/tables/hooks/useTableDetailData";
 import { TableProfilesSection } from "../../features/tables/components/TableProfilesSection";
 import { TableProfileModals } from "../../features/tables/components/TableProfileModals";
@@ -14,6 +16,10 @@ import { TableRenameModal } from "../../features/tables/components/TableRenameMo
 import { useTableDetailActions } from "../../features/tables/hooks/useTableDetailActions";
 import { TableDetailHeader } from "../../features/tables/components/TableDetailHeader";
 import { useTableDetailUi } from "../../features/tables/hooks/useTableDetailUi";
+
+import { CreateActionWizardModal } from "../../features/tables/actionWizard/CreateActionWizardModal";
+import { useCreateActionWizard } from "../../features/tables/actionWizard/useCreateActionWizard";
+import { useCreateActionFromWizard } from "../../features/tables/actionWizard/useCreateActionFromWizard";
 
 export default function TableDetailScreen() {
   const db = useDb();
@@ -117,6 +123,11 @@ export default function TableDetailScreen() {
     closeCreateDieModal,
 
     closeEditDieModal,
+
+    showCreateActionWizard,
+    targetProfileForActionWizard,
+    openCreateActionWizard,
+    closeCreateActionWizard,
   } = useTableDetailUi();
 
   const {
@@ -199,6 +210,44 @@ export default function TableDetailScreen() {
     },
   });
 
+
+
+  const {
+    visible: wizardVisible,
+    step: wizardStep,
+    stepIndex: wizardStepIndex,
+    totalSteps: wizardTotalSteps,
+    draft: wizardDraft,
+    error: wizardError,
+    open: openWizardState,
+    close: closeWizardState,
+    goNext: goWizardNext,
+    goBack: goWizardBack,
+    updateDraft: updateWizardDraft,
+    updateDie: updateWizardDie,
+    updateRangeRow: updateWizardRangeRow,
+    addRangeRow: addWizardRangeRow,
+    removeRangeRow: removeWizardRangeRow,
+    setBehaviorType: setWizardBehaviorType,
+  } = useCreateActionWizard();
+
+  const {
+    submitting: wizardSubmitting,
+    submitError: wizardSubmitError,
+    submit: submitWizardAction,
+    resetSubmitState: resetWizardSubmitState,
+  } = useCreateActionFromWizard({
+    db,
+    tableId,
+    profile: targetProfileForActionWizard,
+    reload: load,
+    onSuccess: () => {
+      closeWizardState();
+      closeCreateActionWizard();
+    },
+  });
+
+
   if (error) {
     return (
       <View style={{ flex: 1, padding: 16 }}>
@@ -219,6 +268,25 @@ export default function TableDetailScreen() {
 
   const isSystem = table.is_system === 1;
 
+  function handleOpenCreateActionWizard(profile: ProfileRow) {
+    resetWizardSubmitState();
+    openCreateActionWizard(profile);
+    openWizardState();
+  }
+
+  function handleCloseCreateActionWizard() {
+    resetWizardSubmitState();
+    closeWizardState();
+    closeCreateActionWizard();
+  }
+
+  async function handleSubmitCreateActionWizard() {
+    const ok = await submitWizardAction(wizardDraft);
+    if (!ok) return;
+  }
+
+  const actionWizardError = wizardSubmitError ?? wizardError;
+
   return (
     <View style={{ flex: 1, padding: 16, gap: 12 }}>
       <TableDetailHeader
@@ -234,7 +302,7 @@ export default function TableDetailScreen() {
           isSystem={isSystem}
           getRuleName={getRuleName}
           onRenameProfile={openRenameProfileModal}
-          onCreateGroup={openCreateGroupModal}
+          onCreateGroup={handleOpenCreateActionWizard}
           onDeleteProfile={submitDeleteProfile}
           onRenameGroup={openRenameGroupModal}
           onEditGroupRule={openEditGroupRuleModal}
@@ -320,6 +388,25 @@ export default function TableDetailScreen() {
         onChangeSelectedRuleId={setSelectedRuleId}
         onCloseEditDieModal={closeEditDieModal}
         onSubmitEditDie={submitEditDie}
+      />
+
+      <CreateActionWizardModal
+        visible={showCreateActionWizard && wizardVisible}
+        step={wizardStep}
+        stepIndex={wizardStepIndex}
+        totalSteps={wizardTotalSteps}
+        draft={wizardDraft}
+        error={actionWizardError}
+        onClose={handleCloseCreateActionWizard}
+        onBack={goWizardBack}
+        onNext={goWizardNext}
+        onSubmit={handleSubmitCreateActionWizard}
+        onUpdateDraft={updateWizardDraft}
+        onUpdateDie={updateWizardDie}
+        onUpdateRangeRow={updateWizardRangeRow}
+        onAddRangeRow={addWizardRangeRow}
+        onRemoveRangeRow={removeWizardRangeRow}
+        onSetBehaviorType={setWizardBehaviorType}
       />
 
     </View>

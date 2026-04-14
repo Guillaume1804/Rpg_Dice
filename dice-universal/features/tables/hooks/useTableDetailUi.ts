@@ -41,6 +41,10 @@ export function useTableDetailUi() {
   const [editDieSign, setEditDieSign] = useState<"1" | "-1">("1");
   const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null);
 
+  const [showCreateActionWizard, setShowCreateActionWizard] = useState(false);
+  const [targetProfileForActionWizard, setTargetProfileForActionWizard] =
+    useState<ProfileRow | null>(null);
+
   function resetCreateProfileForm() {
     setNewProfileName("");
   }
@@ -101,6 +105,16 @@ export function useTableDetailUi() {
   function closeCreateGroupModal() {
     setShowCreateGroupModal(false);
     resetCreateGroupForm();
+  }
+
+  function openCreateActionWizard(profile: ProfileRow) {
+    setTargetProfileForActionWizard(profile);
+    setShowCreateActionWizard(true);
+  }
+
+  function closeCreateActionWizard() {
+    setShowCreateActionWizard(false);
+    setTargetProfileForActionWizard(null);
   }
 
   function openRenameGroupModal(group: GroupRow) {
@@ -252,5 +266,11 @@ export function useTableDetailUi() {
 
     openEditDieModal,
     closeEditDieModal,
+
+    showCreateActionWizard,
+    targetProfileForActionWizard,
+
+    openCreateActionWizard,
+    closeCreateActionWizard,
   };
 }
