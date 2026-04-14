@@ -1,4 +1,4 @@
-import { Modal, Pressable, Text, View } from "react-native";
+import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 import type { ActionWizardDraft, ActionWizardStep } from "./types";
 import { ActionWizardStepName } from "./steps/ActionWizardStepName";
 import { ActionWizardStepType } from "./steps/ActionWizardStepType";
@@ -37,7 +37,9 @@ type Props = {
 
   onAddRangeRow: () => void;
   onRemoveRangeRow: (index: number) => void;
-  onSetBehaviorType: (value: NonNullable<ActionWizardDraft["behaviorType"]>) => void;
+  onSetBehaviorType: (
+    value: NonNullable<ActionWizardDraft["behaviorType"]>,
+  ) => void;
 };
 
 function getStepTitle(step: ActionWizardStep) {
@@ -81,21 +83,31 @@ export function CreateActionWizardModal({
           flex: 1,
           backgroundColor: "rgba(0,0,0,0.5)",
           justifyContent: "center",
+          alignItems: "center",
           padding: 16,
         }}
       >
         <View
           style={{
-            backgroundColor: "white",
-            borderRadius: 14,
-            padding: 16,
-            borderWidth: 1,
+            width: "100%",
+            maxWidth: 720,
             maxHeight: "92%",
-            gap: 12,
+            backgroundColor: "white",
+            borderRadius: 16,
+            borderWidth: 1,
+            overflow: "hidden",
           }}
         >
-          <View style={{ gap: 6 }}>
-            <Text style={{ fontSize: 18, fontWeight: "800" }}>
+          <View
+            style={{
+              paddingHorizontal: 16,
+              paddingTop: 16,
+              paddingBottom: 12,
+              borderBottomWidth: 1,
+              gap: 8,
+            }}
+          >
+            <Text style={{ fontSize: 20, fontWeight: "800" }}>
               Créer une action
             </Text>
 
@@ -107,7 +119,6 @@ export function CreateActionWizardModal({
               style={{
                 flexDirection: "row",
                 gap: 6,
-                marginTop: 4,
               }}
             >
               {Array.from({ length: totalSteps }).map((_, index) => (
@@ -118,18 +129,21 @@ export function CreateActionWizardModal({
                     height: 6,
                     borderRadius: 999,
                     borderWidth: 1,
-                    opacity: index <= stepIndex ? 1 : 0.35,
+                    opacity: index <= stepIndex ? 1 : 0.25,
                   }}
                 />
               ))}
             </View>
           </View>
 
-          <View
-            style={{
-              flex: 1,
-              minHeight: 280,
+          <ScrollView
+            style={{ flexGrow: 0 }}
+            contentContainerStyle={{
+              padding: 16,
+              gap: 12,
             }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={true}
           >
             {step === "name" ? (
               <ActionWizardStepName
@@ -168,19 +182,19 @@ export function CreateActionWizardModal({
             {step === "summary" ? (
               <ActionWizardStepSummary draft={draft} />
             ) : null}
-          </View>
 
-          {error ? (
-            <View
-              style={{
-                padding: 10,
-                borderWidth: 1,
-                borderRadius: 10,
-              }}
-            >
-              <Text>{error}</Text>
-            </View>
-          ) : null}
+            {error ? (
+              <View
+                style={{
+                  padding: 12,
+                  borderWidth: 1,
+                  borderRadius: 12,
+                }}
+              >
+                <Text>{error}</Text>
+              </View>
+            ) : null}
+          </ScrollView>
 
           <View
             style={{
@@ -188,13 +202,17 @@ export function CreateActionWizardModal({
               justifyContent: "space-between",
               alignItems: "center",
               gap: 8,
+              paddingHorizontal: 16,
+              paddingTop: 12,
+              paddingBottom: 16,
+              borderTopWidth: 1,
             }}
           >
             <Pressable
               onPress={onClose}
               style={{
                 paddingVertical: 10,
-                paddingHorizontal: 12,
+                paddingHorizontal: 14,
                 borderWidth: 1,
                 borderRadius: 10,
               }}
@@ -208,7 +226,7 @@ export function CreateActionWizardModal({
                   onPress={onBack}
                   style={{
                     paddingVertical: 10,
-                    paddingHorizontal: 12,
+                    paddingHorizontal: 14,
                     borderWidth: 1,
                     borderRadius: 10,
                   }}
@@ -222,7 +240,7 @@ export function CreateActionWizardModal({
                   onPress={onNext}
                   style={{
                     paddingVertical: 10,
-                    paddingHorizontal: 12,
+                    paddingHorizontal: 14,
                     borderWidth: 1,
                     borderRadius: 10,
                   }}
@@ -234,7 +252,7 @@ export function CreateActionWizardModal({
                   onPress={onSubmit}
                   style={{
                     paddingVertical: 10,
-                    paddingHorizontal: 12,
+                    paddingHorizontal: 14,
                     borderWidth: 1,
                     borderRadius: 10,
                   }}
