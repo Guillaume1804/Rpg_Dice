@@ -2,7 +2,10 @@ import { useState } from "react";
 import type { Db } from "../../../data/db/database";
 import type { ProfileRow } from "../../../data/repositories/profilesRepo";
 import { createRule } from "../../../data/repositories/rulesRepo";
-import { createGroup, createGroupDie } from "../../../data/repositories/groupsRepo";
+import {
+    createGroup,
+    createGroupDie,
+} from "../../../data/repositories/groupsRepo";
 import { buildRulePayloadFromActionWizard } from "./helpers";
 import type { ActionWizardDraft } from "./types";
 
@@ -48,6 +51,7 @@ export function useCreateActionFromWizard({
                 is_system: 0,
                 supported_sides_json: rulePayload.supported_sides_json,
                 scope: rulePayload.scope,
+                usage_kind: "generated",
             });
 
             const shouldAttachRuleToGroup = rulePayload.scope === "group";
@@ -60,7 +64,7 @@ export function useCreateActionFromWizard({
             });
 
             await createGroupDie(db, {
-                groupId: groupId,
+                groupId,
                 sides: draft.die.sides ?? 6,
                 qty: draft.die.qty,
                 modifier: draft.die.modifier,
@@ -73,7 +77,9 @@ export function useCreateActionFromWizard({
 
             return true;
         } catch (e: any) {
-            setSubmitError(e?.message ?? "Erreur lors de la création de l’action.");
+            setSubmitError(
+                e?.message ?? "Erreur lors de la création de l’action.",
+            );
             return false;
         } finally {
             setSubmitting(false);
