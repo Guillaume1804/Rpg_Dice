@@ -1,6 +1,6 @@
 import { Db, ensureMetaTable, getMeta, setMeta } from "./database";
 import { newId } from "../../core/types/ids";
-import type { RuleScope } from "../repositories/rulesRepo";
+import type { RuleScope, RuleUsageKind } from "../repositories/rulesRepo";
 
 function nowIso() {
   return new Date().toISOString();
@@ -55,6 +55,7 @@ async function ensureRule(
     isSystem?: number;
     supportedSidesJson?: string;
     scope?: RuleScope;
+    usageKind?: RuleUsageKind;
   },
 ): Promise<string> {
   const createdAt = nowIso();
@@ -72,10 +73,11 @@ async function ensureRule(
       is_system,
       supported_sides_json,
       scope,
+      usage_kind,
       created_at,
       updated_at
     )
-    VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+    VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
     [
       id,
       params.name,
@@ -84,6 +86,7 @@ async function ensureRule(
       params.isSystem ?? 1,
       params.supportedSidesJson ?? "[]",
       params.scope ?? "entry",
+      params.usageKind ?? "system_template",
       createdAt,
       createdAt,
     ],
@@ -248,15 +251,14 @@ export async function runSeedIfNeeded(db: Db): Promise<void> {
   const done = await getMeta(db, "seed_done");
   if (done === "true") return;
 
-  // --- RÈGLES SYSTÈME ---
-
   const ruleSumId = await ensureRule(db, {
     name: "Somme (par défaut)",
     kind: "sum",
     paramsJson: "{}",
     isSystem: 1,
-    supportedSidesJson: JSON.stringify([]), // universel
+    supportedSidesJson: JSON.stringify([]),
     scope: "both",
+    usageKind: "system_template",
   });
 
   const ruleSingleCheckCritId = await ensureRule(db, {
@@ -271,6 +273,7 @@ export async function runSeedIfNeeded(db: Db): Promise<void> {
     isSystem: 1,
     supportedSidesJson: JSON.stringify([20]),
     scope: "entry",
+    usageKind: "system_template",
   });
 
   const ruleSingleCheckThresholdHighId = await ensureRule(db, {
@@ -285,6 +288,7 @@ export async function runSeedIfNeeded(db: Db): Promise<void> {
     isSystem: 1,
     supportedSidesJson: JSON.stringify([20]),
     scope: "entry",
+    usageKind: "system_template",
   });
 
   const ruleSuccessPoolD6Id = await ensureRule(db, {
@@ -298,6 +302,7 @@ export async function runSeedIfNeeded(db: Db): Promise<void> {
     isSystem: 1,
     supportedSidesJson: JSON.stringify([6]),
     scope: "group",
+    usageKind: "system_template",
   });
 
   const ruleHighestOfPoolD6Id = await ensureRule(db, {
@@ -312,6 +317,7 @@ export async function runSeedIfNeeded(db: Db): Promise<void> {
     isSystem: 1,
     supportedSidesJson: JSON.stringify([6]),
     scope: "entry",
+    usageKind: "system_template",
   });
 
   const ruleBandedSum2d6Id = await ensureRule(db, {
@@ -328,6 +334,7 @@ export async function runSeedIfNeeded(db: Db): Promise<void> {
     isSystem: 1,
     supportedSidesJson: JSON.stringify([6]),
     scope: "entry",
+    usageKind: "system_template",
   });
 
   const ruleLocationD100Id = await ensureRule(db, {
@@ -347,9 +354,9 @@ export async function runSeedIfNeeded(db: Db): Promise<void> {
     isSystem: 1,
     supportedSidesJson: JSON.stringify([100]),
     scope: "entry",
+    usageKind: "system_template",
   });
 
-  // --- TABLE 1 : DÉMO D20 ---
   const demoD20TableId = await ensureTable(db, "Démo D20", 1);
 
   const guerrierId = await ensureProfile(db, demoD20TableId, "Guerrier", 0);
@@ -435,7 +442,6 @@ export async function runSeedIfNeeded(db: Db): Promise<void> {
     ruleId: ruleSumId,
   });
 
-  // --- TABLE 2 : DÉMO SPÉCIALE ---
   const demoSpecialTableId = await ensureTable(db, "Démo Spéciale", 1);
 
   const aventurierId = await ensureProfile(
@@ -527,5 +533,5 @@ export async function runSeedIfNeeded(db: Db): Promise<void> {
   });
 
   await setMeta(db, "seed_done", "true");
-  await setMeta(db, "content_version", "6");
+  await setMeta(db, "content_version", "7");
 }

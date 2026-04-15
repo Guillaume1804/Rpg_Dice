@@ -55,14 +55,10 @@ async function ensureColumn(
  * Schéma cible :
  * - tables
  * - profiles
- * - groups   (utilisé comme "actions" côté logique UI pour l'instant)
+ * - groups
  * - group_dice
  * - rules
  * - roll_events
- *
- * Transition douce :
- * - groups conserve temporairement table_id
- * - groups reçoit profile_id
  */
 export async function initSchema(db: Db): Promise<void> {
   await ensureMetaTable(db);
@@ -86,6 +82,7 @@ export async function initSchema(db: Db): Promise<void> {
       is_system INTEGER NOT NULL DEFAULT 0,
       supported_sides_json TEXT NOT NULL DEFAULT '[]',
       scope TEXT NOT NULL DEFAULT 'entry',
+      usage_kind TEXT NOT NULL DEFAULT 'user_template',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -193,6 +190,23 @@ export async function initSchema(db: Db): Promise<void> {
     `);
   }
 
+  const hasRuleUsageKind = await ensureColumn(db, "rules", "usage_kind");
+  if (!hasRuleUsageKind) {
+    await db.execAsync(`
+      ALTER TABLE rules
+      ADD COLUMN usage_kind TEXT NOT NULL DEFAULT 'user_template';
+    `);
+
+    await db.execAsync(`
+      UPDATE rules
+      SET usage_kind = CASE
+        WHEN is_system = 1 THEN 'system_template'
+        ELSE 'user_template'
+      END
+      WHERE usage_kind IS NULL OR usage_kind = '';
+    `);
+  }
+
   await db.execAsync(`
     CREATE INDEX IF NOT EXISTS idx_profiles_table
     ON profiles(table_id);
@@ -256,5 +270,10 @@ export async function initSchema(db: Db): Promise<void> {
   await db.execAsync(`
     CREATE INDEX IF NOT EXISTS idx_rules_system_kind
     ON rules(is_system, kind);
+  `);
+
+  await db.execAsync(`
+    CREATE INDEX IF NOT EXISTS idx_rules_usage_kind
+    ON rules(usage_kind);
   `);
 }

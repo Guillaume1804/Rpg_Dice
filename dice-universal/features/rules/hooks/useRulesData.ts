@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Db } from "../../../data/db/database";
-import type { RuleRow, RuleScope } from "../../../data/repositories/rulesRepo";
+import type {
+  RuleRow,
+  RuleScope,
+  RuleUsageKind,
+} from "../../../data/repositories/rulesRepo";
 import {
   listRules,
   createRule,
@@ -43,13 +47,34 @@ export function useRulesData({ db }: UseRulesDataParams) {
     load();
   }, [load]);
 
-  const systemRules = useMemo(
-    () => rules.filter((rule) => rule.is_system === 1),
+  const visibleTemplateRules = useMemo(
+    () =>
+      rules.filter(
+        (rule) =>
+          rule.usage_kind === "system_template" ||
+          rule.usage_kind === "user_template",
+      ),
     [rules],
   );
 
+  const systemRules = useMemo(
+    () =>
+      visibleTemplateRules.filter(
+        (rule) => rule.usage_kind === "system_template",
+      ),
+    [visibleTemplateRules],
+  );
+
   const customRules = useMemo(
-    () => rules.filter((rule) => rule.is_system !== 1),
+    () =>
+      visibleTemplateRules.filter(
+        (rule) => rule.usage_kind === "user_template",
+      ),
+    [visibleTemplateRules],
+  );
+
+  const generatedRules = useMemo(
+    () => rules.filter((rule) => rule.usage_kind === "generated"),
     [rules],
   );
 
@@ -61,6 +86,11 @@ export function useRulesData({ db }: UseRulesDataParams) {
       try {
         setError(null);
 
+        const usageKind: RuleUsageKind =
+          editingRule?.usage_kind === "system_template"
+            ? "system_template"
+            : "user_template";
+
         if (editingRule) {
           await updateRule(db, editingRule.id, {
             name: trimmedName,
@@ -68,6 +98,7 @@ export function useRulesData({ db }: UseRulesDataParams) {
             params_json: payload.params_json,
             supported_sides_json: payload.supported_sides_json,
             scope: payload.scope,
+            usage_kind: usageKind,
           });
         } else {
           await createRule(db, {
@@ -77,6 +108,7 @@ export function useRulesData({ db }: UseRulesDataParams) {
             is_system: 0,
             supported_sides_json: payload.supported_sides_json,
             scope: payload.scope,
+            usage_kind: "user_template",
           });
         }
 
@@ -109,6 +141,7 @@ export function useRulesData({ db }: UseRulesDataParams) {
     load,
     systemRules,
     customRules,
+    generatedRules,
     saveRule,
     removeRule,
   };

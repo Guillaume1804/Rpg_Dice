@@ -2,6 +2,10 @@ import type { Db } from "../db/database";
 import { newId } from "../../core/types/ids";
 
 export type RuleScope = "entry" | "group" | "both";
+export type RuleUsageKind =
+  | "system_template"
+  | "user_template"
+  | "generated";
 
 export type RuleRow = {
   id: string;
@@ -11,6 +15,7 @@ export type RuleRow = {
   is_system: number;
   supported_sides_json: string;
   scope: RuleScope;
+  usage_kind: RuleUsageKind;
   created_at: string;
   updated_at: string;
 };
@@ -81,6 +86,7 @@ export async function createRule(
     is_system?: number;
     supported_sides_json?: string;
     scope?: RuleScope;
+    usage_kind?: RuleUsageKind;
   },
 ): Promise<string> {
   const createdAt = nowIso();
@@ -97,10 +103,11 @@ export async function createRule(
       is_system,
       supported_sides_json,
       scope,
+      usage_kind,
       created_at,
       updated_at
     )
-    VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?);
+    VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     `,
     [
       id,
@@ -110,6 +117,7 @@ export async function createRule(
       isSystem,
       params.supported_sides_json ?? "[]",
       params.scope ?? "entry",
+      params.usage_kind ?? (isSystem === 1 ? "system_template" : "user_template"),
       createdAt,
       createdAt,
     ],
@@ -139,6 +147,7 @@ export async function updateRule(
     params_json: string;
     supported_sides_json: string;
     scope: RuleScope;
+    usage_kind: RuleUsageKind;
   },
 ): Promise<void> {
   await assertRuleIsNotSystem(db, id);
@@ -154,6 +163,7 @@ export async function updateRule(
       params_json = ?,
       supported_sides_json = ?,
       scope = ?,
+      usage_kind = ?,
       updated_at = ?
     WHERE id = ?;
     `,
@@ -163,6 +173,7 @@ export async function updateRule(
       params.params_json,
       params.supported_sides_json,
       params.scope,
+      params.usage_kind,
       now,
       id,
     ],
