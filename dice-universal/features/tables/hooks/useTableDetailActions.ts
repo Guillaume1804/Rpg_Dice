@@ -1,7 +1,10 @@
 import { newId } from "../../../core/types/ids";
 import type { Db } from "../../../data/db/database";
 import type { ProfileRow } from "../../../data/repositories/profilesRepo";
-import type { GroupRow, GroupDieRow } from "../../../data/repositories/groupsRepo";
+import type {
+  GroupRow,
+  GroupDieRow,
+} from "../../../data/repositories/groupsRepo";
 import type { TableRow } from "../../../data/repositories/tablesRepo";
 
 import { updateTableName } from "../../../data/repositories/tablesRepo";
@@ -152,7 +155,7 @@ export function useTableDetailActions({
     await updateGroupRuleId(
       db,
       groupUi.editingGroupForRule.id,
-      groupUi.selectedGroupRuleId ?? null
+      groupUi.selectedGroupRuleId ?? null,
     );
 
     groupUi.setShowEditGroupRuleModal(false);

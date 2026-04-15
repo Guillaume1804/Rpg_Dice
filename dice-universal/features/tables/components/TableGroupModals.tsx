@@ -1,11 +1,13 @@
 import { useMemo } from "react";
 import { View, Text, Pressable, TextInput, Modal, ScrollView } from "react-native";
-import type { ProfileRow } from "../../../data/repositories/profilesRepo";
 import type { GroupRow } from "../../../data/repositories/groupsRepo";
 import type { RuleRow } from "../../../data/repositories/rulesRepo";
 import { getRulesForScope } from "../../rules/helpers/ruleCompatibility";
 
 type Props = {
+  modernRules: RuleRow[];
+  legacyRules: RuleRow[];
+
   showRenameGroupModal: boolean;
   renameGroupValue: string;
   onChangeRenameGroupValue: (value: string) => void;
@@ -21,6 +23,8 @@ type Props = {
 };
 
 export function TableGroupModals({
+  modernRules,
+  legacyRules,
   showRenameGroupModal,
   renameGroupValue,
   onChangeRenameGroupValue,
@@ -157,7 +161,11 @@ export function TableGroupModals({
                   opacity: selectedGroupRuleId === null ? 1 : 0.7,
                 }}
               >
-                <Text style={{ fontWeight: selectedGroupRuleId === null ? "700" : "400" }}>
+                <Text
+                  style={{
+                    fontWeight: selectedGroupRuleId === null ? "700" : "400",
+                  }}
+                >
                   Somme (par défaut)
                 </Text>
               </Pressable>
@@ -185,7 +193,11 @@ export function TableGroupModals({
                     opacity: selectedGroupRuleId === rule.id ? 1 : 0.7,
                   }}
                 >
-                  <Text style={{ fontWeight: selectedGroupRuleId === rule.id ? "700" : "400" }}>
+                  <Text
+                    style={{
+                      fontWeight: selectedGroupRuleId === rule.id ? "700" : "400",
+                    }}
+                  >
                     {rule.name}
                   </Text>
                 </Pressable>
@@ -206,7 +218,12 @@ export function TableGroupModals({
                         opacity: selectedGroupRuleId === rule.id ? 1 : 0.7,
                       }}
                     >
-                      <Text style={{ fontWeight: selectedGroupRuleId === rule.id ? "700" : "400" }}>
+                      <Text
+                        style={{
+                          fontWeight:
+                            selectedGroupRuleId === rule.id ? "700" : "400",
+                        }}
+                      >
                         {rule.name}
                       </Text>
                     </Pressable>

@@ -1,4 +1,3 @@
-// app/tables/[id].tsx
 import { useLocalSearchParams } from "expo-router";
 import { useMemo } from "react";
 import { View, Text, ScrollView } from "react-native";
@@ -88,7 +87,6 @@ export default function TableDetailScreen() {
     setSelectedRuleId,
 
     resetCreateProfileForm,
-    resetCreateGroupForm,
     resetCreateDieForm,
     openRenameProfileModal,
     openRenameGroupModal,
@@ -102,17 +100,10 @@ export default function TableDetailScreen() {
     closeCreateProfileModal,
 
     closeRenameProfileModal,
-
-    openCreateGroupModal,
-    closeCreateGroupModal,
-
     closeRenameGroupModal,
-
     closeEditGroupRuleModal,
-
     openCreateDieModal,
     closeCreateDieModal,
-
     closeEditDieModal,
 
     showCreateActionWizard,
@@ -195,8 +186,6 @@ export default function TableDetailScreen() {
     },
   });
 
-
-
   const {
     visible: wizardVisible,
     step: wizardStep,
@@ -217,7 +206,6 @@ export default function TableDetailScreen() {
   } = useCreateActionWizard();
 
   const {
-    submitting: wizardSubmitting,
     submitError: wizardSubmitError,
     submit: submitWizardAction,
     resetSubmitState: resetWizardSubmitState,
@@ -232,7 +220,6 @@ export default function TableDetailScreen() {
     },
   });
 
-
   if (error) {
     return (
       <View style={{ flex: 1, padding: 16 }}>
@@ -245,7 +232,9 @@ export default function TableDetailScreen() {
   if (!table) {
     return (
       <View style={{ flex: 1, padding: 16 }}>
-        <Text style={{ fontSize: 18, fontWeight: "600" }}>Table introuvable</Text>
+        <Text style={{ fontSize: 18, fontWeight: "600" }}>
+          Table introuvable
+        </Text>
         <Text style={{ marginTop: 8, opacity: 0.7 }}>id: {tableId}</Text>
       </View>
     );
@@ -307,16 +296,8 @@ export default function TableDetailScreen() {
       />
 
       <TableGroupModals
-        showCreateGroupModal={showCreateGroupModal}
-        targetProfileForNewGroup={targetProfileForNewGroup}
-        newGroupName={newGroupName}
-        newGroupRuleId={newGroupRuleId}
         modernRules={modernRules}
         legacyRules={legacyRules}
-        onChangeNewGroupName={setNewGroupName}
-        onSelectNewGroupRuleId={setNewGroupRuleId}
-        onCloseCreateGroupModal={closeCreateGroupModal}
-        onSubmitCreateGroup={submitCreateGroup}
         showRenameGroupModal={showRenameGroupModal}
         renameGroupValue={renameGroupValue}
         onChangeRenameGroupValue={setRenameGroupValue}
@@ -393,7 +374,6 @@ export default function TableDetailScreen() {
         onRemoveRangeRow={removeWizardRangeRow}
         onSetBehaviorType={setWizardBehaviorType}
       />
-
     </View>
   );
 }
