@@ -1,47 +1,11 @@
 import { Pressable, Text, View } from "react-native";
-import type { ActionBehaviorType } from "../types";
+import { ACTION_BEHAVIOR_CATALOG } from "../behaviorCatalog";
+import type { ActionBehaviorType } from "../behaviorCatalog";
 
 type Props = {
   value: ActionBehaviorType | null;
   onSelect: (value: ActionBehaviorType) => void;
 };
-
-const OPTIONS: {
-  key: ActionBehaviorType;
-  title: string;
-  description: string;
-}[] = [
-  {
-    key: "single_check",
-    title: "Jet simple",
-    description:
-      "Un résultat unique, souvent utilisé pour un d20 ou un d100.",
-  },
-  {
-    key: "success_pool",
-    title: "Pool de succès",
-    description:
-      "On lance plusieurs dés et on compte les réussites.",
-  },
-  {
-    key: "banded_sum",
-    title: "Somme par paliers",
-    description:
-      "On additionne les dés puis on lit le total par intervalle.",
-  },
-  {
-    key: "highest_of_pool",
-    title: "Meilleur dé",
-    description:
-      "On lance plusieurs dés et on garde le meilleur résultat.",
-  },
-  {
-    key: "table_lookup",
-    title: "Table d’intervalles",
-    description:
-      "Un résultat renvoie un label selon une plage définie.",
-  },
-];
 
 export function ActionWizardStepType({
   value,
@@ -54,11 +18,11 @@ export function ActionWizardStepType({
       </Text>
 
       <Text style={{ opacity: 0.72 }}>
-        Choisis le comportement principal de cette action.
+        Choisis la manière principale dont cette action doit lire son jet.
       </Text>
 
       <View style={{ gap: 10 }}>
-        {OPTIONS.map((option) => {
+        {ACTION_BEHAVIOR_CATALOG.map((option) => {
           const selected = value === option.key;
 
           return (
@@ -73,7 +37,7 @@ export function ActionWizardStepType({
               }}
             >
               <Text style={{ fontWeight: "800", fontSize: 16 }}>
-                {option.title}
+                {option.label}
               </Text>
 
               <Text style={{ marginTop: 4, opacity: 0.72 }}>
