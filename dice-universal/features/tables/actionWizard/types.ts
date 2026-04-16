@@ -1,5 +1,7 @@
 import type { ActionBehaviorType } from "./behaviorCatalog";
 
+export type ActionResultMode = "sum" | "values";
+
 export type ActionDieDraft = {
     sides: number | null;
     qty: number;
@@ -29,6 +31,10 @@ export type ActionWizardDraft = {
     glitchRule: "ones_gt_successes" | "ones_gte_successes" | "none";
 
     ranges: ActionRangeDraft[];
+
+    keepCount: string;
+    dropCount: string;
+    resultMode: ActionResultMode;
 };
 
 export type ActionWizardStep =
