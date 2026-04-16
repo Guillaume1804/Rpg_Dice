@@ -1,9 +1,4 @@
-export type ActionBehaviorType =
-    | "single_check"
-    | "success_pool"
-    | "banded_sum"
-    | "highest_of_pool"
-    | "table_lookup";
+import type { ActionBehaviorType } from "./behaviorCatalog";
 
 export type ActionDieDraft = {
     sides: number | null;

@@ -4,11 +4,8 @@ import {
     getDefaultDieForBehavior,
 } from "./defaults";
 import { validateActionWizardStep } from "./helpers";
-import type {
-    ActionBehaviorType,
-    ActionWizardDraft,
-    ActionWizardStep,
-} from "./types";
+import type { ActionBehaviorType } from "./behaviorCatalog";
+import type { ActionWizardDraft, ActionWizardStep } from "./types";
 
 const STEP_ORDER: ActionWizardStep[] = [
     "name",
