@@ -68,7 +68,7 @@ type EvaluateRuleFn = (
     sides: number;
     modifier?: number;
     sign?: number;
-  }
+  },
 ) => any;
 
 function randInt(min: number, max: number) {
@@ -82,16 +82,40 @@ function extractNumericFinalFromEval(res: any): number | null {
     return res.total;
   }
 
+  if (res.kind === "d20" && typeof res.final === "number") {
+    return res.final;
+  }
+
   if (res.kind === "single_check" && typeof res.final === "number") {
     return res.final;
+  }
+
+  if (res.kind === "banded_sum" && typeof res.total === "number") {
+    return res.total;
   }
 
   if (res.kind === "highest_of_pool" && typeof res.final === "number") {
     return res.final;
   }
 
-  if (res.kind === "banded_sum" && typeof res.total === "number") {
-    return res.total;
+  if (res.kind === "lowest_of_pool" && typeof res.final === "number") {
+    return res.final;
+  }
+
+  if (res.kind === "keep_highest_n" && typeof res.final === "number") {
+    return res.final;
+  }
+
+  if (res.kind === "keep_lowest_n" && typeof res.final === "number") {
+    return res.final;
+  }
+
+  if (res.kind === "drop_highest_n" && typeof res.final === "number") {
+    return res.final;
+  }
+
+  if (res.kind === "drop_lowest_n" && typeof res.final === "number") {
+    return res.final;
   }
 
   if (res.kind === "pipeline" && typeof res.final === "number") {
@@ -112,7 +136,9 @@ export function rollGroup(params: {
     const qty = Math.max(0, entry.qty || 0);
     const sides = Math.max(1, entry.sides || 1);
     const sign = entry.sign === -1 ? -1 : 1;
-    const modifier = Number.isFinite(entry.modifier) ? Number(entry.modifier) : 0;
+    const modifier = Number.isFinite(entry.modifier)
+      ? Number(entry.modifier)
+      : 0;
 
     const dice: RollDie[] = [];
     for (let i = 0; i < qty; i++) {
@@ -129,12 +155,16 @@ export function rollGroup(params: {
     let final_total = total_with_modifier;
 
     if (entry.rule) {
-      eval_result = params.evaluateRule(entry.rule.kind, entry.rule.params_json, {
-        values: natural_values,
-        sides,
-        modifier,
-        sign,
-      });
+      eval_result = params.evaluateRule(
+        entry.rule.kind,
+        entry.rule.params_json,
+        {
+          values: natural_values,
+          sides,
+          modifier,
+          sign,
+        },
+      );
 
       const numericFromRule = extractNumericFinalFromEval(eval_result);
       if (numericFromRule != null) {
@@ -166,26 +196,27 @@ export function rollGroup(params: {
 
   if (params.groupRule) {
     const isSuccessPoolGroup =
-      params.groupRule.kind === "success_pool" || params.groupRule.kind === "pool";
+      params.groupRule.kind === "success_pool" ||
+      params.groupRule.kind === "pool";
 
     const groupCtx = isSuccessPoolGroup
       ? {
-        values: entryResults.flatMap((e) => e.natural_values),
-        sides: entryResults[0]?.sides ?? 0,
-        modifier: 0,
-        sign: 1 as const,
-      }
+          values: entryResults.flatMap((e) => e.natural_values),
+          sides: entryResults[0]?.sides ?? 0,
+          modifier: 0,
+          sign: 1 as const,
+        }
       : {
-        values: entryResults.map((e) => e.final_total),
-        sides: 0,
-        modifier: 0,
-        sign: 1 as const,
-      };
+          values: entryResults.map((e) => e.final_total),
+          sides: 0,
+          modifier: 0,
+          sign: 1 as const,
+        };
 
     group_eval_result = params.evaluateRule(
       params.groupRule.kind,
       params.groupRule.params_json,
-      groupCtx
+      groupCtx,
     );
 
     const numericFromGroupRule = extractNumericFinalFromEval(group_eval_result);

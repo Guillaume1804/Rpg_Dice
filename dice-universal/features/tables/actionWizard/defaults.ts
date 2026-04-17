@@ -72,6 +72,8 @@ export function createDefaultActionWizardDraft(): ActionWizardDraft {
         failFaces: "1",
         glitchRule: "ones_gt_successes",
 
+        selectedRuleId: null,
+
         ranges: defaultRanges(),
 
         keepCount: "3",

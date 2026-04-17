@@ -15,38 +15,75 @@ export type EvalContext = {
 export type RuleResult =
   | { kind: "sum"; total: number; values: number[] }
   | {
-    kind: "single_check";
-    outcome: "crit_success" | "crit_failure" | "success" | "failure";
-    threshold: number | null;
-    natural: number;
-    final: number;
-    compare: "gte" | "lte";
-  }
+      kind: "single_check";
+      outcome: "crit_success" | "crit_failure" | "success" | "failure";
+      threshold: number | null;
+      natural: number;
+      final: number;
+      compare: "gte" | "lte";
+    }
   | {
-    kind: "success_pool";
-    outcome: "success" | "failure" | "glitch" | "crit_glitch";
-    successes: number;
-    fail_count: number;
-    fail_faces: number[];
-  }
+      kind: "success_pool";
+      outcome: "success" | "failure" | "glitch" | "crit_glitch";
+      successes: number;
+      fail_count: number;
+      fail_faces: number[];
+    }
   | { kind: "table_lookup"; label: string; value: number }
   | { kind: "banded_sum"; total: number; label: string }
   | {
-    kind: "highest_of_pool";
-    kept: number;
-    natural_values: number[];
-    threshold: number | null;
-    final: number;
-    compare: "gte" | "lte";
-    outcome: "crit_success" | "crit_failure" | "success" | "failure";
-  }
+      kind: "highest_of_pool";
+      kept: number;
+      natural_values: number[];
+      threshold: number | null;
+      final: number;
+      compare: "gte" | "lte";
+      outcome: "crit_success" | "crit_failure" | "success" | "failure";
+    }
   | {
-    kind: "pipeline";
-    values: number[];
-    kept: number[];
-    final: number | null;
-    meta: any;
-  }
+      kind: "lowest_of_pool";
+      kept: number;
+      natural_values: number[];
+      threshold: number | null;
+      final: number;
+      compare: "gte" | "lte";
+      outcome: "crit_success" | "crit_failure" | "success" | "failure";
+    }
+  | {
+      kind: "keep_highest_n";
+      kept: number[];
+      natural_values: number[];
+      final: number | number[] | null;
+      result_mode: "sum" | "values";
+    }
+  | {
+      kind: "keep_lowest_n";
+      kept: number[];
+      natural_values: number[];
+      final: number | number[] | null;
+      result_mode: "sum" | "values";
+    }
+  | {
+      kind: "drop_highest_n";
+      remaining: number[];
+      natural_values: number[];
+      final: number | number[] | null;
+      result_mode: "sum" | "values";
+    }
+  | {
+      kind: "drop_lowest_n";
+      remaining: number[];
+      natural_values: number[];
+      final: number | number[] | null;
+      result_mode: "sum" | "values";
+    }
+  | {
+      kind: "pipeline";
+      values: number[];
+      kept: number[];
+      final: number | null;
+      meta: any;
+    }
   | { kind: "unknown"; message: string };
 
 function safeParse(json: string) {
@@ -78,7 +115,7 @@ function cloneArray(arr: number[]) {
 function runPipeline(
   initialNatural: number[],
   ctx: EvalContext,
-  params: PipelineParams
+  params: PipelineParams,
 ): RuleResult {
   const sign = ctx.sign ?? 1;
   const modifier = ctx.modifier ?? 0;
@@ -348,7 +385,11 @@ function runPipeline(
 // PUBLIC API
 // --------------------------------------------------
 
-export function evaluateRule(kind: string, params_json: string, ctx: EvalContext): RuleResult {
+export function evaluateRule(
+  kind: string,
+  params_json: string,
+  ctx: EvalContext,
+): RuleResult {
   const p = safeParse(params_json);
   const sign = ctx.sign ?? 1;
   const modifier = ctx.modifier ?? 0;
@@ -600,6 +641,170 @@ export function evaluateRule(kind: string, params_json: string, ctx: EvalContext
     };
 
     return runPipeline(ctx.values, ctx, params);
+  }
+
+  if (kind === "lowest_of_pool") {
+    const naturalValues = Array.isArray(ctx.values) ? ctx.values : [];
+    const kept = naturalValues.length > 0 ? Math.min(...naturalValues) : 0;
+    const final = kept * sign + modifier;
+
+    const compare: "gte" | "lte" = p.compare === "lte" ? "lte" : "gte";
+
+    const critSuccessFaces = Array.isArray(p.crit_success_faces)
+      ? p.crit_success_faces.map(Number)
+      : p.critSuccess != null
+        ? [Number(p.critSuccess)]
+        : [];
+
+    const critFailureFaces = Array.isArray(p.crit_failure_faces)
+      ? p.crit_failure_faces.map(Number)
+      : p.critFailure != null
+        ? [Number(p.critFailure)]
+        : [];
+
+    const threshold =
+      p.success_threshold != null
+        ? Number(p.success_threshold)
+        : p.successThreshold != null
+          ? Number(p.successThreshold)
+          : null;
+
+    if (critSuccessFaces.includes(kept)) {
+      return {
+        kind: "lowest_of_pool",
+        kept,
+        natural_values: naturalValues,
+        threshold,
+        final,
+        compare,
+        outcome: "crit_success",
+      };
+    }
+
+    if (critFailureFaces.includes(kept)) {
+      return {
+        kind: "lowest_of_pool",
+        kept,
+        natural_values: naturalValues,
+        threshold,
+        final,
+        compare,
+        outcome: "crit_failure",
+      };
+    }
+
+    if (threshold == null) {
+      return {
+        kind: "lowest_of_pool",
+        kept,
+        natural_values: naturalValues,
+        threshold: null,
+        final,
+        compare,
+        outcome: "success",
+      };
+    }
+
+    const isSuccess =
+      compare === "lte" ? final <= threshold : final >= threshold;
+
+    return {
+      kind: "lowest_of_pool",
+      kept,
+      natural_values: naturalValues,
+      threshold,
+      final,
+      compare,
+      outcome: isSuccess ? "success" : "failure",
+    };
+  }
+
+  if (kind === "keep_highest_n") {
+    const naturalValues = Array.isArray(ctx.values) ? ctx.values : [];
+    const keep = Math.max(0, Number(p.keep ?? 0));
+    const resultMode: "sum" | "values" =
+      p.result_mode === "values" ? "values" : "sum";
+
+    const kept = [...naturalValues].sort((a, b) => b - a).slice(0, keep);
+
+    const final =
+      resultMode === "values"
+        ? kept
+        : kept.reduce((acc, value) => acc + value, 0) * sign + modifier;
+
+    return {
+      kind: "keep_highest_n",
+      kept,
+      natural_values: naturalValues,
+      final,
+      result_mode: resultMode,
+    };
+  }
+
+  if (kind === "keep_lowest_n") {
+    const naturalValues = Array.isArray(ctx.values) ? ctx.values : [];
+    const keep = Math.max(0, Number(p.keep ?? 0));
+    const resultMode: "sum" | "values" =
+      p.result_mode === "values" ? "values" : "sum";
+
+    const kept = [...naturalValues].sort((a, b) => a - b).slice(0, keep);
+
+    const final =
+      resultMode === "values"
+        ? kept
+        : kept.reduce((acc, value) => acc + value, 0) * sign + modifier;
+
+    return {
+      kind: "keep_lowest_n",
+      kept,
+      natural_values: naturalValues,
+      final,
+      result_mode: resultMode,
+    };
+  }
+
+  if (kind === "drop_highest_n") {
+    const naturalValues = Array.isArray(ctx.values) ? ctx.values : [];
+    const drop = Math.max(0, Number(p.drop ?? 0));
+    const resultMode: "sum" | "values" =
+      p.result_mode === "values" ? "values" : "sum";
+
+    const remaining = [...naturalValues].sort((a, b) => b - a).slice(drop);
+
+    const final =
+      resultMode === "values"
+        ? remaining
+        : remaining.reduce((acc, value) => acc + value, 0) * sign + modifier;
+
+    return {
+      kind: "drop_highest_n",
+      remaining,
+      natural_values: naturalValues,
+      final,
+      result_mode: resultMode,
+    };
+  }
+
+  if (kind === "drop_lowest_n") {
+    const naturalValues = Array.isArray(ctx.values) ? ctx.values : [];
+    const drop = Math.max(0, Number(p.drop ?? 0));
+    const resultMode: "sum" | "values" =
+      p.result_mode === "values" ? "values" : "sum";
+
+    const remaining = [...naturalValues].sort((a, b) => a - b).slice(drop);
+
+    const final =
+      resultMode === "values"
+        ? remaining
+        : remaining.reduce((acc, value) => acc + value, 0) * sign + modifier;
+
+    return {
+      kind: "drop_lowest_n",
+      remaining,
+      natural_values: naturalValues,
+      final,
+      result_mode: resultMode,
+    };
   }
 
   return { kind: "unknown", message: `Règle inconnue: ${kind}` };
