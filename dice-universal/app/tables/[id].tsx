@@ -20,6 +20,8 @@ import { CreateActionWizardModal } from "../../features/tables/actionWizard/Crea
 import { useCreateActionWizard } from "../../features/tables/actionWizard/useCreateActionWizard";
 import { useCreateActionFromWizard } from "../../features/tables/actionWizard/useCreateActionFromWizard";
 
+import { getCompatibleRulesForContext } from "../../features/rules/helpers/ruleCompatibility";
+
 export default function TableDetailScreen() {
   const db = useDb();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -61,7 +63,7 @@ export default function TableDetailScreen() {
     showCreateDieModal,
     setShowCreateDieModal,
     targetGroupForNewDie,
-    setTargetGroupForNewDie,
+    // setTargetGroupForNewDie,
     newDieSides,
     setNewDieSides,
     newDieQty,
@@ -220,6 +222,27 @@ export default function TableDetailScreen() {
     },
   });
 
+  const compatibleRulesForWizard = useMemo(() => {
+    if (!wizardDraft.behaviorType || !wizardDraft.die.sides) {
+      return [];
+    }
+
+    const wantedScope =
+      wizardDraft.behaviorType === "success_pool" ? "group" : "entry";
+
+    const allRules = [...modernRules, ...legacyRules];
+
+    return getCompatibleRulesForContext(allRules, {
+      scope: wantedScope,
+      sides: [wizardDraft.die.sides],
+    });
+  }, [
+    wizardDraft.behaviorType,
+    wizardDraft.die.sides,
+    modernRules,
+    legacyRules,
+  ]);
+
   if (error) {
     return (
       <View style={{ flex: 1, padding: 16 }}>
@@ -363,12 +386,14 @@ export default function TableDetailScreen() {
         totalSteps={wizardTotalSteps}
         draft={wizardDraft}
         error={actionWizardError}
+        compatibleRules={compatibleRulesForWizard}
         onClose={handleCloseCreateActionWizard}
         onBack={goWizardBack}
         onNext={goWizardNext}
         onSubmit={handleSubmitCreateActionWizard}
         onUpdateDraft={updateWizardDraft}
         onUpdateDie={updateWizardDie}
+        onSelectRuleId={(ruleId) => updateWizardDraft("selectedRuleId", ruleId)}
         onUpdateRangeRow={updateWizardRangeRow}
         onAddRangeRow={addWizardRangeRow}
         onRemoveRangeRow={removeWizardRangeRow}

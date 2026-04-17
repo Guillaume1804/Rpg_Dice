@@ -1,8 +1,10 @@
 import { Modal, Pressable, ScrollView, Text, View } from "react-native";
+import type { RuleRow } from "../../../data/repositories/rulesRepo";
 import type { ActionWizardDraft, ActionWizardStep } from "./types";
 import { ActionWizardStepName } from "./steps/ActionWizardStepName";
 import { ActionWizardStepType } from "./steps/ActionWizardStepType";
 import { ActionWizardStepDice } from "./steps/ActionWizardStepDice";
+import { ActionWizardStepRuleChoice } from "./steps/ActionWizardStepRuleChoice";
 import { ActionWizardStepBehavior } from "./steps/ActionWizardStepBehavior";
 import { ActionWizardStepSummary } from "./steps/ActionWizardStepSummary";
 
@@ -13,6 +15,9 @@ type Props = {
   totalSteps: number;
   draft: ActionWizardDraft;
   error: string | null;
+
+  compatibleRules: RuleRow[];
+  onSelectRuleId: (ruleId: string | null) => void;
 
   onClose: () => void;
   onBack: () => void;
@@ -46,6 +51,7 @@ function getStepTitle(step: ActionWizardStep) {
   if (step === "name") return "Nom";
   if (step === "type") return "Type";
   if (step === "dice") return "Dés";
+  if (step === "rule_choice") return "Règle";
   if (step === "behavior") return "Comportement";
   return "Résumé";
 }
@@ -67,6 +73,8 @@ export function CreateActionWizardModal({
   onAddRangeRow,
   onRemoveRangeRow,
   onSetBehaviorType,
+  compatibleRules,
+  onSelectRuleId,
 }: Props) {
   const isFirstStep = stepIndex <= 0;
   const isLastStep = step === "summary";
@@ -166,6 +174,14 @@ export function CreateActionWizardModal({
                 onChangeQty={(value) => onUpdateDie("qty", value)}
                 onChangeModifier={(value) => onUpdateDie("modifier", value)}
                 onChangeSign={(value) => onUpdateDie("sign", value)}
+              />
+            ) : null}
+
+            {step === "rule_choice" ? (
+              <ActionWizardStepRuleChoice
+                rules={compatibleRules}
+                selectedRuleId={draft.selectedRuleId}
+                onSelectRule={onSelectRuleId}
               />
             ) : null}
 
