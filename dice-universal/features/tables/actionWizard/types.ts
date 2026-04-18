@@ -37,6 +37,8 @@ export type ActionWizardDraft = {
   keepCount: string;
   dropCount: string;
   resultMode: ActionResultMode;
+
+  creationMode: "auto" | "advanced";
 };
 
 export type ActionWizardStep =

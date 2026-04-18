@@ -93,6 +93,7 @@ export function useCreateActionWizard() {
       ...prev,
       behaviorType,
       selectedRuleId: null,
+      creationMode: "auto",
       die: getDefaultDieForBehavior(behaviorType),
     }));
   }

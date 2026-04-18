@@ -4,18 +4,20 @@ import type { RuleRow } from "../../../../data/repositories/rulesRepo";
 type Props = {
   rules: RuleRow[];
   selectedRuleId: string | null;
+  creationMode: "auto" | "advanced";
   onSelectRule: (ruleId: string | null) => void;
+  onSelectCreationMode: (mode: "auto" | "advanced") => void;
 };
 
 export function ActionWizardStepRuleChoice({
   rules,
   selectedRuleId,
+  creationMode,
   onSelectRule,
+  onSelectCreationMode,
 }: Props) {
   const recommendedRule = rules.length > 0 ? rules[0] : null;
   const alternativeRules = rules.slice(1);
-
-  const createNewSelected = selectedRuleId === null;
 
   return (
     <View style={{ gap: 12 }}>
@@ -34,12 +36,19 @@ export function ActionWizardStepRuleChoice({
             <Text style={{ fontWeight: "700" }}>Suggestion recommandée</Text>
 
             <Pressable
-              onPress={() => onSelectRule(recommendedRule.id)}
+              onPress={() => {
+                onSelectRule(recommendedRule.id);
+                onSelectCreationMode("auto");
+              }}
               style={{
                 borderWidth: 1,
                 borderRadius: 12,
                 padding: 12,
-                opacity: selectedRuleId === recommendedRule.id ? 1 : 0.9,
+                opacity:
+                  selectedRuleId === recommendedRule.id &&
+                  creationMode === "auto"
+                    ? 1
+                    : 0.9,
               }}
             >
               <Text style={{ fontWeight: "800", fontSize: 16 }}>
@@ -53,7 +62,8 @@ export function ActionWizardStepRuleChoice({
               </Text>
 
               <Text style={{ marginTop: 6, fontWeight: "600" }}>
-                {selectedRuleId === recommendedRule.id
+                {selectedRuleId === recommendedRule.id &&
+                creationMode === "auto"
                   ? "Sélectionnée"
                   : "Utiliser cette logique"}
               </Text>
@@ -67,12 +77,16 @@ export function ActionWizardStepRuleChoice({
               </Text>
 
               {alternativeRules.map((rule) => {
-                const selected = selectedRuleId === rule.id;
+                const selected =
+                  selectedRuleId === rule.id && creationMode === "auto";
 
                 return (
                   <Pressable
                     key={rule.id}
-                    onPress={() => onSelectRule(rule.id)}
+                    onPress={() => {
+                      onSelectRule(rule.id);
+                      onSelectCreationMode("auto");
+                    }}
                     style={{
                       borderWidth: 1,
                       borderRadius: 12,
@@ -119,28 +133,59 @@ export function ActionWizardStepRuleChoice({
       )}
 
       <View style={{ gap: 8 }}>
-        <Text style={{ fontWeight: "700" }}>Autre option</Text>
+        <Text style={{ fontWeight: "700" }}>Créer une nouvelle règle</Text>
 
         <Pressable
-          onPress={() => onSelectRule(null)}
+          onPress={() => {
+            onSelectRule(null);
+            onSelectCreationMode("auto");
+          }}
           style={{
             borderWidth: 1,
             borderRadius: 12,
             padding: 12,
-            opacity: createNewSelected ? 1 : 0.85,
+            opacity:
+              selectedRuleId === null && creationMode === "auto" ? 1 : 0.85,
           }}
         >
           <Text style={{ fontWeight: "800", fontSize: 16 }}>
-            Créer une nouvelle logique
+            Création automatique (recommandé)
           </Text>
 
           <Text style={{ marginTop: 4, opacity: 0.72 }}>
-            Une nouvelle règle spécifique à cette action sera générée et
-            enregistrée.
+            Une règle sera générée automatiquement à partir de ta configuration.
           </Text>
 
           <Text style={{ marginTop: 6, fontWeight: "600" }}>
-            {createNewSelected ? "Sélectionnée" : "Créer une nouvelle logique"}
+            {selectedRuleId === null && creationMode === "auto"
+              ? "Sélectionnée"
+              : "Utiliser ce mode"}
+          </Text>
+        </Pressable>
+
+        <Pressable
+          onPress={() => {
+            onSelectRule(null);
+            onSelectCreationMode("advanced");
+          }}
+          style={{
+            borderWidth: 1,
+            borderRadius: 12,
+            padding: 12,
+            marginTop: 6,
+            opacity: creationMode === "advanced" ? 1 : 0.85,
+          }}
+        >
+          <Text style={{ fontWeight: "800", fontSize: 16 }}>
+            Créer une règle personnalisée (avancé)
+          </Text>
+
+          <Text style={{ marginTop: 4, opacity: 0.72 }}>
+            Ouvre l’éditeur complet pour concevoir une règle sur mesure.
+          </Text>
+
+          <Text style={{ marginTop: 6, fontWeight: "600" }}>
+            {creationMode === "advanced" ? "Sélectionnée" : "Utiliser ce mode"}
           </Text>
         </Pressable>
       </View>

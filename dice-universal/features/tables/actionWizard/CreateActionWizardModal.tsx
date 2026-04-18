@@ -18,6 +18,8 @@ type Props = {
 
   compatibleRules: RuleRow[];
   onSelectRuleId: (ruleId: string | null) => void;
+  onSelectCreationMode: (mode: "auto" | "advanced") => void;
+  onOpenAdvancedRuleEditor: () => void;
 
   onClose: () => void;
   onBack: () => void;
@@ -75,6 +77,8 @@ export function CreateActionWizardModal({
   onSetBehaviorType,
   compatibleRules,
   onSelectRuleId,
+  onSelectCreationMode,
+  onOpenAdvancedRuleEditor,
 }: Props) {
   const isFirstStep = stepIndex <= 0;
   const isLastStep = step === "summary";
@@ -181,7 +185,9 @@ export function CreateActionWizardModal({
               <ActionWizardStepRuleChoice
                 rules={compatibleRules}
                 selectedRuleId={draft.selectedRuleId}
+                creationMode={draft.creationMode}
                 onSelectRule={onSelectRuleId}
+                onSelectCreationMode={onSelectCreationMode}
               />
             ) : null}
 
@@ -253,7 +259,17 @@ export function CreateActionWizardModal({
 
               {!isLastStep ? (
                 <Pressable
-                  onPress={onNext}
+                  onPress={() => {
+                    if (
+                      step === "rule_choice" &&
+                      draft.creationMode === "advanced"
+                    ) {
+                      onOpenAdvancedRuleEditor();
+                      return;
+                    }
+
+                    onNext();
+                  }}
                   style={{
                     paddingVertical: 10,
                     paddingHorizontal: 14,

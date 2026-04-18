@@ -282,6 +282,11 @@ export default function TableDetailScreen() {
     if (!ok) return;
   }
 
+  function handleOpenAdvancedRuleEditor() {
+    handleCloseCreateActionWizard();
+    // pour l’instant, on ouvrira ensuite l’éditeur avancé
+  }
+
   const actionWizardError = wizardSubmitError ?? wizardError;
 
   return (
@@ -394,6 +399,8 @@ export default function TableDetailScreen() {
         onUpdateDraft={updateWizardDraft}
         onUpdateDie={updateWizardDie}
         onSelectRuleId={(ruleId) => updateWizardDraft("selectedRuleId", ruleId)}
+        onSelectCreationMode={(mode) => updateWizardDraft("creationMode", mode)}
+        onOpenAdvancedRuleEditor={handleOpenAdvancedRuleEditor}
         onUpdateRangeRow={updateWizardRangeRow}
         onAddRangeRow={addWizardRangeRow}
         onRemoveRangeRow={removeWizardRangeRow}
