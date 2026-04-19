@@ -9,6 +9,18 @@ type Props = {
   onSelectCreationMode: (mode: "auto" | "advanced") => void;
 };
 
+function getRuleOriginLabel(rule: RuleRow) {
+  if (rule.table_id) {
+    return "Règle locale de cette table";
+  }
+
+  if (rule.is_system === 1) {
+    return "Règle système";
+  }
+
+  return "Règle personnalisée globale";
+}
+
 export function ActionWizardStepRuleChoice({
   rules,
   selectedRuleId,
@@ -56,9 +68,7 @@ export function ActionWizardStepRuleChoice({
               </Text>
 
               <Text style={{ marginTop: 4, opacity: 0.72 }}>
-                {recommendedRule.is_system === 1
-                  ? "Logique système déjà disponible"
-                  : "Logique personnalisée déjà enregistrée"}
+                {getRuleOriginLabel(recommendedRule)}
               </Text>
 
               <Text style={{ marginTop: 6, fontWeight: "600" }}>
@@ -99,9 +109,7 @@ export function ActionWizardStepRuleChoice({
                     </Text>
 
                     <Text style={{ marginTop: 4, opacity: 0.72 }}>
-                      {rule.is_system === 1
-                        ? "Logique système"
-                        : "Logique personnalisée"}
+                      {getRuleOriginLabel(rule)}
                     </Text>
 
                     <Text style={{ marginTop: 6, fontWeight: "600" }}>

@@ -2,20 +2,17 @@ import type { Db } from "../db/database";
 import { newId } from "../../core/types/ids";
 
 export type RuleScope = "entry" | "group" | "both";
-export type RuleUsageKind =
-  | "system_template"
-  | "user_template"
-  | "generated";
+export type RuleUsageKind = "system_template" | "user_template" | "generated";
 
 export type RuleRow = {
   id: string;
+  table_id: string | null;
   name: string;
   kind: string;
   params_json: string;
   is_system: number;
   supported_sides_json: string;
   scope: RuleScope;
-  usage_kind: RuleUsageKind;
   created_at: string;
   updated_at: string;
 };
@@ -63,6 +60,21 @@ export async function listRules(db: Db): Promise<RuleRow[]> {
   );
 }
 
+export async function listRulesByTableId(
+  db: Db,
+  tableId: string,
+): Promise<RuleRow[]> {
+  return db.getAllAsync<RuleRow>(
+    `
+    SELECT *
+    FROM rules
+    WHERE table_id = ?
+    ORDER BY is_system DESC, created_at ASC;
+    `,
+    [tableId],
+  );
+}
+
 export async function getRuleById(db: Db, id: string): Promise<RuleRow | null> {
   const rows = await db.getAllAsync<RuleRow>(
     `
@@ -77,16 +89,41 @@ export async function getRuleById(db: Db, id: string): Promise<RuleRow | null> {
   return rows.length ? rows[0] : null;
 }
 
+export async function findCanonicalLocalRule(
+  db: Db,
+  params: {
+    tableId: string;
+    kind: string;
+    scope: RuleScope;
+    supported_sides_json: string;
+  },
+): Promise<RuleRow | null> {
+  const rows = await db.getAllAsync<RuleRow>(
+    `
+    SELECT *
+    FROM rules
+    WHERE table_id = ?
+      AND kind = ?
+      AND scope = ?
+      AND supported_sides_json = ?
+    LIMIT 1;
+    `,
+    [params.tableId, params.kind, params.scope, params.supported_sides_json],
+  );
+
+  return rows.length ? rows[0] : null;
+}
+
 export async function createRule(
   db: Db,
   params: {
+    table_id?: string | null;
     name: string;
     kind: string;
     params_json: string;
     is_system?: number;
     supported_sides_json?: string;
     scope?: RuleScope;
-    usage_kind?: RuleUsageKind;
   },
 ): Promise<string> {
   const createdAt = nowIso();
@@ -97,13 +134,13 @@ export async function createRule(
     `
     INSERT INTO rules(
       id,
+      table_id,
       name,
       kind,
       params_json,
       is_system,
       supported_sides_json,
       scope,
-      usage_kind,
       created_at,
       updated_at
     )
@@ -111,13 +148,13 @@ export async function createRule(
     `,
     [
       id,
+      params.table_id ?? null,
       params.name,
       params.kind,
       params.params_json,
       isSystem,
       params.supported_sides_json ?? "[]",
       params.scope ?? "entry",
-      params.usage_kind ?? (isSystem === 1 ? "system_template" : "user_template"),
       createdAt,
       createdAt,
     ],
@@ -178,4 +215,8 @@ export async function updateRule(
       id,
     ],
   );
+}
+
+export function isLocalRule(rule: Pick<RuleRow, "table_id">): boolean {
+  return rule.table_id != null;
 }

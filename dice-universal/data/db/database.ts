@@ -76,15 +76,16 @@ export async function initSchema(db: Db): Promise<void> {
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS rules (
       id TEXT PRIMARY KEY NOT NULL,
+      table_id TEXT NULL,
       name TEXT NOT NULL,
       kind TEXT NOT NULL,
       params_json TEXT NOT NULL DEFAULT '{}',
       is_system INTEGER NOT NULL DEFAULT 0,
       supported_sides_json TEXT NOT NULL DEFAULT '[]',
       scope TEXT NOT NULL DEFAULT 'entry',
-      usage_kind TEXT NOT NULL DEFAULT 'user_template',
       created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (table_id) REFERENCES tables(id) ON DELETE CASCADE
     );
   `);
 
@@ -207,6 +208,14 @@ export async function initSchema(db: Db): Promise<void> {
     `);
   }
 
+  const hasRuleTableId = await ensureColumn(db, "rules", "table_id");
+  if (!hasRuleTableId) {
+    await db.execAsync(`
+      ALTER TABLE rules
+      ADD COLUMN table_id TEXT NULL;
+    `);
+  }
+
   await db.execAsync(`
     CREATE INDEX IF NOT EXISTS idx_profiles_table
     ON profiles(table_id);
@@ -275,5 +284,15 @@ export async function initSchema(db: Db): Promise<void> {
   await db.execAsync(`
     CREATE INDEX IF NOT EXISTS idx_rules_usage_kind
     ON rules(usage_kind);
+  `);
+
+  await db.execAsync(`
+    CREATE INDEX IF NOT EXISTS idx_rules_table
+    ON rules(table_id);
+  `);
+
+  await db.execAsync(`
+    CREATE INDEX IF NOT EXISTS idx_rules_table_kind_scope
+    ON rules(table_id, kind, scope);
   `);
 }

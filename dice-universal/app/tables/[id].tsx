@@ -21,12 +21,43 @@ import { useCreateActionWizard } from "../../features/tables/actionWizard/useCre
 import { useCreateActionFromWizard } from "../../features/tables/actionWizard/useCreateActionFromWizard";
 
 import { getCompatibleRulesForContext } from "../../features/rules/helpers/ruleCompatibility";
+import { isLocalRule } from "../../data/repositories/rulesRepo";
+
+import { useHumanRuleEditor } from "../../features/rules/hooks/useHumanRuleEditor";
+import { HumanRuleEditorModal } from "../../features/rules/components/HumanRuleEditorModal";
+import { useRulesData } from "../../features/rules/hooks/useRulesData";
 
 export default function TableDetailScreen() {
   const db = useDb();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const tableId = useMemo(() => (typeof id === "string" ? id : ""), [id]);
+
+  const { saveRule } = useRulesData({ db });
+
+  const {
+    showEditModal,
+    editingRule,
+    form,
+    previewValues,
+    previewSides,
+    previewModifier,
+    previewSign,
+    previewResult,
+    formError,
+    setPreviewValues,
+    setPreviewSides,
+    setPreviewModifier,
+    setPreviewSign,
+    openCreate,
+    closeEditor,
+    updateForm,
+    updateRangeRow,
+    addRangeRow,
+    removeRangeRow,
+    getRulePayload,
+    computePreview,
+  } = useHumanRuleEditor();
 
   const {
     renameValue,
@@ -214,6 +245,7 @@ export default function TableDetailScreen() {
   } = useCreateActionFromWizard({
     db,
     tableId,
+    tableName: table?.name ?? "",
     profile: targetProfileForActionWizard,
     reload: load,
     onSuccess: () => {
@@ -232,9 +264,27 @@ export default function TableDetailScreen() {
 
     const allRules = [...modernRules, ...legacyRules];
 
-    return getCompatibleRulesForContext(allRules, {
+    const compatible = getCompatibleRulesForContext(allRules, {
       scope: wantedScope,
       sides: [wizardDraft.die.sides],
+    });
+
+    return [...compatible].sort((a, b) => {
+      const aLocal = isLocalRule(a);
+      const bLocal = isLocalRule(b);
+
+      if (aLocal !== bLocal) {
+        return aLocal ? -1 : 1;
+      }
+
+      const aCustom = a.is_system !== 1;
+      const bCustom = b.is_system !== 1;
+
+      if (aCustom !== bCustom) {
+        return aCustom ? -1 : 1;
+      }
+
+      return a.name.localeCompare(b.name, "fr");
     });
   }, [
     wizardDraft.behaviorType,
@@ -284,7 +334,7 @@ export default function TableDetailScreen() {
 
   function handleOpenAdvancedRuleEditor() {
     handleCloseCreateActionWizard();
-    // pour l’instant, on ouvrira ensuite l’éditeur avancé
+    openCreate(); // 🔥 Ouvre l’éditeur avancé
   }
 
   const actionWizardError = wizardSubmitError ?? wizardError;
@@ -405,6 +455,36 @@ export default function TableDetailScreen() {
         onAddRangeRow={addWizardRangeRow}
         onRemoveRangeRow={removeWizardRangeRow}
         onSetBehaviorType={setWizardBehaviorType}
+      />
+
+      <HumanRuleEditorModal
+        visible={showEditModal}
+        editingRule={editingRule}
+        form={form}
+        formError={formError}
+        previewValues={previewValues}
+        previewSides={previewSides}
+        previewModifier={previewModifier}
+        previewSign={previewSign}
+        previewResult={previewResult}
+        onChangePreviewValues={setPreviewValues}
+        onChangePreviewSides={setPreviewSides}
+        onChangePreviewModifier={setPreviewModifier}
+        onChangePreviewSign={setPreviewSign}
+        onUpdateForm={updateForm}
+        onUpdateRangeRow={updateRangeRow}
+        onAddRangeRow={addRangeRow}
+        onRemoveRangeRow={removeRangeRow}
+        onComputePreview={computePreview}
+        onClose={closeEditor}
+        onSave={async () => {
+          const payload = getRulePayload();
+          await saveRule({
+            editingRule: null,
+            payload,
+          });
+          closeEditor();
+        }}
       />
     </View>
   );

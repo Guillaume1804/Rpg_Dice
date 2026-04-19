@@ -1,17 +1,22 @@
 import { useState } from "react";
 import type { Db } from "../../../data/db/database";
 import type { ProfileRow } from "../../../data/repositories/profilesRepo";
-import { createRule } from "../../../data/repositories/rulesRepo";
+import {
+  createRule,
+  findCanonicalLocalRule,
+} from "../../../data/repositories/rulesRepo";
 import {
   createGroup,
   createGroupDie,
 } from "../../../data/repositories/groupsRepo";
 import { buildRulePayloadFromActionWizard } from "./helpers";
+import { buildCanonicalLocalRuleName } from "./ruleNaming";
 import type { ActionWizardDraft } from "./types";
 
 type Params = {
   db: Db;
   tableId: string;
+  tableName: string;
   profile: ProfileRow | null;
   reload: () => Promise<void>;
   onSuccess?: () => void;
@@ -20,6 +25,7 @@ type Params = {
 export function useCreateActionFromWizard({
   db,
   tableId,
+  tableName,
   profile,
   reload,
   onSuccess,
@@ -51,17 +57,34 @@ export function useCreateActionFromWizard({
       } else {
         const rulePayload = buildRulePayloadFromActionWizard(draft);
 
-        ruleId = await createRule(db, {
-          name: rulePayload.name,
+        const existingCanonicalRule = await findCanonicalLocalRule(db, {
+          tableId,
           kind: rulePayload.kind,
-          params_json: rulePayload.params_json,
-          is_system: 0,
-          supported_sides_json: rulePayload.supported_sides_json,
           scope: rulePayload.scope,
-          usage_kind: "generated",
+          supported_sides_json: rulePayload.supported_sides_json,
         });
 
-        ruleScope = rulePayload.scope;
+        if (existingCanonicalRule) {
+          ruleId = existingCanonicalRule.id;
+          ruleScope = existingCanonicalRule.scope;
+        } else {
+          const canonicalRuleName = buildCanonicalLocalRuleName(
+            tableName,
+            draft.behaviorType,
+          );
+
+          ruleId = await createRule(db, {
+            table_id: tableId,
+            name: canonicalRuleName,
+            kind: rulePayload.kind,
+            params_json: rulePayload.params_json,
+            is_system: 0,
+            supported_sides_json: rulePayload.supported_sides_json,
+            scope: rulePayload.scope,
+          });
+
+          ruleScope = rulePayload.scope;
+        }
       }
 
       const shouldAttachRuleToGroup = ruleScope === "group";

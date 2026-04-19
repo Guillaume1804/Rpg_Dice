@@ -533,5 +533,5 @@ export async function runSeedIfNeeded(db: Db): Promise<void> {
   });
 
   await setMeta(db, "seed_done", "true");
-  await setMeta(db, "content_version", "7");
+  await setMeta(db, "content_version", "8");
 }
