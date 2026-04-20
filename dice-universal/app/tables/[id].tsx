@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from "expo-router";
-import { useMemo } from "react";
-import { View, Text, ScrollView } from "react-native";
+import { useMemo, useState } from "react";
+import { View, Text, ScrollView, Pressable } from "react-native";
 import { useDb } from "../../data/db/DbProvider";
 
 import type { ProfileRow } from "../../data/repositories/profilesRepo";
@@ -257,6 +257,12 @@ export default function TableDetailScreen() {
     },
   });
 
+  const [freeDieSides, setFreeDieSides] = useState("6");
+  const [freeDieQty, setFreeDieQty] = useState("1");
+  const [freeDieModifier, setFreeDieModifier] = useState("0");
+  const [freeDieSign, setFreeDieSign] = useState<"1" | "-1">("1");
+  const [freeRuleId, setFreeRuleId] = useState<string | null>(null);
+
   const compatibleRulesForWizard = useMemo(() => {
     if (!wizardDraft.behaviorType || !wizardDraft.die.sides) {
       return [];
@@ -295,6 +301,39 @@ export default function TableDetailScreen() {
     modernRules,
     legacyRules,
   ]);
+
+  const compatibleRulesForFreeRoll = useMemo(() => {
+    const sides = Number(freeDieSides);
+
+    if (!Number.isFinite(sides) || sides <= 0) {
+      return [];
+    }
+
+    const allRules = [...modernRules, ...legacyRules];
+
+    const compatible = getCompatibleRulesForContext(allRules, {
+      scope: "entry",
+      sides: [sides],
+    });
+
+    return [...compatible].sort((a, b) => {
+      const aLocal = isLocalRule(a);
+      const bLocal = isLocalRule(b);
+
+      if (aLocal !== bLocal) {
+        return aLocal ? -1 : 1;
+      }
+
+      const aCustom = a.is_system !== 1;
+      const bCustom = b.is_system !== 1;
+
+      if (aCustom !== bCustom) {
+        return aCustom ? -1 : 1;
+      }
+
+      return a.name.localeCompare(b.name, "fr");
+    });
+  }, [freeDieSides, modernRules, legacyRules]);
 
   if (error) {
     return (
@@ -353,18 +392,171 @@ export default function TableDetailScreen() {
       />
 
       <ScrollView>
-        <View style={{ borderWidth: 1, borderRadius: 12, padding: 12, marginBottom: 12 }}>
+        <View
+          style={{
+            borderWidth: 1,
+            borderRadius: 12,
+            padding: 12,
+            marginBottom: 12,
+            gap: 10,
+          }}
+        >
           <Text style={{ fontWeight: "800", fontSize: 16 }}>
             Jet libre (dans cette table)
           </Text>
 
-          <Text style={{ marginTop: 6, opacity: 0.7 }}>
+          <Text style={{ opacity: 0.7 }}>
             Lance des dés rapidement avec les règles de cette table, puis enregistre si besoin.
           </Text>
 
-          {/* Placeholder pour l’instant */}
-          <Text style={{ marginTop: 10, opacity: 0.5 }}>
-            (Section jet libre à venir)
+          <View style={{ gap: 8 }}>
+            <Text style={{ fontWeight: "700" }}>Dé</Text>
+
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <Pressable
+                onPress={() => setFreeDieSides("6")}
+                style={{
+                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  opacity: freeDieSides === "6" ? 1 : 0.7,
+                }}
+              >
+                <Text>d6</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => setFreeDieSides("20")}
+                style={{
+                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  opacity: freeDieSides === "20" ? 1 : 0.7,
+                }}
+              >
+                <Text>d20</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => setFreeDieSides("100")}
+                style={{
+                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  opacity: freeDieSides === "100" ? 1 : 0.7,
+                }}
+              >
+                <Text>d100</Text>
+              </Pressable>
+            </View>
+          </View>
+
+          <View style={{ gap: 8 }}>
+            <Text style={{ fontWeight: "700" }}>Quantité</Text>
+
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <Pressable
+                onPress={() => setFreeDieQty("1")}
+                style={{
+                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  opacity: freeDieQty === "1" ? 1 : 0.7,
+                }}
+              >
+                <Text>1</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => setFreeDieQty("2")}
+                style={{
+                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  opacity: freeDieQty === "2" ? 1 : 0.7,
+                }}
+              >
+                <Text>2</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => setFreeDieQty("3")}
+                style={{
+                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  opacity: freeDieQty === "3" ? 1 : 0.7,
+                }}
+              >
+                <Text>3</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => setFreeDieQty("5")}
+                style={{
+                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  opacity: freeDieQty === "5" ? 1 : 0.7,
+                }}
+              >
+                <Text>5</Text>
+              </Pressable>
+            </View>
+          </View>
+
+          <View style={{ gap: 8 }}>
+            <Text style={{ fontWeight: "700" }}>Règle compatible</Text>
+
+            {compatibleRulesForFreeRoll.length > 0 ? (
+              <View style={{ gap: 8 }}>
+                <Pressable
+                  onPress={() => setFreeRuleId(null)}
+                  style={{
+                    padding: 10,
+                    borderWidth: 1,
+                    borderRadius: 10,
+                    opacity: freeRuleId === null ? 1 : 0.7,
+                  }}
+                >
+                  <Text style={{ fontWeight: freeRuleId === null ? "700" : "400" }}>
+                    Aucune règle
+                  </Text>
+                </Pressable>
+
+                {compatibleRulesForFreeRoll.slice(0, 4).map((rule) => (
+                  <Pressable
+                    key={rule.id}
+                    onPress={() => setFreeRuleId(rule.id)}
+                    style={{
+                      padding: 10,
+                      borderWidth: 1,
+                      borderRadius: 10,
+                      opacity: freeRuleId === rule.id ? 1 : 0.7,
+                    }}
+                  >
+                    <Text style={{ fontWeight: freeRuleId === rule.id ? "700" : "400" }}>
+                      {rule.name}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            ) : (
+              <Text style={{ opacity: 0.6 }}>
+                Aucune règle compatible trouvée pour ce dé.
+              </Text>
+            )}
+          </View>
+
+          <Text style={{ opacity: 0.5 }}>
+            Le lancer réel et l’enregistrement comme action arrivent à l’étape suivante.
           </Text>
         </View>
 
