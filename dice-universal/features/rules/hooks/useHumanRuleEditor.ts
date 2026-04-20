@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
 import type { RuleRow, RuleScope } from "../../../data/repositories/rulesRepo";
+import type { ActionWizardDraft } from "../../tables/actionWizard/types";
 import {
   buildRulePayloadFromForm,
   createDefaultRuleFormState,
   fillRuleFormFromExistingRule,
   type RuleFormState,
 } from "../helpers/ruleForm";
+import { buildCanonicalLocalRuleName } from "../../tables/actionWizard/ruleNaming";
 import { evaluateRule } from "../../../core/rules/evaluate";
 
 function safeNumber(value: string, fallback = 0) {
@@ -24,6 +26,52 @@ function parsePreviewValues(value: string): number[] {
 
 function stringifyPreviewResult(result: any): string {
   return JSON.stringify(result, null, 2);
+}
+
+function buildFormStateFromWizardDraft(
+  draft: ActionWizardDraft,
+  tableName: string,
+): RuleFormState {
+  const base = createDefaultRuleFormState();
+
+  return {
+    ...base,
+    name: buildCanonicalLocalRuleName(tableName, draft.behaviorType),
+    family:
+      draft.behaviorType === "success_pool"
+        ? "success_pool"
+        : draft.behaviorType === "banded_sum"
+          ? "banded_sum"
+          : draft.behaviorType === "highest_of_pool"
+            ? "highest_of_pool"
+            : draft.behaviorType === "table_lookup"
+              ? "table_lookup"
+              : "single_check",
+
+    advancedBehaviorType: draft.behaviorType ?? "single_check",
+
+    supportedSidesText: draft.die.sides ? String(draft.die.sides) : "",
+    scope: draft.behaviorType === "success_pool" ? "group" : "entry",
+
+    compare: draft.compare,
+    successThreshold: draft.successThreshold,
+    critSuccessFaces: draft.critSuccessFaces,
+    critFailureFaces: draft.critFailureFaces,
+
+    successAtOrAbove: draft.successAtOrAbove,
+    failFaces: draft.failFaces,
+    glitchRule: draft.glitchRule,
+
+    keepCount: draft.keepCount,
+    dropCount: draft.dropCount,
+    resultMode: draft.resultMode,
+
+    ranges: draft.ranges.map((row) => ({
+      min: row.min,
+      max: row.max,
+      label: row.label,
+    })),
+  };
 }
 
 export function useHumanRuleEditor() {
@@ -51,6 +99,23 @@ export function useHumanRuleEditor() {
 
   function openCreate() {
     resetForm();
+    setShowEditModal(true);
+  }
+
+  function openCreateFromWizard(draft: ActionWizardDraft, tableName: string) {
+    resetForm();
+
+    const nextForm = buildFormStateFromWizardDraft(draft, tableName);
+
+    setEditingRule(null);
+    setForm(nextForm);
+
+    setPreviewSides(draft.die.sides ? String(draft.die.sides) : "6");
+    setPreviewModifier(String(draft.die.modifier ?? 0));
+    setPreviewSign(draft.die.sign === -1 ? "-1" : "1");
+    setPreviewValues("1, 2, 3");
+    setPreviewResult("");
+    setFormError(null);
     setShowEditModal(true);
   }
 
@@ -165,6 +230,7 @@ export function useHumanRuleEditor() {
     setPreviewSign,
 
     openCreate,
+    openCreateFromWizard,
     openEdit,
     closeEditor,
 

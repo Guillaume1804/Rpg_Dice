@@ -29,11 +29,12 @@ import { useRulesData } from "../../features/rules/hooks/useRulesData";
 
 export default function TableDetailScreen() {
   const db = useDb();
+  const {
+    saveRule,
+  } = useRulesData({ db });
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const tableId = useMemo(() => (typeof id === "string" ? id : ""), [id]);
-
-  const { saveRule } = useRulesData({ db });
 
   const {
     showEditModal,
@@ -49,12 +50,14 @@ export default function TableDetailScreen() {
     setPreviewSides,
     setPreviewModifier,
     setPreviewSign,
-    openCreate,
+    openCreateFromWizard,
     closeEditor,
     updateForm,
     updateRangeRow,
     addRangeRow,
     removeRangeRow,
+    setScope,
+    setSupportedSidesText,
     getRulePayload,
     computePreview,
   } = useHumanRuleEditor();
@@ -314,6 +317,7 @@ export default function TableDetailScreen() {
   }
 
   const isSystem = table.is_system === 1;
+  const currentTableName = table.name;
 
   function handleOpenCreateActionWizard(profile: ProfileRow) {
     resetWizardSubmitState();
@@ -334,7 +338,7 @@ export default function TableDetailScreen() {
 
   function handleOpenAdvancedRuleEditor() {
     handleCloseCreateActionWizard();
-    openCreate(); // 🔥 Ouvre l’éditeur avancé
+    openCreateFromWizard(wizardDraft, currentTableName);
   }
 
   const actionWizardError = wizardSubmitError ?? wizardError;
@@ -349,6 +353,21 @@ export default function TableDetailScreen() {
       />
 
       <ScrollView>
+        <View style={{ borderWidth: 1, borderRadius: 12, padding: 12, marginBottom: 12 }}>
+          <Text style={{ fontWeight: "800", fontSize: 16 }}>
+            Jet libre (dans cette table)
+          </Text>
+
+          <Text style={{ marginTop: 6, opacity: 0.7 }}>
+            Lance des dés rapidement avec les règles de cette table, puis enregistre si besoin.
+          </Text>
+
+          {/* Placeholder pour l’instant */}
+          <Text style={{ marginTop: 10, opacity: 0.5 }}>
+            (Section jet libre à venir)
+          </Text>
+        </View>
+
         <TableProfilesSection
           profiles={profiles}
           isSystem={isSystem}
@@ -475,15 +494,20 @@ export default function TableDetailScreen() {
         onUpdateRangeRow={updateRangeRow}
         onAddRangeRow={addRangeRow}
         onRemoveRangeRow={removeRangeRow}
+        onSetScope={setScope}
+        onSetSupportedSidesText={setSupportedSidesText}
         onComputePreview={computePreview}
         onClose={closeEditor}
         onSave={async () => {
           const payload = getRulePayload();
+
           await saveRule({
             editingRule: null,
             payload,
           });
+
           closeEditor();
+          await load();
         }}
       />
     </View>

@@ -38,6 +38,8 @@ type Props = {
   onComputePreview: () => void;
   onClose: () => void;
   onSave: () => void;
+  onSetScope: (scope: "entry" | "group" | "both") => void;
+  onSetSupportedSidesText: (value: string) => void;
 };
 
 function isScopeLocked(family: RuleFormState["family"]) {
@@ -78,6 +80,8 @@ export function HumanRuleEditorModal({
   onComputePreview,
   onClose,
   onSave,
+  onSetScope,
+  onSetSupportedSidesText,
 }: Props) {
   const lockedScope = getForcedScopeForFamily(form.family);
   const displayedScope = lockedScope ?? form.scope;
@@ -228,86 +232,86 @@ export function HumanRuleEditorModal({
 
             {(form.family === "single_check" ||
               form.family === "highest_of_pool") && (
-              <>
-                <Text style={{ marginTop: 16, fontWeight: "700" }}>
-                  Comparaison
-                </Text>
+                <>
+                  <Text style={{ marginTop: 16, fontWeight: "700" }}>
+                    Comparaison
+                  </Text>
 
-                <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
-                  <Pressable
-                    onPress={() => onUpdateForm("compare", "gte")}
+                  <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
+                    <Pressable
+                      onPress={() => onUpdateForm("compare", "gte")}
+                      style={{
+                        padding: 10,
+                        borderWidth: 1,
+                        borderRadius: 10,
+                        opacity: form.compare === "gte" ? 1 : 0.7,
+                      }}
+                    >
+                      <Text>Seuil haut (≥)</Text>
+                    </Pressable>
+
+                    <Pressable
+                      onPress={() => onUpdateForm("compare", "lte")}
+                      style={{
+                        padding: 10,
+                        borderWidth: 1,
+                        borderRadius: 10,
+                        opacity: form.compare === "lte" ? 1 : 0.7,
+                      }}
+                    >
+                      <Text>Seuil bas (≤)</Text>
+                    </Pressable>
+                  </View>
+
+                  <Text style={{ marginTop: 12 }}>Seuil de réussite</Text>
+                  <TextInput
+                    value={form.successThreshold}
+                    onChangeText={(value) =>
+                      onUpdateForm("successThreshold", value)
+                    }
+                    placeholder="10"
+                    keyboardType="numeric"
                     style={{
-                      padding: 10,
+                      marginTop: 8,
                       borderWidth: 1,
                       borderRadius: 10,
-                      opacity: form.compare === "gte" ? 1 : 0.7,
-                    }}
-                  >
-                    <Text>Seuil haut (≥)</Text>
-                  </Pressable>
-
-                  <Pressable
-                    onPress={() => onUpdateForm("compare", "lte")}
-                    style={{
                       padding: 10,
+                    }}
+                  />
+
+                  <Text style={{ marginTop: 12 }}>
+                    Faces de réussite critique
+                  </Text>
+                  <TextInput
+                    value={form.critSuccessFaces}
+                    onChangeText={(value) =>
+                      onUpdateForm("critSuccessFaces", value)
+                    }
+                    placeholder="20"
+                    style={{
+                      marginTop: 8,
                       borderWidth: 1,
                       borderRadius: 10,
-                      opacity: form.compare === "lte" ? 1 : 0.7,
+                      padding: 10,
                     }}
-                  >
-                    <Text>Seuil bas (≤)</Text>
-                  </Pressable>
-                </View>
+                  />
 
-                <Text style={{ marginTop: 12 }}>Seuil de réussite</Text>
-                <TextInput
-                  value={form.successThreshold}
-                  onChangeText={(value) =>
-                    onUpdateForm("successThreshold", value)
-                  }
-                  placeholder="10"
-                  keyboardType="numeric"
-                  style={{
-                    marginTop: 8,
-                    borderWidth: 1,
-                    borderRadius: 10,
-                    padding: 10,
-                  }}
-                />
-
-                <Text style={{ marginTop: 12 }}>
-                  Faces de réussite critique
-                </Text>
-                <TextInput
-                  value={form.critSuccessFaces}
-                  onChangeText={(value) =>
-                    onUpdateForm("critSuccessFaces", value)
-                  }
-                  placeholder="20"
-                  style={{
-                    marginTop: 8,
-                    borderWidth: 1,
-                    borderRadius: 10,
-                    padding: 10,
-                  }}
-                />
-
-                <Text style={{ marginTop: 12 }}>Faces d’échec critique</Text>
-                <TextInput
-                  value={form.critFailureFaces}
-                  onChangeText={(value) =>
-                    onUpdateForm("critFailureFaces", value)
-                  }
-                  placeholder="1"
-                  style={{
-                    marginTop: 8,
-                    borderWidth: 1,
-                    borderRadius: 10,
-                    padding: 10,
-                  }}
-                />
-              </>
-            )}
+                  <Text style={{ marginTop: 12 }}>Faces d’échec critique</Text>
+                  <TextInput
+                    value={form.critFailureFaces}
+                    onChangeText={(value) =>
+                      onUpdateForm("critFailureFaces", value)
+                    }
+                    placeholder="1"
+                    style={{
+                      marginTop: 8,
+                      borderWidth: 1,
+                      borderRadius: 10,
+                      padding: 10,
+                    }}
+                  />
+                </>
+              )}
 
             {form.family === "success_pool" && (
               <>
@@ -384,92 +388,92 @@ export function HumanRuleEditorModal({
 
             {(form.family === "banded_sum" ||
               form.family === "table_lookup") && (
-              <>
-                <Text style={{ marginTop: 16, fontWeight: "700" }}>
-                  {form.family === "banded_sum" ? "Paliers" : "Intervalles"}
-                </Text>
-                <Text style={{ opacity: 0.7, marginTop: 4 }}>
-                  Définis les plages numériques et le résultat associé.
-                </Text>
+                <>
+                  <Text style={{ marginTop: 16, fontWeight: "700" }}>
+                    {form.family === "banded_sum" ? "Paliers" : "Intervalles"}
+                  </Text>
+                  <Text style={{ opacity: 0.7, marginTop: 4 }}>
+                    Définis les plages numériques et le résultat associé.
+                  </Text>
 
-                {form.ranges.map((row, index) => (
-                  <View
-                    key={index}
+                  {form.ranges.map((row, index) => (
+                    <View
+                      key={index}
+                      style={{
+                        marginTop: 10,
+                        padding: 10,
+                        borderWidth: 1,
+                        borderRadius: 10,
+                        gap: 8,
+                      }}
+                    >
+                      <TextInput
+                        value={row.min}
+                        onChangeText={(value) =>
+                          onUpdateRangeRow(index, "min", value)
+                        }
+                        placeholder="Min"
+                        keyboardType="numeric"
+                        style={{
+                          borderWidth: 1,
+                          borderRadius: 8,
+                          padding: 8,
+                        }}
+                      />
+
+                      <TextInput
+                        value={row.max}
+                        onChangeText={(value) =>
+                          onUpdateRangeRow(index, "max", value)
+                        }
+                        placeholder="Max"
+                        keyboardType="numeric"
+                        style={{
+                          borderWidth: 1,
+                          borderRadius: 8,
+                          padding: 8,
+                        }}
+                      />
+
+                      <TextInput
+                        value={row.label}
+                        onChangeText={(value) =>
+                          onUpdateRangeRow(index, "label", value)
+                        }
+                        placeholder="Label"
+                        style={{
+                          borderWidth: 1,
+                          borderRadius: 8,
+                          padding: 8,
+                        }}
+                      />
+
+                      <Pressable
+                        onPress={() => onRemoveRangeRow(index)}
+                        style={{
+                          padding: 8,
+                          borderWidth: 1,
+                          borderRadius: 8,
+                        }}
+                      >
+                        <Text>Supprimer cette ligne</Text>
+                      </Pressable>
+                    </View>
+                  ))}
+
+                  <Pressable
+                    onPress={onAddRangeRow}
                     style={{
                       marginTop: 10,
                       padding: 10,
                       borderWidth: 1,
                       borderRadius: 10,
-                      gap: 8,
                     }}
                   >
-                    <TextInput
-                      value={row.min}
-                      onChangeText={(value) =>
-                        onUpdateRangeRow(index, "min", value)
-                      }
-                      placeholder="Min"
-                      keyboardType="numeric"
-                      style={{
-                        borderWidth: 1,
-                        borderRadius: 8,
-                        padding: 8,
-                      }}
-                    />
-
-                    <TextInput
-                      value={row.max}
-                      onChangeText={(value) =>
-                        onUpdateRangeRow(index, "max", value)
-                      }
-                      placeholder="Max"
-                      keyboardType="numeric"
-                      style={{
-                        borderWidth: 1,
-                        borderRadius: 8,
-                        padding: 8,
-                      }}
-                    />
-
-                    <TextInput
-                      value={row.label}
-                      onChangeText={(value) =>
-                        onUpdateRangeRow(index, "label", value)
-                      }
-                      placeholder="Label"
-                      style={{
-                        borderWidth: 1,
-                        borderRadius: 8,
-                        padding: 8,
-                      }}
-                    />
-
-                    <Pressable
-                      onPress={() => onRemoveRangeRow(index)}
-                      style={{
-                        padding: 8,
-                        borderWidth: 1,
-                        borderRadius: 8,
-                      }}
-                    >
-                      <Text>Supprimer cette ligne</Text>
-                    </Pressable>
-                  </View>
-                ))}
-
-                <Pressable
-                  onPress={onAddRangeRow}
-                  style={{
-                    marginTop: 10,
-                    padding: 10,
-                    borderWidth: 1,
-                    borderRadius: 10,
-                  }}
-                >
-                  <Text>Ajouter une ligne</Text>
-                </Pressable>
-              </>
-            )}
+                    <Text>Ajouter une ligne</Text>
+                  </Pressable>
+                </>
+              )}
 
             <Text style={{ marginTop: 18, fontWeight: "800" }}>
               Prévisualisation
