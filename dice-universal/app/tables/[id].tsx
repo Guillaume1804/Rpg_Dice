@@ -44,9 +44,7 @@ type FreeRollResult = {
 
 export default function TableDetailScreen() {
   const db = useDb();
-  const {
-    saveRule,
-  } = useRulesData({ db });
+  const { saveRule } = useRulesData({ db });
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const tableId = useMemo(() => (typeof id === "string" ? id : ""), [id]);
@@ -274,13 +272,18 @@ export default function TableDetailScreen() {
 
   const [freeDieSides, setFreeDieSides] = useState("6");
   const [freeDieQty, setFreeDieQty] = useState("1");
-  const [freeDieModifier, setFreeDieModifier] = useState("0");
-  const [freeDieSign, setFreeDieSign] = useState<"1" | "-1">("1");
+  const [freeDieModifier] = useState("0");
+  const [freeDieSign] = useState<"1" | "-1">("1");
   const [freeRuleId, setFreeRuleId] = useState<string | null>(null);
 
-  const [freeRollResult, setFreeRollResult] = useState<FreeRollResult | null>(null);
+  const [freeRollResult, setFreeRollResult] = useState<FreeRollResult | null>(
+    null,
+  );
   const [freeRollError, setFreeRollError] = useState<string | null>(null);
-  const [pendingFreeRollPrefill, setPendingFreeRollPrefill] = useState(false);
+
+  const [activeFreeRollProfileId, setActiveFreeRollProfileId] = useState<
+    string | null
+  >(null);
 
   const compatibleRulesForWizard = useMemo(() => {
     if (!wizardDraft.behaviorType || !wizardDraft.die.sides) {
@@ -356,7 +359,9 @@ export default function TableDetailScreen() {
 
   const selectedFreeRule = useMemo(() => {
     if (!freeRuleId) return null;
-    return compatibleRulesForFreeRoll.find((rule) => rule.id === freeRuleId) ?? null;
+    return (
+      compatibleRulesForFreeRoll.find((rule) => rule.id === freeRuleId) ?? null
+    );
   }, [compatibleRulesForFreeRoll, freeRuleId]);
 
   if (error) {
@@ -386,13 +391,6 @@ export default function TableDetailScreen() {
     resetWizardSubmitState();
     openCreateActionWizard(profile);
     openWizardState();
-
-    const shouldApplyFreeRollPrefill = pendingFreeRollPrefill && freeRollResult;
-
-    if (shouldApplyFreeRollPrefill) {
-      applyFreeRollPrefillToWizard();
-      setPendingFreeRollPrefill(false);
-    }
   }
 
   function handleCloseCreateActionWizard() {
@@ -416,7 +414,6 @@ export default function TableDetailScreen() {
   function clearFreeRollFeedback() {
     setFreeRollResult(null);
     setFreeRollError(null);
-    setPendingFreeRollPrefill(false);
   }
 
   function randInt(min: number, max: number) {
@@ -428,7 +425,8 @@ export default function TableDetailScreen() {
 
     if (res.kind === "sum" && typeof res.total === "number") return res.total;
     if (res.kind === "d20" && typeof res.final === "number") return res.final;
-    if (res.kind === "pipeline" && typeof res.final === "number") return res.final;
+    if (res.kind === "pipeline" && typeof res.final === "number")
+      return res.final;
 
     return null;
   }
@@ -436,35 +434,6 @@ export default function TableDetailScreen() {
   function formatValueList(values: number[]) {
     if (!values || values.length === 0) return "—";
     return values.join(" + ");
-  }
-
-  function getFreeRollPrefillSummary() {
-    const sides = Number(freeDieSides);
-    const qty = Number(freeDieQty);
-    const modifier = Number(freeDieModifier);
-    const sign = freeDieSign === "-1" ? -1 : 1;
-
-    const parts = [`${qty}d${sides}`];
-
-    if (modifier !== 0) {
-      parts.push(`${modifier > 0 ? "+" : ""}${modifier}`);
-    }
-
-    if (sign === -1) {
-      parts.push("négatif");
-    }
-
-    if (selectedFreeRule?.name) {
-      parts.push(selectedFreeRule.name);
-    } else {
-      parts.push("Somme (par défaut)");
-    }
-
-    return parts.join(" • ");
-  }
-
-  function cancelFreeRollPrefill() {
-    setPendingFreeRollPrefill(false);
   }
 
   function getWizardBehaviorTypeFromFreeRoll():
@@ -495,7 +464,9 @@ export default function TableDetailScreen() {
         const firstOp = typeof steps[0]?.op === "string" ? steps[0].op : null;
 
         if (firstOp === "keep_highest") {
-          return Number(steps[0]?.n) === 1 ? "highest_of_pool" : "keep_highest_n";
+          return Number(steps[0]?.n) === 1
+            ? "highest_of_pool"
+            : "keep_highest_n";
         }
 
         if (firstOp === "keep_lowest") {
@@ -505,7 +476,10 @@ export default function TableDetailScreen() {
         if (firstOp === "drop_highest") return "drop_highest_n";
         if (firstOp === "drop_lowest") return "drop_lowest_n";
 
-        if (parsed.output === "lookup_label" || parsed.output === "lookup_value") {
+        if (
+          parsed.output === "lookup_label" ||
+          parsed.output === "lookup_value"
+        ) {
           return "table_lookup";
         }
 
@@ -539,6 +513,22 @@ export default function TableDetailScreen() {
 
     updateWizardDraft("creationMode", "auto");
     updateWizardDraft("selectedRuleId", selectedFreeRule?.id ?? null);
+  }
+
+  function handleOpenProfileFreeRoll(profile: ProfileRow) {
+    setActiveFreeRollProfileId((prev) =>
+      prev === profile.id ? null : profile.id,
+    );
+    clearFreeRollFeedback();
+  }
+
+  function handleSaveFreeRollAsAction(profile: ProfileRow) {
+    if (!freeRollResult) return;
+
+    resetWizardSubmitState();
+    openCreateActionWizard(profile);
+    openWizardState();
+    applyFreeRollPrefillToWizard();
   }
 
   function handleRollFreeAction() {
@@ -601,6 +591,328 @@ export default function TableDetailScreen() {
     });
   }
 
+  function renderProfileFreeRoll(profile: ProfileRow) {
+    return (
+      <View
+        style={{
+          borderWidth: 1,
+          borderRadius: 12,
+          padding: 12,
+          gap: 10,
+        }}
+      >
+        <Text style={{ fontWeight: "800", fontSize: 15 }}>
+          Jet libre de {profile.name}
+        </Text>
+
+        <Text style={{ opacity: 0.72 }}>
+          Teste un jet dans le contexte de ce profil puis sauvegarde-le comme
+          action.
+        </Text>
+
+        <View style={{ gap: 8 }}>
+          <Text style={{ fontWeight: "700" }}>Dé</Text>
+
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            {["4", "6", "8", "10", "12", "20", "100"].map((sides) => (
+              <Pressable
+                key={sides}
+                onPress={() => {
+                  setFreeDieSides(sides);
+                  setFreeRuleId(null);
+                  clearFreeRollFeedback();
+                }}
+                style={{
+                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  opacity: freeDieSides === sides ? 1 : 0.7,
+                }}
+              >
+                <Text>{`d${sides}`}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
+        <View style={{ gap: 8 }}>
+          <Text style={{ fontWeight: "700" }}>Quantité</Text>
+
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <Pressable
+              onPress={() => {
+                const next = Math.max(1, Number(freeDieQty) - 1);
+                setFreeDieQty(String(next));
+                clearFreeRollFeedback();
+              }}
+              style={{
+                width: 36,
+                height: 36,
+                borderWidth: 1,
+                borderRadius: 999,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text style={{ fontWeight: "800", fontSize: 18 }}>−</Text>
+            </Pressable>
+
+            <View
+              style={{
+                minWidth: 64,
+                paddingVertical: 8,
+                paddingHorizontal: 12,
+                borderWidth: 1,
+                borderRadius: 10,
+                alignItems: "center",
+              }}
+            >
+              <Text style={{ fontWeight: "700" }}>{freeDieQty}</Text>
+            </View>
+
+            <Pressable
+              onPress={() => {
+                const next = Math.min(99, Number(freeDieQty) + 1);
+                setFreeDieQty(String(next));
+                clearFreeRollFeedback();
+              }}
+              style={{
+                width: 36,
+                height: 36,
+                borderWidth: 1,
+                borderRadius: 999,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text style={{ fontWeight: "800", fontSize: 18 }}>+</Text>
+            </Pressable>
+          </View>
+        </View>
+
+        <View style={{ gap: 8 }}>
+          <Text style={{ fontWeight: "700" }}>Règle compatible</Text>
+
+          {compatibleRulesForFreeRoll.length > 0 ? (
+            <View style={{ gap: 8 }}>
+              <Pressable
+                onPress={() => {
+                  setFreeRuleId(null);
+                  clearFreeRollFeedback();
+                }}
+                style={{
+                  padding: 10,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  opacity: freeRuleId === null ? 1 : 0.7,
+                }}
+              >
+                <Text
+                  style={{ fontWeight: freeRuleId === null ? "700" : "400" }}
+                >
+                  Aucune règle
+                </Text>
+              </Pressable>
+
+              {compatibleRulesForFreeRoll.slice(0, 4).map((rule) => (
+                <Pressable
+                  key={rule.id}
+                  onPress={() => {
+                    setFreeRuleId(rule.id);
+                    clearFreeRollFeedback();
+                  }}
+                  style={{
+                    padding: 10,
+                    borderWidth: 1,
+                    borderRadius: 10,
+                    opacity: freeRuleId === rule.id ? 1 : 0.7,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontWeight: freeRuleId === rule.id ? "700" : "400",
+                    }}
+                  >
+                    {rule.name}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : (
+            <Text style={{ opacity: 0.6 }}>
+              Aucune règle compatible trouvée pour ce dé.
+            </Text>
+          )}
+        </View>
+
+        <Pressable
+          onPress={handleRollFreeAction}
+          style={{
+            paddingVertical: 12,
+            paddingHorizontal: 14,
+            borderWidth: 1,
+            borderRadius: 10,
+            alignItems: "center",
+          }}
+        >
+          <Text style={{ fontWeight: "800" }}>Lancer</Text>
+        </Pressable>
+
+        {freeRollError ? (
+          <Text style={{ color: "#b00020" }}>{freeRollError}</Text>
+        ) : null}
+
+        {freeRollResult ? (
+          <View
+            style={{
+              borderWidth: 1,
+              borderRadius: 12,
+              padding: 12,
+              gap: 8,
+            }}
+          >
+            <Text style={{ fontWeight: "800", fontSize: 15 }}>
+              Résultat du jet
+            </Text>
+
+            <Text style={{ opacity: 0.72 }}>
+              {freeRollResult.qty}d{freeRollResult.sides}
+              {freeRollResult.modifier !== 0
+                ? ` ${freeRollResult.modifier > 0 ? "+" : ""}${freeRollResult.modifier}`
+                : ""}
+              {freeRollResult.sign === -1 ? " • négatif" : ""}
+            </Text>
+
+            <Text style={{ opacity: 0.72 }}>
+              Règle : {freeRollResult.ruleName}
+            </Text>
+
+            {freeRollResult.evalResult?.kind === "sum" ? (
+              <>
+                <Text style={{ fontSize: 22, fontWeight: "800" }}>
+                  {freeRollResult.evalResult.total}
+                </Text>
+
+                <Text style={{ opacity: 0.72 }}>
+                  ({formatValueList(freeRollResult.signedValues)})
+                </Text>
+              </>
+            ) : null}
+
+            {freeRollResult.evalResult?.kind === "d20" ? (
+              <>
+                <Text style={{ opacity: 0.72 }}>
+                  Naturel : {freeRollResult.evalResult.natural}
+                </Text>
+
+                <Text style={{ fontWeight: "700" }}>
+                  Issue : {freeRollResult.evalResult.outcome}
+                </Text>
+
+                {freeRollResult.evalResult.threshold != null ? (
+                  <Text style={{ opacity: 0.72 }}>
+                    Seuil : {freeRollResult.evalResult.threshold}
+                  </Text>
+                ) : null}
+
+                <Text style={{ fontSize: 22, fontWeight: "800" }}>
+                  Final : {freeRollResult.evalResult.final}
+                </Text>
+              </>
+            ) : null}
+
+            {freeRollResult.evalResult?.kind === "pool" ? (
+              <>
+                <Text style={{ opacity: 0.72 }}>
+                  Jets : {formatValueList(freeRollResult.naturalValues)}
+                </Text>
+
+                <Text style={{ fontWeight: "700" }}>
+                  Issue : {freeRollResult.evalResult.outcome}
+                </Text>
+
+                <Text>Succès : {freeRollResult.evalResult.successes}</Text>
+                <Text>Faces critiques : {freeRollResult.evalResult.ones}</Text>
+              </>
+            ) : null}
+
+            {freeRollResult.evalResult?.kind === "table_lookup" ? (
+              <>
+                <Text style={{ opacity: 0.72 }}>
+                  Valeur : {freeRollResult.evalResult.value}
+                </Text>
+
+                <Text style={{ fontWeight: "700", fontSize: 18 }}>
+                  {freeRollResult.evalResult.label}
+                </Text>
+              </>
+            ) : null}
+
+            {freeRollResult.evalResult?.kind === "pipeline" ? (
+              <>
+                <Text style={{ opacity: 0.72 }}>
+                  Valeurs :{" "}
+                  {formatValueList(freeRollResult.evalResult.values ?? [])}
+                </Text>
+
+                <Text style={{ opacity: 0.72 }}>
+                  Conservés :{" "}
+                  {formatValueList(freeRollResult.evalResult.kept ?? [])}
+                </Text>
+
+                {freeRollResult.evalResult.meta?.outcome ? (
+                  <Text style={{ fontWeight: "700" }}>
+                    Issue : {freeRollResult.evalResult.meta.outcome}
+                  </Text>
+                ) : null}
+
+                {freeRollResult.evalResult.final != null ? (
+                  <Text style={{ fontSize: 22, fontWeight: "800" }}>
+                    Final : {freeRollResult.evalResult.final}
+                  </Text>
+                ) : null}
+              </>
+            ) : null}
+
+            {freeRollResult.evalResult?.kind === "unknown" ? (
+              <>
+                <Text style={{ fontWeight: "700" }}>
+                  {freeRollResult.evalResult.message}
+                </Text>
+
+                <Text style={{ fontSize: 22, fontWeight: "800" }}>
+                  {freeRollResult.finalTotal}
+                </Text>
+              </>
+            ) : null}
+
+            <Pressable
+              onPress={() => handleSaveFreeRollAsAction(profile)}
+              style={{
+                marginTop: 8,
+                paddingVertical: 12,
+                paddingHorizontal: 14,
+                borderWidth: 1,
+                borderRadius: 10,
+                alignItems: "center",
+              }}
+            >
+              <Text style={{ fontWeight: "800" }}>
+                Sauvegarder ce jet en tant qu’action
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1, padding: 16, gap: 12 }}>
@@ -612,406 +924,6 @@ export default function TableDetailScreen() {
       />
 
       <ScrollView>
-        <View
-          style={{
-            borderWidth: 1,
-            borderRadius: 12,
-            padding: 12,
-            marginBottom: 12,
-            gap: 10,
-          }}
-        >
-          <Text style={{ fontWeight: "800", fontSize: 16 }}>
-            Jet libre (dans cette table)
-          </Text>
-
-          <Text style={{ opacity: 0.7 }}>
-            Lance des dés rapidement avec les règles de cette table, puis enregistre si besoin.
-          </Text>
-
-          <View style={{ gap: 8 }}>
-            <Text style={{ fontWeight: "700" }}>Dé</Text>
-
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-              {["4", "6", "8", "10", "12", "20", "100"].map((sides) => (
-                <Pressable
-                  key={sides}
-                  onPress={() => {
-                    setFreeDieSides(sides);
-                    setFreeRuleId(null);
-                    clearFreeRollFeedback();
-                  }}
-                  style={{
-                    paddingVertical: 8,
-                    paddingHorizontal: 12,
-                    borderWidth: 1,
-                    borderRadius: 10,
-                    opacity: freeDieSides === sides ? 1 : 0.7,
-                  }}
-                >
-                  <Text>{`d${sides}`}</Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-
-          <View style={{ gap: 8 }}>
-            <Text style={{ fontWeight: "700" }}>Quantité</Text>
-
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
-              <Pressable
-                onPress={() => {
-                  const next = Math.max(1, Number(freeDieQty) - 1);
-                  setFreeDieQty(String(next));
-                  clearFreeRollFeedback();
-                }}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderWidth: 1,
-                  borderRadius: 999,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Text style={{ fontWeight: "800", fontSize: 18 }}>−</Text>
-              </Pressable>
-
-              <View
-                style={{
-                  minWidth: 64,
-                  paddingVertical: 8,
-                  paddingHorizontal: 12,
-                  borderWidth: 1,
-                  borderRadius: 10,
-                  alignItems: "center",
-                }}
-              >
-                <Text style={{ fontWeight: "700" }}>{freeDieQty}</Text>
-              </View>
-
-              <Pressable
-                onPress={() => {
-                  const next = Math.min(99, Number(freeDieQty) + 1);
-                  setFreeDieQty(String(next));
-                  clearFreeRollFeedback();
-                }}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderWidth: 1,
-                  borderRadius: 999,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Text style={{ fontWeight: "800", fontSize: 18 }}>+</Text>
-              </Pressable>
-            </View>
-          </View>
-
-          <View style={{ gap: 8 }}>
-            <Text style={{ fontWeight: "700" }}>Règle compatible</Text>
-
-            {compatibleRulesForFreeRoll.length > 0 ? (
-              <View style={{ gap: 8 }}>
-                <Pressable
-                  onPress={() => {
-                    setFreeRuleId(null);
-                    clearFreeRollFeedback();
-                  }}
-                  style={{
-                    padding: 10,
-                    borderWidth: 1,
-                    borderRadius: 10,
-                    opacity: freeRuleId === null ? 1 : 0.7,
-                  }}
-                >
-                  <Text style={{ fontWeight: freeRuleId === null ? "700" : "400" }}>
-                    Aucune règle
-                  </Text>
-                </Pressable>
-
-                {compatibleRulesForFreeRoll.slice(0, 4).map((rule) => (
-                  <Pressable
-                    key={rule.id}
-                    onPress={() => {
-                      setFreeRuleId(rule.id);
-                      clearFreeRollFeedback();
-                    }}
-                    style={{
-                      padding: 10,
-                      borderWidth: 1,
-                      borderRadius: 10,
-                      opacity: freeRuleId === rule.id ? 1 : 0.7,
-                    }}
-                  >
-                    <Text style={{ fontWeight: freeRuleId === rule.id ? "700" : "400" }}>
-                      {rule.name}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            ) : (
-              <Text style={{ opacity: 0.6 }}>
-                Aucune règle compatible trouvée pour ce dé.
-              </Text>
-            )}
-          </View>
-
-          <View style={{ gap: 8 }}>
-            <Pressable
-              onPress={handleRollFreeAction}
-              style={{
-                paddingVertical: 12,
-                paddingHorizontal: 14,
-                borderWidth: 1,
-                borderRadius: 10,
-                alignItems: "center",
-              }}
-            >
-              <Text style={{ fontWeight: "800" }}>Lancer</Text>
-            </Pressable>
-
-            {freeRollError ? (
-              <Text style={{ color: "#b00020" }}>{freeRollError}</Text>
-            ) : null}
-          </View>
-
-          {freeRollResult ? (
-            <View
-              style={{
-                borderWidth: 1,
-                borderRadius: 12,
-                padding: 12,
-                gap: 8,
-              }}
-            >
-              <Text style={{ fontWeight: "800", fontSize: 15 }}>
-                Résultat du jet
-              </Text>
-
-              <Text style={{ opacity: 0.72 }}>
-                {freeRollResult.qty}d{freeRollResult.sides}
-                {freeRollResult.modifier !== 0
-                  ? ` ${freeRollResult.modifier > 0 ? "+" : ""}${freeRollResult.modifier}`
-                  : ""}
-                {freeRollResult.sign === -1 ? " • négatif" : ""}
-              </Text>
-
-              <Text style={{ opacity: 0.72 }}>
-                Règle : {freeRollResult.ruleName}
-              </Text>
-
-              {freeRollResult.evalResult?.kind === "sum" ? (
-                <>
-                  <Text style={{ fontSize: 22, fontWeight: "800" }}>
-                    {freeRollResult.evalResult.total}
-                  </Text>
-
-                  <Text style={{ opacity: 0.72 }}>
-                    ({formatValueList(freeRollResult.signedValues)})
-                  </Text>
-                </>
-              ) : null}
-
-              {freeRollResult.evalResult?.kind === "d20" ? (
-                <>
-                  <Text style={{ opacity: 0.72 }}>
-                    Naturel : {freeRollResult.evalResult.natural}
-                  </Text>
-
-                  <Text style={{ fontWeight: "700" }}>
-                    Issue : {freeRollResult.evalResult.outcome}
-                  </Text>
-
-                  {freeRollResult.evalResult.threshold != null ? (
-                    <Text style={{ opacity: 0.72 }}>
-                      Seuil : {freeRollResult.evalResult.threshold}
-                    </Text>
-                  ) : null}
-
-                  <Text style={{ fontSize: 22, fontWeight: "800" }}>
-                    Final : {freeRollResult.evalResult.final}
-                  </Text>
-                </>
-              ) : null}
-
-              {freeRollResult.evalResult?.kind === "pool" ? (
-                <>
-                  <Text style={{ opacity: 0.72 }}>
-                    Jets : {formatValueList(freeRollResult.naturalValues)}
-                  </Text>
-
-                  <Text style={{ fontWeight: "700" }}>
-                    Issue : {freeRollResult.evalResult.outcome}
-                  </Text>
-
-                  <Text>
-                    Succès : {freeRollResult.evalResult.successes}
-                  </Text>
-
-                  <Text>
-                    Faces critiques : {freeRollResult.evalResult.ones}
-                  </Text>
-                </>
-              ) : null}
-
-              {freeRollResult.evalResult?.kind === "table_lookup" ? (
-                <>
-                  <Text style={{ opacity: 0.72 }}>
-                    Valeur : {freeRollResult.evalResult.value}
-                  </Text>
-
-                  <Text style={{ fontWeight: "700", fontSize: 18 }}>
-                    {freeRollResult.evalResult.label}
-                  </Text>
-                </>
-              ) : null}
-
-              {freeRollResult.evalResult?.kind === "pipeline" ? (
-                <>
-                  <Text style={{ opacity: 0.72 }}>
-                    Valeurs : {formatValueList(freeRollResult.evalResult.values ?? [])}
-                  </Text>
-
-                  <Text style={{ opacity: 0.72 }}>
-                    Conservés : {formatValueList(freeRollResult.evalResult.kept ?? [])}
-                  </Text>
-
-                  {freeRollResult.evalResult.meta?.outcome ? (
-                    <Text style={{ fontWeight: "700" }}>
-                      Issue : {freeRollResult.evalResult.meta.outcome}
-                    </Text>
-                  ) : null}
-
-                  {freeRollResult.evalResult.final != null ? (
-                    <Text style={{ fontSize: 22, fontWeight: "800" }}>
-                      Final : {freeRollResult.evalResult.final}
-                    </Text>
-                  ) : null}
-                </>
-              ) : null}
-
-              {freeRollResult.evalResult?.kind === "unknown" ? (
-                <>
-                  <Text style={{ fontWeight: "700" }}>
-                    {freeRollResult.evalResult.message}
-                  </Text>
-
-                  <Text style={{ fontSize: 22, fontWeight: "800" }}>
-                    {freeRollResult.finalTotal}
-                  </Text>
-                </>
-              ) : null}
-
-              {!isSystem ? (
-                <View style={{ gap: 8, marginTop: 8, paddingTop: 8, borderTopWidth: 1 }}>
-                  {!pendingFreeRollPrefill ? (
-                    <Pressable
-                      onPress={() => setPendingFreeRollPrefill(true)}
-                      style={{
-                        paddingVertical: 12,
-                        paddingHorizontal: 14,
-                        borderWidth: 1,
-                        borderRadius: 10,
-                        alignItems: "center",
-                      }}
-                    >
-                      <Text style={{ fontWeight: "800" }}>
-                        Utiliser ce jet pour une nouvelle action
-                      </Text>
-                    </Pressable>
-                  ) : (
-                    <View
-                      style={{
-                        borderWidth: 1,
-                        borderRadius: 10,
-                        padding: 12,
-                        gap: 8,
-                      }}
-                    >
-                      <Text style={{ fontWeight: "800" }}>
-                        Jet prêt à être transformé en action
-                      </Text>
-
-                      <Text style={{ opacity: 0.72 }}>
-                        {getFreeRollPrefillSummary()}
-                      </Text>
-
-                      <Text style={{ opacity: 0.72 }}>
-                        Descends maintenant dans les profils puis appuie sur “Créer une action”.
-                      </Text>
-
-                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                        <Pressable
-                          onPress={cancelFreeRollPrefill}
-                          style={{
-                            paddingVertical: 10,
-                            paddingHorizontal: 12,
-                            borderWidth: 1,
-                            borderRadius: 10,
-                          }}
-                        >
-                          <Text style={{ fontWeight: "700" }}>Annuler</Text>
-                        </Pressable>
-                      </View>
-                    </View>
-                  )}
-                </View>
-              ) : null}
-
-            </View>
-          ) : null}
-
-          <Text style={{ opacity: 0.5 }}>
-            Lancez pour tester une logique de dé dans cette table.
-          </Text>
-        </View>
-
-        {pendingFreeRollPrefill ? (
-          <View
-            style={{
-              borderWidth: 1,
-              borderRadius: 12,
-              padding: 12,
-              marginBottom: 12,
-              gap: 8,
-            }}
-          >
-            <Text style={{ fontWeight: "800" }}>
-              Création d’action à partir du jet libre
-            </Text>
-
-            <Text style={{ opacity: 0.72 }}>
-              Jet sélectionné : {getFreeRollPrefillSummary()}
-            </Text>
-
-            <Text style={{ opacity: 0.72 }}>
-              Choisis maintenant le profil sur lequel créer l’action.
-            </Text>
-
-            <Pressable
-              onPress={cancelFreeRollPrefill}
-              style={{
-                alignSelf: "flex-start",
-                paddingVertical: 8,
-                paddingHorizontal: 10,
-                borderWidth: 1,
-                borderRadius: 8,
-              }}
-            >
-              <Text style={{ fontWeight: "700" }}>Annuler</Text>
-            </Pressable>
-          </View>
-        ) : null}
-
         <TableProfilesSection
           profiles={profiles}
           isSystem={isSystem}
@@ -1025,6 +937,9 @@ export default function TableDetailScreen() {
           onDeleteGroup={submitDeleteGroup}
           onEditDie={openEditDieModal}
           onDeleteDie={submitDeleteDie}
+          activeFreeRollProfileId={activeFreeRollProfileId}
+          onToggleProfileFreeRoll={handleOpenProfileFreeRoll}
+          renderProfileFreeRoll={renderProfileFreeRoll}
         />
       </ScrollView>
 

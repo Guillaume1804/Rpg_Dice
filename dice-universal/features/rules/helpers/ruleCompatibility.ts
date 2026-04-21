@@ -6,6 +6,21 @@ export type RuleCompatibilityContext = {
   sides: number[];
 };
 
+const FLEXIBLE_RULE_KINDS = new Set([
+  "pipeline",
+  "highest_of_pool",
+  "lowest_of_pool",
+  "keep_highest_n",
+  "keep_lowest_n",
+  "drop_highest_n",
+  "drop_lowest_n",
+  "banded_sum",
+]);
+
+function isFlexibleRuleKind(kind: string): boolean {
+  return FLEXIBLE_RULE_KINDS.has(kind);
+}
+
 function matchesScope(
   ruleScope: RuleScope,
   wantedScope: "entry" | "group",
@@ -15,16 +30,17 @@ function matchesScope(
 }
 
 function matchesSides(ruleSides: number[], contextSides: number[]): boolean {
-  // Convention :
-  // [] = règle universelle, compatible avec tous les dés
+  // [] = règle universelle
   if (ruleSides.length === 0) return true;
 
-  // Cas simple : un seul type de dé
+  if (contextSides.length === 0) return true;
+
+  // Cas simple
   if (contextSides.length === 1) {
     return ruleSides.includes(contextSides[0]);
   }
 
-  // Cas groupe : tous les dés du contexte doivent être couverts
+  // Cas groupe
   return contextSides.every((side) => ruleSides.includes(side));
 }
 
@@ -32,12 +48,27 @@ export function isRuleCompatibleWithContext(
   rule: RuleRow,
   context: RuleCompatibilityContext,
 ): boolean {
+  const flexibleKind = isFlexibleRuleKind(rule.kind);
+
+  // Scope
   if (!matchesScope(rule.scope, context.scope)) {
-    return false;
+    // Tolérance pour certaines règles avancées
+    if (!flexibleKind) {
+      return false;
+    }
   }
 
   const ruleSides = parseSupportedSides(rule);
-  return matchesSides(ruleSides, context.sides);
+
+  // Sides
+  if (!matchesSides(ruleSides, context.sides)) {
+    // Tolérance pour règles avancées / pipelines
+    if (!flexibleKind) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 export function rankRuleForContext(
@@ -46,32 +77,47 @@ export function rankRuleForContext(
 ): number {
   let score = 0;
 
-  // priorité au scope exact
-  if (rule.scope === context.scope) {
-    score += 4;
-  } else if (rule.scope === "both") {
-    score += 2;
-  }
-
+  const flexibleKind = isFlexibleRuleKind(rule.kind);
   const ruleSides = parseSupportedSides(rule);
 
-  // règle universelle = utile, mais moins prioritaire qu'une vraie règle ciblée
-  if (ruleSides.length === 0) {
+  // Scope exact > both > flexible toléré
+  if (rule.scope === context.scope) {
+    score += 5;
+  } else if (rule.scope === "both") {
+    score += 3;
+  } else if (flexibleKind) {
     score += 1;
+  }
+
+  // Sides ciblés > universels > flexibles tolérés
+  if (ruleSides.length === 0) {
+    score += 2;
   } else if (
     context.sides.length === 1 &&
     ruleSides.includes(context.sides[0])
   ) {
-    score += 4;
+    score += 5;
   } else if (
     context.sides.length > 1 &&
     context.sides.every((side) => ruleSides.includes(side))
   ) {
-    score += 3;
+    score += 4;
+  } else if (flexibleKind) {
+    score += 1;
   }
 
-  // petit bonus aux règles système
+  // Bonus léger aux règles locales/custom
+  if (rule.is_system !== 1) {
+    score += 2;
+  }
+
+  // Petit bonus règles système
   if (rule.is_system === 1) {
+    score += 1;
+  }
+
+  // Léger bonus pipeline/modernes pour les rendre visibles
+  if (flexibleKind) {
     score += 1;
   }
 
@@ -107,6 +153,9 @@ export function getRulesForScope(
   scope: "entry" | "group",
 ): RuleRow[] {
   return [...rules]
-    .filter((rule) => rule.scope === scope || rule.scope === "both")
+    .filter((rule) => {
+      if (rule.scope === scope || rule.scope === "both") return true;
+      return isFlexibleRuleKind(rule.kind);
+    })
     .sort((a, b) => a.name.localeCompare(b.name, "fr"));
 }

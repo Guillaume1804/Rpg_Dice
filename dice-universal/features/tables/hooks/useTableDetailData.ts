@@ -2,12 +2,18 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Db } from "../../../data/db/database";
 import type { TableRow } from "../../../data/repositories/tablesRepo";
 import type { ProfileRow } from "../../../data/repositories/profilesRepo";
-import type { GroupRow, GroupDieRow } from "../../../data/repositories/groupsRepo";
+import type {
+  GroupRow,
+  GroupDieRow,
+} from "../../../data/repositories/groupsRepo";
 import type { RuleRow } from "../../../data/repositories/rulesRepo";
 
 import { getTableById } from "../../../data/repositories/tablesRepo";
 import { listProfilesByTableId } from "../../../data/repositories/profilesRepo";
-import { listGroupsByProfileId, listDiceByGroupId } from "../../../data/repositories/groupsRepo";
+import {
+  listGroupsByProfileId,
+  listDiceByGroupId,
+} from "../../../data/repositories/groupsRepo";
 import { listRules } from "../../../data/repositories/rulesRepo";
 
 export type GroupWithDice = {
@@ -29,8 +35,15 @@ const MODERN_RULE_KINDS = new Set([
   "single_check",
   "success_pool",
   "table_lookup",
+  "sum",
+  "sum_total",
   "banded_sum",
   "highest_of_pool",
+  "lowest_of_pool",
+  "keep_highest_n",
+  "keep_lowest_n",
+  "drop_highest_n",
+  "drop_lowest_n",
   "pipeline",
 ]);
 
@@ -77,6 +90,17 @@ export function useTableDetailData({ db, tableId }: UseTableDetailDataParams) {
 
       const allRules = await listRules(db);
       setRules(allRules);
+      console.log(
+        "[TABLE RULES]",
+        allRules.map((r) => ({
+          name: r.name,
+          kind: r.kind,
+          scope: r.scope,
+          supported_sides_json: r.supported_sides_json,
+          table_id: r.table_id,
+          is_system: r.is_system,
+        })),
+      );
     } catch (e: any) {
       setError(e?.message ?? String(e));
     }

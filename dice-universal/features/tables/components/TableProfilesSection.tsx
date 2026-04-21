@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { View, Text, Pressable } from "react-native";
 import type { ProfileRow } from "../../../data/repositories/profilesRepo";
 import type {
@@ -28,6 +29,9 @@ type Props = {
   onDeleteGroup: (group: GroupRow) => void;
   onEditDie: (die: GroupDieRow) => void;
   onDeleteDie: (die: GroupDieRow) => void;
+  activeFreeRollProfileId: string | null;
+  onToggleProfileFreeRoll: (profile: ProfileRow) => void;
+  renderProfileFreeRoll: (profile: ProfileRow) => ReactNode;
 };
 
 function formatDieLine(die: GroupDieRow) {
@@ -53,6 +57,9 @@ export function TableProfilesSection({
   onDeleteGroup,
   onEditDie,
   onDeleteDie,
+  activeFreeRollProfileId,
+  onToggleProfileFreeRoll,
+  renderProfileFreeRoll,
 }: Props) {
   return (
     <View
@@ -87,49 +94,71 @@ export function TableProfilesSection({
             </Text>
 
             {!isSystem ? (
-              <View
-                style={{
-                  flexDirection: "row",
-                  flexWrap: "wrap",
-                  gap: 8,
-                }}
-              >
-                <Pressable
-                  onPress={() => onRenameProfile(profile)}
+              <>
+                <View
                   style={{
-                    paddingVertical: 8,
-                    paddingHorizontal: 10,
-                    borderWidth: 1,
-                    borderRadius: 8,
+                    flexDirection: "row",
+                    flexWrap: "wrap",
+                    gap: 8,
                   }}
                 >
-                  <Text>Renommer le profil</Text>
-                </Pressable>
+                  <Pressable
+                    onPress={() => onRenameProfile(profile)}
+                    style={{
+                      paddingVertical: 8,
+                      paddingHorizontal: 10,
+                      borderWidth: 1,
+                      borderRadius: 8,
+                    }}
+                  >
+                    <Text>Renommer le profil</Text>
+                  </Pressable>
 
-                <Pressable
-                  onPress={() => onCreateGroup(profile)}
-                  style={{
-                    paddingVertical: 8,
-                    paddingHorizontal: 10,
-                    borderWidth: 1,
-                    borderRadius: 8,
-                  }}
-                >
-                  <Text>Créer une action</Text>
-                </Pressable>
+                  <Pressable
+                    onPress={() => onCreateGroup(profile)}
+                    style={{
+                      paddingVertical: 8,
+                      paddingHorizontal: 10,
+                      borderWidth: 1,
+                      borderRadius: 8,
+                    }}
+                  >
+                    <Text>Créer une action</Text>
+                  </Pressable>
 
-                <Pressable
-                  onPress={() => onDeleteProfile(profile)}
-                  style={{
-                    paddingVertical: 8,
-                    paddingHorizontal: 10,
-                    borderWidth: 1,
-                    borderRadius: 8,
-                  }}
-                >
-                  <Text>Supprimer le profil</Text>
-                </Pressable>
-              </View>
+                  <Pressable
+                    onPress={() => onToggleProfileFreeRoll(profile)}
+                    style={{
+                      paddingVertical: 8,
+                      paddingHorizontal: 10,
+                      borderWidth: 1,
+                      borderRadius: 8,
+                    }}
+                  >
+                    <Text>
+                      {activeFreeRollProfileId === profile.id
+                        ? "Fermer le jet libre"
+                        : "Jet libre"}
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    onPress={() => onDeleteProfile(profile)}
+                    style={{
+                      paddingVertical: 8,
+                      paddingHorizontal: 10,
+                      borderWidth: 1,
+                      borderRadius: 8,
+                    }}
+                  >
+                    <Text>Supprimer le profil</Text>
+                  </Pressable>
+                </View>
+
+                {activeFreeRollProfileId === profile.id
+                  ? renderProfileFreeRoll(profile)
+                  : null}
+              </>
             ) : null}
 
             {groups.length === 0 ? (
