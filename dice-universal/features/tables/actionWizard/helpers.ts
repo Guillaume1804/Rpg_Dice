@@ -1,5 +1,8 @@
+// dice-universal\features\tables\actionWizard\helpers.ts
+
 import type { RuleScope } from "../../../data/repositories/rulesRepo";
 import type { ActionWizardDraft, ActionWizardStep } from "./types";
+import { buildRuleFromBehavior } from "../../../core/rules/buildRuleFromBehavior";
 
 export type BuiltActionRulePayload = {
   name: string;
@@ -8,30 +11,6 @@ export type BuiltActionRulePayload = {
   supported_sides_json: string;
   scope: RuleScope;
 };
-
-function parseNumberList(value: string): number[] {
-  return value
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean)
-    .map((item) => Number(item))
-    .filter((n) => Number.isFinite(n));
-}
-
-function parseValidRanges(draft: ActionWizardDraft) {
-  return draft.ranges
-    .map((row) => ({
-      min: Number(row.min),
-      max: Number(row.max),
-      label: row.label.trim(),
-    }))
-    .filter(
-      (row) =>
-        Number.isFinite(row.min) &&
-        Number.isFinite(row.max) &&
-        row.label.length > 0,
-    );
-}
 
 export function validateActionWizardStep(
   step: ActionWizardStep,
@@ -172,167 +151,22 @@ export function buildRulePayloadFromActionWizard(
     throw new Error("Le type de dé est obligatoire.");
   }
 
-  const supported_sides_json = JSON.stringify([draft.die.sides]);
-
-  if (draft.behaviorType === "single_check") {
-    const threshold =
-      draft.successThreshold.trim() === ""
-        ? null
-        : Number(draft.successThreshold);
-
-    return {
-      name: `${draft.name.trim()} — règle`,
-      kind: "single_check",
-      params_json: JSON.stringify({
-        compare: draft.compare,
-        success_threshold: threshold,
-        crit_success_faces: parseNumberList(draft.critSuccessFaces),
-        crit_failure_faces: parseNumberList(draft.critFailureFaces),
-      }),
-      supported_sides_json,
-      scope: "entry",
-    };
-  }
-
-  if (draft.behaviorType === "success_pool") {
-    return {
-      name: `${draft.name.trim()} — règle`,
-      kind: "success_pool",
-      params_json: JSON.stringify({
-        success_at_or_above: Number(draft.successAtOrAbove),
-        fail_faces: parseNumberList(draft.failFaces),
-        glitch_rule: draft.glitchRule,
-      }),
-      supported_sides_json,
-      scope: "group",
-    };
-  }
-
-  if (draft.behaviorType === "sum_total") {
-    return {
-      name: `${draft.name.trim()} — règle`,
-      kind: "sum",
-      params_json: JSON.stringify({}),
-      supported_sides_json,
-      scope: "entry",
-    };
-  }
-
-  if (draft.behaviorType === "banded_sum") {
-    return {
-      name: `${draft.name.trim()} — règle`,
-      kind: "banded_sum",
-      params_json: JSON.stringify({
-        bands: parseValidRanges(draft),
-        defaultLabel: "—",
-      }),
-      supported_sides_json,
-      scope: "entry",
-    };
-  }
-
-  if (draft.behaviorType === "highest_of_pool") {
-    const threshold =
-      draft.successThreshold.trim() === ""
-        ? null
-        : Number(draft.successThreshold);
-
-    return {
-      name: `${draft.name.trim()} — règle`,
-      kind: "highest_of_pool",
-      params_json: JSON.stringify({
-        compare: draft.compare,
-        success_threshold: threshold,
-        crit_success_faces: parseNumberList(draft.critSuccessFaces),
-        crit_failure_faces: parseNumberList(draft.critFailureFaces),
-      }),
-      supported_sides_json,
-      scope: "entry",
-    };
-  }
-
-  if (draft.behaviorType === "lowest_of_pool") {
-    const threshold =
-      draft.successThreshold.trim() === ""
-        ? null
-        : Number(draft.successThreshold);
-
-    return {
-      name: `${draft.name.trim()} — règle`,
-      kind: "lowest_of_pool",
-      params_json: JSON.stringify({
-        compare: draft.compare,
-        success_threshold: threshold,
-        crit_success_faces: parseNumberList(draft.critSuccessFaces),
-        crit_failure_faces: parseNumberList(draft.critFailureFaces),
-      }),
-      supported_sides_json,
-      scope: "entry",
-    };
-  }
-
-  if (draft.behaviorType === "keep_highest_n") {
-    return {
-      name: `${draft.name.trim()} — règle`,
-      kind: "keep_highest_n",
-      params_json: JSON.stringify({
-        keep: Number(draft.keepCount),
-        result_mode: draft.resultMode,
-      }),
-      supported_sides_json,
-      scope: "entry",
-    };
-  }
-
-  if (draft.behaviorType === "keep_lowest_n") {
-    return {
-      name: `${draft.name.trim()} — règle`,
-      kind: "keep_lowest_n",
-      params_json: JSON.stringify({
-        keep: Number(draft.keepCount),
-        result_mode: draft.resultMode,
-      }),
-      supported_sides_json,
-      scope: "entry",
-    };
-  }
-
-  if (draft.behaviorType === "drop_highest_n") {
-    return {
-      name: `${draft.name.trim()} — règle`,
-      kind: "drop_highest_n",
-      params_json: JSON.stringify({
-        drop: Number(draft.dropCount),
-        result_mode: draft.resultMode,
-      }),
-      supported_sides_json,
-      scope: "entry",
-    };
-  }
-
-  if (draft.behaviorType === "drop_lowest_n") {
-    return {
-      name: `${draft.name.trim()} — règle`,
-      kind: "drop_lowest_n",
-      params_json: JSON.stringify({
-        drop: Number(draft.dropCount),
-        result_mode: draft.resultMode,
-      }),
-      supported_sides_json,
-      scope: "entry",
-    };
-  }
-
-  return {
-    name: `${draft.name.trim()} — règle`,
-    kind: "table_lookup",
-    params_json: JSON.stringify({
-      ranges: parseValidRanges(draft),
-      defaultLabel: "—",
-    }),
-    supported_sides_json,
-    scope: "entry",
-  };
+  return buildRuleFromBehavior({
+    actionName: draft.name,
+    behaviorKey: draft.behaviorType,
+    sides: draft.die.sides,
+    compare: draft.compare,
+    successThreshold: draft.successThreshold,
+    critSuccessFaces: draft.critSuccessFaces,
+    critFailureFaces: draft.critFailureFaces,
+    successAtOrAbove: draft.successAtOrAbove,
+    failFaces: draft.failFaces,
+    glitchRule: draft.glitchRule,
+    ranges: draft.ranges,
+    keepCount: draft.keepCount,
+    dropCount: draft.dropCount,
+    resultMode: draft.resultMode,
+  });
 }
 
 export function buildActionWizardSummary(draft: ActionWizardDraft): string {

@@ -1,3 +1,5 @@
+// dice-universal\features\tables\actionWizard\defaults.ts
+
 import type { ActionBehaviorType } from "./behaviorCatalog";
 import type { ActionWizardDraft } from "./types";
 

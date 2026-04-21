@@ -344,11 +344,6 @@ export function QuickRollSection({
     );
   }, [draftGroups, selectedDraftGroupId]);
 
-  const hasDraftContent = useMemo(
-    () => draftGroups.some((group) => group.dice.length > 0),
-    [draftGroups],
-  );
-
   const standardQuickGroup = useMemo(
     () => draftGroups.find((group) => isStandardQuickGroup(group)) ?? null,
     [draftGroups],

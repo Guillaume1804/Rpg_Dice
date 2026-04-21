@@ -1,3 +1,5 @@
+// dice-universal\features\roll\helpers.ts
+
 import type { RuleRow } from "../../data/repositories/rulesRepo";
 
 export function getRuleName(rule: any | null) {
