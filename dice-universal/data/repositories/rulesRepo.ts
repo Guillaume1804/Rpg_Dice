@@ -7,14 +7,76 @@ export type RuleUsageKind = "system_template" | "user_template" | "generated";
 export type RuleRow = {
   id: string;
   table_id: string | null;
+
   name: string;
   kind: string;
+
+  /**
+   * Clé canonique du comportement métier.
+   * Ex: single_check, success_pool, keep_highest_n...
+   */
+  behavior_key: string | null;
+
+  /**
+   * Catégorie UX / métier.
+   * Ex: check, pool, selection, lookup, sum...
+   */
+  category: string | null;
+
   params_json: string;
+
+  /**
+   * Description exploitable par l’UI pour rendre
+   * dynamiquement les champs de configuration.
+   */
+  ui_schema_json: string | null;
+
   is_system: number;
   supported_sides_json: string;
   scope: RuleScope;
+
+  /**
+   * NOTE:
+   * Ce champ semble déjà utilisé par updateRule().
+   * On l’ajoute ici pour réaligner le type TS avec le repo.
+   */
+  usage_kind: RuleUsageKind | null;
+
   created_at: string;
   updated_at: string;
+};
+
+export type CreateRuleInput = {
+  table_id?: string | null;
+
+  name: string;
+  kind: string;
+
+  behavior_key?: string | null;
+  category?: string | null;
+
+  params_json: string;
+  ui_schema_json?: string | null;
+
+  is_system?: number;
+  supported_sides_json?: string;
+  scope?: RuleScope;
+  usage_kind?: RuleUsageKind | null;
+};
+
+export type UpdateRuleInput = {
+  name: string;
+  kind: string;
+
+  behavior_key?: string | null;
+  category?: string | null;
+
+  params_json: string;
+  ui_schema_json?: string | null;
+
+  supported_sides_json: string;
+  scope: RuleScope;
+  usage_kind: RuleUsageKind;
 };
 
 function nowIso() {
@@ -116,15 +178,7 @@ export async function findCanonicalLocalRule(
 
 export async function createRule(
   db: Db,
-  params: {
-    table_id?: string | null;
-    name: string;
-    kind: string;
-    params_json: string;
-    is_system?: number;
-    supported_sides_json?: string;
-    scope?: RuleScope;
-  },
+  params: CreateRuleInput,
 ): Promise<string> {
   const createdAt = nowIso();
   const id = await newId();
@@ -137,24 +191,32 @@ export async function createRule(
       table_id,
       name,
       kind,
+      behavior_key,
+      category,
       params_json,
+      ui_schema_json,
       is_system,
       supported_sides_json,
       scope,
+      usage_kind,
       created_at,
       updated_at
     )
-    VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     `,
     [
       id,
       params.table_id ?? null,
       params.name,
       params.kind,
+      params.behavior_key ?? null,
+      params.category ?? null,
       params.params_json,
+      params.ui_schema_json ?? null,
       isSystem,
       params.supported_sides_json ?? "[]",
       params.scope ?? "entry",
+      params.usage_kind ?? null,
       createdAt,
       createdAt,
     ],
@@ -178,14 +240,7 @@ export async function deleteRule(db: Db, id: string): Promise<void> {
 export async function updateRule(
   db: Db,
   id: string,
-  params: {
-    name: string;
-    kind: string;
-    params_json: string;
-    supported_sides_json: string;
-    scope: RuleScope;
-    usage_kind: RuleUsageKind;
-  },
+  params: UpdateRuleInput,
 ): Promise<void> {
   await assertRuleIsNotSystem(db, id);
 
@@ -197,7 +252,10 @@ export async function updateRule(
     SET
       name = ?,
       kind = ?,
+      behavior_key = ?,
+      category = ?,
       params_json = ?,
+      ui_schema_json = ?,
       supported_sides_json = ?,
       scope = ?,
       usage_kind = ?,
@@ -207,7 +265,10 @@ export async function updateRule(
     [
       params.name,
       params.kind,
+      params.behavior_key ?? null,
+      params.category ?? null,
       params.params_json,
+      params.ui_schema_json ?? null,
       params.supported_sides_json,
       params.scope,
       params.usage_kind,

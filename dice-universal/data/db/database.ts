@@ -60,6 +60,92 @@ async function ensureColumn(
  * - rules
  * - roll_events
  */
+
+function inferBehaviorKeyFromKind(kind: string): string | null {
+  if (kind === "single_check") return "single_check";
+  if (kind === "success_pool") return "success_pool";
+  if (kind === "table_lookup") return "table_lookup";
+  if (kind === "sum") return "sum_total";
+  if (kind === "banded_sum") return "banded_sum";
+  if (kind === "highest_of_pool") return "highest_of_pool";
+  if (kind === "lowest_of_pool") return "lowest_of_pool";
+  if (kind === "keep_highest_n") return "keep_highest_n";
+  if (kind === "keep_lowest_n") return "keep_lowest_n";
+  if (kind === "drop_highest_n") return "drop_highest_n";
+  if (kind === "drop_lowest_n") return "drop_lowest_n";
+  if (kind === "pipeline") return null;
+
+  return null;
+}
+
+function inferCategoryFromBehaviorKey(
+  behaviorKey: string | null,
+): string | null {
+  if (!behaviorKey) return null;
+
+  if (behaviorKey === "single_check") return "check";
+  if (behaviorKey === "table_lookup") return "lookup";
+  if (behaviorKey === "success_pool") return "pool";
+  if (behaviorKey === "sum_total") return "sum";
+  if (behaviorKey === "banded_sum") return "sum";
+
+  if (
+    behaviorKey === "highest_of_pool" ||
+    behaviorKey === "lowest_of_pool" ||
+    behaviorKey === "keep_highest_n" ||
+    behaviorKey === "keep_lowest_n" ||
+    behaviorKey === "drop_highest_n" ||
+    behaviorKey === "drop_lowest_n"
+  ) {
+    return "selection";
+  }
+
+  return null;
+}
+
+async function backfillRulesMetadata(db: Db): Promise<void> {
+  const rows = await db.getAllAsync<{
+    id: string;
+    kind: string;
+    is_system: number;
+    behavior_key: string | null;
+    category: string | null;
+    usage_kind: string | null;
+  }>(`
+    SELECT
+      id,
+      kind,
+      is_system,
+      behavior_key,
+      category,
+      usage_kind
+    FROM rules;
+  `);
+
+  for (const row of rows) {
+    const nextBehaviorKey =
+      row.behavior_key ?? inferBehaviorKeyFromKind(row.kind);
+
+    const nextCategory =
+      row.category ?? inferCategoryFromBehaviorKey(nextBehaviorKey);
+
+    const nextUsageKind =
+      row.usage_kind ??
+      (row.is_system === 1 ? "system_template" : "user_template");
+
+    await db.runAsync(
+      `
+      UPDATE rules
+      SET
+        behavior_key = ?,
+        category = ?,
+        usage_kind = ?
+      WHERE id = ?;
+      `,
+      [nextBehaviorKey, nextCategory, nextUsageKind, row.id],
+    );
+  }
+}
 export async function initSchema(db: Db): Promise<void> {
   await ensureMetaTable(db);
 
@@ -74,20 +160,28 @@ export async function initSchema(db: Db): Promise<void> {
   `);
 
   await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS rules (
-      id TEXT PRIMARY KEY NOT NULL,
-      table_id TEXT NULL,
-      name TEXT NOT NULL,
-      kind TEXT NOT NULL,
-      params_json TEXT NOT NULL DEFAULT '{}',
-      is_system INTEGER NOT NULL DEFAULT 0,
-      supported_sides_json TEXT NOT NULL DEFAULT '[]',
-      scope TEXT NOT NULL DEFAULT 'entry',
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL,
-      FOREIGN KEY (table_id) REFERENCES tables(id) ON DELETE CASCADE
-    );
-  `);
+  CREATE TABLE IF NOT EXISTS rules (
+    id TEXT PRIMARY KEY NOT NULL,
+    table_id TEXT NULL,
+    name TEXT NOT NULL,
+    kind TEXT NOT NULL,
+
+    behavior_key TEXT NULL,
+    category TEXT NULL,
+
+    params_json TEXT NOT NULL DEFAULT '{}',
+    ui_schema_json TEXT NULL,
+
+    is_system INTEGER NOT NULL DEFAULT 0,
+    supported_sides_json TEXT NOT NULL DEFAULT '[]',
+    scope TEXT NOT NULL DEFAULT 'entry',
+    usage_kind TEXT NULL,
+
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (table_id) REFERENCES tables(id) ON DELETE CASCADE
+  );
+`);
 
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS profiles (
@@ -191,6 +285,30 @@ export async function initSchema(db: Db): Promise<void> {
     `);
   }
 
+  const hasRuleBehaviorKey = await ensureColumn(db, "rules", "behavior_key");
+  if (!hasRuleBehaviorKey) {
+    await db.execAsync(`
+      ALTER TABLE rules
+      ADD COLUMN behavior_key TEXT NULL;
+    `);
+  }
+
+  const hasRuleCategory = await ensureColumn(db, "rules", "category");
+  if (!hasRuleCategory) {
+    await db.execAsync(`
+      ALTER TABLE rules
+      ADD COLUMN category TEXT NULL;
+    `);
+  }
+
+  const hasRuleUiSchema = await ensureColumn(db, "rules", "ui_schema_json");
+  if (!hasRuleUiSchema) {
+    await db.execAsync(`
+      ALTER TABLE rules
+      ADD COLUMN ui_schema_json TEXT NULL;
+    `);
+  }
+
   const hasRuleUsageKind = await ensureColumn(db, "rules", "usage_kind");
   if (!hasRuleUsageKind) {
     await db.execAsync(`
@@ -215,6 +333,10 @@ export async function initSchema(db: Db): Promise<void> {
       ADD COLUMN table_id TEXT NULL;
     `);
   }
+
+  await backfillRulesMetadata(db);
+
+  // --- Indexes ---
 
   await db.execAsync(`
     CREATE INDEX IF NOT EXISTS idx_profiles_table
@@ -269,6 +391,11 @@ export async function initSchema(db: Db): Promise<void> {
   await db.execAsync(`
     CREATE INDEX IF NOT EXISTS idx_rules_kind
     ON rules(kind);
+  `);
+
+  await db.execAsync(`
+    CREATE INDEX IF NOT EXISTS idx_rules_behavior_key
+    ON rules(behavior_key);
   `);
 
   await db.execAsync(`
