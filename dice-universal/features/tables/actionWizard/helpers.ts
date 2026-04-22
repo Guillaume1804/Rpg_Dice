@@ -7,9 +7,16 @@ import { buildRuleFromBehavior } from "../../../core/rules/buildRuleFromBehavior
 export type BuiltActionRulePayload = {
   name: string;
   kind: string;
+
+  behavior_key: string | null;
+  category: string | null;
+
   params_json: string;
+  ui_schema_json: string | null;
+
   supported_sides_json: string;
   scope: RuleScope;
+  usage_kind: "system_template" | "user_template" | "generated";
 };
 
 export function validateActionWizardStep(

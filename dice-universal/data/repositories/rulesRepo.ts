@@ -155,7 +155,8 @@ export async function findCanonicalLocalRule(
   db: Db,
   params: {
     tableId: string;
-    kind: string;
+    behavior_key: string | null;
+    params_json: string;
     scope: RuleScope;
     supported_sides_json: string;
   },
@@ -165,12 +166,19 @@ export async function findCanonicalLocalRule(
     SELECT *
     FROM rules
     WHERE table_id = ?
-      AND kind = ?
+      AND behavior_key IS ?
+      AND params_json = ?
       AND scope = ?
       AND supported_sides_json = ?
     LIMIT 1;
     `,
-    [params.tableId, params.kind, params.scope, params.supported_sides_json],
+    [
+      params.tableId,
+      params.behavior_key,
+      params.params_json,
+      params.scope,
+      params.supported_sides_json,
+    ],
   );
 
   return rows.length ? rows[0] : null;

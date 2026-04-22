@@ -59,7 +59,8 @@ export function useCreateActionFromWizard({
 
         const existingCanonicalRule = await findCanonicalLocalRule(db, {
           tableId,
-          kind: rulePayload.kind,
+          behavior_key: rulePayload.behavior_key,
+          params_json: rulePayload.params_json,
           scope: rulePayload.scope,
           supported_sides_json: rulePayload.supported_sides_json,
         });
@@ -77,10 +78,14 @@ export function useCreateActionFromWizard({
             table_id: tableId,
             name: canonicalRuleName,
             kind: rulePayload.kind,
+            behavior_key: rulePayload.behavior_key,
+            category: rulePayload.category,
             params_json: rulePayload.params_json,
+            ui_schema_json: rulePayload.ui_schema_json,
             is_system: 0,
             supported_sides_json: rulePayload.supported_sides_json,
             scope: rulePayload.scope,
+            usage_kind: rulePayload.usage_kind,
           });
 
           ruleScope = rulePayload.scope;

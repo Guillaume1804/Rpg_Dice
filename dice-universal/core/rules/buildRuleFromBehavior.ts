@@ -1,5 +1,8 @@
-import type { RuleScope } from "../../data/repositories/rulesRepo";
-import type { RuleBehaviorKey } from "./behaviorCatalog";
+import type {
+  RuleScope,
+  RuleUsageKind,
+} from "../../data/repositories/rulesRepo";
+import { getRuleBehaviorByKey, type RuleBehaviorKey } from "./behaviorCatalog";
 
 export type RuleBuildInput = {
   actionName: string;
@@ -25,9 +28,16 @@ export type RuleBuildInput = {
 export type BuiltRulePayload = {
   name: string;
   kind: string;
+
+  behavior_key: string | null;
+  category: string | null;
+
   params_json: string;
+  ui_schema_json: string | null;
+
   supported_sides_json: string;
   scope: RuleScope;
+  usage_kind: RuleUsageKind;
 };
 
 function parseNumberList(value?: string): number[] {
@@ -71,10 +81,39 @@ function parseOptionalNumber(value?: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-export function buildRuleFromBehavior(input: RuleBuildInput): BuiltRulePayload {
-  const supported_sides_json = JSON.stringify([input.sides]);
-  const baseName = `${input.actionName.trim()} — règle`;
+function buildUiSchemaJson(behaviorKey: RuleBehaviorKey): string | null {
+  const behavior = getRuleBehaviorByKey(behaviorKey);
+  if (!behavior) return null;
 
+  return JSON.stringify({
+    behavior_key: behavior.key,
+    category: behavior.category,
+    fields: behavior.fields,
+  });
+}
+
+function buildBasePayload(
+  input: RuleBuildInput,
+  params: Record<string, unknown>,
+  kind: string,
+  scope: RuleScope,
+): BuiltRulePayload {
+  const behavior = getRuleBehaviorByKey(input.behaviorKey);
+
+  return {
+    name: `${input.actionName.trim()} — règle`,
+    kind,
+    behavior_key: behavior?.key ?? input.behaviorKey,
+    category: behavior?.category ?? null,
+    params_json: JSON.stringify(params),
+    ui_schema_json: buildUiSchemaJson(input.behaviorKey),
+    supported_sides_json: JSON.stringify([input.sides]),
+    scope,
+    usage_kind: "generated",
+  };
+}
+
+export function buildRuleFromBehavior(input: RuleBuildInput): BuiltRulePayload {
   if (!input.actionName.trim()) {
     throw new Error("Le nom de l’action est obligatoire.");
   }
@@ -84,150 +123,134 @@ export function buildRuleFromBehavior(input: RuleBuildInput): BuiltRulePayload {
   }
 
   if (input.behaviorKey === "single_check") {
-    return {
-      name: baseName,
-      kind: "single_check",
-      params_json: JSON.stringify({
+    return buildBasePayload(
+      input,
+      {
         compare: input.compare ?? "gte",
         success_threshold: parseOptionalNumber(input.successThreshold),
         crit_success_faces: parseNumberList(input.critSuccessFaces),
         crit_failure_faces: parseNumberList(input.critFailureFaces),
-      }),
-      supported_sides_json,
-      scope: "entry",
-    };
+      },
+      "single_check",
+      "entry",
+    );
   }
 
   if (input.behaviorKey === "success_pool") {
-    return {
-      name: baseName,
-      kind: "success_pool",
-      params_json: JSON.stringify({
+    return buildBasePayload(
+      input,
+      {
         success_at_or_above: Number(input.successAtOrAbove ?? "5"),
         fail_faces: parseNumberList(input.failFaces),
         glitch_rule: input.glitchRule ?? "ones_gt_successes",
-      }),
-      supported_sides_json,
-      scope: "group",
-    };
+      },
+      "success_pool",
+      "group",
+    );
   }
 
   if (input.behaviorKey === "sum_total") {
-    return {
-      name: baseName,
-      kind: "sum",
-      params_json: JSON.stringify({}),
-      supported_sides_json,
-      scope: "entry",
-    };
+    return buildBasePayload(input, {}, "sum", "entry");
   }
 
   if (input.behaviorKey === "banded_sum") {
-    return {
-      name: baseName,
-      kind: "banded_sum",
-      params_json: JSON.stringify({
+    return buildBasePayload(
+      input,
+      {
         bands: parseValidRanges(input.ranges),
         defaultLabel: "—",
-      }),
-      supported_sides_json,
-      scope: "entry",
-    };
+      },
+      "banded_sum",
+      "entry",
+    );
   }
 
   if (input.behaviorKey === "highest_of_pool") {
-    return {
-      name: baseName,
-      kind: "highest_of_pool",
-      params_json: JSON.stringify({
+    return buildBasePayload(
+      input,
+      {
         compare: input.compare ?? "gte",
         success_threshold: parseOptionalNumber(input.successThreshold),
         crit_success_faces: parseNumberList(input.critSuccessFaces),
         crit_failure_faces: parseNumberList(input.critFailureFaces),
-      }),
-      supported_sides_json,
-      scope: "entry",
-    };
+      },
+      "highest_of_pool",
+      "entry",
+    );
   }
 
   if (input.behaviorKey === "lowest_of_pool") {
-    return {
-      name: baseName,
-      kind: "lowest_of_pool",
-      params_json: JSON.stringify({
+    return buildBasePayload(
+      input,
+      {
         compare: input.compare ?? "gte",
         success_threshold: parseOptionalNumber(input.successThreshold),
         crit_success_faces: parseNumberList(input.critSuccessFaces),
         crit_failure_faces: parseNumberList(input.critFailureFaces),
-      }),
-      supported_sides_json,
-      scope: "entry",
-    };
+      },
+      "lowest_of_pool",
+      "entry",
+    );
   }
 
   if (input.behaviorKey === "keep_highest_n") {
-    return {
-      name: baseName,
-      kind: "keep_highest_n",
-      params_json: JSON.stringify({
+    return buildBasePayload(
+      input,
+      {
         keep: Number(input.keepCount ?? "1"),
         result_mode: input.resultMode ?? "sum",
-      }),
-      supported_sides_json,
-      scope: "entry",
-    };
+      },
+      "keep_highest_n",
+      "entry",
+    );
   }
 
   if (input.behaviorKey === "keep_lowest_n") {
-    return {
-      name: baseName,
-      kind: "keep_lowest_n",
-      params_json: JSON.stringify({
+    return buildBasePayload(
+      input,
+      {
         keep: Number(input.keepCount ?? "1"),
         result_mode: input.resultMode ?? "sum",
-      }),
-      supported_sides_json,
-      scope: "entry",
-    };
+      },
+      "keep_lowest_n",
+      "entry",
+    );
   }
 
   if (input.behaviorKey === "drop_highest_n") {
-    return {
-      name: baseName,
-      kind: "drop_highest_n",
-      params_json: JSON.stringify({
+    return buildBasePayload(
+      input,
+      {
         drop: Number(input.dropCount ?? "1"),
         result_mode: input.resultMode ?? "sum",
-      }),
-      supported_sides_json,
-      scope: "entry",
-    };
+      },
+      "drop_highest_n",
+      "entry",
+    );
   }
 
   if (input.behaviorKey === "drop_lowest_n") {
-    return {
-      name: baseName,
-      kind: "drop_lowest_n",
-      params_json: JSON.stringify({
+    return buildBasePayload(
+      input,
+      {
         drop: Number(input.dropCount ?? "1"),
         result_mode: input.resultMode ?? "sum",
-      }),
-      supported_sides_json,
-      scope: "entry",
-    };
+      },
+      "drop_lowest_n",
+      "entry",
+    );
   }
 
   if (input.behaviorKey === "table_lookup") {
-    return {
-      name: baseName,
-      kind: "table_lookup",
-      params_json: JSON.stringify({
+    return buildBasePayload(
+      input,
+      {
         ranges: parseValidRanges(input.ranges),
         defaultLabel: "—",
-      }),
-      supported_sides_json,
-      scope: "entry",
-    };
+      },
+      "table_lookup",
+      "entry",
+    );
   }
 
   throw new Error(`Comportement non supporté: ${input.behaviorKey}`);
