@@ -14,7 +14,11 @@ type DraftDie = {
     id: string;
     name: string;
     kind: string;
+    behavior_key?: string | null;
+    category?: string | null;
     params_json: string;
+    ui_schema_json?: string | null;
+    usage_kind?: "system_template" | "user_template" | "generated";
   } | null;
 };
 
@@ -26,7 +30,11 @@ type DraftGroupState = {
     id: string;
     name: string;
     kind: string;
+    behavior_key?: string | null;
+    category?: string | null;
     params_json: string;
+    ui_schema_json?: string | null;
+    usage_kind?: "system_template" | "user_template" | "generated";
   } | null;
   dice: DraftDie[];
 };
@@ -632,7 +640,9 @@ export function QuickRollSection({
 
                       <View style={{ flexDirection: "row", gap: 8 }}>
                         <Pressable
-                          onPress={() => onAdjustQuickDieQty(group.id, index, -1)}
+                          onPress={() =>
+                            onAdjustQuickDieQty(group.id, index, -1)
+                          }
                           style={{
                             width: 32,
                             height: 32,
@@ -646,7 +656,9 @@ export function QuickRollSection({
                         </Pressable>
 
                         <Pressable
-                          onPress={() => onAdjustQuickDieQty(group.id, index, 1)}
+                          onPress={() =>
+                            onAdjustQuickDieQty(group.id, index, 1)
+                          }
                           style={{
                             width: 32,
                             height: 32,
@@ -886,7 +898,9 @@ export function QuickRollSection({
                               </Pressable>
 
                               <Pressable
-                                onPress={() => onRemoveDraftDie(group.id, index)}
+                                onPress={() =>
+                                  onRemoveDraftDie(group.id, index)
+                                }
                                 style={{
                                   paddingVertical: 8,
                                   paddingHorizontal: 10,

@@ -13,7 +13,11 @@ export type DraftTempRule = {
   id: string;
   name: string;
   kind: string;
+  behavior_key: string | null;
+  category: string | null;
   params_json: string;
+  ui_schema_json?: string | null;
+  usage_kind?: "system_template" | "user_template" | "generated";
 };
 
 export type DraftDie = {
@@ -76,7 +80,9 @@ function sameTempRule(
   if (!a || !b) return false;
 
   return (
-    a.kind === b.kind && a.name === b.name && a.params_json === b.params_json
+    a.kind === b.kind &&
+    a.behavior_key === b.behavior_key &&
+    a.params_json === b.params_json
   );
 }
 
