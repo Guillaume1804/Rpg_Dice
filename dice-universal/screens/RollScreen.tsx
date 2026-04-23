@@ -13,7 +13,14 @@ import { useRollExecution } from "../features/roll/hooks/useRollExecution";
 import { useQuickRollDraft } from "../features/roll/hooks/useQuickRollDraft";
 import { useRollTableData } from "../features/roll/hooks/useRollTableData";
 
-import { GroupRollResult } from "../core/roll/roll";
+import { CreateActionWizardModal } from "../features/tables/actionWizard/CreateActionWizardModal";
+import { useCreateActionWizard } from "../features/tables/actionWizard/useCreateActionWizard";
+import { useCreateActionFromWizard } from "../features/tables/actionWizard/useCreateActionFromWizard";
+import type { ProfileRow } from "../data/repositories/profilesRepo";
+
+import { rollGroup, GroupRollResult } from "../core/roll/roll";
+import { evaluateRule } from "../core/rules/evaluate";
+
 import {
   getBehaviorsForContext,
   getBehaviorDefaults,
@@ -26,6 +33,8 @@ import type { RuleBehaviorKey } from "../core/rules/behaviorCatalog";
 
 export default function RollScreen() {
   type RollMode = "quick" | "table";
+  type BehaviorModalSource = "quick_roll" | "table_quick" | null;
+
   const [mode, setMode] = useState<RollMode>("quick");
 
   const db = useDb();
@@ -78,6 +87,17 @@ export default function RollScreen() {
   const [configFailFaces, setConfigFailFaces] = useState("1");
   const [configGlitchRule, setConfigGlitchRule] = useState("ones_gt_successes");
 
+  const [tableQuickSides, setTableQuickSides] = useState<number>(6);
+  const [tableQuickQty, setTableQuickQty] = useState<number>(1);
+  const [tableQuickModifier, setTableQuickModifier] = useState<number>(0);
+  const [tableQuickBehaviorKey, setTableQuickBehaviorKey] =
+    useState<RuleBehaviorKey | null>(null);
+  const [tableQuickTempRule, setTableQuickTempRule] = useState<ReturnType<
+    typeof buildDraftTempRuleFromPreset
+  > | null>(null);
+  const [tableQuickResult, setTableQuickResult] =
+    useState<GroupRollResult | null>(null);
+
   const [configRanges, setConfigRanges] = useState<
     { min: string; max: string; label: string }[]
   >([
@@ -95,6 +115,9 @@ export default function RollScreen() {
   >(null);
   const [quickQtyValue, setQuickQtyValue] = useState("");
   const [quickEntryModifierValue, setQuickEntryModifierValue] = useState("0");
+
+  const [behaviorModalSource, setBehaviorModalSource] =
+    useState<BehaviorModalSource>(null);
 
   const STANDARD_DICE = [4, 6, 8, 10, 12, 20, 100];
 
@@ -251,6 +274,25 @@ export default function RollScreen() {
     },
   });
 
+  const {
+    visible: wizardVisible,
+    step: wizardStep,
+    stepIndex: wizardStepIndex,
+    totalSteps: wizardTotalSteps,
+    draft: wizardDraft,
+    error: wizardError,
+    open: openWizardState,
+    close: closeWizardState,
+    goNext: goWizardNext,
+    goBack: goWizardBack,
+    updateDraft: updateWizardDraft,
+    updateDie: updateWizardDie,
+    updateRangeRow: updateWizardRangeRow,
+    addRangeRow: addWizardRangeRow,
+    removeRangeRow: removeWizardRangeRow,
+    setBehaviorType: setWizardBehaviorType,
+  } = useCreateActionWizard();
+
   function handleClearQuickRoll() {
     clearDraft();
   }
@@ -311,6 +353,7 @@ export default function RollScreen() {
   }
 
   function handleOpenDieConfig(sides: number) {
+    setBehaviorModalSource("quick_roll");
     setEditingDieSides(sides);
     setShowDieRuleModal(true);
   }
@@ -385,6 +428,210 @@ export default function RollScreen() {
     }
 
     handleCloseQuickQtyEditor();
+  }
+
+  function getWizardBehaviorTypeFromDraftRule(
+    rule: {
+      kind: string;
+      params_json: string;
+      behavior_key?: string | null;
+    } | null,
+  ):
+    | "single_check"
+    | "table_lookup"
+    | "success_pool"
+    | "sum_total"
+    | "highest_of_pool"
+    | "lowest_of_pool"
+    | "keep_highest_n"
+    | "keep_lowest_n"
+    | "drop_highest_n"
+    | "drop_lowest_n"
+    | "banded_sum" {
+    if (!rule) return "sum_total";
+
+    if (rule.behavior_key) {
+      return rule.behavior_key as
+        | "single_check"
+        | "table_lookup"
+        | "success_pool"
+        | "sum_total"
+        | "highest_of_pool"
+        | "lowest_of_pool"
+        | "keep_highest_n"
+        | "keep_lowest_n"
+        | "drop_highest_n"
+        | "drop_lowest_n"
+        | "banded_sum";
+    }
+
+    if (rule.kind === "sum") return "sum_total";
+    if (rule.kind === "single_check") return "single_check";
+    if (rule.kind === "success_pool") return "success_pool";
+    if (rule.kind === "table_lookup") return "table_lookup";
+    if (rule.kind === "banded_sum") return "banded_sum";
+    if (rule.kind === "highest_of_pool") return "highest_of_pool";
+    if (rule.kind === "lowest_of_pool") return "lowest_of_pool";
+    if (rule.kind === "keep_highest_n") return "keep_highest_n";
+    if (rule.kind === "keep_lowest_n") return "keep_lowest_n";
+    if (rule.kind === "drop_highest_n") return "drop_highest_n";
+    if (rule.kind === "drop_lowest_n") return "drop_lowest_n";
+
+    return "sum_total";
+  }
+
+  function handleSaveQuickRollAsAction() {
+    if (!table || !selectedProfile) return;
+
+    const resolvedRule = tableQuickTempRule ? tableQuickTempRule : null;
+
+    const behaviorType = getWizardBehaviorTypeFromDraftRule(resolvedRule);
+
+    resetWizardSubmitState();
+    openWizardState();
+
+    updateWizardDraft("name", `Action rapide ${tableQuickSides}`);
+    setWizardBehaviorType(behaviorType);
+
+    updateWizardDie("sides", tableQuickSides);
+    updateWizardDie("qty", tableQuickQty);
+    updateWizardDie("modifier", tableQuickModifier);
+    updateWizardDie("sign", 1);
+
+    updateWizardDraft("selectedRuleId", resolvedRule?.id ?? null);
+    updateWizardDraft("creationMode", "auto");
+  }
+
+  function getCurrentQuickGroup() {
+    if (draftGroups.length === 0) return null;
+
+    return (
+      draftGroups.find((group) => group.id === selectedDraftGroupId) ??
+      draftGroups[0] ??
+      null
+    );
+  }
+
+  function getQuickDraftSummary(): string | null {
+    const currentGroup = getCurrentQuickGroup();
+    if (!currentGroup || currentGroup.dice.length === 0) return null;
+
+    const diceLabel = currentGroup.dice
+      .map((die) => {
+        const modifier =
+          die.modifier && die.modifier !== 0
+            ? ` ${die.modifier > 0 ? "+" : ""}${die.modifier}`
+            : "";
+
+        return `${die.qty}d${die.sides}${modifier}`;
+      })
+      .join(" + ");
+
+    return `${currentGroup.name} • ${diceLabel}`;
+  }
+
+  function handleOpenQuickBuilder() {
+    setMode("quick");
+    setShowAdvanced(true);
+  }
+
+  async function handleRollQuickDraftFromTable() {
+    const currentGroup = getCurrentQuickGroup();
+    if (!currentGroup) return;
+
+    await rollSingleDraftGroup(currentGroup.id);
+  }
+
+  async function handleSubmitCreateActionWizard() {
+    const ok = await submitWizardAction(wizardDraft);
+    if (!ok) return;
+  }
+
+  function resetTableQuickResult() {
+    setTableQuickResult(null);
+  }
+
+  function resetTableQuickDraft() {
+    setTableQuickSides(6);
+    setTableQuickQty(1);
+    setTableQuickModifier(0);
+    setTableQuickBehaviorKey(null);
+    setTableQuickTempRule(null);
+    setTableQuickResult(null);
+  }
+
+  function handleSelectTableQuickDie(sides: number) {
+    setTableQuickSides(sides);
+    setTableQuickBehaviorKey(null);
+    setTableQuickTempRule(null);
+    resetTableQuickResult();
+  }
+
+  function handleSelectTableQuickBehavior(params: {
+    behaviorKey: RuleBehaviorKey;
+    label: string;
+    scope: "entry" | "group";
+  }) {
+    const defaults = getBehaviorDefaults(params.behaviorKey, "quick_roll");
+
+    const tempRule = buildDraftTempRuleFromPreset({
+      preset: {
+        key: params.behaviorKey,
+        label: params.label,
+        scope: params.scope,
+        behaviorKey: params.behaviorKey,
+        defaultValues: defaults,
+      },
+      sides: tableQuickSides,
+      actionName: params.label,
+    });
+
+    setTableQuickBehaviorKey(params.behaviorKey);
+    setTableQuickTempRule(tempRule);
+    resetTableQuickResult();
+  }
+
+  function handleAdjustTableQuickQty(delta: number) {
+    setTableQuickQty((prev) => Math.max(1, prev + delta));
+    resetTableQuickResult();
+  }
+
+  function handleOpenTableQuickBehaviorPicker() {
+    setBehaviorModalSource("table_quick");
+    setEditingDieSides(tableQuickSides);
+    setShowDieRuleModal(true);
+  }
+
+  function handleRollTableQuickAction() {
+    const rule = tableQuickTempRule
+      ? {
+          id: tableQuickTempRule.id,
+          name: tableQuickTempRule.name,
+          kind: tableQuickTempRule.kind,
+          params_json: tableQuickTempRule.params_json,
+        }
+      : null;
+
+    const result = rollGroup({
+      groupId: "table-quick-action",
+      label: selectedProfile
+        ? `Action rapide — ${selectedProfile.name}`
+        : "Action rapide",
+      entries: [
+        {
+          entryId: "table-quick-entry",
+          sides: tableQuickSides,
+          qty: tableQuickQty,
+          modifier: tableQuickModifier,
+          sign: 1,
+          rule,
+        },
+      ],
+      groupRule: null,
+      evaluateRule,
+    });
+
+    setTableQuickResult(result);
   }
 
   function behaviorNeedsSelectionConfig(behaviorKey: RuleBehaviorKey): boolean {
@@ -537,6 +784,7 @@ export default function RollScreen() {
     setPendingBehaviorKey(null);
     setPendingBehaviorLabel("");
     setPendingBehaviorScope("entry");
+    setBehaviorModalSource(null);
 
     setConfigKeepCount("2");
     setConfigDropCount("1");
@@ -681,14 +929,21 @@ export default function RollScreen() {
       actionName: pendingBehaviorLabel,
     });
 
-    addQuickPresetDie(editingDieSides, {
-      scope: pendingBehaviorScope,
-      rule: tempRule,
-    });
+    if (behaviorModalSource === "table_quick") {
+      setTableQuickBehaviorKey(pendingBehaviorKey);
+      setTableQuickTempRule(tempRule);
+      resetTableQuickResult();
+    } else if (behaviorModalSource === "quick_roll") {
+      addQuickPresetDie(editingDieSides, {
+        scope: pendingBehaviorScope,
+        rule: tempRule,
+      });
+    }
 
     closeBehaviorConfigModal();
     setShowDieRuleModal(false);
     setEditingDieSides(null);
+    setBehaviorModalSource(null);
   }
 
   const compatibleQuickBehaviors = useMemo(() => {
@@ -709,6 +964,15 @@ export default function RollScreen() {
 
   const hasActiveTable = !!table;
 
+  const selectedProfile = useMemo<ProfileRow | null>(() => {
+    if (!selectedProfileId) return null;
+
+    const found =
+      profiles.find((p) => p.profile.id === selectedProfileId)?.profile ?? null;
+
+    return found;
+  }, [profiles, selectedProfileId]);
+
   function updateConfigRange(
     index: number,
     key: "min" | "max" | "label",
@@ -718,6 +982,21 @@ export default function RollScreen() {
       prev.map((row, i) => (i === index ? { ...row, [key]: value } : row)),
     );
   }
+
+  const {
+    submitError: wizardSubmitError,
+    submit: submitWizardAction,
+    resetSubmitState: resetWizardSubmitState,
+  } = useCreateActionFromWizard({
+    db,
+    tableId,
+    tableName: table?.name ?? "",
+    profile: selectedProfile,
+    reload: reloadGroups,
+    onSuccess: () => {
+      closeWizardState();
+    },
+  });
 
   if (error) {
     return (
@@ -795,6 +1074,17 @@ export default function RollScreen() {
             onRollProfile={rollSavedProfile}
             onRollGroup={rollSavedGroup}
             onRollAll={rollSavedTable}
+            activeProfile={selectedProfile}
+            tableQuickSides={tableQuickSides}
+            tableQuickQty={tableQuickQty}
+            tableQuickModifier={tableQuickModifier}
+            tableQuickBehaviorLabel={tableQuickTempRule?.name ?? null}
+            tableQuickResult={tableQuickResult}
+            onSelectTableQuickDie={handleSelectTableQuickDie}
+            onAdjustTableQuickQty={handleAdjustTableQuickQty}
+            onOpenTableQuickBehaviorPicker={handleOpenTableQuickBehaviorPicker}
+            onRollTableQuickAction={handleRollTableQuickAction}
+            onSaveQuickRollAsAction={handleSaveQuickRollAsAction}
           />
         )}
 
@@ -966,13 +1256,20 @@ export default function RollScreen() {
                         actionName: def.label,
                       });
 
-                      addQuickPresetDie(editingDieSides, {
-                        scope: quickScope,
-                        rule: tempRule,
-                      });
+                      if (behaviorModalSource === "table_quick") {
+                        setTableQuickBehaviorKey(behavior.behaviorKey);
+                        setTableQuickTempRule(tempRule);
+                        resetTableQuickResult();
+                      } else if (behaviorModalSource === "quick_roll") {
+                        addQuickPresetDie(editingDieSides, {
+                          scope: quickScope,
+                          rule: tempRule,
+                        });
+                      }
 
                       setShowDieRuleModal(false);
                       setEditingDieSides(null);
+                      setBehaviorModalSource(null);
                     }}
                     style={{
                       padding: 12,
@@ -994,6 +1291,7 @@ export default function RollScreen() {
               onPress={() => {
                 setShowDieRuleModal(false);
                 setEditingDieSides(null);
+                setBehaviorModalSource(null);
               }}
               style={{
                 marginTop: 4,
@@ -1512,6 +1810,29 @@ export default function RollScreen() {
           </View>
         </View>
       ) : null}
+
+      <CreateActionWizardModal
+        visible={wizardVisible}
+        step={wizardStep}
+        stepIndex={wizardStepIndex}
+        totalSteps={wizardTotalSteps}
+        draft={wizardDraft}
+        error={wizardSubmitError ?? wizardError}
+        compatibleRules={[]}
+        onClose={closeWizardState}
+        onBack={goWizardBack}
+        onNext={goWizardNext}
+        onSubmit={handleSubmitCreateActionWizard}
+        onUpdateDraft={updateWizardDraft}
+        onUpdateDie={updateWizardDie}
+        onSelectRuleId={(ruleId) => updateWizardDraft("selectedRuleId", ruleId)}
+        onSelectCreationMode={(mode) => updateWizardDraft("creationMode", mode)}
+        onOpenAdvancedRuleEditor={() => {}}
+        onUpdateRangeRow={updateWizardRangeRow}
+        onAddRangeRow={addWizardRangeRow}
+        onRemoveRangeRow={removeWizardRangeRow}
+        onSetBehaviorType={setWizardBehaviorType}
+      />
     </View>
   );
 }

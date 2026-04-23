@@ -24,6 +24,19 @@ type Props = {
   onRollProfile: (profileId: string) => void;
   onRollGroup: (profileId: string, groupId: string) => void;
   onRollAll: () => void;
+  activeProfile: ProfileRow | null;
+
+  tableQuickSides: number;
+  tableQuickQty: number;
+  tableQuickModifier: number;
+  tableQuickBehaviorLabel: string | null;
+  tableQuickResult: GroupRollResult | null;
+
+  onSelectTableQuickDie: (sides: number) => void;
+  onAdjustTableQuickQty: (delta: number) => void;
+  onOpenTableQuickBehaviorPicker: () => void;
+  onRollTableQuickAction: () => void;
+  onSaveQuickRollAsAction: () => void;
 };
 
 type TableViewMode = "profiles" | "actions" | "result";
@@ -35,26 +48,44 @@ function getGroupResult(
   return results.find((result) => result.groupId === groupId) ?? null;
 }
 
-
 export function TableActionSection({
   profiles,
   selectedProfileId,
   results,
   onSelectProfile,
   onRollGroup,
+  activeProfile,
+  tableQuickSides,
+  tableQuickQty,
+  tableQuickModifier,
+  tableQuickBehaviorLabel,
+  tableQuickResult,
+  onSelectTableQuickDie,
+  onAdjustTableQuickQty,
+  onOpenTableQuickBehaviorPicker,
+  onRollTableQuickAction,
+  onSaveQuickRollAsAction,
 }: Props) {
   const [viewMode, setViewMode] = useState<TableViewMode>("profiles");
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 
-  const selectedProfile =
-    profiles.find((p) => p.profile.id === selectedProfileId) ??
-    profiles[0] ??
-    null;
+  const selectedProfileEntry = useMemo<ProfileWithGroups | null>(() => {
+    return (
+      profiles.find((p) => p.profile.id === selectedProfileId) ??
+      profiles[0] ??
+      null
+    );
+  }, [profiles, selectedProfileId]);
 
-  const selectedAction =
-    selectedProfile?.groups.find(
-      (entry) => entry.group.id === selectedGroupId,
-    ) ?? null;
+  const selectedAction = useMemo(() => {
+    if (!selectedProfileEntry || !selectedGroupId) return null;
+
+    return (
+      selectedProfileEntry.groups.find(
+        (entry) => entry.group.id === selectedGroupId,
+      ) ?? null
+    );
+  }, [selectedProfileEntry, selectedGroupId]);
 
   const selectedActionResult = useMemo(() => {
     if (!selectedGroupId) return null;
@@ -62,7 +93,7 @@ export function TableActionSection({
   }, [selectedGroupId, results]);
 
   useEffect(() => {
-    if (!selectedProfile) {
+    if (!selectedProfileEntry) {
       setViewMode("profiles");
       setSelectedGroupId(null);
       return;
@@ -71,9 +102,9 @@ export function TableActionSection({
     if (!selectedAction && viewMode === "result") {
       setViewMode("actions");
     }
-  }, [selectedProfile, selectedAction, viewMode]);
+  }, [selectedProfileEntry, selectedAction, viewMode]);
 
-  if (!selectedProfile) {
+  if (!selectedProfileEntry) {
     return (
       <View
         style={{
@@ -158,6 +189,10 @@ export function TableActionSection({
   }
 
   function renderActionsView() {
+    if (!selectedProfileEntry) return null;
+
+    const profileEntry = selectedProfileEntry;
+
     return (
       <View
         style={{
@@ -177,7 +212,7 @@ export function TableActionSection({
         >
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 16, fontWeight: "800" }}>
-              Profil — {selectedProfile.profile.name}
+              Profil — {profileEntry.profile.name}
             </Text>
 
             <Text style={{ opacity: 0.72 }}>Choisis une action à lancer.</Text>
@@ -196,13 +231,219 @@ export function TableActionSection({
           </Pressable>
         </View>
 
-        {selectedProfile.groups.length === 0 ? (
+        {activeProfile ? (
+          <View
+            style={{
+              padding: 14,
+              borderWidth: 1,
+              borderRadius: 14,
+              gap: 10,
+            }}
+          >
+            <Text style={{ fontSize: 16, fontWeight: "800" }}>
+              Action rapide du profil
+            </Text>
+
+            <Text style={{ opacity: 0.72 }}>
+              Profil ciblé : {activeProfile.name}
+            </Text>
+
+            <View
+              style={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                gap: 8,
+              }}
+            >
+              {[4, 6, 8, 10, 12, 20, 100].map((sides) => (
+                <Pressable
+                  key={sides}
+                  onPress={() => onSelectTableQuickDie(sides)}
+                  style={{
+                    paddingVertical: 8,
+                    paddingHorizontal: 12,
+                    borderWidth: 1,
+                    borderRadius: 10,
+                    opacity: tableQuickSides === sides ? 1 : 0.7,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontWeight: tableQuickSides === sides ? "700" : "400",
+                    }}
+                  >
+                    d{sides}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <Pressable
+                onPress={() => onAdjustTableQuickQty(-1)}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderWidth: 1,
+                  borderRadius: 999,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text style={{ fontWeight: "800", fontSize: 18 }}>−</Text>
+              </Pressable>
+
+              <View
+                style={{
+                  minWidth: 64,
+                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ fontWeight: "700" }}>{tableQuickQty}</Text>
+              </View>
+
+              <Pressable
+                onPress={() => onAdjustTableQuickQty(1)}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderWidth: 1,
+                  borderRadius: 999,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text style={{ fontWeight: "800", fontSize: 18 }}>+</Text>
+              </Pressable>
+            </View>
+
+            <View
+              style={{
+                padding: 12,
+                borderWidth: 1,
+                borderRadius: 12,
+                gap: 6,
+              }}
+            >
+              <Text style={{ fontWeight: "700" }}>Configuration</Text>
+
+              <Text style={{ opacity: 0.72 }}>
+                Jet : {tableQuickQty}d{tableQuickSides}
+                {tableQuickModifier !== 0
+                  ? ` ${tableQuickModifier > 0 ? "+" : ""}${tableQuickModifier}`
+                  : ""}
+              </Text>
+
+              <Text style={{ opacity: 0.72 }}>
+                Comportement : {tableQuickBehaviorLabel ?? "Somme (par défaut)"}
+              </Text>
+
+              <Pressable
+                onPress={onOpenTableQuickBehaviorPicker}
+                style={{
+                  marginTop: 4,
+                  paddingVertical: 10,
+                  paddingHorizontal: 12,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ fontWeight: "700" }}>
+                  Choisir un comportement
+                </Text>
+              </Pressable>
+            </View>
+
+            <View
+              style={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                gap: 8,
+              }}
+            >
+              <Pressable
+                onPress={onRollTableQuickAction}
+                style={{
+                  paddingVertical: 12,
+                  paddingHorizontal: 14,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ fontWeight: "800" }}>Lancer</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={onSaveQuickRollAsAction}
+                style={{
+                  paddingVertical: 12,
+                  paddingHorizontal: 14,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ fontWeight: "800" }}>Sauvegarder en action</Text>
+              </Pressable>
+            </View>
+
+            <View
+              style={{
+                padding: 12,
+                borderWidth: 1,
+                borderRadius: 12,
+                gap: 8,
+              }}
+            >
+              <Text style={{ fontWeight: "800" }}>Résultat rapide</Text>
+
+              {!tableQuickResult ? (
+                <Text style={{ opacity: 0.72 }}>
+                  Lance l’action rapide pour afficher son résultat ici.
+                </Text>
+              ) : (
+                <>
+                  <Text style={{ fontSize: 22, fontWeight: "800" }}>
+                    Total : {tableQuickResult.total}
+                  </Text>
+
+                  {tableQuickResult.group_eval_result ? (
+                    <Text style={{ fontWeight: "700" }}>
+                      {formatRuleResult(tableQuickResult.group_eval_result)}
+                    </Text>
+                  ) : null}
+
+                  <Text style={{ opacity: 0.72 }}>
+                    Valeurs :{" "}
+                    {tableQuickResult.entries
+                      .flatMap((entry) => entry.natural_values)
+                      .join(" + ")}
+                  </Text>
+                </>
+              )}
+            </View>
+          </View>
+        ) : null}
+
+        {profileEntry.groups.length === 0 ? (
           <Text style={{ opacity: 0.72 }}>
             Ce profil ne contient encore aucune action.
           </Text>
         ) : (
           <View style={{ gap: 8 }}>
-            {selectedProfile.groups.map(({ group, dice }) => (
+            {profileEntry.groups.map(({ group, dice }) => (
               <Pressable
                 key={group.id}
                 onPress={() => openAction(group.id)}
@@ -230,10 +471,11 @@ export function TableActionSection({
   }
 
   function renderResultView() {
-    if (!selectedAction) {
+    if (!selectedProfileEntry || !selectedAction) {
       return renderActionsView();
     }
 
+    const profileEntry = selectedProfileEntry;
     const { group, dice } = selectedAction;
 
     return (
@@ -255,7 +497,7 @@ export function TableActionSection({
         >
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 16, fontWeight: "800" }}>
-              {selectedProfile.profile.name} — {group.name}
+              {profileEntry.profile.name} — {group.name}
             </Text>
 
             <Text style={{ opacity: 0.72 }}>Lance cette action.</Text>
@@ -299,7 +541,7 @@ export function TableActionSection({
         </View>
 
         <Pressable
-          onPress={() => onRollGroup(selectedProfile.profile.id, group.id)}
+          onPress={() => onRollGroup(profileEntry.profile.id, group.id)}
           style={{
             paddingVertical: 12,
             paddingHorizontal: 14,

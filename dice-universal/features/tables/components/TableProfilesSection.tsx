@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { View, Text, Pressable } from "react-native";
 import type { ProfileRow } from "../../../data/repositories/profilesRepo";
 import type {
@@ -6,43 +5,31 @@ import type {
   GroupDieRow,
 } from "../../../data/repositories/groupsRepo";
 
-type GroupWithDice = {
-  group: GroupRow;
-  dice: GroupDieRow[];
-};
-
 type ProfileWithGroups = {
   profile: ProfileRow;
-  groups: GroupWithDice[];
+  groups: {
+    group: GroupRow;
+    dice: GroupDieRow[];
+  }[];
 };
 
 type Props = {
   profiles: ProfileWithGroups[];
   isSystem: boolean;
   getRuleName: (ruleId: string | null) => string;
+
   onRenameProfile: (profile: ProfileRow) => void;
   onCreateGroup: (profile: ProfileRow) => void;
-  onDeleteProfile: (profile: ProfileRow) => void;
+  onDeleteProfile: (profile: ProfileRow) => Promise<void>;
+
   onRenameGroup: (group: GroupRow) => void;
   onEditGroupRule: (group: GroupRow) => void;
   onCreateDie: (group: GroupRow) => void;
-  onDeleteGroup: (group: GroupRow) => void;
+  onDeleteGroup: (group: GroupRow) => Promise<void>;
+
   onEditDie: (die: GroupDieRow) => void;
-  onDeleteDie: (die: GroupDieRow) => void;
-  activeFreeRollProfileId: string | null;
-  onToggleProfileFreeRoll: (profile: ProfileRow) => void;
-  renderProfileFreeRoll: (profile: ProfileRow) => ReactNode;
+  onDeleteDie: (die: GroupDieRow) => Promise<void>;
 };
-
-function formatDieLine(die: GroupDieRow) {
-  const signPrefix = die.sign === -1 ? "-" : "";
-  const modifier =
-    die.modifier && die.modifier !== 0
-      ? ` ${die.modifier > 0 ? "+" : ""}${die.modifier}`
-      : "";
-
-  return `${signPrefix}${die.qty}d${die.sides}${modifier}`;
-}
 
 export function TableProfilesSection({
   profiles,
@@ -57,254 +44,254 @@ export function TableProfilesSection({
   onDeleteGroup,
   onEditDie,
   onDeleteDie,
-  activeFreeRollProfileId,
-  onToggleProfileFreeRoll,
-  renderProfileFreeRoll,
 }: Props) {
-  return (
-    <View
-      style={{
-        padding: 14,
-        borderWidth: 1,
-        borderRadius: 14,
-        gap: 12,
-      }}
-    >
-      <Text style={{ fontSize: 16, fontWeight: "800" }}>Profils</Text>
+  if (profiles.length === 0) {
+    return (
+      <View
+        style={{
+          borderWidth: 1,
+          borderRadius: 12,
+          padding: 12,
+        }}
+      >
+        <Text style={{ opacity: 0.7 }}>
+          Aucun profil dans cette table pour le moment.
+        </Text>
+      </View>
+    );
+  }
 
-      {profiles.length === 0 ? (
-        <Text style={{ marginTop: 8, opacity: 0.7 }}>Aucun profil.</Text>
-      ) : (
-        profiles.map(({ profile, groups }) => (
+  return (
+    <View style={{ gap: 12 }}>
+      {profiles.map(({ profile, groups }) => (
+        <View
+          key={profile.id}
+          style={{
+            borderWidth: 1,
+            borderRadius: 12,
+            padding: 12,
+            gap: 12,
+          }}
+        >
           <View
-            key={profile.id}
             style={{
-              padding: 14,
-              borderWidth: 1,
-              borderRadius: 14,
-              gap: 10,
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 8,
             }}
           >
-            <Text style={{ fontSize: 17, fontWeight: "800" }}>
-              {profile.name}
-            </Text>
-
-            <Text style={{ opacity: 0.72 }}>
-              {groups.length} action{groups.length > 1 ? "s" : ""}
-            </Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 18, fontWeight: "700" }}>
+                {profile.name}
+              </Text>
+              <Text style={{ opacity: 0.7 }}>
+                {groups.length} action{groups.length > 1 ? "s" : ""}
+              </Text>
+            </View>
 
             {!isSystem ? (
-              <>
-                <View
+              <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+                <Pressable
+                  onPress={() => onCreateGroup(profile)}
                   style={{
-                    flexDirection: "row",
-                    flexWrap: "wrap",
-                    gap: 8,
+                    paddingVertical: 8,
+                    paddingHorizontal: 10,
+                    borderWidth: 1,
+                    borderRadius: 10,
                   }}
                 >
-                  <Pressable
-                    onPress={() => onRenameProfile(profile)}
-                    style={{
-                      paddingVertical: 8,
-                      paddingHorizontal: 10,
-                      borderWidth: 1,
-                      borderRadius: 8,
-                    }}
-                  >
-                    <Text>Renommer le profil</Text>
-                  </Pressable>
+                  <Text>+ Action</Text>
+                </Pressable>
 
-                  <Pressable
-                    onPress={() => onCreateGroup(profile)}
-                    style={{
-                      paddingVertical: 8,
-                      paddingHorizontal: 10,
-                      borderWidth: 1,
-                      borderRadius: 8,
-                    }}
-                  >
-                    <Text>Créer une action</Text>
-                  </Pressable>
+                <Pressable
+                  onPress={() => onRenameProfile(profile)}
+                  style={{
+                    paddingVertical: 8,
+                    paddingHorizontal: 10,
+                    borderWidth: 1,
+                    borderRadius: 10,
+                  }}
+                >
+                  <Text>Renommer</Text>
+                </Pressable>
 
-                  <Pressable
-                    onPress={() => onToggleProfileFreeRoll(profile)}
-                    style={{
-                      paddingVertical: 8,
-                      paddingHorizontal: 10,
-                      borderWidth: 1,
-                      borderRadius: 8,
-                    }}
-                  >
-                    <Text>
-                      {activeFreeRollProfileId === profile.id
-                        ? "Fermer le jet libre"
-                        : "Jet libre"}
-                    </Text>
-                  </Pressable>
-
-                  <Pressable
-                    onPress={() => onDeleteProfile(profile)}
-                    style={{
-                      paddingVertical: 8,
-                      paddingHorizontal: 10,
-                      borderWidth: 1,
-                      borderRadius: 8,
-                    }}
-                  >
-                    <Text>Supprimer le profil</Text>
-                  </Pressable>
-                </View>
-
-                {activeFreeRollProfileId === profile.id
-                  ? renderProfileFreeRoll(profile)
-                  : null}
-              </>
+                <Pressable
+                  onPress={() => onDeleteProfile(profile)}
+                  style={{
+                    paddingVertical: 8,
+                    paddingHorizontal: 10,
+                    borderWidth: 1,
+                    borderRadius: 10,
+                  }}
+                >
+                  <Text>Supprimer</Text>
+                </Pressable>
+              </View>
             ) : null}
+          </View>
 
-            {groups.length === 0 ? (
-              <Text style={{ marginTop: 8, opacity: 0.7 }}>Aucune action.</Text>
-            ) : (
-              groups.map(({ group, dice }) => (
+          {groups.length === 0 ? (
+            <Text style={{ opacity: 0.7 }}>Aucune action pour ce profil.</Text>
+          ) : (
+            <View style={{ gap: 10 }}>
+              {groups.map(({ group, dice }) => (
                 <View
                   key={group.id}
                   style={{
-                    padding: 12,
                     borderWidth: 1,
-                    borderRadius: 12,
+                    borderRadius: 10,
+                    padding: 10,
                     gap: 8,
                   }}
                 >
-                  <Text style={{ fontSize: 16, fontWeight: "700" }}>
-                    {group.name}
-                  </Text>
-
-                  <Text style={{ opacity: 0.72 }}>
-                    Règle de l’action : {getRuleName(group.rule_id)}
-                  </Text>
-
-                  {!isSystem ? (
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        flexWrap: "wrap",
-                        gap: 8,
-                      }}
-                    >
-                      <Pressable
-                        onPress={() => onRenameGroup(group)}
-                        style={{
-                          paddingVertical: 8,
-                          paddingHorizontal: 10,
-                          borderWidth: 1,
-                          borderRadius: 8,
-                        }}
-                      >
-                        <Text>Renommer l’action</Text>
-                      </Pressable>
-
-                      <Pressable
-                        onPress={() => onEditGroupRule(group)}
-                        style={{
-                          paddingVertical: 8,
-                          paddingHorizontal: 10,
-                          borderWidth: 1,
-                          borderRadius: 8,
-                        }}
-                      >
-                        <Text>Règle de l’action</Text>
-                      </Pressable>
-
-                      <Pressable
-                        onPress={() => onCreateDie(group)}
-                        style={{
-                          paddingVertical: 8,
-                          paddingHorizontal: 10,
-                          borderWidth: 1,
-                          borderRadius: 8,
-                        }}
-                      >
-                        <Text>Ajouter une entrée</Text>
-                      </Pressable>
-
-                      <Pressable
-                        onPress={() => onDeleteGroup(group)}
-                        style={{
-                          paddingVertical: 8,
-                          paddingHorizontal: 10,
-                          borderWidth: 1,
-                          borderRadius: 8,
-                        }}
-                      >
-                        <Text>Supprimer l’action</Text>
-                      </Pressable>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontWeight: "700", fontSize: 16 }}>
+                        {group.name}
+                      </Text>
+                      <Text style={{ opacity: 0.7 }}>
+                        Règle de groupe : {getRuleName(group.rule_id ?? null)}
+                      </Text>
                     </View>
-                  ) : null}
+
+                    {!isSystem ? (
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          gap: 8,
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        <Pressable
+                          onPress={() => onRenameGroup(group)}
+                          style={{
+                            paddingVertical: 6,
+                            paddingHorizontal: 10,
+                            borderWidth: 1,
+                            borderRadius: 10,
+                          }}
+                        >
+                          <Text>Renommer</Text>
+                        </Pressable>
+
+                        <Pressable
+                          onPress={() => onEditGroupRule(group)}
+                          style={{
+                            paddingVertical: 6,
+                            paddingHorizontal: 10,
+                            borderWidth: 1,
+                            borderRadius: 10,
+                          }}
+                        >
+                          <Text>Règle</Text>
+                        </Pressable>
+
+                        <Pressable
+                          onPress={() => onCreateDie(group)}
+                          style={{
+                            paddingVertical: 6,
+                            paddingHorizontal: 10,
+                            borderWidth: 1,
+                            borderRadius: 10,
+                          }}
+                        >
+                          <Text>+ Dé</Text>
+                        </Pressable>
+
+                        <Pressable
+                          onPress={() => onDeleteGroup(group)}
+                          style={{
+                            paddingVertical: 6,
+                            paddingHorizontal: 10,
+                            borderWidth: 1,
+                            borderRadius: 10,
+                          }}
+                        >
+                          <Text>Supprimer</Text>
+                        </Pressable>
+                      </View>
+                    ) : null}
+                  </View>
 
                   {dice.length === 0 ? (
-                    <Text style={{ marginTop: 8, opacity: 0.7 }}>
-                      Aucune entrée.
+                    <Text style={{ opacity: 0.7 }}>
+                      Aucun dé dans cette action.
                     </Text>
                   ) : (
-                    dice.map((d) => (
-                      <View
-                        key={d.id}
-                        style={{
-                          marginTop: 10,
-                          padding: 10,
-                          borderWidth: 1,
-                          borderRadius: 10,
-                        }}
-                      >
-                        <Text style={{ fontWeight: "700" }}>
-                          {formatDieLine(d)}
-                        </Text>
+                    <View style={{ gap: 8 }}>
+                      {dice.map((die) => (
+                        <View
+                          key={die.id}
+                          style={{
+                            borderWidth: 1,
+                            borderRadius: 10,
+                            padding: 10,
+                            gap: 6,
+                          }}
+                        >
+                          <Text style={{ fontWeight: "700" }}>
+                            {die.qty}d{die.sides}
+                            {die.modifier !== 0
+                              ? ` ${die.modifier > 0 ? "+" : ""}${die.modifier}`
+                              : ""}
+                            {die.sign === -1 ? " (−)" : ""}
+                          </Text>
 
-                        <Text style={{ opacity: 0.72 }}>
-                          Règle d’entrée : {getRuleName(d.rule_id)}
-                        </Text>
+                          <Text style={{ opacity: 0.7 }}>
+                            Règle : {getRuleName(die.rule_id ?? null)}
+                          </Text>
 
-                        {!isSystem ? (
-                          <View
-                            style={{
-                              flexDirection: "row",
-                              flexWrap: "wrap",
-                              gap: 8,
-                            }}
-                          >
-                            <Pressable
-                              onPress={() => onEditDie(d)}
+                          {!isSystem ? (
+                            <View
                               style={{
-                                paddingVertical: 8,
-                                paddingHorizontal: 10,
-                                borderWidth: 1,
-                                borderRadius: 8,
+                                flexDirection: "row",
+                                gap: 8,
+                                flexWrap: "wrap",
                               }}
                             >
-                              <Text>Éditer l’entrée</Text>
-                            </Pressable>
+                              <Pressable
+                                onPress={() => onEditDie(die)}
+                                style={{
+                                  paddingVertical: 6,
+                                  paddingHorizontal: 10,
+                                  borderWidth: 1,
+                                  borderRadius: 10,
+                                }}
+                              >
+                                <Text>Modifier</Text>
+                              </Pressable>
 
-                            <Pressable
-                              onPress={() => onDeleteDie(d)}
-                              style={{
-                                paddingVertical: 8,
-                                paddingHorizontal: 10,
-                                borderWidth: 1,
-                                borderRadius: 8,
-                              }}
-                            >
-                              <Text>Supprimer l’entrée</Text>
-                            </Pressable>
-                          </View>
-                        ) : null}
-                      </View>
-                    ))
+                              <Pressable
+                                onPress={() => onDeleteDie(die)}
+                                style={{
+                                  paddingVertical: 6,
+                                  paddingHorizontal: 10,
+                                  borderWidth: 1,
+                                  borderRadius: 10,
+                                }}
+                              >
+                                <Text>Supprimer</Text>
+                              </Pressable>
+                            </View>
+                          ) : null}
+                        </View>
+                      ))}
+                    </View>
                   )}
                 </View>
-              ))
-            )}
-          </View>
-        ))
-      )}
+              ))}
+            </View>
+          )}
+        </View>
+      ))}
     </View>
   );
 }
