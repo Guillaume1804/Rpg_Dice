@@ -15,22 +15,14 @@ import { useRollTableData } from "../features/roll/hooks/useRollTableData";
 
 import { GroupRollResult } from "../core/roll/roll";
 
-import {
-  getBehaviorsForContext,
-  getBehaviorDefaults,
-} from "../core/rules/getBehaviorsForContext";
-
-import { getActionWizardBehaviors } from "../core/rules/behaviorCatalog";
 import { buildDraftTempRuleFromPreset } from "../features/roll/helpers/buildDraftTempRuleFromPreset";
-
-import type { RuleBehaviorKey } from "../core/rules/behaviorCatalog";
-
-import { behaviorNeedsSelectionConfig } from "../features/roll/helpers/quickBehaviorConfig";
 
 import { QuickBehaviorConfigModal } from "../features/roll/components/QuickBehaviorConfigModal";
 import { QuickQtyModal } from "../features/roll/components/QuickQtyModal";
 import { QuickDieBehaviorPickerModal } from "../features/roll/components/QuickDieBehaviorPickerModal";
 import { useQuickBehaviorConfigModal } from "../features/roll/hooks/useQuickBehaviorConfigModal";
+import { useQuickQtyModal } from "../features/roll/hooks/useQuickQtyModal";
+import { useQuickDieBehaviorPicker } from "../features/roll/hooks/useQuickDieBehaviorPicker";
 
 export default function RollScreen() {
   type RollMode = "quick" | "table";
@@ -62,20 +54,8 @@ export default function RollScreen() {
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(
     null,
   );
-  const [editingDieSides, setEditingDieSides] = useState<number | null>(null);
-  const [showDieRuleModal, setShowDieRuleModal] = useState(false);
 
   const quickBehaviorConfig = useQuickBehaviorConfigModal();
-
-  const [showQuickQtyModal, setShowQuickQtyModal] = useState(false);
-  const [editingQuickQtyGroupId, setEditingQuickQtyGroupId] = useState<
-    string | null
-  >(null);
-  const [editingQuickQtyIndex, setEditingQuickQtyIndex] = useState<
-    number | null
-  >(null);
-  const [quickQtyValue, setQuickQtyValue] = useState("");
-  const [quickEntryModifierValue, setQuickEntryModifierValue] = useState("0");
 
   const STANDARD_DICE = [4, 6, 8, 10, 12, 20, 100];
 
@@ -190,6 +170,19 @@ export default function RollScreen() {
     availableRules,
   });
 
+  const quickDieBehaviorPicker = useQuickDieBehaviorPicker({
+    addQuickPresetDie,
+    quickBehaviorConfig,
+  });
+
+  const quickQtyModal = useQuickQtyModal({
+    draftGroups,
+    availableRules,
+    adjustDraftDieQty,
+    updateDraftDieEntry,
+    replaceDraftDieWithQtySplit,
+  });
+
   const { rollSavedTable, rollSavedProfile, rollSavedGroup } = useRollExecution(
     {
       db,
@@ -291,87 +284,10 @@ export default function RollScreen() {
     await appendDraftToExistingProfile(params.tableId, params.profileId);
   }
 
-  function handleOpenDieConfig(sides: number) {
-    setEditingDieSides(sides);
-    setShowDieRuleModal(true);
-  }
-
-  function handleOpenQuickQtyEditor(
-    groupId: string,
-    index: number,
-    currentQty: number,
-    currentModifier: number,
-  ) {
-    setEditingQuickQtyGroupId(groupId);
-    setEditingQuickQtyIndex(index);
-    setQuickQtyValue(String(currentQty));
-    setQuickEntryModifierValue(String(currentModifier));
-    setShowQuickQtyModal(true);
-  }
-
-  function handleCloseQuickQtyEditor() {
-    setShowQuickQtyModal(false);
-    setEditingQuickQtyGroupId(null);
-    setEditingQuickQtyIndex(null);
-    setQuickQtyValue("");
-    setQuickEntryModifierValue("0");
-  }
-
-  function handleAdjustQuickDieQty(
-    groupId: string,
-    index: number,
-    delta: number,
-  ) {
-    adjustDraftDieQty(groupId, index, delta);
-  }
-
-  function handleSaveQuickQtyEditor() {
-    if (editingQuickQtyGroupId == null || editingQuickQtyIndex == null) return;
-
-    const qty = Number(quickQtyValue);
-    const modifier = Number(quickEntryModifierValue);
-
-    if (!Number.isFinite(qty) || qty <= 0) return;
-    if (!Number.isFinite(modifier)) return;
-
-    const targetGroup = draftGroups.find(
-      (g) => g.id === editingQuickQtyGroupId,
-    );
-    const targetDie = targetGroup?.dice[editingQuickQtyIndex];
-
-    if (!targetDie) return;
-
-    const resolvedRuleKind =
-      targetDie.rule_temp?.kind ??
-      (targetDie.rule_id
-        ? (availableRules.find((rule) => rule.id === targetDie.rule_id)?.kind ??
-          null)
-        : null);
-
-    const shouldSplit =
-      resolvedRuleKind === "single_check" || resolvedRuleKind === "d20";
-
-    if (shouldSplit) {
-      replaceDraftDieWithQtySplit(
-        editingQuickQtyGroupId,
-        editingQuickQtyIndex,
-        qty,
-        modifier,
-      );
-    } else {
-      updateDraftDieEntry(editingQuickQtyGroupId, editingQuickQtyIndex, {
-        qty,
-        modifier,
-      });
-    }
-
-    handleCloseQuickQtyEditor();
-  }
-
   function handleConfirmBehaviorConfig() {
     if (
       !quickBehaviorConfig.pendingBehaviorKey ||
-      editingDieSides == null ||
+      quickDieBehaviorPicker.editingDieSides == null ||
       !quickBehaviorConfig.isValid()
     ) {
       return;
@@ -385,83 +301,20 @@ export default function RollScreen() {
         behaviorKey: quickBehaviorConfig.pendingBehaviorKey,
         defaultValues: quickBehaviorConfig.buildDefaultValues(),
       },
-      sides: editingDieSides,
+      sides: quickDieBehaviorPicker.editingDieSides,
       actionName: quickBehaviorConfig.pendingBehaviorLabel,
     });
 
-    addQuickPresetDie(editingDieSides, {
+    addQuickPresetDie(quickDieBehaviorPicker.editingDieSides, {
       scope: quickBehaviorConfig.pendingBehaviorScope,
       rule: tempRule,
     });
 
     quickBehaviorConfig.close();
-    setShowDieRuleModal(false);
-    setEditingDieSides(null);
+    quickDieBehaviorPicker.close();
   }
-
-  const compatibleQuickBehaviors = useMemo(() => {
-    if (editingDieSides == null) return [];
-
-    const all = getBehaviorsForContext("quick_roll");
-
-    return all.filter((b) => {
-      const def = getActionWizardBehaviors().find(
-        (d) => d.key === b.behaviorKey,
-      );
-
-      if (!def?.supportedSides) return true;
-
-      return def.supportedSides.includes(editingDieSides);
-    });
-  }, [editingDieSides]);
 
   const hasActiveTable = !!table;
-
-  function getQuickBehaviorDefinition(behaviorKey: RuleBehaviorKey) {
-    return (
-      getActionWizardBehaviors().find((def) => def.key === behaviorKey) ?? null
-    );
-  }
-
-  function handleSelectQuickBehavior(behaviorKey: RuleBehaviorKey) {
-    if (editingDieSides == null) return;
-
-    const def = getQuickBehaviorDefinition(behaviorKey);
-    if (!def) return;
-
-    const defaults = getBehaviorDefaults(behaviorKey, "quick_roll");
-    const quickScope = def.scope === "group" ? "group" : "entry";
-
-    if (behaviorNeedsSelectionConfig(behaviorKey)) {
-      quickBehaviorConfig.open({
-        behaviorKey,
-        label: def.label,
-        scope: quickScope,
-      });
-      return;
-    }
-
-    const tempRule = buildDraftTempRuleFromPreset({
-      preset: {
-        key: behaviorKey,
-        label: def.label,
-        description: def.description,
-        scope: quickScope,
-        behaviorKey,
-        defaultValues: defaults,
-      },
-      sides: editingDieSides,
-      actionName: def.label,
-    });
-
-    addQuickPresetDie(editingDieSides, {
-      scope: quickScope,
-      rule: tempRule,
-    });
-
-    setShowDieRuleModal(false);
-    setEditingDieSides(null);
-  }
 
   if (error) {
     return (
@@ -562,7 +415,7 @@ export default function RollScreen() {
             onEditDraftGroupRule={openDraftGroupRuleEditor}
             onRemoveDraftGroup={removeDraftGroup}
             onEditDraftDie={openDraftEditor}
-            onOpenDieConfig={handleOpenDieConfig}
+            onOpenDieConfig={quickDieBehaviorPicker.open}
             onRemoveDraftDie={removeDraftDie}
             onRollDraft={rollDraft}
             onRollQuickGroup={rollSingleDraftGroup}
@@ -571,8 +424,8 @@ export default function RollScreen() {
             onReplaceCurrentTable={replaceCurrentTable}
             onCreateNewTable={handleOpenSaveDraftModal}
             availableRules={availableRules}
-            onEditQuickDieQty={handleOpenQuickQtyEditor}
-            onAdjustQuickDieQty={handleAdjustQuickDieQty}
+            onEditQuickDieQty={quickQtyModal.open}
+            onAdjustQuickDieQty={quickQtyModal.adjust}
           />
         )}
 
@@ -635,15 +488,12 @@ export default function RollScreen() {
       </Pressable>
 
       <QuickDieBehaviorPickerModal
-        visible={showDieRuleModal}
-        editingDieSides={editingDieSides}
-        behaviors={compatibleQuickBehaviors}
-        getDefinition={getQuickBehaviorDefinition}
-        onSelectBehavior={handleSelectQuickBehavior}
-        onClose={() => {
-          setShowDieRuleModal(false);
-          setEditingDieSides(null);
-        }}
+        visible={quickDieBehaviorPicker.visible}
+        editingDieSides={quickDieBehaviorPicker.editingDieSides}
+        behaviors={quickDieBehaviorPicker.behaviors}
+        getDefinition={quickDieBehaviorPicker.getDefinition}
+        onSelectBehavior={quickDieBehaviorPicker.select}
+        onClose={quickDieBehaviorPicker.close}
       />
 
       <QuickBehaviorConfigModal
@@ -677,13 +527,13 @@ export default function RollScreen() {
       />
 
       <QuickQtyModal
-        visible={showQuickQtyModal}
-        qtyValue={quickQtyValue}
-        modifierValue={quickEntryModifierValue}
-        onChangeQtyValue={setQuickQtyValue}
-        onChangeModifierValue={setQuickEntryModifierValue}
-        onClose={handleCloseQuickQtyEditor}
-        onSave={handleSaveQuickQtyEditor}
+        visible={quickQtyModal.visible}
+        qtyValue={quickQtyModal.qtyValue}
+        modifierValue={quickQtyModal.modifierValue}
+        onChangeQtyValue={quickQtyModal.setQtyValue}
+        onChangeModifierValue={quickQtyModal.setModifierValue}
+        onClose={quickQtyModal.close}
+        onSave={quickQtyModal.save}
       />
     </View>
   );
