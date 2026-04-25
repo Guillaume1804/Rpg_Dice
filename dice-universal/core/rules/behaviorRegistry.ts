@@ -2,27 +2,28 @@
 
 import type { RuleBehaviorKey } from "./behaviorCatalog";
 
+type BaseBehaviorField = {
+    key: string;
+    paramsKey?: string;
+    label: string;
+};
+
 export type RuleBehaviorField =
-    | {
-        key: string;
-        label: string;
+    | (BaseBehaviorField & {
         type: "text" | "number";
         defaultValue: string;
         placeholder?: string;
-    }
-    | {
-        key: string;
-        label: string;
+    })
+    | (BaseBehaviorField & {
         type: "select";
         defaultValue: string;
         options: { value: string; label: string }[];
-    }
-    | {
-        key: string;
-        label: string;
+    })
+    | (BaseBehaviorField & {
         type: "ranges";
+        paramsKey: "ranges" | "bands";
         defaultValue: { min: string; max: string; label: string }[];
-    };
+    });
 
 export type RuleBehaviorRegistryItem = {
     key: RuleBehaviorKey;
@@ -57,6 +58,7 @@ export const RULE_BEHAVIORS: RuleBehaviorRegistryItem[] = [
         fields: [
             {
                 key: "compare",
+                paramsKey: "compare",
                 label: "Type de comparaison",
                 type: "select",
                 defaultValue: "gte",
@@ -67,6 +69,7 @@ export const RULE_BEHAVIORS: RuleBehaviorRegistryItem[] = [
             },
             {
                 key: "successThreshold",
+                paramsKey: "success_threshold",
                 label: "Seuil de réussite",
                 type: "number",
                 defaultValue: "",
@@ -74,6 +77,7 @@ export const RULE_BEHAVIORS: RuleBehaviorRegistryItem[] = [
             },
             {
                 key: "critSuccessFaces",
+                paramsKey: "crit_success_faces",
                 label: "Faces de réussite critique",
                 type: "text",
                 defaultValue: "20",
@@ -81,6 +85,7 @@ export const RULE_BEHAVIORS: RuleBehaviorRegistryItem[] = [
             },
             {
                 key: "critFailureFaces",
+                paramsKey: "crit_failure_faces",
                 label: "Faces d’échec critique",
                 type: "text",
                 defaultValue: "1",
@@ -99,6 +104,7 @@ export const RULE_BEHAVIORS: RuleBehaviorRegistryItem[] = [
         fields: [
             {
                 key: "successAtOrAbove",
+                paramsKey: "success_at_or_above",
                 label: "Succès à partir de",
                 type: "number",
                 defaultValue: "5",
@@ -106,6 +112,7 @@ export const RULE_BEHAVIORS: RuleBehaviorRegistryItem[] = [
             },
             {
                 key: "failFaces",
+                paramsKey: "fail_faces",
                 label: "Faces d’échec spécial",
                 type: "text",
                 defaultValue: "1",
@@ -113,6 +120,7 @@ export const RULE_BEHAVIORS: RuleBehaviorRegistryItem[] = [
             },
             {
                 key: "glitchRule",
+                paramsKey: "glitch_rule",
                 label: "Règle de complication",
                 type: "select",
                 defaultValue: "ones_gt_successes",
@@ -135,6 +143,7 @@ export const RULE_BEHAVIORS: RuleBehaviorRegistryItem[] = [
         fields: [
             {
                 key: "ranges",
+                paramsKey: "ranges",
                 label: "Plages de résultats",
                 type: "ranges",
                 defaultValue: [
@@ -156,6 +165,7 @@ export const RULE_BEHAVIORS: RuleBehaviorRegistryItem[] = [
         fields: [
             {
                 key: "ranges",
+                paramsKey: "bands",
                 label: "Plages de résultats",
                 type: "ranges",
                 defaultValue: [
@@ -177,12 +187,14 @@ export const RULE_BEHAVIORS: RuleBehaviorRegistryItem[] = [
         fields: [
             {
                 key: "keepCount",
+                paramsKey: "keep",
                 label: "Nombre de dés à garder",
                 type: "number",
                 defaultValue: "2",
             },
             {
                 key: "resultMode",
+                paramsKey: "result_mode",
                 label: "Mode de résultat",
                 type: "select",
                 defaultValue: "sum",
@@ -204,12 +216,14 @@ export const RULE_BEHAVIORS: RuleBehaviorRegistryItem[] = [
         fields: [
             {
                 key: "keepCount",
+                paramsKey: "keep",
                 label: "Nombre de dés à garder",
                 type: "number",
                 defaultValue: "2",
             },
             {
                 key: "resultMode",
+                paramsKey: "result_mode",
                 label: "Mode de résultat",
                 type: "select",
                 defaultValue: "sum",
@@ -231,12 +245,14 @@ export const RULE_BEHAVIORS: RuleBehaviorRegistryItem[] = [
         fields: [
             {
                 key: "dropCount",
+                paramsKey: "drop",
                 label: "Nombre de dés à retirer",
                 type: "number",
                 defaultValue: "1",
             },
             {
                 key: "resultMode",
+                paramsKey: "result_mode",
                 label: "Mode de résultat",
                 type: "select",
                 defaultValue: "sum",
@@ -258,12 +274,14 @@ export const RULE_BEHAVIORS: RuleBehaviorRegistryItem[] = [
         fields: [
             {
                 key: "dropCount",
+                paramsKey: "drop",
                 label: "Nombre de dés à retirer",
                 type: "number",
                 defaultValue: "1",
             },
             {
                 key: "resultMode",
+                paramsKey: "result_mode",
                 label: "Mode de résultat",
                 type: "select",
                 defaultValue: "sum",

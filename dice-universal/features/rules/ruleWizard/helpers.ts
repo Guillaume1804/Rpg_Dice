@@ -121,111 +121,49 @@ export function buildRulePayloadFromRuleWizard(draft: RuleWizardDraft) {
             ? null
             : JSON.stringify(supportedSides);
 
-    if (draft.behaviorKey === "single_check") {
-        return {
-            name: draft.name.trim(),
-            kind: "single_check",
-            scope: draft.scope,
-            supported_sides_json,
-            params_json: JSON.stringify({
-                compare: draft.compare,
-                success_threshold:
-                    draft.successThreshold.trim() === ""
-                        ? null
-                        : Number(draft.successThreshold),
-                crit_success_faces: parseNumberList(draft.critSuccessFaces),
-                crit_failure_faces: parseNumberList(draft.critFailureFaces),
-            }),
-        };
-    }
+    const params: Record<string, unknown> = {};
 
-    if (draft.behaviorKey === "success_pool") {
-        return {
-            name: draft.name.trim(),
-            kind: "success_pool",
-            scope: draft.scope,
-            supported_sides_json,
-            params_json: JSON.stringify({
-                success_at_or_above: Number(draft.successAtOrAbove),
-                fail_faces: parseNumberList(draft.failFaces),
-                glitch_rule: draft.glitchRule,
-            }),
-        };
+    for (const field of behaviorDefinition.fields) {
+        const paramsKey = field.paramsKey ?? field.key;
+
+        if (field.type === "ranges") {
+            params[paramsKey] = parseRanges(draft);
+            continue;
+        }
+
+        const rawValue = draft[field.key as keyof RuleWizardDraft];
+
+        if (field.type === "number") {
+            const textValue = String(rawValue ?? "").trim();
+            params[paramsKey] = textValue === "" ? null : Number(textValue);
+            continue;
+        }
+
+        if (
+            field.key === "critSuccessFaces" ||
+            field.key === "critFailureFaces" ||
+            field.key === "failFaces"
+        ) {
+            params[paramsKey] = parseNumberList(String(rawValue ?? ""));
+            continue;
+        }
+
+        params[paramsKey] = rawValue;
     }
 
     if (draft.behaviorKey === "table_lookup") {
-        return {
-            name: draft.name.trim(),
-            kind: "table_lookup",
-            scope: draft.scope,
-            supported_sides_json,
-            params_json: JSON.stringify({
-                ranges: parseRanges(draft),
-                defaultLabel: "Normal",
-            }),
-        };
+        params.defaultLabel = "Normal";
     }
 
     if (draft.behaviorKey === "banded_sum") {
-        return {
-            name: draft.name.trim(),
-            kind: "banded_sum",
-            scope: draft.scope,
-            supported_sides_json,
-            params_json: JSON.stringify({
-                bands: parseRanges(draft),
-                defaultLabel: "—",
-            }),
-        };
-    }
-
-    if (draft.behaviorKey === "sum_total") {
-        return {
-            name: draft.name.trim(),
-            kind: "sum",
-            scope: draft.scope,
-            supported_sides_json,
-            params_json: JSON.stringify({}),
-        };
-    }
-
-    if (
-        draft.behaviorKey === "keep_highest_n" ||
-        draft.behaviorKey === "keep_lowest_n"
-    ) {
-        return {
-            name: draft.name.trim(),
-            kind: draft.behaviorKey,
-            scope: draft.scope,
-            supported_sides_json,
-            params_json: JSON.stringify({
-                keep: Number(draft.keepCount),
-                result_mode: draft.resultMode === "values" ? "values" : "sum",
-            }),
-        };
-    }
-
-    if (
-        draft.behaviorKey === "drop_highest_n" ||
-        draft.behaviorKey === "drop_lowest_n"
-    ) {
-        return {
-            name: draft.name.trim(),
-            kind: draft.behaviorKey,
-            scope: draft.scope,
-            supported_sides_json,
-            params_json: JSON.stringify({
-                drop: Number(draft.dropCount),
-                result_mode: draft.resultMode === "values" ? "values" : "sum",
-            }),
-        };
+        params.defaultLabel = "—";
     }
 
     return {
         name: draft.name.trim(),
-        kind: draft.behaviorKey,
+        kind: behaviorDefinition.kind,
         scope: draft.scope,
         supported_sides_json,
-        params_json: JSON.stringify({}),
+        params_json: JSON.stringify(params),
     };
 }

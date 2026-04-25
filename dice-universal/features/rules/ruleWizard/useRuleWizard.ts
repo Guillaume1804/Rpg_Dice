@@ -103,7 +103,7 @@ export function useRuleWizard() {
     }
 
     function setBehaviorKey(behaviorKey: RuleBehaviorKey) {
-        const definition = getRuleBehaviorDefinition(behaviorKey);
+        const behavior = getRuleBehaviorDefinition(behaviorKey);
 
         setDraft((prev) => {
             let next: RuleWizardDraft = {
@@ -111,16 +111,16 @@ export function useRuleWizard() {
                 behaviorKey,
             };
 
-            if (!definition) {
+            if (!behavior) {
                 return next;
             }
 
             next = {
                 ...next,
-                scope: definition.defaultScope,
+                scope: behavior.defaultScope,
             };
 
-            for (const field of definition.fields) {
+            for (const field of behavior.fields) {
                 if (field.type === "ranges") {
                     next = {
                         ...next,
