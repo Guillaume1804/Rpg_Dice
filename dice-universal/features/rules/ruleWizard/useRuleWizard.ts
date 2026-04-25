@@ -13,9 +13,9 @@ import { getRuleBehaviorDefinition } from "../../../core/rules/behaviorRegistry"
 
 const STEP_ORDER: RuleWizardStep[] = [
     "name",
-    "scope",
     "dice",
     "behavior",
+    "scope",
     "summary",
 ];
 
@@ -119,6 +119,13 @@ export function useRuleWizard() {
                 ...next,
                 scope: behavior.defaultScope,
             };
+
+            if (behavior.supportedSides && behavior.supportedSides.length > 0) {
+                next = {
+                    ...next,
+                    supportedSidesText: behavior.supportedSides.join(","),
+                };
+            }
 
             for (const field of behavior.fields) {
                 if (field.type === "ranges") {

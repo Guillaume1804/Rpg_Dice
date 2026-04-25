@@ -82,6 +82,28 @@ export function CreateRuleWizardModal({
         (behavior) => behavior.key === draft.behaviorKey,
     );
 
+    const scopeOptions = [
+        {
+            key: "entry",
+            label: "Un dé / une entrée",
+            description: "Ex: 1d20 contre une difficulté.",
+        },
+        {
+            key: "group",
+            label: "Une action complète",
+            description: "Ex: pool de dés ou somme globale.",
+        },
+        {
+            key: "both",
+            label: "Les deux",
+            description: "Règle utilisable dans les deux contextes.",
+        },
+    ].filter((option) =>
+        selectedBehavior
+            ? selectedBehavior.allowedScopes.includes(option.key as RuleWizardScope)
+            : true,
+    );
+
     return (
         <View
             style={{
@@ -137,23 +159,7 @@ export function CreateRuleWizardModal({
                         <>
                             <Text style={{ fontWeight: "700" }}>Cette règle s’applique à quoi ?</Text>
 
-                            {[
-                                {
-                                    key: "entry",
-                                    label: "Un dé / une entrée",
-                                    description: "Ex: 1d20 contre une difficulté.",
-                                },
-                                {
-                                    key: "group",
-                                    label: "Une action complète",
-                                    description: "Ex: pool de dés ou somme globale.",
-                                },
-                                {
-                                    key: "both",
-                                    label: "Les deux",
-                                    description: "Règle utilisable dans les deux contextes.",
-                                },
-                            ].map((option) => (
+                            {scopeOptions.map((option) => (
                                 <Pressable
                                     key={option.key}
                                     onPress={() => onSetScope(option.key as RuleWizardScope)}
@@ -187,6 +193,7 @@ export function CreateRuleWizardModal({
 
                             <TextInput
                                 value={draft.supportedSidesText}
+                                editable={!selectedBehavior?.supportedSides}
                                 onChangeText={(value) =>
                                     onUpdateDraft("supportedSidesText", value)
                                 }
@@ -199,6 +206,11 @@ export function CreateRuleWizardModal({
                                     fontSize: 16,
                                 }}
                             />
+                            {selectedBehavior?.supportedSides ? (
+                                <Text style={{ opacity: 0.6 }}>
+                                    Déterminé automatiquement par le comportement sélectionné.
+                                </Text>
+                            ) : null}
                         </>
                     ) : null}
 
