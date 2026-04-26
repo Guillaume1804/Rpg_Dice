@@ -8,6 +8,10 @@ import { HumanRuleEditorModal } from "../features/rules/components/HumanRuleEdit
 import { RulesListSection } from "../features/rules/components/RulesListSection";
 import { useRulesScreenActions } from "../features/rules/hooks/useRulesScreenActions";
 
+import { CreateRuleWizardModal } from "../features/rules/ruleWizard/CreateRuleWizardModal";
+import { useRuleWizard } from "../features/rules/ruleWizard/useRuleWizard";
+import { useRuleWizardPreview } from "../features/rules/ruleWizard/useRuleWizardPreview";
+
 export default function RulesScreen() {
   const db = useDb();
 
@@ -42,6 +46,8 @@ export default function RulesScreen() {
     removeRangeRow,
     getRulePayload,
     computePreview,
+    setScope,
+    setSupportedSidesText,
   } = useHumanRuleEditor();
 
   const { handleSave, handleDeleteRule } = useRulesScreenActions({
@@ -51,6 +57,31 @@ export default function RulesScreen() {
     removeRule,
     closeEditor,
   });
+
+  const ruleWizard = useRuleWizard();
+
+  const ruleWizardPreview = useRuleWizardPreview({
+    buildPayload: ruleWizard.buildPayload,
+    deps: [ruleWizard.draft],
+  });
+
+  async function handleCreateFromWizard() {
+    try {
+      const payload = ruleWizard.buildPayload();
+
+      await saveRule({
+        editingRule: null,
+        payload: {
+          ...payload,
+          supported_sides_json: payload.supported_sides_json ?? "[]",
+        },
+      });
+
+      ruleWizard.close();
+    } catch (err) {
+      console.error(err);
+    }
+  }
 
   if (error) {
     return (
@@ -65,12 +96,21 @@ export default function RulesScreen() {
     <View style={{ flex: 1, padding: 16, gap: 12 }}>
       <Text style={{ fontSize: 20, fontWeight: "700" }}>Règles</Text>
 
-      <Pressable
-        onPress={openCreate}
-        style={{ padding: 12, borderWidth: 1, borderRadius: 10 }}
-      >
-        <Text style={{ fontWeight: "600" }}>Créer une règle</Text>
-      </Pressable>
+      <View style={{ flexDirection: "row", gap: 8 }}>
+        <Pressable
+          onPress={ruleWizard.open}
+          style={{ flex: 1, padding: 12, borderWidth: 1, borderRadius: 10 }}
+        >
+          <Text style={{ fontWeight: "700" }}>✨ Création guidée</Text>
+        </Pressable>
+
+        <Pressable
+          onPress={openCreate}
+          style={{ flex: 1, padding: 12, borderWidth: 1, borderRadius: 10 }}
+        >
+          <Text style={{ fontWeight: "600" }}>⚙️ Avancé</Text>
+        </Pressable>
+      </View>
 
       <RulesListSection
         systemRules={systemRules}
@@ -100,6 +140,36 @@ export default function RulesScreen() {
         onComputePreview={computePreview}
         onClose={closeEditor}
         onSave={handleSave}
+        onSetScope={setScope}
+        onSetSupportedSidesText={setSupportedSidesText}
+      />
+
+      <CreateRuleWizardModal
+        visible={ruleWizard.visible}
+        step={ruleWizard.step}
+        stepIndex={ruleWizard.stepIndex}
+        totalSteps={ruleWizard.totalSteps}
+        draft={ruleWizard.draft}
+        error={ruleWizard.error}
+        onClose={ruleWizard.close}
+        onBack={ruleWizard.goBack}
+        onNext={ruleWizard.goNext}
+        onSubmit={handleCreateFromWizard}
+        onUpdateDraft={ruleWizard.updateDraft}
+        onSetScope={ruleWizard.setScope}
+        onSetBehaviorKey={ruleWizard.setBehaviorKey}
+        onUpdateRangeRow={ruleWizard.updateRangeRow}
+        onAddRangeRow={ruleWizard.addRangeRow}
+        onRemoveRangeRow={ruleWizard.removeRangeRow}
+        previewValuesText={ruleWizardPreview.valuesText}
+        previewSidesText={ruleWizardPreview.sidesText}
+        previewModifierText={ruleWizardPreview.modifierText}
+        previewSignText={ruleWizardPreview.signText}
+        previewResult={ruleWizardPreview.previewResult}
+        onChangePreviewValuesText={ruleWizardPreview.setValuesText}
+        onChangePreviewSidesText={ruleWizardPreview.setSidesText}
+        onChangePreviewModifierText={ruleWizardPreview.setModifierText}
+        onChangePreviewSignText={ruleWizardPreview.setSignText}
       />
     </View>
   );

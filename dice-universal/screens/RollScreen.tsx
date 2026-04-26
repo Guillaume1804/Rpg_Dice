@@ -1,6 +1,6 @@
 // RollScreen.tsx
 import { useEffect, useMemo, useState } from "react";
-import { View, Text, ScrollView, Pressable, TextInput } from "react-native";
+import { View, Text, ScrollView, Pressable } from "react-native";
 import { useDb } from "../data/db/DbProvider";
 import { useActiveTable } from "../data/state/ActiveTableProvider";
 
@@ -26,10 +26,14 @@ import {
   getBehaviorDefaults,
 } from "../core/rules/getBehaviorsForContext";
 
-import { getActionWizardBehaviors } from "../core/rules/behaviorCatalog";
 import { buildDraftTempRuleFromPreset } from "../features/roll/helpers/buildDraftTempRuleFromPreset";
 
-import type { RuleBehaviorKey } from "../core/rules/behaviorCatalog";
+import { QuickBehaviorConfigModal } from "../features/roll/components/QuickBehaviorConfigModal";
+import { QuickQtyModal } from "../features/roll/components/QuickQtyModal";
+import { QuickDieBehaviorPickerModal } from "../features/roll/components/QuickDieBehaviorPickerModal";
+import { useQuickBehaviorConfigModal } from "../features/roll/hooks/useQuickBehaviorConfigModal";
+import { useQuickQtyModal } from "../features/roll/hooks/useQuickQtyModal";
+import { useQuickDieBehaviorPicker } from "../features/roll/hooks/useQuickDieBehaviorPicker";
 
 export default function RollScreen() {
   type RollMode = "quick" | "table";
@@ -232,6 +236,19 @@ export default function RollScreen() {
     availableRules,
   });
 
+  const quickDieBehaviorPicker = useQuickDieBehaviorPicker({
+    addQuickPresetDie,
+    quickBehaviorConfig,
+  });
+
+  const quickQtyModal = useQuickQtyModal({
+    draftGroups,
+    availableRules,
+    adjustDraftDieQty,
+    updateDraftDieEntry,
+    replaceDraftDieWithQtySplit,
+  });
+
   const { rollSavedTable, rollSavedProfile, rollSavedGroup } = useRollExecution(
     {
       db,
@@ -317,9 +334,9 @@ export default function RollScreen() {
 
   async function handleSaveDraftTarget(params: {
     mode:
-      | "new_table_new_profile"
-      | "existing_table_new_profile"
-      | "existing_table_existing_profile";
+    | "new_table_new_profile"
+    | "existing_table_new_profile"
+    | "existing_table_existing_profile";
     tableName?: string;
     profileName?: string;
     tableId?: string;
@@ -866,67 +883,24 @@ export default function RollScreen() {
   }
 
   function handleConfirmBehaviorConfig() {
-    if (!pendingBehaviorKey || editingDieSides == null) return;
-
     if (
-      (pendingBehaviorKey === "keep_highest_n" ||
-        pendingBehaviorKey === "keep_lowest_n") &&
-      (!Number.isFinite(Number(configKeepCount)) ||
-        Number(configKeepCount) <= 0)
+      !quickBehaviorConfig.pendingBehaviorKey ||
+      quickDieBehaviorPicker.editingDieSides == null ||
+      !quickBehaviorConfig.isValid()
     ) {
       return;
-    }
-
-    if (
-      (pendingBehaviorKey === "drop_highest_n" ||
-        pendingBehaviorKey === "drop_lowest_n") &&
-      (!Number.isFinite(Number(configDropCount)) ||
-        Number(configDropCount) <= 0)
-    ) {
-      return;
-    }
-
-    if (
-      pendingBehaviorKey === "single_check" &&
-      configSuccessThreshold.trim() !== "" &&
-      !Number.isFinite(Number(configSuccessThreshold))
-    ) {
-      return;
-    }
-
-    if (
-      pendingBehaviorKey === "success_pool" &&
-      !Number.isFinite(Number(configSuccessAtOrAbove))
-    ) {
-      return;
-    }
-
-    if (
-      pendingBehaviorKey === "table_lookup" ||
-      pendingBehaviorKey === "banded_sum"
-    ) {
-      const hasValidRange = configRanges.some(
-        (row) =>
-          Number.isFinite(Number(row.min)) &&
-          Number.isFinite(Number(row.max)) &&
-          row.label.trim().length > 0,
-      );
-
-      if (!hasValidRange) {
-        return;
-      }
     }
 
     const tempRule = buildDraftTempRuleFromPreset({
       preset: {
-        key: pendingBehaviorKey,
-        label: pendingBehaviorLabel,
-        scope: pendingBehaviorScope,
-        behaviorKey: pendingBehaviorKey,
-        defaultValues: buildPendingBehaviorDefaultValues(),
+        key: quickBehaviorConfig.pendingBehaviorKey,
+        label: quickBehaviorConfig.pendingBehaviorLabel,
+        scope: quickBehaviorConfig.pendingBehaviorScope,
+        behaviorKey: quickBehaviorConfig.pendingBehaviorKey,
+        defaultValues: quickBehaviorConfig.buildDefaultValues(),
       },
-      sides: editingDieSides,
-      actionName: pendingBehaviorLabel,
+      sides: quickDieBehaviorPicker.editingDieSides,
+      actionName: quickBehaviorConfig.pendingBehaviorLabel,
     });
 
     if (behaviorModalSource === "table_quick") {
@@ -1108,7 +1082,7 @@ export default function RollScreen() {
             onEditDraftGroupRule={openDraftGroupRuleEditor}
             onRemoveDraftGroup={removeDraftGroup}
             onEditDraftDie={openDraftEditor}
-            onOpenDieConfig={handleOpenDieConfig}
+            onOpenDieConfig={quickDieBehaviorPicker.open}
             onRemoveDraftDie={removeDraftDie}
             onRollDraft={rollDraft}
             onRollQuickGroup={rollSingleDraftGroup}
@@ -1117,8 +1091,8 @@ export default function RollScreen() {
             onReplaceCurrentTable={replaceCurrentTable}
             onCreateNewTable={handleOpenSaveDraftModal}
             availableRules={availableRules}
-            onEditQuickDieQty={handleOpenQuickQtyEditor}
-            onAdjustQuickDieQty={handleAdjustQuickDieQty}
+            onEditQuickDieQty={quickQtyModal.open}
+            onAdjustQuickDieQty={quickQtyModal.adjust}
           />
         )}
 
