@@ -1,7 +1,7 @@
 // dice-universal/features/roll/helpers/quickBehaviorConfig.ts
 
-import type { RuleBehaviorKey } from "../../../core/rules/behaviorCatalog";
-import { getBehaviorDefaults } from "../../../core/rules/getBehaviorsForContext";
+import type { RuleBehaviorKey } from "../../../core/rules/behaviorRegistry";
+import { getRuleBehaviorDefinition } from "../../../core/rules/behaviorRegistry";
 
 export const DEFAULT_QUICK_RANGES = [
   { min: "1", max: "3", label: "Bas" },
@@ -9,61 +9,28 @@ export const DEFAULT_QUICK_RANGES = [
   { min: "7", max: "10", label: "Haut" },
 ];
 
+type RangeRow = { min: string; max: string; label: string };
+
 export function behaviorNeedsSelectionConfig(
   behaviorKey: RuleBehaviorKey,
 ): boolean {
-  return (
-    behaviorKey === "keep_highest_n" ||
-    behaviorKey === "keep_lowest_n" ||
-    behaviorKey === "drop_highest_n" ||
-    behaviorKey === "drop_lowest_n" ||
-    behaviorKey === "single_check" ||
-    behaviorKey === "success_pool" ||
-    behaviorKey === "table_lookup" ||
-    behaviorKey === "banded_sum"
-  );
+  const behavior = getRuleBehaviorDefinition(behaviorKey);
+  return !!behavior && behavior.fields.length > 0;
 }
 
 export function getDefaultRangesForBehavior(
   behaviorKey: RuleBehaviorKey,
-): { min: string; max: string; label: string }[] {
-  const defaults = getBehaviorDefaults(behaviorKey, "quick_roll");
-  const ranges = defaults?.ranges;
+): RangeRow[] {
+  const behavior = getRuleBehaviorDefinition(behaviorKey);
+  const rangeField = behavior?.fields.find((field) => field.type === "ranges");
 
-  if (!Array.isArray(ranges)) {
+  if (!rangeField || rangeField.type !== "ranges") {
     return DEFAULT_QUICK_RANGES;
   }
 
-  const parsed = ranges
-    .map((row) => {
-      if (!row || typeof row !== "object") return null;
-
-      const candidate = row as {
-        min?: unknown;
-        max?: unknown;
-        label?: unknown;
-      };
-
-      if (
-        typeof candidate.min !== "string" ||
-        typeof candidate.max !== "string" ||
-        typeof candidate.label !== "string"
-      ) {
-        return null;
-      }
-
-      return {
-        min: candidate.min,
-        max: candidate.max,
-        label: candidate.label,
-      };
-    })
-    .filter(
-      (row): row is { min: string; max: string; label: string } =>
-        row !== null,
-    );
-
-  return parsed.length > 0 ? parsed : DEFAULT_QUICK_RANGES;
+  return rangeField.defaultValue.length > 0
+    ? rangeField.defaultValue
+    : DEFAULT_QUICK_RANGES;
 }
 
 export function buildQuickBehaviorDefaultValues(params: {
@@ -78,61 +45,68 @@ export function buildQuickBehaviorDefaultValues(params: {
   successAtOrAbove: string;
   failFaces: string;
   glitchRule: string;
-  ranges: { min: string; max: string; label: string }[];
+  ranges: RangeRow[];
 }) {
-  const baseDefaults =
-    getBehaviorDefaults(params.behaviorKey, "quick_roll") ?? {};
+  const behavior = getRuleBehaviorDefinition(params.behaviorKey);
 
-  if (
-    params.behaviorKey === "keep_highest_n" ||
-    params.behaviorKey === "keep_lowest_n"
-  ) {
-    return {
-      ...baseDefaults,
-      keepCount: params.keepCount,
-      resultMode: params.resultMode,
-    };
+  if (!behavior) {
+    return {};
   }
 
-  if (
-    params.behaviorKey === "drop_highest_n" ||
-    params.behaviorKey === "drop_lowest_n"
-  ) {
-    return {
-      ...baseDefaults,
-      dropCount: params.dropCount,
-      resultMode: params.resultMode,
-    };
+  const values: Record<string, unknown> = {};
+
+  for (const field of behavior.fields) {
+    if (field.type === "ranges") {
+      values[field.key] = params.ranges;
+      continue;
+    }
+
+    switch (field.key) {
+      case "keepCount":
+        values[field.key] = params.keepCount;
+        break;
+
+      case "dropCount":
+        values[field.key] = params.dropCount;
+        break;
+
+      case "resultMode":
+        values[field.key] = params.resultMode;
+        break;
+
+      case "compare":
+        values[field.key] = params.compare;
+        break;
+
+      case "successThreshold":
+        values[field.key] = params.successThreshold;
+        break;
+
+      case "critSuccessFaces":
+        values[field.key] = params.critSuccessFaces;
+        break;
+
+      case "critFailureFaces":
+        values[field.key] = params.critFailureFaces;
+        break;
+
+      case "successAtOrAbove":
+        values[field.key] = params.successAtOrAbove;
+        break;
+
+      case "failFaces":
+        values[field.key] = params.failFaces;
+        break;
+
+      case "glitchRule":
+        values[field.key] = params.glitchRule;
+        break;
+
+      default:
+        values[field.key] = field.defaultValue;
+        break;
+    }
   }
 
-  if (params.behaviorKey === "single_check") {
-    return {
-      ...baseDefaults,
-      compare: params.compare,
-      successThreshold: params.successThreshold,
-      critSuccessFaces: params.critSuccessFaces,
-      critFailureFaces: params.critFailureFaces,
-    };
-  }
-
-  if (params.behaviorKey === "success_pool") {
-    return {
-      ...baseDefaults,
-      successAtOrAbove: params.successAtOrAbove,
-      failFaces: params.failFaces,
-      glitchRule: params.glitchRule,
-    };
-  }
-
-  if (
-    params.behaviorKey === "table_lookup" ||
-    params.behaviorKey === "banded_sum"
-  ) {
-    return {
-      ...baseDefaults,
-      ranges: params.ranges,
-    };
-  }
-
-  return baseDefaults;
+  return values;
 }

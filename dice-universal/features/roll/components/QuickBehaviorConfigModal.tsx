@@ -1,8 +1,10 @@
 // dice-universal/features/roll/components/QuickBehaviorConfigModal.tsx
 
-
-import { View, Text, Pressable, TextInput } from "react-native";
-import type { RuleBehaviorKey } from "../../../core/rules/behaviorCatalog";
+import { View, Text, Pressable, TextInput, ScrollView } from "react-native";
+import {
+  getRuleBehaviorDefinition,
+  type RuleBehaviorKey,
+} from "../../../core/rules/behaviorRegistry";
 
 type RangeRow = { min: string; max: string; label: string };
 
@@ -33,7 +35,11 @@ type Props = {
   onChangeSuccessAtOrAbove: (value: string) => void;
   onChangeFailFaces: (value: string) => void;
   onChangeGlitchRule: (value: string) => void;
-  onUpdateRange: (index: number, key: "min" | "max" | "label", value: string) => void;
+  onUpdateRange: (
+    index: number,
+    key: "min" | "max" | "label",
+    value: string,
+  ) => void;
 
   onClose: () => void;
   onConfirm: () => void;
@@ -73,6 +79,74 @@ export function QuickBehaviorConfigModal({
 }: Props) {
   if (!visible) return null;
 
+  const behavior = pendingBehaviorKey
+    ? getRuleBehaviorDefinition(pendingBehaviorKey)
+    : null;
+
+  function getFieldValue(key: string) {
+    switch (key) {
+      case "keepCount":
+        return configKeepCount;
+      case "dropCount":
+        return configDropCount;
+      case "resultMode":
+        return configResultMode;
+      case "compare":
+        return configCompare;
+      case "successThreshold":
+        return configSuccessThreshold;
+      case "critSuccessFaces":
+        return configCritSuccessFaces;
+      case "critFailureFaces":
+        return configCritFailureFaces;
+      case "successAtOrAbove":
+        return configSuccessAtOrAbove;
+      case "failFaces":
+        return configFailFaces;
+      case "glitchRule":
+        return configGlitchRule;
+      default:
+        return "";
+    }
+  }
+
+  function setFieldValue(key: string, value: string) {
+    switch (key) {
+      case "keepCount":
+        onChangeKeepCount(value);
+        return;
+      case "dropCount":
+        onChangeDropCount(value);
+        return;
+      case "resultMode":
+        onChangeResultMode(value === "values" ? "values" : "sum");
+        return;
+      case "compare":
+        onChangeCompare(value === "lte" ? "lte" : "gte");
+        return;
+      case "successThreshold":
+        onChangeSuccessThreshold(value);
+        return;
+      case "critSuccessFaces":
+        onChangeCritSuccessFaces(value);
+        return;
+      case "critFailureFaces":
+        onChangeCritFailureFaces(value);
+        return;
+      case "successAtOrAbove":
+        onChangeSuccessAtOrAbove(value);
+        return;
+      case "failFaces":
+        onChangeFailFaces(value);
+        return;
+      case "glitchRule":
+        onChangeGlitchRule(value);
+        return;
+      default:
+        return;
+    }
+  }
+
   return (
     <View
       style={{
@@ -92,345 +166,172 @@ export function QuickBehaviorConfigModal({
           borderRadius: 14,
           padding: 16,
           gap: 12,
+          maxHeight: "90%",
         }}
       >
         <Text style={{ fontSize: 18, fontWeight: "800" }}>
           Configurer {pendingBehaviorLabel}
         </Text>
 
-        {(pendingBehaviorKey === "keep_highest_n" ||
-          pendingBehaviorKey === "keep_lowest_n") && (
-          <>
-            <Text style={{ opacity: 0.72 }}>
-              Combien de dés veux-tu garder ?
-            </Text>
+        {!behavior ? (
+          <Text style={{ opacity: 0.72 }}>Aucun comportement sélectionné.</Text>
+        ) : null}
 
-            <View
-              style={{
-                borderWidth: 1,
-                borderRadius: 10,
-                paddingHorizontal: 12,
-                paddingVertical: 10,
-              }}
-            >
-              <TextInput
-                value={configKeepCount}
-                onChangeText={onChangeKeepCount}
-                keyboardType="number-pad"
-                placeholder="Nombre à garder"
-                style={{ fontSize: 16 }}
-              />
-            </View>
-          </>
-        )}
-
-        {(pendingBehaviorKey === "drop_highest_n" ||
-          pendingBehaviorKey === "drop_lowest_n") && (
-          <>
-            <Text style={{ opacity: 0.72 }}>
-              Combien de dés veux-tu retirer ?
-            </Text>
-
-            <View
-              style={{
-                borderWidth: 1,
-                borderRadius: 10,
-                paddingHorizontal: 12,
-                paddingVertical: 10,
-              }}
-            >
-              <TextInput
-                value={configDropCount}
-                onChangeText={onChangeDropCount}
-                keyboardType="number-pad"
-                placeholder="Nombre à retirer"
-                style={{ fontSize: 16 }}
-              />
-            </View>
-          </>
-        )}
-
-        {pendingBehaviorKey === "single_check" && (
-          <>
-            <Text style={{ opacity: 0.72 }}>Type de comparaison</Text>
-
-            <View style={{ flexDirection: "row", gap: 8 }}>
-              {[
-                { key: "gte", label: "≥ seuil" },
-                { key: "lte", label: "≤ seuil" },
-              ].map((option) => (
-                <Pressable
-                  key={option.key}
-                  onPress={() => onChangeCompare(option.key as "gte" | "lte")}
-                  style={{
-                    paddingVertical: 10,
-                    paddingHorizontal: 12,
-                    borderWidth: 1,
-                    borderRadius: 10,
-                    opacity: configCompare === option.key ? 1 : 0.7,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontWeight: configCompare === option.key ? "700" : "400",
-                    }}
-                  >
-                    {option.label}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-
-            <Text style={{ opacity: 0.72 }}>Seuil de réussite</Text>
-
-            <View
-              style={{
-                borderWidth: 1,
-                borderRadius: 10,
-                paddingHorizontal: 12,
-                paddingVertical: 10,
-              }}
-            >
-              <TextInput
-                value={configSuccessThreshold}
-                onChangeText={onChangeSuccessThreshold}
-                keyboardType="number-pad"
-                placeholder="Ex: 15"
-                style={{ fontSize: 16 }}
-              />
-            </View>
-
-            <Text style={{ opacity: 0.72 }}>
-              Faces de critique réussite (optionnel)
-            </Text>
-
-            <View
-              style={{
-                borderWidth: 1,
-                borderRadius: 10,
-                paddingHorizontal: 12,
-                paddingVertical: 10,
-              }}
-            >
-              <TextInput
-                value={configCritSuccessFaces}
-                onChangeText={onChangeCritSuccessFaces}
-                placeholder="Ex: 20"
-                style={{ fontSize: 16 }}
-              />
-            </View>
-
-            <Text style={{ opacity: 0.72 }}>
-              Faces d’échec critique (optionnel)
-            </Text>
-
-            <View
-              style={{
-                borderWidth: 1,
-                borderRadius: 10,
-                paddingHorizontal: 12,
-                paddingVertical: 10,
-              }}
-            >
-              <TextInput
-                value={configCritFailureFaces}
-                onChangeText={onChangeCritFailureFaces}
-                placeholder="Ex: 1"
-                style={{ fontSize: 16 }}
-              />
-            </View>
-          </>
-        )}
-
-        {pendingBehaviorKey === "success_pool" && (
-          <>
-            <Text style={{ opacity: 0.72 }}>Seuil de succès</Text>
-
-            <View
-              style={{
-                borderWidth: 1,
-                borderRadius: 10,
-                paddingHorizontal: 12,
-                paddingVertical: 10,
-              }}
-            >
-              <TextInput
-                value={configSuccessAtOrAbove}
-                onChangeText={onChangeSuccessAtOrAbove}
-                keyboardType="number-pad"
-                placeholder="Ex: 5"
-                style={{ fontSize: 16 }}
-              />
-            </View>
-
-            <Text style={{ opacity: 0.72 }}>Faces d’échec spécial</Text>
-
-            <View
-              style={{
-                borderWidth: 1,
-                borderRadius: 10,
-                paddingHorizontal: 12,
-                paddingVertical: 10,
-              }}
-            >
-              <TextInput
-                value={configFailFaces}
-                onChangeText={onChangeFailFaces}
-                placeholder="Ex: 1"
-                style={{ fontSize: 16 }}
-              />
-            </View>
-
-            <Text style={{ opacity: 0.72 }}>Règle de complication</Text>
-
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-              {[
-                { key: "none", label: "Aucune" },
-                { key: "ones_gt_successes", label: "1 > succès" },
-                { key: "ones_gte_successes", label: "1 ≥ succès" },
-              ].map((option) => (
-                <Pressable
-                  key={option.key}
-                  onPress={() => onChangeGlitchRule(option.key)}
-                  style={{
-                    paddingVertical: 10,
-                    paddingHorizontal: 12,
-                    borderWidth: 1,
-                    borderRadius: 10,
-                    opacity: configGlitchRule === option.key ? 1 : 0.7,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontWeight:
-                        configGlitchRule === option.key ? "700" : "400",
-                    }}
-                  >
-                    {option.label}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          </>
-        )}
-
-        {(pendingBehaviorKey === "keep_highest_n" ||
-          pendingBehaviorKey === "keep_lowest_n" ||
-          pendingBehaviorKey === "drop_highest_n" ||
-          pendingBehaviorKey === "drop_lowest_n") && (
-          <>
-            <Text style={{ opacity: 0.72 }}>Mode de résultat</Text>
-
-            <View style={{ flexDirection: "row", gap: 8 }}>
-              {["sum", "list"].map((mode) => (
-                <Pressable
-                  key={mode}
-                  onPress={() => onChangeResultMode(mode)}
-                  style={{
-                    paddingVertical: 10,
-                    paddingHorizontal: 12,
-                    borderWidth: 1,
-                    borderRadius: 10,
-                    opacity: configResultMode === mode ? 1 : 0.7,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontWeight: configResultMode === mode ? "700" : "400",
-                    }}
-                  >
-                    {mode === "sum" ? "Somme" : "Liste"}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          </>
-        )}
-
-        {(pendingBehaviorKey === "table_lookup" ||
-          pendingBehaviorKey === "banded_sum") && (
-          <>
-            <Text style={{ opacity: 0.72 }}>Plages de résultats</Text>
-
-            <View style={{ gap: 8 }}>
-              {configRanges.map((row, index) => (
-                <View
-                  key={`${pendingBehaviorKey}-range-${index}`}
-                  style={{
-                    borderWidth: 1,
-                    borderRadius: 10,
-                    padding: 10,
-                    gap: 8,
-                  }}
-                >
-                  <Text style={{ fontWeight: "700" }}>
-                    Plage {index + 1}
-                  </Text>
-
-                  <View style={{ flexDirection: "row", gap: 8 }}>
-                    <View
-                      style={{
-                        flex: 1,
-                        borderWidth: 1,
-                        borderRadius: 10,
-                        paddingHorizontal: 10,
-                        paddingVertical: 8,
-                      }}
-                    >
-                      <TextInput
-                        value={row.min}
-                        onChangeText={(value) =>
-                          onUpdateRange(index, "min", value)
-                        }
-                        keyboardType="number-pad"
-                        placeholder="Min"
-                        style={{ fontSize: 16 }}
-                      />
-                    </View>
-
-                    <View
-                      style={{
-                        flex: 1,
-                        borderWidth: 1,
-                        borderRadius: 10,
-                        paddingHorizontal: 10,
-                        paddingVertical: 8,
-                      }}
-                    >
-                      <TextInput
-                        value={row.max}
-                        onChangeText={(value) =>
-                          onUpdateRange(index, "max", value)
-                        }
-                        keyboardType="number-pad"
-                        placeholder="Max"
-                        style={{ fontSize: 16 }}
-                      />
-                    </View>
-                  </View>
+        <ScrollView contentContainerStyle={{ gap: 12 }}>
+          {behavior?.fields.map((field) => {
+            if (field.type === "text" || field.type === "number") {
+              return (
+                <View key={field.key} style={{ gap: 6 }}>
+                  <Text style={{ opacity: 0.72 }}>{field.label}</Text>
 
                   <View
                     style={{
                       borderWidth: 1,
                       borderRadius: 10,
-                      paddingHorizontal: 10,
-                      paddingVertical: 8,
+                      paddingHorizontal: 12,
+                      paddingVertical: 10,
                     }}
                   >
                     <TextInput
-                      value={row.label}
-                      onChangeText={(value) =>
-                        onUpdateRange(index, "label", value)
+                      value={getFieldValue(field.key)}
+                      onChangeText={(value) => setFieldValue(field.key, value)}
+                      keyboardType={
+                        field.type === "number" ? "number-pad" : "default"
                       }
-                      placeholder="Label"
+                      placeholder={field.placeholder}
                       style={{ fontSize: 16 }}
                     />
                   </View>
                 </View>
-              ))}
-            </View>
-          </>
-        )}
+              );
+            }
+
+            if (field.type === "select") {
+              return (
+                <View key={field.key} style={{ gap: 6 }}>
+                  <Text style={{ opacity: 0.72 }}>{field.label}</Text>
+
+                  <View
+                    style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}
+                  >
+                    {field.options.map((option) => {
+                      const isSelected =
+                        getFieldValue(field.key) === option.value;
+
+                      return (
+                        <Pressable
+                          key={option.value}
+                          onPress={() => setFieldValue(field.key, option.value)}
+                          style={{
+                            paddingVertical: 10,
+                            paddingHorizontal: 12,
+                            borderWidth: 1,
+                            borderRadius: 10,
+                            opacity: isSelected ? 1 : 0.7,
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontWeight: isSelected ? "700" : "400",
+                            }}
+                          >
+                            {option.label}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              );
+            }
+
+            if (field.type === "ranges") {
+              return (
+                <View key={field.key} style={{ gap: 8 }}>
+                  <Text style={{ opacity: 0.72 }}>{field.label}</Text>
+
+                  {configRanges.map((row, index) => (
+                    <View
+                      key={`${pendingBehaviorKey}-range-${index}`}
+                      style={{
+                        borderWidth: 1,
+                        borderRadius: 10,
+                        padding: 10,
+                        gap: 8,
+                      }}
+                    >
+                      <Text style={{ fontWeight: "700" }}>
+                        Plage {index + 1}
+                      </Text>
+
+                      <View style={{ flexDirection: "row", gap: 8 }}>
+                        <View
+                          style={{
+                            flex: 1,
+                            borderWidth: 1,
+                            borderRadius: 10,
+                            paddingHorizontal: 10,
+                            paddingVertical: 8,
+                          }}
+                        >
+                          <TextInput
+                            value={row.min}
+                            onChangeText={(value) =>
+                              onUpdateRange(index, "min", value)
+                            }
+                            keyboardType="number-pad"
+                            placeholder="Min"
+                            style={{ fontSize: 16 }}
+                          />
+                        </View>
+
+                        <View
+                          style={{
+                            flex: 1,
+                            borderWidth: 1,
+                            borderRadius: 10,
+                            paddingHorizontal: 10,
+                            paddingVertical: 8,
+                          }}
+                        >
+                          <TextInput
+                            value={row.max}
+                            onChangeText={(value) =>
+                              onUpdateRange(index, "max", value)
+                            }
+                            keyboardType="number-pad"
+                            placeholder="Max"
+                            style={{ fontSize: 16 }}
+                          />
+                        </View>
+                      </View>
+
+                      <View
+                        style={{
+                          borderWidth: 1,
+                          borderRadius: 10,
+                          paddingHorizontal: 10,
+                          paddingVertical: 8,
+                        }}
+                      >
+                        <TextInput
+                          value={row.label}
+                          onChangeText={(value) =>
+                            onUpdateRange(index, "label", value)
+                          }
+                          placeholder="Label"
+                          style={{ fontSize: 16 }}
+                        />
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              );
+            }
+
+            return null;
+          })}
+        </ScrollView>
 
         <View
           style={{

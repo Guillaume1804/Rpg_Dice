@@ -1,28 +1,27 @@
+// dice-universal/features/tables/actionWizard/steps/ActionWizardStepType.tsx
+
 import { Pressable, Text, View } from "react-native";
-import { ACTION_BEHAVIOR_CATALOG } from "../behaviorCatalog";
-import type { ActionBehaviorType } from "../behaviorCatalog";
+import {
+  RULE_BEHAVIORS,
+  type RuleBehaviorKey,
+} from "../../../../core/rules/behaviorRegistry";
 
 type Props = {
-  value: ActionBehaviorType | null;
-  onSelect: (value: ActionBehaviorType) => void;
+  value: RuleBehaviorKey | null;
+  onSelect: (value: RuleBehaviorKey) => void;
 };
 
-export function ActionWizardStepType({
-  value,
-  onSelect,
-}: Props) {
+export function ActionWizardStepType({ value, onSelect }: Props) {
   return (
     <View style={{ gap: 12 }}>
-      <Text style={{ fontSize: 18, fontWeight: "800" }}>
-        Type d’action
-      </Text>
+      <Text style={{ fontSize: 18, fontWeight: "800" }}>Type d’action</Text>
 
       <Text style={{ opacity: 0.72 }}>
         Choisis la manière principale dont cette action doit lire son jet.
       </Text>
 
       <View style={{ gap: 10 }}>
-        {ACTION_BEHAVIOR_CATALOG.map((option) => {
+        {RULE_BEHAVIORS.map((option) => {
           const selected = value === option.key;
 
           return (

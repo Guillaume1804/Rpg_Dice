@@ -1,7 +1,7 @@
 // dice-universal/features/rules/ruleWizard/CreateRuleWizardModal.tsx
 
 import { View, Text, Pressable, TextInput, ScrollView } from "react-native";
-import type { RuleBehaviorKey } from "../../../core/rules/behaviorCatalog";
+import type { RuleBehaviorKey } from "../../../core/rules/behaviorRegistry";
 import type { RuleWizardDraft, RuleWizardScope, RuleWizardStep } from "./types";
 
 import { RULE_BEHAVIORS } from "../../../core/rules/behaviorRegistry";

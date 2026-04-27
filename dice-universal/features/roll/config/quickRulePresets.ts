@@ -1,4 +1,4 @@
-import type { RuleBehaviorKey } from "../../../core/rules/behaviorCatalog";
+import type { RuleBehaviorKey } from "../../../core/rules/behaviorRegistry";
 
 export type QuickRulePresetScope = "entry" | "group";
 

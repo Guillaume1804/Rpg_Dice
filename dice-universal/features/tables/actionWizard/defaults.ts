@@ -1,6 +1,6 @@
 // dice-universal\features\tables\actionWizard\defaults.ts
 
-import type { ActionBehaviorType } from "./behaviorCatalog";
+import type { RuleBehaviorKey as ActionBehaviorType } from "../../../core/rules/behaviorRegistry";
 import type { ActionWizardDraft } from "./types";
 
 function defaultRanges() {

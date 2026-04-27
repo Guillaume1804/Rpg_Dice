@@ -1,96 +1,97 @@
 import { useMemo, useState } from "react";
 import {
-    getBehaviorsForContext,
-    getBehaviorDefaults,
-} from "../../../core/rules/getBehaviorsForContext";
-import { getActionWizardBehaviors } from "../../../core/rules/behaviorCatalog";
-import type { RuleBehaviorKey } from "../../../core/rules/behaviorCatalog";
+  RULE_BEHAVIORS,
+  getRuleBehaviorDefinition,
+  type RuleBehaviorKey,
+} from "../../../core/rules/behaviorRegistry";
 import { buildDraftTempRuleFromPreset } from "../helpers/buildDraftTempRuleFromPreset";
 import { behaviorNeedsSelectionConfig } from "../helpers/quickBehaviorConfig";
 
 export function useQuickDieBehaviorPicker({
-    addQuickPresetDie,
-    quickBehaviorConfig,
+  addQuickPresetDie,
+  quickBehaviorConfig,
 }: any) {
-    const [editingDieSides, setEditingDieSides] = useState<number | null>(null);
-    const [visible, setVisible] = useState(false);
+  const [editingDieSides, setEditingDieSides] = useState<number | null>(null);
+  const [visible, setVisible] = useState(false);
 
-    function open(sides: number) {
-        setEditingDieSides(sides);
-        setVisible(true);
+  function open(sides: number) {
+    setEditingDieSides(sides);
+    setVisible(true);
+  }
+
+  function close() {
+    setVisible(false);
+    setEditingDieSides(null);
+  }
+
+  const behaviors = useMemo(() => {
+    if (editingDieSides == null) return [];
+
+    return RULE_BEHAVIORS.filter((behavior) => {
+      if (!behavior.supportedSides) return true;
+      return behavior.supportedSides.includes(editingDieSides);
+    }).map((behavior) => ({
+      behaviorKey: behavior.key,
+      context: "quick_roll" as const,
+      enabled: true,
+    }));
+  }, [editingDieSides]);
+
+  function getDefinition(behaviorKey: RuleBehaviorKey) {
+    return getRuleBehaviorDefinition(behaviorKey);
+  }
+
+  function select(behaviorKey: RuleBehaviorKey) {
+    if (editingDieSides == null) return;
+
+    const def = getDefinition(behaviorKey);
+    if (!def) return;
+
+    const quickScope = def.defaultScope === "group" ? "group" : "entry";
+
+    if (behaviorNeedsSelectionConfig(behaviorKey)) {
+      quickBehaviorConfig.open({
+        behaviorKey,
+        label: def.label,
+        scope: quickScope,
+      });
+      return;
     }
 
-    function close() {
-        setVisible(false);
-        setEditingDieSides(null);
+    const defaultValues: Record<string, unknown> = {};
+
+    for (const field of def.fields) {
+      defaultValues[field.key] = field.defaultValue;
     }
 
-    const behaviors = useMemo(() => {
-        if (editingDieSides == null) return [];
+    const tempRule = buildDraftTempRuleFromPreset({
+      preset: {
+        key: behaviorKey,
+        label: def.label,
+        description: def.description,
+        scope: quickScope,
+        behaviorKey,
+        defaultValues,
+      },
+      sides: editingDieSides,
+      actionName: def.label,
+    });
 
-        return getBehaviorsForContext("quick_roll").filter((behavior) => {
-            const def = getActionWizardBehaviors().find(
-                (item) => item.key === behavior.behaviorKey,
-            );
+    addQuickPresetDie(editingDieSides, {
+      scope: quickScope,
+      rule: tempRule,
+    });
 
-            if (!def?.supportedSides) return true;
+    close();
+  }
 
-            return def.supportedSides.includes(editingDieSides);
-        });
-    }, [editingDieSides]);
-
-    function getDefinition(behaviorKey: RuleBehaviorKey) {
-        return (
-            getActionWizardBehaviors().find((def) => def.key === behaviorKey) ?? null
-        );
-    }
-
-    function select(behaviorKey: RuleBehaviorKey) {
-        if (editingDieSides == null) return;
-
-        const def = getDefinition(behaviorKey);
-        if (!def) return;
-
-        const defaults = getBehaviorDefaults(behaviorKey, "quick_roll");
-        const quickScope = def.scope === "group" ? "group" : "entry";
-
-        if (behaviorNeedsSelectionConfig(behaviorKey)) {
-            quickBehaviorConfig.open({
-                behaviorKey,
-                label: def.label,
-                scope: quickScope,
-            });
-            return;
-        }
-
-        const tempRule = buildDraftTempRuleFromPreset({
-            preset: {
-                key: behaviorKey,
-                label: def.label,
-                description: def.description,
-                scope: quickScope,
-                behaviorKey,
-                defaultValues: defaults,
-            },
-            sides: editingDieSides,
-            actionName: def.label,
-        });
-
-        addQuickPresetDie(editingDieSides, {
-            scope: quickScope,
-            rule: tempRule,
-        });
-
-        close();
-    }
-
-    return {
-        visible,
-        editingDieSides,
-        behaviors,
-        open,
-        close,
-        select,
-        getDefinition,
-    };
+  return {
+    visible,
+    editingDieSides,
+    behaviors,
+    open,
+    close,
+    select,
+    getDefinition,
+  };
 }

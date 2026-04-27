@@ -1,10 +1,12 @@
+// dice-universal\features\tables\actionWizard\useCreateActionWizard.ts
+
 import { useMemo, useState } from "react";
 import {
   createDefaultActionWizardDraft,
   getDefaultDieForBehavior,
 } from "./defaults";
 import { validateActionWizardStep } from "./helpers";
-import type { ActionBehaviorType } from "./behaviorCatalog";
+import type { RuleBehaviorKey as ActionBehaviorType } from "../../../core/rules/behaviorRegistry";
 import type { ActionWizardDraft, ActionWizardStep } from "./types";
 
 const STEP_ORDER: ActionWizardStep[] = [

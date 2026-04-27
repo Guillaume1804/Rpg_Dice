@@ -1,4 +1,6 @@
-import type { ActionBehaviorType } from "./behaviorCatalog";
+// dice-universal\features\tables\actionWizard\types.ts
+
+import type { RuleBehaviorKey as ActionBehaviorType } from "../../../core/rules/behaviorRegistry";
 
 export type ActionResultMode = "sum" | "values";
 

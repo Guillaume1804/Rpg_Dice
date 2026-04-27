@@ -1,7 +1,7 @@
 // dice-universal/features/rules/ruleWizard/useRuleWizard.ts
 
 import { useMemo, useState } from "react";
-import type { RuleBehaviorKey } from "../../../core/rules/behaviorCatalog";
+import type { RuleBehaviorKey } from "../../../core/rules/behaviorRegistry";
 import { createDefaultRuleWizardDraft } from "./defaults";
 import {
     buildRulePayloadFromRuleWizard,

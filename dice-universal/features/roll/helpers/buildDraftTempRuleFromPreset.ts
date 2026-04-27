@@ -1,5 +1,5 @@
 import { buildRuleFromBehavior } from "../../../core/rules/buildRuleFromBehavior";
-import type { RuleBehaviorKey } from "../../../core/rules/behaviorCatalog";
+import type { RuleBehaviorKey } from "../../../core/rules/behaviorRegistry";
 import type { RuleUsageKind } from "../../../data/repositories/rulesRepo";
 
 export type QuickRulePresetScope = "entry" | "group";

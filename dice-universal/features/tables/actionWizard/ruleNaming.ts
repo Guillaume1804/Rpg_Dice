@@ -1,4 +1,4 @@
-import type { ActionBehaviorType } from "./behaviorCatalog";
+import type { RuleBehaviorKey as ActionBehaviorType } from "../../../core/rules/behaviorRegistry";
 
 export function getBehaviorLabel(
   behaviorType: ActionBehaviorType | null,

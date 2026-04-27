@@ -1,8 +1,13 @@
+// dice-universal/core/rules/buildRuleFromBehavior.ts
+
 import type {
   RuleScope,
   RuleUsageKind,
 } from "../../data/repositories/rulesRepo";
-import { getRuleBehaviorByKey, type RuleBehaviorKey } from "./behaviorCatalog";
+import {
+  getRuleBehaviorDefinition,
+  type RuleBehaviorKey,
+} from "./behaviorRegistry";
 
 export type RuleBuildInput = {
   actionName: string;
@@ -28,13 +33,10 @@ export type RuleBuildInput = {
 export type BuiltRulePayload = {
   name: string;
   kind: string;
-
   behavior_key: string | null;
   category: string | null;
-
   params_json: string;
   ui_schema_json: string | null;
-
   supported_sides_json: string;
   scope: RuleScope;
   usage_kind: RuleUsageKind;
@@ -47,8 +49,15 @@ function parseNumberList(value?: string): number[] {
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean)
-    .map((item) => Number(item))
-    .filter((n) => Number.isFinite(n));
+    .map(Number)
+    .filter(Number.isFinite);
+}
+
+function parseOptionalNumber(value?: string): number | null {
+  if (value == null || value.trim() === "") return null;
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function parseValidRanges(
@@ -74,43 +83,88 @@ function parseValidRanges(
     );
 }
 
-function parseOptionalNumber(value?: string): number | null {
-  if (value == null || value.trim() === "") return null;
+function getInputValue(input: RuleBuildInput, key: string): unknown {
+  switch (key) {
+    case "compare":
+      return input.compare ?? "gte";
 
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
+    case "successThreshold":
+      return parseOptionalNumber(input.successThreshold);
+
+    case "critSuccessFaces":
+      return parseNumberList(input.critSuccessFaces);
+
+    case "critFailureFaces":
+      return parseNumberList(input.critFailureFaces);
+
+    case "successAtOrAbove":
+      return Number(input.successAtOrAbove ?? "5");
+
+    case "failFaces":
+      return parseNumberList(input.failFaces);
+
+    case "glitchRule":
+      return input.glitchRule ?? "ones_gt_successes";
+
+    case "keepCount":
+      return Number(input.keepCount ?? "1");
+
+    case "dropCount":
+      return Number(input.dropCount ?? "1");
+
+    case "resultMode":
+      return input.resultMode === "values" ? "values" : "sum";
+
+    case "ranges":
+      return parseValidRanges(input.ranges);
+
+    default:
+      return undefined;
+  }
+}
+
+function buildParams(input: RuleBuildInput): Record<string, unknown> {
+  const behavior = getRuleBehaviorDefinition(input.behaviorKey);
+  if (!behavior) {
+    throw new Error(`Comportement non supporté: ${input.behaviorKey}`);
+  }
+
+  const params: Record<string, unknown> = {};
+
+  for (const field of behavior.fields) {
+    const paramsKey = field.paramsKey ?? field.key;
+
+    params[paramsKey] = getInputValue(input, field.key);
+  }
+
+  if (input.behaviorKey === "table_lookup") {
+    params.defaultLabel = "—";
+  }
+
+  if (input.behaviorKey === "banded_sum") {
+    params.defaultLabel = "—";
+  }
+
+  return params;
 }
 
 function buildUiSchemaJson(behaviorKey: RuleBehaviorKey): string | null {
-  const behavior = getRuleBehaviorByKey(behaviorKey);
+  const behavior = getRuleBehaviorDefinition(behaviorKey);
   if (!behavior) return null;
 
   return JSON.stringify({
     behavior_key: behavior.key,
-    category: behavior.category,
+    category: behavior.defaultScope,
     fields: behavior.fields,
   });
 }
 
-function buildBasePayload(
-  input: RuleBuildInput,
-  params: Record<string, unknown>,
-  kind: string,
-  scope: RuleScope,
-): BuiltRulePayload {
-  const behavior = getRuleBehaviorByKey(input.behaviorKey);
+function resolveScope(behaviorKey: RuleBehaviorKey): RuleScope {
+  const behavior = getRuleBehaviorDefinition(behaviorKey);
 
-  return {
-    name: `${input.actionName.trim()} — règle`,
-    kind,
-    behavior_key: behavior?.key ?? input.behaviorKey,
-    category: behavior?.category ?? null,
-    params_json: JSON.stringify(params),
-    ui_schema_json: buildUiSchemaJson(input.behaviorKey),
-    supported_sides_json: JSON.stringify([input.sides]),
-    scope,
-    usage_kind: "generated",
-  };
+  if (!behavior) return "entry";
+
+  return behavior.defaultScope === "both" ? "entry" : behavior.defaultScope;
 }
 
 export function buildRuleFromBehavior(input: RuleBuildInput): BuiltRulePayload {
@@ -122,136 +176,21 @@ export function buildRuleFromBehavior(input: RuleBuildInput): BuiltRulePayload {
     throw new Error("Le type de dé est obligatoire.");
   }
 
-  if (input.behaviorKey === "single_check") {
-    return buildBasePayload(
-      input,
-      {
-        compare: input.compare ?? "gte",
-        success_threshold: parseOptionalNumber(input.successThreshold),
-        crit_success_faces: parseNumberList(input.critSuccessFaces),
-        crit_failure_faces: parseNumberList(input.critFailureFaces),
-      },
-      "single_check",
-      "entry",
-    );
+  const behavior = getRuleBehaviorDefinition(input.behaviorKey);
+
+  if (!behavior) {
+    throw new Error(`Comportement non supporté: ${input.behaviorKey}`);
   }
 
-  if (input.behaviorKey === "success_pool") {
-    return buildBasePayload(
-      input,
-      {
-        success_at_or_above: Number(input.successAtOrAbove ?? "5"),
-        fail_faces: parseNumberList(input.failFaces),
-        glitch_rule: input.glitchRule ?? "ones_gt_successes",
-      },
-      "success_pool",
-      "group",
-    );
-  }
-
-  if (input.behaviorKey === "sum_total") {
-    return buildBasePayload(input, {}, "sum", "entry");
-  }
-
-  if (input.behaviorKey === "banded_sum") {
-    return buildBasePayload(
-      input,
-      {
-        bands: parseValidRanges(input.ranges),
-        defaultLabel: "—",
-      },
-      "banded_sum",
-      "entry",
-    );
-  }
-
-  if (input.behaviorKey === "highest_of_pool") {
-    return buildBasePayload(
-      input,
-      {
-        compare: input.compare ?? "gte",
-        success_threshold: parseOptionalNumber(input.successThreshold),
-        crit_success_faces: parseNumberList(input.critSuccessFaces),
-        crit_failure_faces: parseNumberList(input.critFailureFaces),
-      },
-      "highest_of_pool",
-      "entry",
-    );
-  }
-
-  if (input.behaviorKey === "lowest_of_pool") {
-    return buildBasePayload(
-      input,
-      {
-        compare: input.compare ?? "gte",
-        success_threshold: parseOptionalNumber(input.successThreshold),
-        crit_success_faces: parseNumberList(input.critSuccessFaces),
-        crit_failure_faces: parseNumberList(input.critFailureFaces),
-      },
-      "lowest_of_pool",
-      "entry",
-    );
-  }
-
-  if (input.behaviorKey === "keep_highest_n") {
-    return buildBasePayload(
-      input,
-      {
-        keep: Number(input.keepCount ?? "1"),
-        result_mode: input.resultMode ?? "sum",
-      },
-      "keep_highest_n",
-      "entry",
-    );
-  }
-
-  if (input.behaviorKey === "keep_lowest_n") {
-    return buildBasePayload(
-      input,
-      {
-        keep: Number(input.keepCount ?? "1"),
-        result_mode: input.resultMode ?? "sum",
-      },
-      "keep_lowest_n",
-      "entry",
-    );
-  }
-
-  if (input.behaviorKey === "drop_highest_n") {
-    return buildBasePayload(
-      input,
-      {
-        drop: Number(input.dropCount ?? "1"),
-        result_mode: input.resultMode ?? "sum",
-      },
-      "drop_highest_n",
-      "entry",
-    );
-  }
-
-  if (input.behaviorKey === "drop_lowest_n") {
-    return buildBasePayload(
-      input,
-      {
-        drop: Number(input.dropCount ?? "1"),
-        result_mode: input.resultMode ?? "sum",
-      },
-      "drop_lowest_n",
-      "entry",
-    );
-  }
-
-  if (input.behaviorKey === "table_lookup") {
-    return buildBasePayload(
-      input,
-      {
-        ranges: parseValidRanges(input.ranges),
-        defaultLabel: "—",
-      },
-      "table_lookup",
-      "entry",
-    );
-  }
-
-  throw new Error(`Comportement non supporté: ${input.behaviorKey}`);
+  return {
+    name: `${input.actionName.trim()} — règle`,
+    kind: behavior.kind,
+    behavior_key: behavior.key,
+    category: behavior.defaultScope,
+    params_json: JSON.stringify(buildParams(input)),
+    ui_schema_json: buildUiSchemaJson(input.behaviorKey),
+    supported_sides_json: JSON.stringify([input.sides]),
+    scope: resolveScope(input.behaviorKey),
+    usage_kind: "generated",
+  };
 }

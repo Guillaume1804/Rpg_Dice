@@ -1,6 +1,8 @@
+// dice-universal\features\rules\helpers\ruleForm.ts
+
 import type { RuleScope } from "../../../data/repositories/rulesRepo";
 import type { RuleFamilyKey } from "../config/ruleFamilies";
-import type { ActionBehaviorType } from "../../tables/actionWizard/behaviorCatalog";
+import type { RuleBehaviorKey as ActionBehaviorType } from "../../../core/rules/behaviorRegistry";
 
 export type RuleRangeFormRow = {
   min: string;

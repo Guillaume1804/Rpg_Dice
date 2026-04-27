@@ -1,6 +1,6 @@
 // dice-universal/features/rules/ruleWizard/types.ts
 
-import type { RuleBehaviorKey } from "../../../core/rules/behaviorCatalog";
+import type { RuleBehaviorKey } from "../../../core/rules/behaviorRegistry";
 
 export type RuleWizardStep =
     | "name"

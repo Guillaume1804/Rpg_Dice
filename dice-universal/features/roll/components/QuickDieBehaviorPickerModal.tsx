@@ -1,7 +1,7 @@
 // dice-universal/features/roll/components/QuickDieBehaviorPickerModal.tsx
 
 import { View, Text, Pressable, ScrollView } from "react-native";
-import type { RuleBehaviorKey } from "../../../core/rules/behaviorCatalog";
+import type { RuleBehaviorKey } from "../../../core/rules/behaviorRegistry";
 
 type BehaviorOption = {
     behaviorKey: RuleBehaviorKey;
