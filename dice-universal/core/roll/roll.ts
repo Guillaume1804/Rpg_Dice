@@ -195,11 +195,17 @@ export function rollGroup(params: {
   let total = entries_total;
 
   if (params.groupRule) {
-    const isSuccessPoolGroup =
+    const shouldUseNaturalValuesForGroupRule =
       params.groupRule.kind === "success_pool" ||
-      params.groupRule.kind === "pool";
+      params.groupRule.kind === "pool" ||
+      params.groupRule.kind === "highest_of_pool" ||
+      params.groupRule.kind === "lowest_of_pool" ||
+      params.groupRule.kind === "keep_highest_n" ||
+      params.groupRule.kind === "keep_lowest_n" ||
+      params.groupRule.kind === "drop_highest_n" ||
+      params.groupRule.kind === "drop_lowest_n";
 
-    const groupCtx = isSuccessPoolGroup
+    const groupCtx = shouldUseNaturalValuesForGroupRule
       ? {
           values: entryResults.flatMap((e) => e.natural_values),
           sides: entryResults[0]?.sides ?? 0,
@@ -208,7 +214,7 @@ export function rollGroup(params: {
         }
       : {
           values: entryResults.map((e) => e.final_total),
-          sides: 0,
+          sides: entryResults[0]?.sides ?? 0,
           modifier: 0,
           sign: 1 as const,
         };

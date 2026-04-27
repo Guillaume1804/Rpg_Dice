@@ -1,5 +1,5 @@
 import { useLocalSearchParams } from "expo-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { View, Text, ScrollView } from "react-native";
 import { useDb } from "../../data/db/DbProvider";
 
@@ -33,6 +33,8 @@ export default function TableDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const tableId = useMemo(() => (typeof id === "string" ? id : ""), [id]);
+
+  const [isProfileDetailView, setIsProfileDetailView] = useState(false);
 
   const {
     showEditModal,
@@ -343,18 +345,21 @@ export default function TableDetailScreen() {
 
   return (
     <View style={{ flex: 1, padding: 16, gap: 12 }}>
-      <TableDetailHeader
-        tableName={table.name}
-        isSystem={isSystem}
-        onRenameTable={() => openRenameTableModal(table.name)}
-        onCreateProfile={openCreateProfileModal}
-      />
+      {!isProfileDetailView ? (
+        <TableDetailHeader
+          tableName={table.name}
+          isSystem={isSystem}
+          onRenameTable={() => openRenameTableModal(table.name)}
+          onCreateProfile={openCreateProfileModal}
+        />
+      ) : null}
 
       <ScrollView>
         <TableProfilesSection
           profiles={profiles}
           isSystem={isSystem}
           getRuleName={getRuleName}
+          onProfileDetailViewChange={setIsProfileDetailView}
           onRenameProfile={openRenameProfileModal}
           onCreateGroup={handleOpenCreateActionWizard}
           onDeleteProfile={submitDeleteProfile}

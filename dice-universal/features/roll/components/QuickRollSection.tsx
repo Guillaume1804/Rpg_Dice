@@ -153,30 +153,30 @@ function renderEntryRuleDetails(
         <Text style={{ fontSize: 20, fontWeight: "800", marginTop: 4 }}>
           Final : {res.final}
         </Text>
+      </>
+    );
+  }
 
+  if (res.kind === "success_pool") {
+    return (
+      <>
         <Text style={{ opacity: 0.72 }}>
-          ({formatValueList(entryResult.signed_values)})
+          Jets : {formatValueList(entryResult.natural_values)}
+        </Text>
+
+        <Text style={{ marginTop: 2, fontWeight: "700" }}>
+          {formatRuleResult(res)}
         </Text>
       </>
     );
   }
 
-  if (res.kind === "highest_of_pool") {
+  if (res.kind === "table_lookup") {
     return (
       <>
-        <Text style={{ opacity: 0.72 }}>
-          Jets : {formatValueList(res.natural_values)}
-        </Text>
+        <Text style={{ opacity: 0.72 }}>Valeur : {res.value}</Text>
 
-        <Text style={{ opacity: 0.72 }}>Meilleur : {res.kept}</Text>
-
-        <Text style={{ marginTop: 2, fontWeight: "700" }}>
-          {formatRuleResult(res)}
-        </Text>
-
-        <Text style={{ fontSize: 20, fontWeight: "800", marginTop: 4 }}>
-          Final : {res.final}
-        </Text>
+        <Text style={{ marginTop: 2, fontWeight: "700" }}>{res.label}</Text>
       </>
     );
   }
@@ -199,12 +199,70 @@ function renderEntryRuleDetails(
     );
   }
 
-  if (res.kind === "table_lookup") {
+  if (res.kind === "highest_of_pool" || res.kind === "lowest_of_pool") {
     return (
       <>
-        <Text style={{ opacity: 0.72 }}>Valeur : {res.value}</Text>
+        <Text style={{ opacity: 0.72 }}>
+          Jets : {formatValueList(res.natural_values)}
+        </Text>
 
-        <Text style={{ marginTop: 2, fontWeight: "700" }}>{res.label}</Text>
+        <Text style={{ opacity: 0.72 }}>Dé conservé : {res.kept}</Text>
+
+        <Text style={{ marginTop: 2, fontWeight: "700" }}>
+          {formatRuleResult(res)}
+        </Text>
+
+        <Text style={{ fontSize: 20, fontWeight: "800", marginTop: 4 }}>
+          Final : {res.final}
+        </Text>
+      </>
+    );
+  }
+
+  if (res.kind === "keep_highest_n" || res.kind === "keep_lowest_n") {
+    return (
+      <>
+        <Text style={{ opacity: 0.72 }}>
+          Jets : {formatValueList(res.natural_values)}
+        </Text>
+
+        <Text style={{ opacity: 0.72 }}>
+          Gardés : {formatValueList(res.kept)}
+        </Text>
+
+        {Array.isArray(res.final) ? (
+          <Text style={{ fontSize: 20, fontWeight: "800", marginTop: 4 }}>
+            Résultat : {formatValueList(res.final)}
+          </Text>
+        ) : (
+          <Text style={{ fontSize: 20, fontWeight: "800", marginTop: 4 }}>
+            Total : {res.final ?? "—"}
+          </Text>
+        )}
+      </>
+    );
+  }
+
+  if (res.kind === "drop_highest_n" || res.kind === "drop_lowest_n") {
+    return (
+      <>
+        <Text style={{ opacity: 0.72 }}>
+          Jets : {formatValueList(res.natural_values)}
+        </Text>
+
+        <Text style={{ opacity: 0.72 }}>
+          Restants : {formatValueList(res.remaining)}
+        </Text>
+
+        {Array.isArray(res.final) ? (
+          <Text style={{ fontSize: 20, fontWeight: "800", marginTop: 4 }}>
+            Résultat : {formatValueList(res.final)}
+          </Text>
+        ) : (
+          <Text style={{ fontSize: 20, fontWeight: "800", marginTop: 4 }}>
+            Total : {res.final ?? "—"}
+          </Text>
+        )}
       </>
     );
   }
@@ -233,20 +291,6 @@ function renderEntryRuleDetails(
     );
   }
 
-  if (res.kind === "success_pool") {
-    return (
-      <>
-        <Text style={{ opacity: 0.72 }}>
-          Jets : {formatValueList(entryResult.natural_values)}
-        </Text>
-
-        <Text style={{ marginTop: 2, fontWeight: "700" }}>
-          {formatRuleResult(res)}
-        </Text>
-      </>
-    );
-  }
-
   return (
     <>
       <Text style={{ fontSize: 20, fontWeight: "800" }}>
@@ -267,17 +311,7 @@ function renderGroupRuleDetails(result: GroupRollResult) {
   if (res.kind === "success_pool") {
     return (
       <>
-        <View
-          style={{
-            paddingVertical: 8,
-            paddingHorizontal: 10,
-            borderWidth: 1,
-            borderRadius: 10,
-            alignSelf: "flex-start",
-          }}
-        >
-          <Text style={{ fontWeight: "700" }}>{formatRuleResult(res)}</Text>
-        </View>
+        <Text style={{ fontWeight: "700" }}>{formatRuleResult(res)}</Text>
 
         <Text style={{ opacity: 0.72, marginTop: 6 }}>
           Jets :{" "}
@@ -287,19 +321,57 @@ function renderGroupRuleDetails(result: GroupRollResult) {
     );
   }
 
+  if (res.kind === "keep_highest_n" || res.kind === "keep_lowest_n") {
+    return (
+      <>
+        <Text style={{ opacity: 0.72 }}>
+          Jets : {formatValueList(res.natural_values)}
+        </Text>
+
+        <Text style={{ opacity: 0.72 }}>
+          Gardés : {formatValueList(res.kept)}
+        </Text>
+
+        {Array.isArray(res.final) ? (
+          <Text style={{ fontSize: 20, fontWeight: "800", marginTop: 4 }}>
+            Résultat : {formatValueList(res.final)}
+          </Text>
+        ) : (
+          <Text style={{ fontSize: 20, fontWeight: "800", marginTop: 4 }}>
+            Total : {res.final ?? "—"}
+          </Text>
+        )}
+      </>
+    );
+  }
+
+  if (res.kind === "drop_highest_n" || res.kind === "drop_lowest_n") {
+    return (
+      <>
+        <Text style={{ opacity: 0.72 }}>
+          Jets : {formatValueList(res.natural_values)}
+        </Text>
+
+        <Text style={{ opacity: 0.72 }}>
+          Restants : {formatValueList(res.remaining)}
+        </Text>
+
+        {Array.isArray(res.final) ? (
+          <Text style={{ fontSize: 20, fontWeight: "800", marginTop: 4 }}>
+            Résultat : {formatValueList(res.final)}
+          </Text>
+        ) : (
+          <Text style={{ fontSize: 20, fontWeight: "800", marginTop: 4 }}>
+            Total : {res.final ?? "—"}
+          </Text>
+        )}
+      </>
+    );
+  }
+
   return (
     <>
-      <View
-        style={{
-          paddingVertical: 8,
-          paddingHorizontal: 10,
-          borderWidth: 1,
-          borderRadius: 10,
-          alignSelf: "flex-start",
-        }}
-      >
-        <Text style={{ fontWeight: "700" }}>{formatRuleResult(res)}</Text>
-      </View>
+      <Text style={{ fontWeight: "700" }}>{formatRuleResult(res)}</Text>
 
       <Text style={{ opacity: 0.72, marginTop: 6 }}>
         Valeurs :{" "}
@@ -527,13 +599,7 @@ export function QuickRollSection({
 
                       {entryResult ? (
                         <View style={{ paddingTop: 6, borderTopWidth: 1 }}>
-                          <Text style={{ fontSize: 20, fontWeight: "800" }}>
-                            {entryResult.final_total}
-                          </Text>
-
-                          <Text style={{ opacity: 0.72 }}>
-                            ({formatValueList(entryResult.signed_values)})
-                          </Text>
+                          {renderEntryRuleDetails(entryResult)}
                         </View>
                       ) : null}
                     </View>
