@@ -29,7 +29,9 @@ export function formatRuleResult(res: any): string {
 
   if (res.kind === "pipeline") {
     const outcome =
-      res?.meta?.outcome != null ? ` — ${formatOutcomeLabel(res.meta.outcome)}` : "";
+      res?.meta?.outcome != null
+        ? ` — ${formatOutcomeLabel(res.meta.outcome)}`
+        : "";
 
     if (res.final == null) {
       return `Pipeline${outcome}`;
@@ -71,6 +73,19 @@ export function formatRuleResult(res: any): string {
 
   if (res.kind === "table_lookup") {
     return res.label;
+  }
+
+  if (res.kind === "threshold_degrees") {
+    const label =
+      res.outcome === "crit_success"
+        ? "Réussite critique"
+        : res.outcome === "crit_failure"
+          ? "Échec critique"
+          : res.outcome === "success"
+            ? "Réussite"
+            : "Échec";
+
+    return `${label} — ${res.degrees} degré${res.degrees > 1 ? "s" : ""} — marge: ${res.margin}`;
   }
 
   if (res.kind === "unknown") {

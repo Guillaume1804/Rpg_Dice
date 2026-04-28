@@ -84,6 +84,17 @@ export type RuleResult =
       final: number | null;
       meta: any;
     }
+  | {
+      kind: "threshold_degrees";
+      roll: number;
+      final: number;
+      target: number;
+      compare: "gte" | "lte";
+      margin: number;
+      degrees: number;
+      outcome: "crit_success" | "crit_failure" | "success" | "failure";
+      degree_step: number;
+    }
   | { kind: "unknown"; message: string };
 
 function safeParse(json: string) {
@@ -461,6 +472,75 @@ export function evaluateRule(
       natural,
       final,
       compare,
+    };
+  }
+
+  if (kind === "threshold_degrees") {
+    const natural = ctx.values[0] ?? 0;
+    const final = natural * sign + modifier;
+
+    const compare: "gte" | "lte" = p.compare === "gte" ? "gte" : "lte";
+
+    const target = Number(p.target_value ?? p.targetValue ?? 0);
+    const degreeStep = Number(p.degree_step ?? p.degreeStep ?? 10);
+
+    const critSuccessMin = Number(
+      p.crit_success_min ?? p.critSuccessMin ?? NaN,
+    );
+    const critSuccessMax = Number(
+      p.crit_success_max ?? p.critSuccessMax ?? NaN,
+    );
+    const critFailureMin = Number(
+      p.crit_failure_min ?? p.critFailureMin ?? NaN,
+    );
+    const critFailureMax = Number(
+      p.crit_failure_max ?? p.critFailureMax ?? NaN,
+    );
+
+    const isCritSuccess =
+      Number.isFinite(critSuccessMin) &&
+      Number.isFinite(critSuccessMax) &&
+      natural >= critSuccessMin &&
+      natural <= critSuccessMax;
+
+    const isCritFailure =
+      Number.isFinite(critFailureMin) &&
+      Number.isFinite(critFailureMax) &&
+      natural >= critFailureMin &&
+      natural <= critFailureMax;
+
+    const isSuccess = compare === "lte" ? final <= target : final >= target;
+
+    const margin = compare === "lte" ? target - final : final - target;
+
+    const safeDegreeStep =
+      Number.isFinite(degreeStep) && degreeStep > 0 ? degreeStep : 10;
+
+    const degrees = Math.max(
+      1,
+      1 + Math.floor(Math.abs(margin) / safeDegreeStep),
+    );
+
+    let outcome: "crit_success" | "crit_failure" | "success" | "failure";
+
+    if (isCritSuccess) {
+      outcome = "crit_success";
+    } else if (isCritFailure) {
+      outcome = "crit_failure";
+    } else {
+      outcome = isSuccess ? "success" : "failure";
+    }
+
+    return {
+      kind: "threshold_degrees",
+      roll: natural,
+      final,
+      target,
+      compare,
+      margin,
+      degrees,
+      outcome,
+      degree_step: safeDegreeStep,
     };
   }
 

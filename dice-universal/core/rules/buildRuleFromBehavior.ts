@@ -28,6 +28,12 @@ export type RuleBuildInput = {
   keepCount?: string;
   dropCount?: string;
   resultMode?: string;
+  targetValue?: string;
+  degreeStep?: string;
+  critSuccessMin?: string;
+  critSuccessMax?: string;
+  critFailureMin?: string;
+  critFailureMax?: string;
 };
 
 export type BuiltRulePayload = {
@@ -117,6 +123,24 @@ function getInputValue(input: RuleBuildInput, key: string): unknown {
 
     case "ranges":
       return parseValidRanges(input.ranges);
+
+    case "targetValue":
+      return Number(input.targetValue ?? "0");
+
+    case "degreeStep":
+      return Number(input.degreeStep ?? "10");
+
+    case "critSuccessMin":
+      return parseOptionalNumber(input.critSuccessMin);
+
+    case "critSuccessMax":
+      return parseOptionalNumber(input.critSuccessMax);
+
+    case "critFailureMin":
+      return parseOptionalNumber(input.critFailureMin);
+
+    case "critFailureMax":
+      return parseOptionalNumber(input.critFailureMax);
 
     default:
       return undefined;
