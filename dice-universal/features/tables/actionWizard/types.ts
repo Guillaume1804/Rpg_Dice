@@ -21,7 +21,13 @@ export type ActionWizardDraft = {
   name: string;
   behaviorType: ActionBehaviorType | null;
 
+  /**
+   * Compat temporaire avec l'ancien wizard.
+   * On garde `die` pour éviter de casser tous les composants d’un coup.
+   * La vraie source pour les actions composées devient `dice`.
+   */
   die: ActionDieDraft;
+  dice: ActionDieDraft[];
 
   compare: "gte" | "lte";
   successThreshold: string;

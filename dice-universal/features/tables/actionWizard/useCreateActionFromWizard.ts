@@ -1,3 +1,5 @@
+// dice-universal\features\tables\actionWizard\useCreateActionFromWizard.ts
+
 import { useState } from "react";
 import type { Db } from "../../../data/db/database";
 import type { ProfileRow } from "../../../data/repositories/profilesRepo";
@@ -9,9 +11,10 @@ import {
   createGroup,
   createGroupDie,
 } from "../../../data/repositories/groupsRepo";
-import { buildRulePayloadFromActionWizard } from "./helpers";
 import { buildCanonicalLocalRuleName } from "./ruleNaming";
 import type { ActionWizardDraft } from "./types";
+import { buildRuleFromBehavior } from "../../../core/rules/buildRuleFromBehavior";
+import { getRuleBehaviorDefinition } from "../../../core/rules/behaviorRegistry";
 
 type Params = {
   db: Db;
@@ -21,6 +24,30 @@ type Params = {
   reload: () => Promise<void>;
   onSuccess?: () => void;
 };
+
+function resolveRuleScopeFromDraft(
+  draft: ActionWizardDraft,
+): "entry" | "group" | "both" {
+  if (!draft.behaviorType) return "entry";
+
+  const behavior = getRuleBehaviorDefinition(draft.behaviorType);
+  if (!behavior) return "entry";
+
+  return behavior.defaultScope;
+}
+
+function getValidDice(draft: ActionWizardDraft) {
+  const dice = draft.dice.length > 0 ? draft.dice : [draft.die];
+
+  return dice.filter(
+    (die) =>
+      die.sides != null &&
+      Number.isFinite(die.sides) &&
+      die.sides > 0 &&
+      Number.isFinite(die.qty) &&
+      die.qty > 0,
+  );
+}
 
 export function useCreateActionFromWizard({
   db,
@@ -44,6 +71,18 @@ export function useCreateActionFromWizard({
       return false;
     }
 
+    if (!draft.behaviorType) {
+      setSubmitError("Type d’action manquant.");
+      return false;
+    }
+
+    const validDice = getValidDice(draft);
+
+    if (validDice.length === 0) {
+      setSubmitError("Ajoute au moins un dé valide.");
+      return false;
+    }
+
     try {
       setSubmitting(true);
       setSubmitError(null);
@@ -53,9 +92,26 @@ export function useCreateActionFromWizard({
 
       if (draft.selectedRuleId) {
         ruleId = draft.selectedRuleId;
-        ruleScope = draft.behaviorType === "success_pool" ? "group" : "entry";
+        ruleScope = resolveRuleScopeFromDraft(draft);
       } else {
-        const rulePayload = buildRulePayloadFromActionWizard(draft);
+        const firstDie = validDice[0];
+
+        const rulePayload = buildRuleFromBehavior({
+          actionName: draft.name,
+          behaviorKey: draft.behaviorType,
+          sides: firstDie.sides ?? 6,
+          compare: draft.compare,
+          successThreshold: draft.successThreshold,
+          critSuccessFaces: draft.critSuccessFaces,
+          critFailureFaces: draft.critFailureFaces,
+          successAtOrAbove: draft.successAtOrAbove,
+          failFaces: draft.failFaces,
+          glitchRule: draft.glitchRule,
+          ranges: draft.ranges,
+          keepCount: draft.keepCount,
+          dropCount: draft.dropCount,
+          resultMode: draft.resultMode,
+        });
 
         const existingCanonicalRule = await findCanonicalLocalRule(db, {
           tableId,
@@ -101,14 +157,16 @@ export function useCreateActionFromWizard({
         rule_id: shouldAttachRuleToGroup ? ruleId : null,
       });
 
-      await createGroupDie(db, {
-        groupId,
-        sides: draft.die.sides ?? 6,
-        qty: draft.die.qty,
-        modifier: draft.die.modifier,
-        sign: draft.die.sign,
-        rule_id: shouldAttachRuleToDie ? ruleId : null,
-      });
+      for (const die of validDice) {
+        await createGroupDie(db, {
+          groupId,
+          sides: die.sides ?? 6,
+          qty: die.qty,
+          modifier: die.modifier,
+          sign: die.sign,
+          rule_id: shouldAttachRuleToDie ? ruleId : null,
+        });
+      }
 
       await reload();
       onSuccess?.();

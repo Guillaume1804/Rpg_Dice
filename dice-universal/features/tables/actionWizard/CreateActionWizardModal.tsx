@@ -1,6 +1,12 @@
+// dice-universal\features\tables\actionWizard\CreateActionWizardModal.tsx
+
 import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 import type { RuleRow } from "../../../data/repositories/rulesRepo";
-import type { ActionWizardDraft, ActionWizardStep } from "./types";
+import type {
+  ActionDieDraft,
+  ActionWizardDraft,
+  ActionWizardStep,
+} from "./types";
 import { ActionWizardStepName } from "./steps/ActionWizardStepName";
 import { ActionWizardStepType } from "./steps/ActionWizardStepType";
 import { ActionWizardStepDice } from "./steps/ActionWizardStepDice";
@@ -35,6 +41,15 @@ type Props = {
     key: K,
     value: ActionWizardDraft["die"][K],
   ) => void;
+
+  onUpdateDieAt: <K extends keyof ActionDieDraft>(
+    index: number,
+    key: K,
+    value: ActionDieDraft[K],
+  ) => void;
+
+  onAddDie: () => void;
+  onRemoveDie: (index: number) => void;
 
   onUpdateRangeRow: (
     index: number,
@@ -71,6 +86,9 @@ export function CreateActionWizardModal({
   onSubmit,
   onUpdateDraft,
   onUpdateDie,
+  onUpdateDieAt,
+  onAddDie,
+  onRemoveDie,
   onUpdateRangeRow,
   onAddRangeRow,
   onRemoveRangeRow,
@@ -127,12 +145,7 @@ export function CreateActionWizardModal({
               Étape {stepIndex + 1} / {totalSteps} — {getStepTitle(step)}
             </Text>
 
-            <View
-              style={{
-                flexDirection: "row",
-                gap: 6,
-              }}
-            >
+            <View style={{ flexDirection: "row", gap: 6 }}>
               {Array.from({ length: totalSteps }).map((_, index) => (
                 <View
                   key={index}
@@ -173,11 +186,12 @@ export function CreateActionWizardModal({
 
             {step === "dice" ? (
               <ActionWizardStepDice
-                die={draft.die}
-                onChangeSides={(value) => onUpdateDie("sides", value)}
-                onChangeQty={(value) => onUpdateDie("qty", value)}
-                onChangeModifier={(value) => onUpdateDie("modifier", value)}
-                onChangeSign={(value) => onUpdateDie("sign", value)}
+                dice={draft.dice}
+                onChangeDie={onUpdateDieAt}
+                onAddDie={onAddDie}
+                onRemoveDie={onRemoveDie}
+                fallbackDie={draft.die}
+                onChangeFallbackDie={onUpdateDie}
               />
             ) : null}
 

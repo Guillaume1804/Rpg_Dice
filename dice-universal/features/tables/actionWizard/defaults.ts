@@ -1,7 +1,7 @@
 // dice-universal\features\tables\actionWizard\defaults.ts
 
 import type { RuleBehaviorKey as ActionBehaviorType } from "../../../core/rules/behaviorRegistry";
-import type { ActionWizardDraft } from "./types";
+import type { ActionDieDraft, ActionWizardDraft } from "./types";
 
 function defaultRanges() {
   return [
@@ -11,59 +11,64 @@ function defaultRanges() {
   ];
 }
 
-export function getDefaultDieForBehavior(
+export function createDieDraft(
+  partial?: Partial<ActionDieDraft>,
+): ActionDieDraft {
+  return {
+    sides: partial?.sides ?? null,
+    qty: partial?.qty ?? 1,
+    modifier: partial?.modifier ?? 0,
+    sign: partial?.sign ?? 1,
+  };
+}
+
+export function getDefaultDiceForBehavior(
   behaviorType: ActionBehaviorType | null,
-) {
+): ActionDieDraft[] {
   switch (behaviorType) {
     case "single_check":
-      return { sides: 20, qty: 1, modifier: 0, sign: 1 as const };
+      return [createDieDraft({ sides: 20, qty: 1 })];
 
     case "table_lookup":
-      return { sides: 100, qty: 1, modifier: 0, sign: 1 as const };
+      return [createDieDraft({ sides: 100, qty: 1 })];
 
     case "success_pool":
-      return { sides: 6, qty: 5, modifier: 0, sign: 1 as const };
+      return [createDieDraft({ sides: 6, qty: 5 })];
 
     case "sum_total":
-      return { sides: 6, qty: 2, modifier: 0, sign: 1 as const };
+      return [createDieDraft({ sides: 6, qty: 2 })];
 
     case "banded_sum":
-      return { sides: 6, qty: 2, modifier: 0, sign: 1 as const };
+      return [createDieDraft({ sides: 6, qty: 2 })];
 
     case "highest_of_pool":
-      return { sides: 6, qty: 4, modifier: 0, sign: 1 as const };
-
     case "lowest_of_pool":
-      return { sides: 6, qty: 4, modifier: 0, sign: 1 as const };
-
     case "keep_highest_n":
-      return { sides: 6, qty: 5, modifier: 0, sign: 1 as const };
-
     case "keep_lowest_n":
-      return { sides: 6, qty: 5, modifier: 0, sign: 1 as const };
-
     case "drop_highest_n":
-      return { sides: 6, qty: 5, modifier: 0, sign: 1 as const };
-
     case "drop_lowest_n":
-      return { sides: 6, qty: 5, modifier: 0, sign: 1 as const };
+      return [createDieDraft({ sides: 6, qty: 5 })];
 
     default:
-      return { sides: null, qty: 1, modifier: 0, sign: 1 as const };
+      return [createDieDraft()];
   }
 }
 
+export function getDefaultDieForBehavior(
+  behaviorType: ActionBehaviorType | null,
+): ActionDieDraft {
+  return getDefaultDiceForBehavior(behaviorType)[0] ?? createDieDraft();
+}
+
 export function createDefaultActionWizardDraft(): ActionWizardDraft {
+  const dice = getDefaultDiceForBehavior(null);
+
   return {
     name: "",
     behaviorType: null,
 
-    die: {
-      sides: null,
-      qty: 1,
-      modifier: 0,
-      sign: 1,
-    },
+    die: dice[0],
+    dice,
 
     compare: "gte",
     successThreshold: "",
@@ -82,6 +87,5 @@ export function createDefaultActionWizardDraft(): ActionWizardDraft {
     keepCount: "3",
     dropCount: "1",
     resultMode: "sum",
-
   };
 }

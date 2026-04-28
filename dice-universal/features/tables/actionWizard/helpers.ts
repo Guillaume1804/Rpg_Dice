@@ -38,16 +38,22 @@ export function validateActionWizardStep(
   }
 
   if (step === "dice") {
-    if (!draft.die.sides || draft.die.sides <= 0) {
-      return "Le type de dé est obligatoire.";
+    if (!draft.dice || draft.dice.length === 0) {
+      return "Ajoute au moins un dé.";
     }
 
-    if (!Number.isFinite(draft.die.qty) || draft.die.qty <= 0) {
-      return "La quantité doit être supérieure à 0.";
-    }
+    for (const die of draft.dice) {
+      if (!die.sides || die.sides <= 0) {
+        return "Chaque dé doit avoir un nombre de faces valide.";
+      }
 
-    if (!Number.isFinite(draft.die.modifier)) {
-      return "Le modificateur est invalide.";
+      if (!Number.isFinite(die.qty) || die.qty <= 0) {
+        return "La quantité doit être supérieure à 0.";
+      }
+
+      if (!Number.isFinite(die.modifier)) {
+        return "Le modificateur est invalide.";
+      }
     }
 
     return null;
@@ -154,14 +160,20 @@ export function buildRulePayloadFromActionWizard(
     throw new Error("Le nom de l’action est obligatoire.");
   }
 
-  if (!draft.die.sides || draft.die.sides <= 0) {
-    throw new Error("Le type de dé est obligatoire.");
+  if (!draft.dice || draft.dice.length === 0) {
+    throw new Error("Au moins un dé est requis.");
+  }
+
+  const firstDie = draft.dice.find((die) => die.sides != null && die.sides > 0);
+
+  if (!firstDie?.sides) {
+    throw new Error("Au moins un dé valide est requis.");
   }
 
   return buildRuleFromBehavior({
     actionName: draft.name,
     behaviorKey: draft.behaviorType,
-    sides: draft.die.sides,
+    sides: firstDie.sides,
     compare: draft.compare,
     successThreshold: draft.successThreshold,
     critSuccessFaces: draft.critSuccessFaces,
@@ -177,9 +189,19 @@ export function buildRulePayloadFromActionWizard(
 }
 
 export function buildActionWizardSummary(draft: ActionWizardDraft): string {
-  const dieLabel = draft.die.sides
-    ? `${draft.die.qty}d${draft.die.sides}`
-    : "dé non défini";
+  const dieLabel =
+    draft.dice && draft.dice.length > 0
+      ? draft.dice
+          .map(
+            (die) =>
+              `${die.qty}d${die.sides}${
+                die.modifier !== 0
+                  ? ` ${die.modifier > 0 ? "+" : ""}${die.modifier}`
+                  : ""
+              }${die.sign === -1 ? " (-)" : ""}`,
+          )
+          .join(" + ")
+      : "aucun dé";
 
   if (draft.behaviorType === "single_check") {
     return `${draft.name} • ${dieLabel} • test simple`;

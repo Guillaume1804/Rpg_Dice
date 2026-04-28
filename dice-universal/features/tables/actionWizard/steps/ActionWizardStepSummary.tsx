@@ -1,3 +1,5 @@
+// dice-universal\features\tables\actionWizard\steps\ActionWizardStepSummary.tsx
+
 import { Text, View } from "react-native";
 import { buildActionWizardSummary } from "../helpers";
 import type { ActionWizardDraft } from "../types";
@@ -9,9 +11,7 @@ type Props = {
 export function ActionWizardStepSummary({ draft }: Props) {
   return (
     <View style={{ gap: 12 }}>
-      <Text style={{ fontSize: 18, fontWeight: "800" }}>
-        Résumé
-      </Text>
+      <Text style={{ fontSize: 18, fontWeight: "800" }}>Résumé</Text>
 
       <Text style={{ opacity: 0.72 }}>
         Vérifie les informations avant de créer l’action.
@@ -29,28 +29,25 @@ export function ActionWizardStepSummary({ draft }: Props) {
           {buildActionWizardSummary(draft)}
         </Text>
 
-        <Text style={{ opacity: 0.72 }}>
-          Nom : {draft.name || "—"}
-        </Text>
+        <Text style={{ opacity: 0.72 }}>Nom : {draft.name || "—"}</Text>
 
         <Text style={{ opacity: 0.72 }}>
           Type : {draft.behaviorType ?? "—"}
         </Text>
 
-        <Text style={{ opacity: 0.72 }}>
-          Dé :{" "}
-          {draft.die.sides
-            ? `${draft.die.qty}d${draft.die.sides}`
-            : "—"}
-        </Text>
+        <View style={{ gap: 6 }}>
+          <Text style={{ fontWeight: "700" }}>Dés :</Text>
 
-        <Text style={{ opacity: 0.72 }}>
-          Modificateur : {draft.die.modifier}
-        </Text>
-
-        <Text style={{ opacity: 0.72 }}>
-          Signe : {draft.die.sign === 1 ? "+" : "-"}
-        </Text>
+          {draft.dice.map((die, index) => (
+            <Text key={index} style={{ opacity: 0.72 }}>
+              {die.qty}d{die.sides}
+              {die.modifier !== 0
+                ? ` ${die.modifier > 0 ? "+" : ""}${die.modifier}`
+                : ""}
+              {die.sign === -1 ? " (-)" : ""}
+            </Text>
+          ))}
+        </View>
       </View>
     </View>
   );

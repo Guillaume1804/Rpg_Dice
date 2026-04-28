@@ -3,11 +3,16 @@
 import { useMemo, useState } from "react";
 import {
   createDefaultActionWizardDraft,
-  getDefaultDieForBehavior,
+  createDieDraft,
+  getDefaultDiceForBehavior,
 } from "./defaults";
 import { validateActionWizardStep } from "./helpers";
 import type { RuleBehaviorKey as ActionBehaviorType } from "../../../core/rules/behaviorRegistry";
-import type { ActionWizardDraft, ActionWizardStep } from "./types";
+import type {
+  ActionDieDraft,
+  ActionWizardDraft,
+  ActionWizardStep,
+} from "./types";
 
 const STEP_ORDER: ActionWizardStep[] = [
   "name",
@@ -50,17 +55,70 @@ export function useCreateActionWizard() {
     }));
   }
 
-  function updateDie<K extends keyof ActionWizardDraft["die"]>(
+  /**
+   * Compat ancien composant : met à jour le premier dé.
+   */
+  function updateDie<K extends keyof ActionDieDraft>(
     key: K,
-    value: ActionWizardDraft["die"][K],
+    value: ActionDieDraft[K],
   ) {
-    setDraft((prev) => ({
-      ...prev,
-      die: {
-        ...prev.die,
-        [key]: value,
-      },
-    }));
+    setDraft((prev) => {
+      const nextDice =
+        prev.dice.length > 0
+          ? prev.dice.map((die, index) =>
+              index === 0 ? { ...die, [key]: value } : die,
+            )
+          : [{ ...createDieDraft(), [key]: value }];
+
+      return {
+        ...prev,
+        die: nextDice[0],
+        dice: nextDice,
+      };
+    });
+  }
+
+  function updateDieAt<K extends keyof ActionDieDraft>(
+    index: number,
+    key: K,
+    value: ActionDieDraft[K],
+  ) {
+    setDraft((prev) => {
+      const nextDice = prev.dice.map((die, dieIndex) =>
+        dieIndex === index ? { ...die, [key]: value } : die,
+      );
+
+      return {
+        ...prev,
+        die: nextDice[0] ?? createDieDraft(),
+        dice: nextDice,
+      };
+    });
+  }
+
+  function addDie() {
+    setDraft((prev) => {
+      const nextDice = [...prev.dice, createDieDraft({ sides: 6 })];
+
+      return {
+        ...prev,
+        die: nextDice[0],
+        dice: nextDice,
+      };
+    });
+  }
+
+  function removeDie(index: number) {
+    setDraft((prev) => {
+      const nextDice = prev.dice.filter((_, dieIndex) => dieIndex !== index);
+      const safeDice = nextDice.length > 0 ? nextDice : [createDieDraft()];
+
+      return {
+        ...prev,
+        die: safeDice[0],
+        dice: safeDice,
+      };
+    });
   }
 
   function updateRangeRow(
@@ -91,17 +149,21 @@ export function useCreateActionWizard() {
   }
 
   function setBehaviorType(behaviorType: ActionBehaviorType) {
+    const dice = getDefaultDiceForBehavior(behaviorType);
+
     setDraft((prev) => ({
       ...prev,
       behaviorType,
       selectedRuleId: null,
       creationMode: "auto",
-      die: getDefaultDieForBehavior(behaviorType),
+      die: dice[0],
+      dice,
     }));
   }
 
   function goNext() {
     const validationError = validateActionWizardStep(step, draft);
+
     if (validationError) {
       setError(validationError);
       return false;
@@ -119,6 +181,7 @@ export function useCreateActionWizard() {
 
   function goBack() {
     setError(null);
+
     const currentIndex = STEP_ORDER.indexOf(step);
     if (currentIndex > 0) {
       setStep(STEP_ORDER[currentIndex - 1]);
@@ -142,6 +205,9 @@ export function useCreateActionWizard() {
 
     updateDraft,
     updateDie,
+    updateDieAt,
+    addDie,
+    removeDie,
     updateRangeRow,
     addRangeRow,
     removeRangeRow,

@@ -27,6 +27,12 @@ import { useHumanRuleEditor } from "../../features/rules/hooks/useHumanRuleEdito
 import { HumanRuleEditorModal } from "../../features/rules/components/HumanRuleEditorModal";
 import { useRulesData } from "../../features/rules/hooks/useRulesData";
 
+function getFirstValidWizardDieSides(dice: { sides: number | null }[]) {
+  const firstValidDie = dice.find((die) => die.sides != null && die.sides > 0);
+
+  return firstValidDie?.sides ?? null;
+}
+
 export default function TableDetailScreen() {
   const db = useDb();
   const { saveRule } = useRulesData({ db });
@@ -235,6 +241,9 @@ export default function TableDetailScreen() {
     goBack: goWizardBack,
     updateDraft: updateWizardDraft,
     updateDie: updateWizardDie,
+    updateDieAt: updateWizardDieAt,
+    addDie: addWizardDie,
+    removeDie: removeWizardDie,
     updateRangeRow: updateWizardRangeRow,
     addRangeRow: addWizardRangeRow,
     removeRangeRow: removeWizardRangeRow,
@@ -258,18 +267,29 @@ export default function TableDetailScreen() {
   });
 
   const compatibleRulesForWizard = useMemo(() => {
-    if (!wizardDraft.behaviorType || !wizardDraft.die.sides) {
+    const firstDieSides = getFirstValidWizardDieSides(wizardDraft.dice);
+
+    if (!wizardDraft.behaviorType || !firstDieSides) {
       return [];
     }
 
     const wantedScope =
-      wizardDraft.behaviorType === "success_pool" ? "group" : "entry";
+      wizardDraft.behaviorType === "success_pool" ||
+      wizardDraft.behaviorType === "banded_sum" ||
+      wizardDraft.behaviorType === "highest_of_pool" ||
+      wizardDraft.behaviorType === "lowest_of_pool" ||
+      wizardDraft.behaviorType === "keep_highest_n" ||
+      wizardDraft.behaviorType === "keep_lowest_n" ||
+      wizardDraft.behaviorType === "drop_highest_n" ||
+      wizardDraft.behaviorType === "drop_lowest_n"
+        ? "group"
+        : "entry";
 
     const allRules = [...modernRules, ...legacyRules];
 
     const compatible = getCompatibleRulesForContext(allRules, {
       scope: wantedScope,
-      sides: [wizardDraft.die.sides],
+      sides: [firstDieSides],
     });
 
     return [...compatible].sort((a, b) => {
@@ -289,12 +309,7 @@ export default function TableDetailScreen() {
 
       return a.name.localeCompare(b.name, "fr");
     });
-  }, [
-    wizardDraft.behaviorType,
-    wizardDraft.die.sides,
-    modernRules,
-    legacyRules,
-  ]);
+  }, [wizardDraft.behaviorType, wizardDraft.dice, modernRules, legacyRules]);
 
   if (error) {
     return (
@@ -462,6 +477,9 @@ export default function TableDetailScreen() {
         onAddRangeRow={addWizardRangeRow}
         onRemoveRangeRow={removeWizardRangeRow}
         onSetBehaviorType={setWizardBehaviorType}
+        onUpdateDieAt={updateWizardDieAt}
+        onAddDie={addWizardDie}
+        onRemoveDie={removeWizardDie}
       />
 
       <HumanRuleEditorModal
