@@ -79,6 +79,52 @@ export function validateActionWizardStep(
       return null;
     }
 
+    if (draft.behaviorType === "threshold_degrees") {
+      if (!Number.isFinite(Number(draft.targetValue))) {
+        return "Le seuil / valeur cible doit être un nombre valide.";
+      }
+
+      if (!Number.isFinite(Number(draft.degreeStep)) || Number(draft.degreeStep) <= 0) {
+        return "La taille d’un degré doit être supérieure à 0.";
+      }
+
+      for (const value of [
+        draft.critSuccessMin,
+        draft.critSuccessMax,
+        draft.critFailureMin,
+        draft.critFailureMax,
+      ]) {
+        if (value.trim() !== "" && !Number.isFinite(Number(value))) {
+          return "Les bornes de critique doivent être des nombres valides.";
+        }
+      }
+
+      return null;
+    }
+
+    if (draft.behaviorType === "threshold_degrees") {
+      if (!Number.isFinite(Number(draft.targetValue))) {
+        return "Le seuil / valeur cible doit être un nombre valide.";
+      }
+
+      if (!Number.isFinite(Number(draft.degreeStep)) || Number(draft.degreeStep) <= 0) {
+        return "La taille d’un degré doit être supérieure à 0.";
+      }
+
+      for (const value of [
+        draft.critSuccessMin,
+        draft.critSuccessMax,
+        draft.critFailureMin,
+        draft.critFailureMax,
+      ]) {
+        if (value.trim() !== "" && !Number.isFinite(Number(value))) {
+          return "Les bornes de critique doivent être des nombres valides.";
+        }
+      }
+
+      return null;
+    }
+
     if (draft.behaviorType === "success_pool") {
       if (!Number.isFinite(Number(draft.successAtOrAbove))) {
         return "Le seuil de réussite du pool doit être un nombre valide.";
@@ -178,6 +224,12 @@ export function buildRulePayloadFromActionWizard(
     successThreshold: draft.successThreshold,
     critSuccessFaces: draft.critSuccessFaces,
     critFailureFaces: draft.critFailureFaces,
+    targetValue: draft.targetValue,
+    degreeStep: draft.degreeStep,
+    critSuccessMin: draft.critSuccessMin,
+    critSuccessMax: draft.critSuccessMax,
+    critFailureMin: draft.critFailureMin,
+    critFailureMax: draft.critFailureMax,
     successAtOrAbove: draft.successAtOrAbove,
     failFaces: draft.failFaces,
     glitchRule: draft.glitchRule,
@@ -192,19 +244,22 @@ export function buildActionWizardSummary(draft: ActionWizardDraft): string {
   const dieLabel =
     draft.dice && draft.dice.length > 0
       ? draft.dice
-          .map(
-            (die) =>
-              `${die.qty}d${die.sides}${
-                die.modifier !== 0
-                  ? ` ${die.modifier > 0 ? "+" : ""}${die.modifier}`
-                  : ""
-              }${die.sign === -1 ? " (-)" : ""}`,
-          )
-          .join(" + ")
+        .map(
+          (die) =>
+            `${die.qty}d${die.sides}${die.modifier !== 0
+              ? ` ${die.modifier > 0 ? "+" : ""}${die.modifier}`
+              : ""
+            }${die.sign === -1 ? " (-)" : ""}`,
+        )
+        .join(" + ")
       : "aucun dé";
 
   if (draft.behaviorType === "single_check") {
     return `${draft.name} • ${dieLabel} • test simple`;
+  }
+
+  if (draft.behaviorType === "threshold_degrees") {
+    return `${draft.name} • ${dieLabel} • seuil ${draft.targetValue} avec degrés`;
   }
 
   if (draft.behaviorType === "success_pool") {

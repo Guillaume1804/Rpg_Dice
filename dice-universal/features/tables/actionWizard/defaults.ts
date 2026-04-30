@@ -75,6 +75,13 @@ export function createDefaultActionWizardDraft(): ActionWizardDraft {
     critSuccessFaces: "",
     critFailureFaces: "",
 
+    targetValue: "65",
+    degreeStep: "10",
+    critSuccessMin: "1",
+    critSuccessMax: "5",
+    critFailureMin: "95",
+    critFailureMax: "100",
+
     successAtOrAbove: "5",
     failFaces: "1",
     glitchRule: "ones_gt_successes",

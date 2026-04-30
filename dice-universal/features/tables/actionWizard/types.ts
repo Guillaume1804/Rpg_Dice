@@ -34,6 +34,13 @@ export type ActionWizardDraft = {
   critSuccessFaces: string;
   critFailureFaces: string;
 
+  targetValue: string;
+  degreeStep: string;
+  critSuccessMin: string;
+  critSuccessMax: string;
+  critFailureMin: string;
+  critFailureMax: string;
+
   successAtOrAbove: string;
   failFaces: string;
   glitchRule: "ones_gt_successes" | "ones_gte_successes" | "none";

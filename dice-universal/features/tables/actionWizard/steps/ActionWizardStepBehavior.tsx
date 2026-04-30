@@ -124,6 +124,100 @@ export function ActionWizardStepBehavior({
           </>
         )}
 
+      {draft.behaviorType === "threshold_degrees" && (
+        <>
+          <FieldLabel>Comparaison</FieldLabel>
+
+          <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+            <Pressable
+              onPress={() => onUpdateDraft("compare", "lte")}
+              style={{
+                paddingVertical: 10,
+                paddingHorizontal: 14,
+                borderWidth: 1,
+                borderRadius: 10,
+                opacity: draft.compare === "lte" ? 1 : 0.7,
+              }}
+            >
+              <Text style={{ fontWeight: "700" }}>Réussir en dessous (≤)</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => onUpdateDraft("compare", "gte")}
+              style={{
+                paddingVertical: 10,
+                paddingHorizontal: 14,
+                borderWidth: 1,
+                borderRadius: 10,
+                opacity: draft.compare === "gte" ? 1 : 0.7,
+              }}
+            >
+              <Text style={{ fontWeight: "700" }}>Réussir au-dessus (≥)</Text>
+            </Pressable>
+          </View>
+
+          <View style={{ gap: 8 }}>
+            <FieldLabel>Seuil / valeur cible</FieldLabel>
+            <BoxInput
+              value={draft.targetValue}
+              onChangeText={(value) => onUpdateDraft("targetValue", value)}
+              placeholder="Ex: 65"
+              keyboardType="numeric"
+            />
+          </View>
+
+          <View style={{ gap: 8 }}>
+            <FieldLabel>Taille d’un degré</FieldLabel>
+            <BoxInput
+              value={draft.degreeStep}
+              onChangeText={(value) => onUpdateDraft("degreeStep", value)}
+              placeholder="Ex: 10"
+              keyboardType="numeric"
+            />
+          </View>
+
+          <View style={{ gap: 8 }}>
+            <FieldLabel>Réussite critique — minimum</FieldLabel>
+            <BoxInput
+              value={draft.critSuccessMin}
+              onChangeText={(value) => onUpdateDraft("critSuccessMin", value)}
+              placeholder="Ex: 1"
+              keyboardType="numeric"
+            />
+          </View>
+
+          <View style={{ gap: 8 }}>
+            <FieldLabel>Réussite critique — maximum</FieldLabel>
+            <BoxInput
+              value={draft.critSuccessMax}
+              onChangeText={(value) => onUpdateDraft("critSuccessMax", value)}
+              placeholder="Ex: 5"
+              keyboardType="numeric"
+            />
+          </View>
+
+          <View style={{ gap: 8 }}>
+            <FieldLabel>Échec critique — minimum</FieldLabel>
+            <BoxInput
+              value={draft.critFailureMin}
+              onChangeText={(value) => onUpdateDraft("critFailureMin", value)}
+              placeholder="Ex: 95"
+              keyboardType="numeric"
+            />
+          </View>
+
+          <View style={{ gap: 8 }}>
+            <FieldLabel>Échec critique — maximum</FieldLabel>
+            <BoxInput
+              value={draft.critFailureMax}
+              onChangeText={(value) => onUpdateDraft("critFailureMax", value)}
+              placeholder="Ex: 100"
+              keyboardType="numeric"
+            />
+          </View>
+        </>
+      )}
+
       {draft.behaviorType === "success_pool" && (
         <>
           <View style={{ gap: 8 }}>
