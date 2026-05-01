@@ -12,7 +12,8 @@ export type RuleBehaviorKey =
   | "keep_lowest_n"
   | "drop_highest_n"
   | "drop_lowest_n"
-  | "threshold_degrees";
+  | "threshold_degrees"
+  | "custom_pipeline";
 
 type BaseBehaviorField = {
   key: string;
@@ -113,7 +114,7 @@ export const RULE_BEHAVIORS: RuleBehaviorRegistryItem[] = [
     kind: "threshold_degrees",
     defaultScope: "entry",
     allowedScopes: ["entry", "group", "both"],
-    supportedSides: null,
+    supportedSides: [100],
     fields: [
       {
         key: "compare",
@@ -175,6 +176,17 @@ export const RULE_BEHAVIORS: RuleBehaviorRegistryItem[] = [
         placeholder: "Ex: 100",
       },
     ],
+  },
+  {
+    key: "custom_pipeline",
+    label: "Pipeline personnalisé",
+    description:
+      "Construit une règle avancée en combinant relances, explosions, conservation, retrait, comptage et seuil.",
+    kind: "pipeline",
+    defaultScope: "group",
+    allowedScopes: ["entry", "group", "both"],
+    supportedSides: null,
+    fields: [],
   },
   {
     key: "success_pool",

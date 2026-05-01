@@ -4,6 +4,14 @@ import type { RuleBehaviorKey as ActionBehaviorType } from "../../../core/rules/
 
 export type ActionResultMode = "sum" | "values";
 
+export type PipelineOutputMode =
+  | "sum"
+  | "values"
+  | "successes"
+  | "count_equal"
+  | "count_range"
+  | "first_value";
+
 export type ActionDieDraft = {
   sides: number | null;
   qty: number;
@@ -52,6 +60,23 @@ export type ActionWizardDraft = {
   keepCount: string;
   dropCount: string;
   resultMode: ActionResultMode;
+
+  pipelineRerollFaces: string;
+  pipelineRerollOnce: boolean;
+  pipelineExplodeFaces: string;
+  pipelineKeepHighest: string;
+  pipelineKeepLowest: string;
+  pipelineDropHighest: string;
+  pipelineDropLowest: string;
+  pipelineCountSuccessAtOrAbove: string;
+  pipelineCountEqualFaces: string;
+  pipelineCountRangeMin: string;
+  pipelineCountRangeMax: string;
+  pipelineOutput: PipelineOutputMode;
+  pipelineSuccessThreshold: string;
+  pipelineCompare: "gte" | "lte";
+  pipelineCritSuccessFaces: string;
+  pipelineCritFailureFaces: string;
 
   creationMode: "auto" | "advanced";
 };

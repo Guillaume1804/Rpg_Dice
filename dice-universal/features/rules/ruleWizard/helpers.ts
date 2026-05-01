@@ -1,5 +1,9 @@
+// dice-universal\features\rules\ruleWizard\helpers.ts
+
 import type { RuleWizardDraft, RuleWizardStep } from "./types";
 import { RULE_BEHAVIORS } from "../../../core/rules/behaviorRegistry";
+
+import type { PipelineParams, PipelineStep } from "../../../core/rules/types";
 
 function parseNumberList(value: string): number[] {
   return value
@@ -39,6 +43,108 @@ function getBehaviorDefinition(behaviorKey: RuleWizardDraft["behaviorKey"]) {
 
 function getDraftValue(draft: RuleWizardDraft, key: string): unknown {
   return draft[key as keyof RuleWizardDraft];
+}
+
+function parseOptionalPositiveInt(value: string): number | null {
+  const text = value.trim();
+  if (!text) return null;
+
+  const n = Number(text);
+  if (!Number.isFinite(n) || n <= 0) return null;
+
+  return Math.floor(n);
+}
+
+function buildPipelineParamsFromDraft(draft: RuleWizardDraft): PipelineParams {
+  const steps: PipelineStep[] = [];
+
+  const rerollFaces = parseNumberList(draft.pipelineRerollFaces);
+  if (rerollFaces.length > 0) {
+    steps.push({
+      op: "reroll",
+      faces: rerollFaces,
+      once: draft.pipelineRerollOnce,
+    });
+  }
+
+  const explodeFaces = parseNumberList(draft.pipelineExplodeFaces);
+  if (explodeFaces.length > 0) {
+    steps.push({
+      op: "explode",
+      faces: explodeFaces,
+    });
+  }
+
+  const keepHighest = parseOptionalPositiveInt(draft.pipelineKeepHighest);
+  if (keepHighest != null) {
+    steps.push({ op: "keep_highest", n: keepHighest });
+  }
+
+  const keepLowest = parseOptionalPositiveInt(draft.pipelineKeepLowest);
+  if (keepLowest != null) {
+    steps.push({ op: "keep_lowest", n: keepLowest });
+  }
+
+  const dropHighest = parseOptionalPositiveInt(draft.pipelineDropHighest);
+  if (dropHighest != null) {
+    steps.push({ op: "drop_highest", n: dropHighest });
+  }
+
+  const dropLowest = parseOptionalPositiveInt(draft.pipelineDropLowest);
+  if (dropLowest != null) {
+    steps.push({ op: "drop_lowest", n: dropLowest });
+  }
+
+  const countSuccessAtOrAbove = parseOptionalPositiveInt(
+    draft.pipelineCountSuccessAtOrAbove,
+  );
+  if (countSuccessAtOrAbove != null) {
+    steps.push({
+      op: "count_successes",
+      at_or_above: countSuccessAtOrAbove,
+    });
+  }
+
+  const countEqualFaces = parseNumberList(draft.pipelineCountEqualFaces);
+  if (countEqualFaces.length > 0) {
+    steps.push({
+      op: "count_equal",
+      faces: countEqualFaces,
+    });
+  }
+
+  const countRangeMin = Number(draft.pipelineCountRangeMin);
+  const countRangeMax = Number(draft.pipelineCountRangeMax);
+
+  if (
+    draft.pipelineCountRangeMin.trim() !== "" &&
+    draft.pipelineCountRangeMax.trim() !== "" &&
+    Number.isFinite(countRangeMin) &&
+    Number.isFinite(countRangeMax)
+  ) {
+    steps.push({
+      op: "count_range",
+      min: countRangeMin,
+      max: countRangeMax,
+    });
+  }
+
+  const successThreshold =
+    draft.pipelineSuccessThreshold.trim() === ""
+      ? null
+      : Number(draft.pipelineSuccessThreshold);
+
+  return {
+    steps,
+    output: draft.pipelineOutput,
+    success_threshold:
+      successThreshold != null && Number.isFinite(successThreshold)
+        ? successThreshold
+        : undefined,
+    compare: draft.pipelineCompare,
+    crit_success_faces: parseNumberList(draft.pipelineCritSuccessFaces),
+    crit_failure_faces: parseNumberList(draft.pipelineCritFailureFaces),
+  };
 }
 
 export function validateRuleWizardStep(
@@ -81,6 +187,65 @@ export function validateRuleWizardStep(
   }
 
   if (step === "behavior" && behavior) {
+    if (draft.behaviorKey === "custom_pipeline") {
+      if (
+        draft.pipelineKeepHighest.trim() !== "" &&
+        !Number.isFinite(Number(draft.pipelineKeepHighest))
+      ) {
+        return "Le nombre de dés à garder doit être un nombre valide.";
+      }
+
+      if (
+        draft.pipelineKeepLowest.trim() !== "" &&
+        !Number.isFinite(Number(draft.pipelineKeepLowest))
+      ) {
+        return "Le nombre de dés à garder doit être un nombre valide.";
+      }
+
+      if (
+        draft.pipelineDropHighest.trim() !== "" &&
+        !Number.isFinite(Number(draft.pipelineDropHighest))
+      ) {
+        return "Le nombre de dés à retirer doit être un nombre valide.";
+      }
+
+      if (
+        draft.pipelineDropLowest.trim() !== "" &&
+        !Number.isFinite(Number(draft.pipelineDropLowest))
+      ) {
+        return "Le nombre de dés à retirer doit être un nombre valide.";
+      }
+
+      if (
+        draft.pipelineCountSuccessAtOrAbove.trim() !== "" &&
+        !Number.isFinite(Number(draft.pipelineCountSuccessAtOrAbove))
+      ) {
+        return "Le seuil de succès doit être un nombre valide.";
+      }
+
+      if (
+        draft.pipelineSuccessThreshold.trim() !== "" &&
+        !Number.isFinite(Number(draft.pipelineSuccessThreshold))
+      ) {
+        return "Le seuil final doit être un nombre valide.";
+      }
+
+      if (
+        draft.pipelineCountRangeMin.trim() !== "" &&
+        !Number.isFinite(Number(draft.pipelineCountRangeMin))
+      ) {
+        return "Le minimum de plage doit être un nombre valide.";
+      }
+
+      if (
+        draft.pipelineCountRangeMax.trim() !== "" &&
+        !Number.isFinite(Number(draft.pipelineCountRangeMax))
+      ) {
+        return "Le maximum de plage doit être un nombre valide.";
+      }
+
+      return null;
+    }
     for (const field of behavior.fields) {
       if (field.type === "ranges") {
         if (parseRanges(draft).length === 0) {
@@ -104,7 +269,9 @@ export function validateRuleWizardStep(
         }
 
         if (
-          (field.key === "keepCount" || field.key === "dropCount") &&
+          (field.key === "keepCount" ||
+            field.key === "dropCount" ||
+            field.key === "degreeStep") &&
           Number(textValue) <= 0
         ) {
           return `${field.label} doit être supérieur à 0.`;
@@ -130,6 +297,16 @@ export function buildRulePayloadFromRuleWizard(draft: RuleWizardDraft) {
       : JSON.stringify(supportedSides);
 
   const params: Record<string, unknown> = {};
+
+  if (draft.behaviorKey === "custom_pipeline") {
+    return {
+      name: draft.name.trim(),
+      kind: "pipeline",
+      scope: draft.scope,
+      supported_sides_json,
+      params_json: JSON.stringify(buildPipelineParamsFromDraft(draft)),
+    };
+  }
 
   for (const field of behavior.fields) {
     const paramsKey = field.paramsKey ?? field.key;

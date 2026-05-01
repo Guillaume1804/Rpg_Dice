@@ -347,191 +347,328 @@ export function CreateRuleWizardModal({
 
               {selectedBehavior ? (
                 <>
-                  {selectedBehavior.fields.map((field) => {
-                    if (field.type === "text" || field.type === "number") {
-                      return (
-                        <View key={field.key} style={{ gap: 6 }}>
-                          <Text style={{ fontWeight: "700" }}>
-                            {field.label}
-                          </Text>
+                  {draft.behaviorKey === "custom_pipeline" ? (
+                    <>
+                      <Text style={{ fontWeight: "800" }}>
+                        Pipeline personnalisé
+                      </Text>
 
-                          <TextInput
-                            value={String(
-                              draft[field.key as keyof RuleWizardDraft] ?? "",
-                            )}
-                            onChangeText={(value) =>
+                      <TextInput
+                        value={draft.pipelineRerollFaces}
+                        onChangeText={(value) =>
+                          onUpdateDraft("pipelineRerollFaces", value)
+                        }
+                        placeholder="Relancer les faces, ex: 1 ou 1,2"
+                        style={{
+                          borderWidth: 1,
+                          borderRadius: 10,
+                          padding: 10,
+                        }}
+                      />
+
+                      <TextInput
+                        value={draft.pipelineExplodeFaces}
+                        onChangeText={(value) =>
+                          onUpdateDraft("pipelineExplodeFaces", value)
+                        }
+                        placeholder="Explosion sur faces, ex: 6"
+                        style={{
+                          borderWidth: 1,
+                          borderRadius: 10,
+                          padding: 10,
+                        }}
+                      />
+
+                      <TextInput
+                        value={draft.pipelineKeepHighest}
+                        onChangeText={(value) =>
+                          onUpdateDraft("pipelineKeepHighest", value)
+                        }
+                        placeholder="Garder les meilleurs dés, ex: 2"
+                        keyboardType="number-pad"
+                        style={{
+                          borderWidth: 1,
+                          borderRadius: 10,
+                          padding: 10,
+                        }}
+                      />
+
+                      <TextInput
+                        value={draft.pipelineDropLowest}
+                        onChangeText={(value) =>
+                          onUpdateDraft("pipelineDropLowest", value)
+                        }
+                        placeholder="Retirer les plus faibles dés, ex: 1"
+                        keyboardType="number-pad"
+                        style={{
+                          borderWidth: 1,
+                          borderRadius: 10,
+                          padding: 10,
+                        }}
+                      />
+
+                      <TextInput
+                        value={draft.pipelineCountSuccessAtOrAbove}
+                        onChangeText={(value) =>
+                          onUpdateDraft("pipelineCountSuccessAtOrAbove", value)
+                        }
+                        placeholder="Compter les succès à partir de, ex: 5"
+                        keyboardType="number-pad"
+                        style={{
+                          borderWidth: 1,
+                          borderRadius: 10,
+                          padding: 10,
+                        }}
+                      />
+
+                      <TextInput
+                        value={draft.pipelineSuccessThreshold}
+                        onChangeText={(value) =>
+                          onUpdateDraft("pipelineSuccessThreshold", value)
+                        }
+                        placeholder="Seuil final optionnel, ex: 3"
+                        keyboardType="number-pad"
+                        style={{
+                          borderWidth: 1,
+                          borderRadius: 10,
+                          padding: 10,
+                        }}
+                      />
+
+                      <Text style={{ fontWeight: "700" }}>Sortie finale</Text>
+
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          flexWrap: "wrap",
+                          gap: 8,
+                        }}
+                      >
+                        {[
+                          { key: "sum", label: "Somme" },
+                          { key: "values", label: "Valeurs" },
+                          { key: "successes", label: "Succès" },
+                          { key: "count_equal", label: "Faces exactes" },
+                          { key: "count_range", label: "Plage" },
+                          { key: "first_value", label: "Première valeur" },
+                        ].map((option) => (
+                          <Pressable
+                            key={option.key}
+                            onPress={() =>
                               onUpdateDraft(
-                                field.key as keyof RuleWizardDraft,
-                                value as RuleWizardDraft[keyof RuleWizardDraft],
+                                "pipelineOutput",
+                                option.key as RuleWizardDraft["pipelineOutput"],
                               )
                             }
-                            placeholder={field.placeholder}
-                            keyboardType={
-                              field.type === "number" ? "number-pad" : "default"
-                            }
-                            style={{
-                              borderWidth: 1,
-                              borderRadius: 10,
-                              paddingHorizontal: 12,
-                              paddingVertical: 10,
-                            }}
-                          />
-                        </View>
-                      );
-                    }
-
-                    if (field.type === "select") {
-                      return (
-                        <View key={field.key} style={{ gap: 6 }}>
-                          <Text style={{ fontWeight: "700" }}>
-                            {field.label}
-                          </Text>
-
-                          <View
-                            style={{
-                              flexDirection: "row",
-                              flexWrap: "wrap",
-                              gap: 8,
-                            }}
-                          >
-                            {field.options.map((option) => (
-                              <Pressable
-                                key={option.value}
-                                onPress={() =>
-                                  onUpdateDraft(
-                                    field.key as keyof RuleWizardDraft,
-                                    option.value as RuleWizardDraft[keyof RuleWizardDraft],
-                                  )
-                                }
-                                style={{
-                                  padding: 10,
-                                  borderWidth: 1,
-                                  borderRadius: 10,
-                                  opacity:
-                                    draft[
-                                      field.key as keyof RuleWizardDraft
-                                    ] === option.value
-                                      ? 1
-                                      : 0.7,
-                                }}
-                              >
-                                <Text
-                                  style={{
-                                    fontWeight:
-                                      draft[
-                                        field.key as keyof RuleWizardDraft
-                                      ] === option.value
-                                        ? "800"
-                                        : "500",
-                                  }}
-                                >
-                                  {option.label}
-                                </Text>
-                              </Pressable>
-                            ))}
-                          </View>
-                        </View>
-                      );
-                    }
-
-                    if (field.type === "ranges") {
-                      return (
-                        <View key={field.key} style={{ gap: 8 }}>
-                          <Text style={{ fontWeight: "700" }}>
-                            {field.label}
-                          </Text>
-
-                          {draft.ranges.map((row, index) => (
-                            <View
-                              key={`range-${index}`}
-                              style={{
-                                borderWidth: 1,
-                                borderRadius: 10,
-                                padding: 10,
-                                gap: 8,
-                              }}
-                            >
-                              <Text style={{ fontWeight: "700" }}>
-                                Plage {index + 1}
-                              </Text>
-
-                              <View style={{ flexDirection: "row", gap: 8 }}>
-                                <TextInput
-                                  value={row.min}
-                                  onChangeText={(value) =>
-                                    onUpdateRangeRow(index, "min", value)
-                                  }
-                                  placeholder="Min"
-                                  keyboardType="number-pad"
-                                  style={{
-                                    flex: 1,
-                                    borderWidth: 1,
-                                    borderRadius: 10,
-                                    paddingHorizontal: 10,
-                                    paddingVertical: 8,
-                                  }}
-                                />
-
-                                <TextInput
-                                  value={row.max}
-                                  onChangeText={(value) =>
-                                    onUpdateRangeRow(index, "max", value)
-                                  }
-                                  placeholder="Max"
-                                  keyboardType="number-pad"
-                                  style={{
-                                    flex: 1,
-                                    borderWidth: 1,
-                                    borderRadius: 10,
-                                    paddingHorizontal: 10,
-                                    paddingVertical: 8,
-                                  }}
-                                />
-                              </View>
-
-                              <TextInput
-                                value={row.label}
-                                onChangeText={(value) =>
-                                  onUpdateRangeRow(index, "label", value)
-                                }
-                                placeholder="Label"
-                                style={{
-                                  borderWidth: 1,
-                                  borderRadius: 10,
-                                  paddingHorizontal: 10,
-                                  paddingVertical: 8,
-                                }}
-                              />
-
-                              <Pressable
-                                onPress={() => onRemoveRangeRow(index)}
-                              >
-                                <Text style={{ opacity: 0.7 }}>
-                                  Supprimer cette plage
-                                </Text>
-                              </Pressable>
-                            </View>
-                          ))}
-
-                          <Pressable
-                            onPress={onAddRangeRow}
                             style={{
                               padding: 10,
                               borderWidth: 1,
                               borderRadius: 10,
-                              alignItems: "center",
+                              opacity:
+                                draft.pipelineOutput === option.key ? 1 : 0.7,
                             }}
                           >
                             <Text style={{ fontWeight: "700" }}>
-                              + Ajouter une plage
+                              {option.label}
                             </Text>
                           </Pressable>
-                        </View>
-                      );
-                    }
+                        ))}
+                      </View>
+                    </>
+                  ) : null}
 
-                    return null;
-                  })}
+                  {draft.behaviorKey !== "custom_pipeline"
+                    ? selectedBehavior.fields.map((field) => {
+                        if (field.type === "text" || field.type === "number") {
+                          return (
+                            <View key={field.key} style={{ gap: 6 }}>
+                              <Text style={{ fontWeight: "700" }}>
+                                {field.label}
+                              </Text>
+
+                              <TextInput
+                                value={String(
+                                  draft[field.key as keyof RuleWizardDraft] ??
+                                    "",
+                                )}
+                                onChangeText={(value) =>
+                                  onUpdateDraft(
+                                    field.key as keyof RuleWizardDraft,
+                                    value as RuleWizardDraft[keyof RuleWizardDraft],
+                                  )
+                                }
+                                placeholder={field.placeholder}
+                                keyboardType={
+                                  field.type === "number"
+                                    ? "number-pad"
+                                    : "default"
+                                }
+                                style={{
+                                  borderWidth: 1,
+                                  borderRadius: 10,
+                                  paddingHorizontal: 12,
+                                  paddingVertical: 10,
+                                }}
+                              />
+                            </View>
+                          );
+                        }
+
+                        if (field.type === "select") {
+                          return (
+                            <View key={field.key} style={{ gap: 6 }}>
+                              <Text style={{ fontWeight: "700" }}>
+                                {field.label}
+                              </Text>
+
+                              <View
+                                style={{
+                                  flexDirection: "row",
+                                  flexWrap: "wrap",
+                                  gap: 8,
+                                }}
+                              >
+                                {field.options.map((option) => (
+                                  <Pressable
+                                    key={option.value}
+                                    onPress={() =>
+                                      onUpdateDraft(
+                                        field.key as keyof RuleWizardDraft,
+                                        option.value as RuleWizardDraft[keyof RuleWizardDraft],
+                                      )
+                                    }
+                                    style={{
+                                      padding: 10,
+                                      borderWidth: 1,
+                                      borderRadius: 10,
+                                      opacity:
+                                        draft[
+                                          field.key as keyof RuleWizardDraft
+                                        ] === option.value
+                                          ? 1
+                                          : 0.7,
+                                    }}
+                                  >
+                                    <Text
+                                      style={{
+                                        fontWeight:
+                                          draft[
+                                            field.key as keyof RuleWizardDraft
+                                          ] === option.value
+                                            ? "800"
+                                            : "500",
+                                      }}
+                                    >
+                                      {option.label}
+                                    </Text>
+                                  </Pressable>
+                                ))}
+                              </View>
+                            </View>
+                          );
+                        }
+
+                        if (field.type === "ranges") {
+                          return (
+                            <View key={field.key} style={{ gap: 8 }}>
+                              <Text style={{ fontWeight: "700" }}>
+                                {field.label}
+                              </Text>
+
+                              {draft.ranges.map((row, index) => (
+                                <View
+                                  key={`range-${index}`}
+                                  style={{
+                                    borderWidth: 1,
+                                    borderRadius: 10,
+                                    padding: 10,
+                                    gap: 8,
+                                  }}
+                                >
+                                  <Text style={{ fontWeight: "700" }}>
+                                    Plage {index + 1}
+                                  </Text>
+
+                                  <View
+                                    style={{ flexDirection: "row", gap: 8 }}
+                                  >
+                                    <TextInput
+                                      value={row.min}
+                                      onChangeText={(value) =>
+                                        onUpdateRangeRow(index, "min", value)
+                                      }
+                                      placeholder="Min"
+                                      keyboardType="number-pad"
+                                      style={{
+                                        flex: 1,
+                                        borderWidth: 1,
+                                        borderRadius: 10,
+                                        paddingHorizontal: 10,
+                                        paddingVertical: 8,
+                                      }}
+                                    />
+
+                                    <TextInput
+                                      value={row.max}
+                                      onChangeText={(value) =>
+                                        onUpdateRangeRow(index, "max", value)
+                                      }
+                                      placeholder="Max"
+                                      keyboardType="number-pad"
+                                      style={{
+                                        flex: 1,
+                                        borderWidth: 1,
+                                        borderRadius: 10,
+                                        paddingHorizontal: 10,
+                                        paddingVertical: 8,
+                                      }}
+                                    />
+                                  </View>
+
+                                  <TextInput
+                                    value={row.label}
+                                    onChangeText={(value) =>
+                                      onUpdateRangeRow(index, "label", value)
+                                    }
+                                    placeholder="Label"
+                                    style={{
+                                      borderWidth: 1,
+                                      borderRadius: 10,
+                                      paddingHorizontal: 10,
+                                      paddingVertical: 8,
+                                    }}
+                                  />
+
+                                  <Pressable
+                                    onPress={() => onRemoveRangeRow(index)}
+                                  >
+                                    <Text style={{ opacity: 0.7 }}>
+                                      Supprimer cette plage
+                                    </Text>
+                                  </Pressable>
+                                </View>
+                              ))}
+
+                              <Pressable
+                                onPress={onAddRangeRow}
+                                style={{
+                                  padding: 10,
+                                  borderWidth: 1,
+                                  borderRadius: 10,
+                                  alignItems: "center",
+                                }}
+                              >
+                                <Text style={{ fontWeight: "700" }}>
+                                  + Ajouter une plage
+                                </Text>
+                              </Pressable>
+                            </View>
+                          );
+                        }
+
+                        return null;
+                      })
+                    : null}
                 </>
               ) : null}
             </>

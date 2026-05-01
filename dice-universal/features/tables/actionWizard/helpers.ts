@@ -2,6 +2,7 @@
 
 import type { RuleScope } from "../../../data/repositories/rulesRepo";
 import type { ActionWizardDraft, ActionWizardStep } from "./types";
+import type { PipelineParams, PipelineStep } from "../../../core/rules/types";
 import { buildRuleFromBehavior } from "../../../core/rules/buildRuleFromBehavior";
 
 export type BuiltActionRulePayload = {
@@ -19,6 +20,131 @@ export type BuiltActionRulePayload = {
   usage_kind: "system_template" | "user_template" | "generated";
 };
 
+function parseNumberList(value: string): number[] {
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map(Number)
+    .filter(Number.isFinite);
+}
+
+function parseOptionalPositiveInt(value: string): number | null {
+  const text = value.trim();
+  if (!text) return null;
+
+  const n = Number(text);
+  if (!Number.isFinite(n) || n <= 0) return null;
+
+  return Math.floor(n);
+}
+
+function buildPipelineParamsFromDraft(
+  draft: ActionWizardDraft,
+): PipelineParams {
+  const steps: PipelineStep[] = [];
+
+  const rerollFaces = parseNumberList(draft.pipelineRerollFaces);
+  if (rerollFaces.length > 0) {
+    steps.push({
+      op: "reroll",
+      faces: rerollFaces,
+      once: draft.pipelineRerollOnce,
+    });
+  }
+
+  const explodeFaces = parseNumberList(draft.pipelineExplodeFaces);
+  if (explodeFaces.length > 0) {
+    steps.push({
+      op: "explode",
+      faces: explodeFaces,
+    });
+  }
+
+  const keepHighest = parseOptionalPositiveInt(draft.pipelineKeepHighest);
+  if (keepHighest != null) {
+    steps.push({
+      op: "keep_highest",
+      n: keepHighest,
+    });
+  }
+
+  const keepLowest = parseOptionalPositiveInt(draft.pipelineKeepLowest);
+  if (keepLowest != null) {
+    steps.push({
+      op: "keep_lowest",
+      n: keepLowest,
+    });
+  }
+
+  const dropHighest = parseOptionalPositiveInt(draft.pipelineDropHighest);
+  if (dropHighest != null) {
+    steps.push({
+      op: "drop_highest",
+      n: dropHighest,
+    });
+  }
+
+  const dropLowest = parseOptionalPositiveInt(draft.pipelineDropLowest);
+  if (dropLowest != null) {
+    steps.push({
+      op: "drop_lowest",
+      n: dropLowest,
+    });
+  }
+
+  const countSuccessAtOrAbove = parseOptionalPositiveInt(
+    draft.pipelineCountSuccessAtOrAbove,
+  );
+  if (countSuccessAtOrAbove != null) {
+    steps.push({
+      op: "count_successes",
+      at_or_above: countSuccessAtOrAbove,
+    });
+  }
+
+  const countEqualFaces = parseNumberList(draft.pipelineCountEqualFaces);
+  if (countEqualFaces.length > 0) {
+    steps.push({
+      op: "count_equal",
+      faces: countEqualFaces,
+    });
+  }
+
+  const countRangeMin = Number(draft.pipelineCountRangeMin);
+  const countRangeMax = Number(draft.pipelineCountRangeMax);
+
+  if (
+    draft.pipelineCountRangeMin.trim() !== "" &&
+    draft.pipelineCountRangeMax.trim() !== "" &&
+    Number.isFinite(countRangeMin) &&
+    Number.isFinite(countRangeMax)
+  ) {
+    steps.push({
+      op: "count_range",
+      min: countRangeMin,
+      max: countRangeMax,
+    });
+  }
+
+  const successThreshold =
+    draft.pipelineSuccessThreshold.trim() === ""
+      ? null
+      : Number(draft.pipelineSuccessThreshold);
+
+  return {
+    steps,
+    output: draft.pipelineOutput,
+    success_threshold:
+      successThreshold != null && Number.isFinite(successThreshold)
+        ? successThreshold
+        : undefined,
+    compare: draft.pipelineCompare,
+    crit_success_faces: parseNumberList(draft.pipelineCritSuccessFaces),
+    crit_failure_faces: parseNumberList(draft.pipelineCritFailureFaces),
+  };
+}
+
 export function validateActionWizardStep(
   step: ActionWizardStep,
   draft: ActionWizardDraft,
@@ -33,6 +159,65 @@ export function validateActionWizardStep(
   if (step === "type") {
     if (!draft.behaviorType) {
       return "Choisis un type d’action.";
+    }
+    if (draft.behaviorType === "custom_pipeline") {
+      if (
+        draft.pipelineKeepHighest.trim() !== "" &&
+        !Number.isFinite(Number(draft.pipelineKeepHighest))
+      ) {
+        return "Le nombre de dés à garder doit être un nombre valide.";
+      }
+
+      if (
+        draft.pipelineKeepLowest.trim() !== "" &&
+        !Number.isFinite(Number(draft.pipelineKeepLowest))
+      ) {
+        return "Le nombre de dés à garder doit être un nombre valide.";
+      }
+
+      if (
+        draft.pipelineDropHighest.trim() !== "" &&
+        !Number.isFinite(Number(draft.pipelineDropHighest))
+      ) {
+        return "Le nombre de dés à retirer doit être un nombre valide.";
+      }
+
+      if (
+        draft.pipelineDropLowest.trim() !== "" &&
+        !Number.isFinite(Number(draft.pipelineDropLowest))
+      ) {
+        return "Le nombre de dés à retirer doit être un nombre valide.";
+      }
+
+      if (
+        draft.pipelineCountSuccessAtOrAbove.trim() !== "" &&
+        !Number.isFinite(Number(draft.pipelineCountSuccessAtOrAbove))
+      ) {
+        return "Le seuil de succès doit être un nombre valide.";
+      }
+
+      if (
+        draft.pipelineSuccessThreshold.trim() !== "" &&
+        !Number.isFinite(Number(draft.pipelineSuccessThreshold))
+      ) {
+        return "Le seuil final doit être un nombre valide.";
+      }
+
+      if (
+        draft.pipelineCountRangeMin.trim() !== "" &&
+        !Number.isFinite(Number(draft.pipelineCountRangeMin))
+      ) {
+        return "Le minimum de plage doit être un nombre valide.";
+      }
+
+      if (
+        draft.pipelineCountRangeMax.trim() !== "" &&
+        !Number.isFinite(Number(draft.pipelineCountRangeMax))
+      ) {
+        return "Le maximum de plage doit être un nombre valide.";
+      }
+
+      return null;
     }
     return null;
   }
@@ -84,30 +269,10 @@ export function validateActionWizardStep(
         return "Le seuil / valeur cible doit être un nombre valide.";
       }
 
-      if (!Number.isFinite(Number(draft.degreeStep)) || Number(draft.degreeStep) <= 0) {
-        return "La taille d’un degré doit être supérieure à 0.";
-      }
-
-      for (const value of [
-        draft.critSuccessMin,
-        draft.critSuccessMax,
-        draft.critFailureMin,
-        draft.critFailureMax,
-      ]) {
-        if (value.trim() !== "" && !Number.isFinite(Number(value))) {
-          return "Les bornes de critique doivent être des nombres valides.";
-        }
-      }
-
-      return null;
-    }
-
-    if (draft.behaviorType === "threshold_degrees") {
-      if (!Number.isFinite(Number(draft.targetValue))) {
-        return "Le seuil / valeur cible doit être un nombre valide.";
-      }
-
-      if (!Number.isFinite(Number(draft.degreeStep)) || Number(draft.degreeStep) <= 0) {
+      if (
+        !Number.isFinite(Number(draft.degreeStep)) ||
+        Number(draft.degreeStep) <= 0
+      ) {
         return "La taille d’un degré doit être supérieure à 0.";
       }
 
@@ -216,6 +381,26 @@ export function buildRulePayloadFromActionWizard(
     throw new Error("Au moins un dé valide est requis.");
   }
 
+  if (draft.behaviorType === "custom_pipeline") {
+    const pipelineParams = buildPipelineParamsFromDraft(draft);
+
+    return {
+      name: `${draft.name.trim()} — règle`,
+      kind: "pipeline",
+      behavior_key: "custom_pipeline",
+      category: "group",
+      params_json: JSON.stringify(pipelineParams),
+      ui_schema_json: JSON.stringify({
+        behavior_key: "custom_pipeline",
+        category: "group",
+        fields: [],
+      }),
+      supported_sides_json: JSON.stringify([firstDie.sides]),
+      scope: "group",
+      usage_kind: "generated",
+    };
+  }
+
   return buildRuleFromBehavior({
     actionName: draft.name,
     behaviorKey: draft.behaviorType,
@@ -244,14 +429,15 @@ export function buildActionWizardSummary(draft: ActionWizardDraft): string {
   const dieLabel =
     draft.dice && draft.dice.length > 0
       ? draft.dice
-        .map(
-          (die) =>
-            `${die.qty}d${die.sides}${die.modifier !== 0
-              ? ` ${die.modifier > 0 ? "+" : ""}${die.modifier}`
-              : ""
-            }${die.sign === -1 ? " (-)" : ""}`,
-        )
-        .join(" + ")
+          .map(
+            (die) =>
+              `${die.qty}d${die.sides}${
+                die.modifier !== 0
+                  ? ` ${die.modifier > 0 ? "+" : ""}${die.modifier}`
+                  : ""
+              }${die.sign === -1 ? " (-)" : ""}`,
+          )
+          .join(" + ")
       : "aucun dé";
 
   if (draft.behaviorType === "single_check") {
@@ -300,6 +486,10 @@ export function buildActionWizardSummary(draft: ActionWizardDraft): string {
 
   if (draft.behaviorType === "table_lookup") {
     return `${draft.name} • ${dieLabel} • table d’intervalles`;
+  }
+
+  if (draft.behaviorType === "custom_pipeline") {
+    return `${draft.name} • ${dieLabel} • pipeline personnalisé`;
   }
 
   return draft.name || "Nouvelle action";

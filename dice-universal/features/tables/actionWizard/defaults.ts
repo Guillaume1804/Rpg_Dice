@@ -29,6 +29,9 @@ export function getDefaultDiceForBehavior(
     case "single_check":
       return [createDieDraft({ sides: 20, qty: 1 })];
 
+    case "threshold_degrees":
+      return [createDieDraft({ sides: 100, qty: 1 })];
+
     case "table_lookup":
       return [createDieDraft({ sides: 100, qty: 1 })];
 
@@ -48,7 +51,8 @@ export function getDefaultDiceForBehavior(
     case "drop_highest_n":
     case "drop_lowest_n":
       return [createDieDraft({ sides: 6, qty: 5 })];
-
+    case "custom_pipeline":
+      return [createDieDraft({ sides: 6, qty: 3 })];
     default:
       return [createDieDraft()];
   }
@@ -94,5 +98,22 @@ export function createDefaultActionWizardDraft(): ActionWizardDraft {
     keepCount: "3",
     dropCount: "1",
     resultMode: "sum",
+
+    pipelineRerollFaces: "",
+    pipelineRerollOnce: true,
+    pipelineExplodeFaces: "",
+    pipelineKeepHighest: "",
+    pipelineKeepLowest: "",
+    pipelineDropHighest: "",
+    pipelineDropLowest: "",
+    pipelineCountSuccessAtOrAbove: "",
+    pipelineCountEqualFaces: "",
+    pipelineCountRangeMin: "",
+    pipelineCountRangeMax: "",
+    pipelineOutput: "sum",
+    pipelineSuccessThreshold: "",
+    pipelineCompare: "gte",
+    pipelineCritSuccessFaces: "",
+    pipelineCritFailureFaces: "",
   };
 }

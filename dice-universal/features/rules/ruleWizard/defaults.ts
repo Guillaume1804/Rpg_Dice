@@ -3,31 +3,55 @@
 import type { RuleWizardDraft } from "./types";
 
 export const DEFAULT_RULE_RANGES = [
-    { min: "1", max: "3", label: "Bas" },
-    { min: "4", max: "6", label: "Moyen" },
-    { min: "7", max: "10", label: "Haut" },
+  { min: "1", max: "3", label: "Bas" },
+  { min: "4", max: "6", label: "Moyen" },
+  { min: "7", max: "10", label: "Haut" },
 ];
 
 export function createDefaultRuleWizardDraft(): RuleWizardDraft {
-    return {
-        name: "",
-        scope: "entry",
-        behaviorKey: null,
-        supportedSidesText: "20",
+  return {
+    name: "",
+    scope: "entry",
+    behaviorKey: null,
+    supportedSidesText: "20",
 
-        compare: "gte",
-        successThreshold: "",
-        critSuccessFaces: "",
-        critFailureFaces: "",
+    compare: "gte",
+    successThreshold: "",
+    critSuccessFaces: "",
+    critFailureFaces: "",
 
-        successAtOrAbove: "5",
-        failFaces: "1",
-        glitchRule: "ones_gt_successes",
+    targetValue: "65",
+    degreeStep: "10",
+    critSuccessMin: "1",
+    critSuccessMax: "5",
+    critFailureMin: "95",
+    critFailureMax: "100",
 
-        keepCount: "2",
-        dropCount: "1",
-        resultMode: "sum",
+    successAtOrAbove: "5",
+    failFaces: "1",
+    glitchRule: "ones_gt_successes",
 
-        ranges: DEFAULT_RULE_RANGES,
-    };
+    keepCount: "2",
+    dropCount: "1",
+    resultMode: "sum",
+
+    pipelineRerollFaces: "",
+    pipelineRerollOnce: true,
+    pipelineExplodeFaces: "",
+    pipelineKeepHighest: "",
+    pipelineKeepLowest: "",
+    pipelineDropHighest: "",
+    pipelineDropLowest: "",
+    pipelineCountSuccessAtOrAbove: "",
+    pipelineCountEqualFaces: "",
+    pipelineCountRangeMin: "",
+    pipelineCountRangeMax: "",
+    pipelineOutput: "sum",
+    pipelineSuccessThreshold: "",
+    pipelineCompare: "gte",
+    pipelineCritSuccessFaces: "",
+    pipelineCritFailureFaces: "",
+
+    ranges: DEFAULT_RULE_RANGES,
+  };
 }

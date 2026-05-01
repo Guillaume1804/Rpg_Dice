@@ -97,6 +97,24 @@ export function useRuleWizard() {
           resultMode: value === "values" ? "values" : "sum",
         };
 
+      case "targetValue":
+        return { ...draft, targetValue: value };
+
+      case "degreeStep":
+        return { ...draft, degreeStep: value };
+
+      case "critSuccessMin":
+        return { ...draft, critSuccessMin: value };
+
+      case "critSuccessMax":
+        return { ...draft, critSuccessMax: value };
+
+      case "critFailureMin":
+        return { ...draft, critFailureMin: value };
+
+      case "critFailureMax":
+        return { ...draft, critFailureMax: value };
+
       default:
         return draft;
     }
@@ -124,6 +142,15 @@ export function useRuleWizard() {
         next = {
           ...next,
           supportedSidesText: behavior.supportedSides.join(","),
+        };
+      }
+
+      if (behavior.key === "custom_pipeline") {
+        next = {
+          ...next,
+          scope: "group",
+          supportedSidesText: "6",
+          pipelineOutput: "sum",
         };
       }
 
