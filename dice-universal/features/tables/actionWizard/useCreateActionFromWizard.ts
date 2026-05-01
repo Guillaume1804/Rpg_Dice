@@ -13,7 +13,7 @@ import {
 } from "../../../data/repositories/groupsRepo";
 import { buildCanonicalLocalRuleName } from "./ruleNaming";
 import type { ActionWizardDraft } from "./types";
-import { buildRuleFromBehavior } from "../../../core/rules/buildRuleFromBehavior";
+import { buildRulePayloadFromActionWizard } from "./helpers";
 import { getRuleBehaviorDefinition } from "../../../core/rules/behaviorRegistry";
 
 type Params = {
@@ -94,29 +94,21 @@ export function useCreateActionFromWizard({
         ruleId = draft.selectedRuleId;
         ruleScope = resolveRuleScopeFromDraft(draft);
       } else {
-        const firstDie = validDice[0];
+        const rulePayload = buildRulePayloadFromActionWizard(draft);
 
-        const rulePayload = buildRuleFromBehavior({
-          actionName: draft.name,
-          behaviorKey: draft.behaviorType,
-          sides: firstDie.sides ?? 6,
-          compare: draft.compare,
-          successThreshold: draft.successThreshold,
-          critSuccessFaces: draft.critSuccessFaces,
-          critFailureFaces: draft.critFailureFaces,
-          targetValue: draft.targetValue,
-          degreeStep: draft.degreeStep,
-          critSuccessMin: draft.critSuccessMin,
-          critSuccessMax: draft.critSuccessMax,
-          critFailureMin: draft.critFailureMin,
-          critFailureMax: draft.critFailureMax,
-          successAtOrAbove: draft.successAtOrAbove,
-          failFaces: draft.failFaces,
-          glitchRule: draft.glitchRule,
-          ranges: draft.ranges,
-          keepCount: draft.keepCount,
-          dropCount: draft.dropCount,
-          resultMode: draft.resultMode,
+        console.log("WIZARD DRAFT PIPELINE", {
+          behaviorType: draft.behaviorType,
+          pipelineExplodeFaces: draft.pipelineExplodeFaces,
+          pipelineRerollFaces: draft.pipelineRerollFaces,
+          pipelineKeepHighest: draft.pipelineKeepHighest,
+          pipelineOutput: draft.pipelineOutput,
+        });
+
+        console.log("RULE PAYLOAD", {
+          kind: rulePayload.kind,
+          behavior_key: rulePayload.behavior_key,
+          scope: rulePayload.scope,
+          params_json: rulePayload.params_json,
         });
 
         const existingCanonicalRule = await findCanonicalLocalRule(db, {
@@ -154,8 +146,14 @@ export function useCreateActionFromWizard({
         }
       }
 
-      const shouldAttachRuleToGroup = ruleScope === "group";
-      const shouldAttachRuleToDie = ruleScope !== "group";
+      const shouldForceEntryRule =
+        draft.behaviorType === "custom_pipeline" ||
+        draft.behaviorType === "threshold_degrees";
+
+      const shouldAttachRuleToGroup =
+        !shouldForceEntryRule && ruleScope === "group";
+      const shouldAttachRuleToDie =
+        shouldForceEntryRule || ruleScope !== "group";
 
       const groupId = await createGroup(db, {
         profileId: profile.id,

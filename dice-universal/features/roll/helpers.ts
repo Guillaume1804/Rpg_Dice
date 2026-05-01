@@ -104,3 +104,88 @@ function formatOutcomeLabel(outcome: string): string {
   if (outcome === "crit_glitch") return "Échec critique";
   return outcome;
 }
+
+export function getPipelineDisplayLines(res: any): string[] {
+  if (!res || res.kind !== "pipeline") return [];
+
+  const steps = Array.isArray(res.meta?.steps) ? res.meta.steps : [];
+  const lines: string[] = [];
+
+  lines.push(`Jets initiaux : ${formatValueListForDisplay(res.values)}`);
+
+  const rerolls = steps.filter((step: any) => step.op === "reroll_one");
+  if (rerolls.length > 0) {
+    lines.push("Relances :");
+    for (const step of rerolls) {
+      lines.push(`• ${step.from} → ${step.to}`);
+    }
+  }
+
+  const explosions = steps.filter((step: any) => step.op === "explode_one");
+  if (explosions.length > 0) {
+    lines.push("Explosions :");
+    for (const step of explosions) {
+      lines.push(`• ${step.trigger} → +${step.extra}`);
+    }
+  }
+
+  const keepOrDropSteps = steps.filter((step: any) =>
+    ["keep_highest", "keep_lowest", "drop_highest", "drop_lowest"].includes(
+      step.op,
+    ),
+  );
+
+  for (const step of keepOrDropSteps) {
+    if (Array.isArray(step.kept)) {
+      lines.push(`${formatPipelineStepLabel(step.op)} : ${formatValueListForDisplay(step.kept)}`);
+    }
+  }
+
+  const countSuccessStep = steps.find(
+    (step: any) => step.op === "count_successes",
+  );
+  if (countSuccessStep) {
+    lines.push(
+      `Succès ≥ ${countSuccessStep.at_or_above} : ${countSuccessStep.successes}`,
+    );
+  }
+
+  const countEqualStep = steps.find((step: any) => step.op === "count_equal");
+  if (countEqualStep) {
+    lines.push(`Faces comptées : ${countEqualStep.count}`);
+  }
+
+  const countRangeStep = steps.find((step: any) => step.op === "count_range");
+  if (countRangeStep) {
+    lines.push(
+      `Valeurs entre ${countRangeStep.min} et ${countRangeStep.max} : ${countRangeStep.count}`,
+    );
+  }
+
+  if (Array.isArray(res.kept)) {
+    lines.push(`Valeurs finales : ${formatValueListForDisplay(res.kept)}`);
+  }
+
+  if (res.meta?.outcome) {
+    lines.push(`Résultat : ${formatOutcomeLabel(res.meta.outcome)}`);
+  }
+
+  if (res.final != null) {
+    lines.push(`Final : ${res.final}`);
+  }
+
+  return lines;
+}
+
+function formatValueListForDisplay(values: any): string {
+  if (!Array.isArray(values) || values.length === 0) return "—";
+  return values.join(" + ");
+}
+
+function formatPipelineStepLabel(op: string): string {
+  if (op === "keep_highest") return "Dés les plus hauts gardés";
+  if (op === "keep_lowest") return "Dés les plus faibles gardés";
+  if (op === "drop_highest") return "Après retrait des plus hauts";
+  if (op === "drop_lowest") return "Après retrait des plus faibles";
+  return op;
+}

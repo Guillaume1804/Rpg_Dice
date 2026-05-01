@@ -342,33 +342,32 @@ function runPipeline(
       break;
   }
 
-  // Gestion succès / échec générique si on a un seuil ET une sortie numérique
+  const naturalFirst = initialNatural[0] ?? 0;
+  const critSuccessFaces = new Set(params.crit_success_faces || []);
+  const critFailureFaces = new Set(params.crit_failure_faces || []);
+  const compare: "gte" | "lte" = params.compare === "lte" ? "lte" : "gte";
+
+  if (critSuccessFaces.has(naturalFirst)) {
+    return {
+      kind: "pipeline",
+      values: initialNatural,
+      kept,
+      final,
+      meta: { ...meta, outcome: "crit_success", compare },
+    };
+  }
+
+  if (critFailureFaces.has(naturalFirst)) {
+    return {
+      kind: "pipeline",
+      values: initialNatural,
+      kept,
+      final,
+      meta: { ...meta, outcome: "crit_failure", compare },
+    };
+  }
+
   if (params.success_threshold != null && final != null) {
-    const naturalFirst = initialNatural[0] ?? 0;
-    const critSuccessFaces = new Set(params.crit_success_faces || []);
-    const critFailureFaces = new Set(params.crit_failure_faces || []);
-    const compare: "gte" | "lte" = params.compare === "lte" ? "lte" : "gte";
-
-    if (critSuccessFaces.has(naturalFirst)) {
-      return {
-        kind: "pipeline",
-        values: initialNatural,
-        kept,
-        final,
-        meta: { ...meta, outcome: "crit_success", compare },
-      };
-    }
-
-    if (critFailureFaces.has(naturalFirst)) {
-      return {
-        kind: "pipeline",
-        values: initialNatural,
-        kept,
-        final,
-        meta: { ...meta, outcome: "crit_failure", compare },
-      };
-    }
-
     const ok =
       compare === "lte"
         ? final <= params.success_threshold

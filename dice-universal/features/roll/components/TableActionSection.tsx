@@ -1,3 +1,5 @@
+// dice-universal\features\roll\components\TableActionSection.tsx
+
 import { useEffect, useMemo, useState } from "react";
 import { View, Text, Pressable } from "react-native";
 import type { GroupRollResult } from "../../../core/roll/roll";
@@ -6,7 +8,7 @@ import type {
   GroupRow,
   GroupDieRow,
 } from "../../../data/repositories/groupsRepo";
-import { formatRuleResult } from "../helpers";
+import { formatRuleResult, getPipelineDisplayLines } from "../helpers";
 
 type ProfileWithGroups = {
   profile: ProfileRow;
@@ -46,6 +48,32 @@ function getGroupResult(
   results: GroupRollResult[],
 ): GroupRollResult | null {
   return results.find((result) => result.groupId === groupId) ?? null;
+}
+
+function PipelineResultLines({ result }: { result: any }) {
+  const lines = getPipelineDisplayLines(result);
+
+  if (lines.length === 0) {
+    return (
+      <Text style={{ fontWeight: "700" }}>{formatRuleResult(result)}</Text>
+    );
+  }
+
+  return (
+    <View style={{ gap: 3 }}>
+      {lines.map((line, index) => (
+        <Text
+          key={`pipeline-line-${index}`}
+          style={{
+            opacity: line.endsWith(":") ? 1 : 0.72,
+            fontWeight: line.endsWith(":") ? "800" : "400",
+          }}
+        >
+          {line}
+        </Text>
+      ))}
+    </View>
+  );
 }
 
 export function TableActionSection({
@@ -420,9 +448,15 @@ export function TableActionSection({
                   </Text>
 
                   {tableQuickResult.group_eval_result ? (
-                    <Text style={{ fontWeight: "700" }}>
-                      {formatRuleResult(tableQuickResult.group_eval_result)}
-                    </Text>
+                    tableQuickResult.group_eval_result.kind === "pipeline" ? (
+                      <PipelineResultLines
+                        result={tableQuickResult.group_eval_result}
+                      />
+                    ) : (
+                      <Text style={{ fontWeight: "700" }}>
+                        {formatRuleResult(tableQuickResult.group_eval_result)}
+                      </Text>
+                    )
                   ) : null}
 
                   <Text style={{ opacity: 0.72 }}>
@@ -580,9 +614,16 @@ export function TableActionSection({
                 >
                   <Text style={{ fontWeight: "800" }}>Résultat de groupe</Text>
 
-                  <Text style={{ fontWeight: "700" }}>
-                    {formatRuleResult(selectedActionResult.group_eval_result)}
-                  </Text>
+                  {selectedActionResult.group_eval_result.kind ===
+                  "pipeline" ? (
+                    <PipelineResultLines
+                      result={selectedActionResult.group_eval_result}
+                    />
+                  ) : (
+                    <Text style={{ fontWeight: "700" }}>
+                      {formatRuleResult(selectedActionResult.group_eval_result)}
+                    </Text>
+                  )}
 
                   <Text style={{ opacity: 0.72 }}>
                     Valeurs :{" "}
@@ -628,9 +669,13 @@ export function TableActionSection({
                     </Text>
 
                     {entry.eval_result ? (
-                      <Text style={{ fontWeight: "700" }}>
-                        {formatRuleResult(entry.eval_result)}
-                      </Text>
+                      entry.eval_result.kind === "pipeline" ? (
+                        <PipelineResultLines result={entry.eval_result} />
+                      ) : (
+                        <Text style={{ fontWeight: "700" }}>
+                          {formatRuleResult(entry.eval_result)}
+                        </Text>
+                      )
                     ) : null}
                   </View>
                 ))}

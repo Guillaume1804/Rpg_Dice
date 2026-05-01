@@ -183,7 +183,7 @@ export const RULE_BEHAVIORS: RuleBehaviorRegistryItem[] = [
     description:
       "Construit une règle avancée en combinant relances, explosions, conservation, retrait, comptage et seuil.",
     kind: "pipeline",
-    defaultScope: "group",
+    defaultScope: "entry",
     allowedScopes: ["entry", "group", "both"],
     supportedSides: null,
     fields: [],

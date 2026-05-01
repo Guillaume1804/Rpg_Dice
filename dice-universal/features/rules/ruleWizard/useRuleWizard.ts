@@ -148,7 +148,7 @@ export function useRuleWizard() {
       if (behavior.key === "custom_pipeline") {
         next = {
           ...next,
-          scope: "group",
+          scope: "entry",
           supportedSidesText: "6",
           pipelineOutput: "sum",
         };

@@ -268,14 +268,44 @@ function renderEntryRuleDetails(
   }
 
   if (res.kind === "pipeline") {
+    const steps = Array.isArray(res.meta?.steps) ? res.meta.steps : [];
+
+    const explodeSteps = steps.filter((step: any) => step.op === "explode_one");
+
+    const rerollSteps = steps.filter((step: any) => step.op === "reroll_one");
+
     return (
       <>
         <Text style={{ opacity: 0.72 }}>
-          Valeurs : {formatValueList(res.values)}
+          Jets initiaux : {formatValueList(res.values)}
         </Text>
 
-        <Text style={{ opacity: 0.72 }}>
-          Conservés : {formatValueList(res.kept)}
+        {explodeSteps.length > 0 ? (
+          <View style={{ marginTop: 4, gap: 2 }}>
+            <Text style={{ fontWeight: "700" }}>Explosions :</Text>
+
+            {explodeSteps.map((step: any, index: number) => (
+              <Text key={`explode-${index}`} style={{ opacity: 0.72 }}>
+                {step.trigger} → +{step.extra}
+              </Text>
+            ))}
+          </View>
+        ) : null}
+
+        {rerollSteps.length > 0 ? (
+          <View style={{ marginTop: 4, gap: 2 }}>
+            <Text style={{ fontWeight: "700" }}>Relances :</Text>
+
+            {rerollSteps.map((step: any, index: number) => (
+              <Text key={`reroll-${index}`} style={{ opacity: 0.72 }}>
+                {step.from} → {step.to}
+              </Text>
+            ))}
+          </View>
+        ) : null}
+
+        <Text style={{ opacity: 0.72, marginTop: 4 }}>
+          Valeurs finales : {formatValueList(res.kept)}
         </Text>
 
         <Text style={{ marginTop: 2, fontWeight: "700" }}>

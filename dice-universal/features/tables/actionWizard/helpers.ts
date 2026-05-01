@@ -132,6 +132,15 @@ function buildPipelineParamsFromDraft(
       ? null
       : Number(draft.pipelineSuccessThreshold);
 
+  console.log("PIPELINE PARAMS BUILT", {
+    steps,
+    output: draft.pipelineOutput,
+    successThreshold,
+    compare: draft.pipelineCompare,
+    critSuccessFaces: parseNumberList(draft.pipelineCritSuccessFaces),
+    critFailureFaces: parseNumberList(draft.pipelineCritFailureFaces),
+  });
+
   return {
     steps,
     output: draft.pipelineOutput,
@@ -160,6 +169,36 @@ export function validateActionWizardStep(
     if (!draft.behaviorType) {
       return "Choisis un type d’action.";
     }
+    return null;
+  }
+
+  if (step === "dice") {
+    if (!draft.dice || draft.dice.length === 0) {
+      return "Ajoute au moins un dé.";
+    }
+
+    for (const die of draft.dice) {
+      if (!die.sides || die.sides <= 0) {
+        return "Chaque dé doit avoir un nombre de faces valide.";
+      }
+
+      if (!Number.isFinite(die.qty) || die.qty <= 0) {
+        return "La quantité doit être supérieure à 0.";
+      }
+
+      if (!Number.isFinite(die.modifier)) {
+        return "Le modificateur est invalide.";
+      }
+    }
+
+    return null;
+  }
+
+  if (step === "behavior") {
+    if (!draft.behaviorType) {
+      return "Choisis un type d’action.";
+    }
+
     if (draft.behaviorType === "custom_pipeline") {
       if (
         draft.pipelineKeepHighest.trim() !== "" &&
@@ -218,35 +257,6 @@ export function validateActionWizardStep(
       }
 
       return null;
-    }
-    return null;
-  }
-
-  if (step === "dice") {
-    if (!draft.dice || draft.dice.length === 0) {
-      return "Ajoute au moins un dé.";
-    }
-
-    for (const die of draft.dice) {
-      if (!die.sides || die.sides <= 0) {
-        return "Chaque dé doit avoir un nombre de faces valide.";
-      }
-
-      if (!Number.isFinite(die.qty) || die.qty <= 0) {
-        return "La quantité doit être supérieure à 0.";
-      }
-
-      if (!Number.isFinite(die.modifier)) {
-        return "Le modificateur est invalide.";
-      }
-    }
-
-    return null;
-  }
-
-  if (step === "behavior") {
-    if (!draft.behaviorType) {
-      return "Choisis un type d’action.";
     }
 
     if (
@@ -388,15 +398,15 @@ export function buildRulePayloadFromActionWizard(
       name: `${draft.name.trim()} — règle`,
       kind: "pipeline",
       behavior_key: "custom_pipeline",
-      category: "group",
+      category: "entry",
       params_json: JSON.stringify(pipelineParams),
       ui_schema_json: JSON.stringify({
         behavior_key: "custom_pipeline",
-        category: "group",
+        category: "entry",
         fields: [],
       }),
       supported_sides_json: JSON.stringify([firstDie.sides]),
-      scope: "group",
+      scope: "entry",
       usage_kind: "generated",
     };
   }
