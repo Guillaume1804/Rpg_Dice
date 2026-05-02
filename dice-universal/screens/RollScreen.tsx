@@ -4,6 +4,8 @@ import { View, Text, ScrollView, Pressable } from "react-native";
 import { useDb } from "../data/db/DbProvider";
 import { useActiveTable } from "../data/state/ActiveTableProvider";
 
+import { useDataRefresh } from "../data/state/DataRefreshProvider";
+
 import { RollModals } from "../features/roll/components/RollModals";
 import { QuickRollSection } from "../features/roll/components/QuickRollSection";
 import { TableActionSection } from "../features/roll/components/TableActionSection";
@@ -24,6 +26,7 @@ import { QuickDieBehaviorPickerModal } from "../features/roll/components/QuickDi
 import { useQuickBehaviorConfigModal } from "../features/roll/hooks/useQuickBehaviorConfigModal";
 import { useQuickQtyModal } from "../features/roll/hooks/useQuickQtyModal";
 import { useQuickDieBehaviorPicker } from "../features/roll/hooks/useQuickDieBehaviorPicker";
+
 
 export default function RollScreen() {
   type RollMode = "quick" | "table";
@@ -63,6 +66,8 @@ export default function RollScreen() {
   const [tableQuickModifier] = useState(0);
   const [tableQuickResult, setTableQuickResult] =
     useState<GroupRollResult | null>(null);
+
+  const { revision } = useDataRefresh();
 
   const STANDARD_DICE = [4, 6, 8, 10, 12, 20, 100];
 
@@ -232,6 +237,12 @@ export default function RollScreen() {
     },
   });
 
+  useEffect(() => {
+    if (!tableId) return;
+
+    reloadGroups();
+  }, [revision, tableId, reloadGroups]);
+
   function handleClearQuickRoll() {
     clearDraft();
   }
@@ -256,9 +267,9 @@ export default function RollScreen() {
 
   async function handleSaveDraftTarget(params: {
     mode:
-      | "new_table_new_profile"
-      | "existing_table_new_profile"
-      | "existing_table_existing_profile";
+    | "new_table_new_profile"
+    | "existing_table_new_profile"
+    | "existing_table_existing_profile";
     tableName?: string;
     profileName?: string;
     tableId?: string;
@@ -444,7 +455,7 @@ export default function RollScreen() {
             tableQuickResult={tableQuickResult}
             onSelectTableQuickDie={setTableQuickSides}
             onAdjustTableQuickQty={handleAdjustTableQuickQty}
-            onOpenTableQuickBehaviorPicker={() => {}}
+            onOpenTableQuickBehaviorPicker={() => { }}
             onRollTableQuickAction={handleRollTableQuickAction}
             onSaveQuickRollAsAction={handleSaveQuickRollAsAction}
           />

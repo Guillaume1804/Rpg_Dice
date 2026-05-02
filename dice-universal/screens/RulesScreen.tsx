@@ -2,6 +2,9 @@
 
 import { View, Text, Pressable } from "react-native";
 import { useDb } from "../data/db/DbProvider";
+
+import { useDataRefresh } from "../data/state/DataRefreshProvider";
+
 import { useRulesData } from "../features/rules/hooks/useRulesData";
 import { useHumanRuleEditor } from "../features/rules/hooks/useHumanRuleEditor";
 import { HumanRuleEditorModal } from "../features/rules/components/HumanRuleEditorModal";
@@ -14,6 +17,8 @@ import { useRuleWizardPreview } from "../features/rules/ruleWizard/useRuleWizard
 
 export default function RulesScreen() {
   const db = useDb();
+
+  const { notifyDataChanged } = useDataRefresh();
 
   const {
     error,
@@ -56,6 +61,7 @@ export default function RulesScreen() {
     saveRule,
     removeRule,
     closeEditor,
+    notifyDataChanged,
   });
 
   const ruleWizard = useRuleWizard();
@@ -78,6 +84,7 @@ export default function RulesScreen() {
       });
 
       ruleWizard.close();
+      notifyDataChanged();
     } catch (err) {
       console.error(err);
     }

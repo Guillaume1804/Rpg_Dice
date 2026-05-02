@@ -96,21 +96,6 @@ export function useCreateActionFromWizard({
       } else {
         const rulePayload = buildRulePayloadFromActionWizard(draft);
 
-        console.log("WIZARD DRAFT PIPELINE", {
-          behaviorType: draft.behaviorType,
-          pipelineExplodeFaces: draft.pipelineExplodeFaces,
-          pipelineRerollFaces: draft.pipelineRerollFaces,
-          pipelineKeepHighest: draft.pipelineKeepHighest,
-          pipelineOutput: draft.pipelineOutput,
-        });
-
-        console.log("RULE PAYLOAD", {
-          kind: rulePayload.kind,
-          behavior_key: rulePayload.behavior_key,
-          scope: rulePayload.scope,
-          params_json: rulePayload.params_json,
-        });
-
         const existingCanonicalRule = await findCanonicalLocalRule(db, {
           tableId,
           behavior_key: rulePayload.behavior_key,

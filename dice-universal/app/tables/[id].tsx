@@ -3,6 +3,8 @@ import { useMemo, useState } from "react";
 import { View, Text, ScrollView } from "react-native";
 import { useDb } from "../../data/db/DbProvider";
 
+import { useDataRefresh } from "../../data/state/DataRefreshProvider";
+
 import type { ProfileRow } from "../../data/repositories/profilesRepo";
 
 import { useTableDetailData } from "../../features/tables/hooks/useTableDetailData";
@@ -41,6 +43,8 @@ export default function TableDetailScreen() {
   const tableId = useMemo(() => (typeof id === "string" ? id : ""), [id]);
 
   const [isProfileDetailView, setIsProfileDetailView] = useState(false);
+
+  const { notifyDataChanged } = useDataRefresh();
 
   const {
     showEditModal,
@@ -182,6 +186,7 @@ export default function TableDetailScreen() {
     db,
     table,
     load,
+    notifyDataChanged,
     tableUi: {
       renameValue,
       setShowRenameModal,
@@ -263,6 +268,7 @@ export default function TableDetailScreen() {
     onSuccess: () => {
       closeWizardState();
       closeCreateActionWizard();
+      notifyDataChanged();
     },
   });
 
@@ -514,6 +520,7 @@ export default function TableDetailScreen() {
 
           closeEditor();
           await load();
+          notifyDataChanged();
         }}
       />
     </View>

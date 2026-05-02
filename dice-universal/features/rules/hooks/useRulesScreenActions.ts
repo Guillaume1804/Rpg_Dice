@@ -1,3 +1,5 @@
+// dice-universal/features/rules/hooks/useRulesScreenActions.ts
+
 import type { RuleRow } from "../../../data/repositories/rulesRepo";
 
 type RulePayload = {
@@ -21,6 +23,7 @@ type UseRulesScreenActionsParams = {
   saveRule: SaveRuleFn;
   removeRule: RemoveRuleFn;
   closeEditor: () => void;
+  notifyDataChanged: () => void;
 };
 
 export function useRulesScreenActions({
@@ -29,6 +32,7 @@ export function useRulesScreenActions({
   saveRule,
   removeRule,
   closeEditor,
+  notifyDataChanged,
 }: UseRulesScreenActionsParams) {
   async function handleSave() {
     try {
@@ -40,6 +44,7 @@ export function useRulesScreenActions({
       });
 
       closeEditor();
+      notifyDataChanged();
     } catch {
       // erreur déjà gérée plus haut
     }
@@ -48,6 +53,7 @@ export function useRulesScreenActions({
   async function handleDeleteRule(ruleId: string) {
     try {
       await removeRule(ruleId);
+      notifyDataChanged();
     } catch {
       // erreur déjà gérée plus haut
     }

@@ -90,17 +90,6 @@ export function useTableDetailData({ db, tableId }: UseTableDetailDataParams) {
 
       const allRules = await listRules(db);
       setRules(allRules);
-      console.log(
-        "[TABLE RULES]",
-        allRules.map((r) => ({
-          name: r.name,
-          kind: r.kind,
-          scope: r.scope,
-          supported_sides_json: r.supported_sides_json,
-          table_id: r.table_id,
-          is_system: r.is_system,
-        })),
-      );
     } catch (e: any) {
       setError(e?.message ?? String(e));
     }

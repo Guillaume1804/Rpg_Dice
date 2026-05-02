@@ -1,3 +1,5 @@
+// dice-universal/features/tables/hooks/useTableDetailActions.ts
+
 import { newId } from "../../../core/types/ids";
 import type { Db } from "../../../data/db/database";
 import type { ProfileRow } from "../../../data/repositories/profilesRepo";
@@ -77,6 +79,7 @@ type UseTableDetailActionsParams = {
   db: Db;
   table: TableRow | null;
   load: () => Promise<void>;
+  notifyDataChanged: () => void;
 
   tableUi: TableUiActions;
   profileUi: ProfileUiActions;
@@ -88,6 +91,7 @@ export function useTableDetailActions({
   db,
   table,
   load,
+  notifyDataChanged,
   tableUi,
   profileUi,
   groupUi,
@@ -102,6 +106,7 @@ export function useTableDetailActions({
     await updateTableName(db, table.id, name);
     tableUi.setShowRenameModal(false);
     await load();
+    notifyDataChanged();
   }
 
   async function submitCreateProfile() {
@@ -118,6 +123,7 @@ export function useTableDetailActions({
     profileUi.setShowCreateProfileModal(false);
     profileUi.resetCreateProfileForm();
     await load();
+    notifyDataChanged();
   }
 
   async function submitRenameProfile() {
@@ -130,11 +136,13 @@ export function useTableDetailActions({
     profileUi.setEditingProfile(null);
     profileUi.setRenameProfileValue("");
     await load();
+    notifyDataChanged();
   }
 
   async function submitDeleteProfile(profile: ProfileRow) {
     await deleteProfile(db, profile.id);
     await load();
+    notifyDataChanged();
   }
 
   async function submitRenameGroup() {
@@ -147,6 +155,7 @@ export function useTableDetailActions({
     groupUi.setEditingGroup(null);
     groupUi.setRenameGroupValue("");
     await load();
+    notifyDataChanged();
   }
 
   async function submitEditGroupRule() {
@@ -162,11 +171,13 @@ export function useTableDetailActions({
     groupUi.setEditingGroupForRule(null);
     groupUi.setSelectedGroupRuleId(null);
     await load();
+    notifyDataChanged();
   }
 
   async function submitDeleteGroup(group: GroupRow) {
     await deleteGroup(db, group.id);
     await load();
+    notifyDataChanged();
   }
 
   async function submitCreateDie() {
@@ -192,6 +203,7 @@ export function useTableDetailActions({
     dieUi.setShowCreateDieModal(false);
     dieUi.resetCreateDieForm();
     await load();
+    notifyDataChanged();
   }
 
   async function submitEditDie() {
@@ -216,11 +228,13 @@ export function useTableDetailActions({
     dieUi.setEditingDie(null);
     dieUi.setSelectedRuleId(null);
     await load();
+    notifyDataChanged();
   }
 
   async function submitDeleteDie(die: GroupDieRow) {
     await deleteGroupDie(db, die.id);
     await load();
+    notifyDataChanged();
   }
 
   return {

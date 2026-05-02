@@ -132,15 +132,6 @@ function buildPipelineParamsFromDraft(
       ? null
       : Number(draft.pipelineSuccessThreshold);
 
-  console.log("PIPELINE PARAMS BUILT", {
-    steps,
-    output: draft.pipelineOutput,
-    successThreshold,
-    compare: draft.pipelineCompare,
-    critSuccessFaces: parseNumberList(draft.pipelineCritSuccessFaces),
-    critFailureFaces: parseNumberList(draft.pipelineCritFailureFaces),
-  });
-
   return {
     steps,
     output: draft.pipelineOutput,
