@@ -14,6 +14,8 @@ type RangeRow = { min: string; max: string; label: string };
 export function behaviorNeedsSelectionConfig(
   behaviorKey: RuleBehaviorKey,
 ): boolean {
+  if (behaviorKey === "custom_pipeline") return true;
+
   const behavior = getRuleBehaviorDefinition(behaviorKey);
   return !!behavior && behavior.fields.length > 0;
 }
@@ -46,6 +48,12 @@ export function buildQuickBehaviorDefaultValues(params: {
   failFaces: string;
   glitchRule: string;
   ranges: RangeRow[];
+  targetValue: string;
+  degreeStep: string;
+  critSuccessMin: string;
+  critSuccessMax: string;
+  critFailureMin: string;
+  critFailureMax: string;
 }) {
   const behavior = getRuleBehaviorDefinition(params.behaviorKey);
 
@@ -100,6 +108,30 @@ export function buildQuickBehaviorDefaultValues(params: {
 
       case "glitchRule":
         values[field.key] = params.glitchRule;
+        break;
+
+      case "targetValue":
+        values[field.key] = params.targetValue;
+        break;
+
+      case "degreeStep":
+        values[field.key] = params.degreeStep;
+        break;
+
+      case "critSuccessMin":
+        values[field.key] = params.critSuccessMin;
+        break;
+
+      case "critSuccessMax":
+        values[field.key] = params.critSuccessMax;
+        break;
+
+      case "critFailureMin":
+        values[field.key] = params.critFailureMin;
+        break;
+
+      case "critFailureMax":
+        values[field.key] = params.critFailureMax;
         break;
 
       default:

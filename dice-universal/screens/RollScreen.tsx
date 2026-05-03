@@ -27,7 +27,6 @@ import { useQuickBehaviorConfigModal } from "../features/roll/hooks/useQuickBeha
 import { useQuickQtyModal } from "../features/roll/hooks/useQuickQtyModal";
 import { useQuickDieBehaviorPicker } from "../features/roll/hooks/useQuickDieBehaviorPicker";
 
-
 export default function RollScreen() {
   type RollMode = "quick" | "table";
   const [mode, setMode] = useState<RollMode>("quick");
@@ -267,9 +266,9 @@ export default function RollScreen() {
 
   async function handleSaveDraftTarget(params: {
     mode:
-    | "new_table_new_profile"
-    | "existing_table_new_profile"
-    | "existing_table_existing_profile";
+      | "new_table_new_profile"
+      | "existing_table_new_profile"
+      | "existing_table_existing_profile";
     tableName?: string;
     profileName?: string;
     tableId?: string;
@@ -455,7 +454,7 @@ export default function RollScreen() {
             tableQuickResult={tableQuickResult}
             onSelectTableQuickDie={setTableQuickSides}
             onAdjustTableQuickQty={handleAdjustTableQuickQty}
-            onOpenTableQuickBehaviorPicker={() => { }}
+            onOpenTableQuickBehaviorPicker={() => {}}
             onRollTableQuickAction={handleRollTableQuickAction}
             onSaveQuickRollAsAction={handleSaveQuickRollAsAction}
           />
@@ -573,6 +572,18 @@ export default function RollScreen() {
         configSuccessThreshold={quickBehaviorConfig.configSuccessThreshold}
         configCritSuccessFaces={quickBehaviorConfig.configCritSuccessFaces}
         configCritFailureFaces={quickBehaviorConfig.configCritFailureFaces}
+        configTargetValue={quickBehaviorConfig.configTargetValue}
+        configDegreeStep={quickBehaviorConfig.configDegreeStep}
+        configCritSuccessMin={quickBehaviorConfig.configCritSuccessMin}
+        configCritSuccessMax={quickBehaviorConfig.configCritSuccessMax}
+        configCritFailureMin={quickBehaviorConfig.configCritFailureMin}
+        configCritFailureMax={quickBehaviorConfig.configCritFailureMax}
+        onChangeTargetValue={quickBehaviorConfig.setConfigTargetValue}
+        onChangeDegreeStep={quickBehaviorConfig.setConfigDegreeStep}
+        onChangeCritSuccessMin={quickBehaviorConfig.setConfigCritSuccessMin}
+        onChangeCritSuccessMax={quickBehaviorConfig.setConfigCritSuccessMax}
+        onChangeCritFailureMin={quickBehaviorConfig.setConfigCritFailureMin}
+        onChangeCritFailureMax={quickBehaviorConfig.setConfigCritFailureMax}
         configSuccessAtOrAbove={quickBehaviorConfig.configSuccessAtOrAbove}
         configFailFaces={quickBehaviorConfig.configFailFaces}
         configGlitchRule={quickBehaviorConfig.configGlitchRule}
@@ -590,6 +601,56 @@ export default function RollScreen() {
         onUpdateRange={quickBehaviorConfig.updateRange}
         onClose={quickBehaviorConfig.close}
         onConfirm={handleConfirmBehaviorConfig}
+        pipelineRerollFaces={quickBehaviorConfig.pipelineRerollFaces}
+        pipelineRerollOnce={quickBehaviorConfig.pipelineRerollOnce}
+        pipelineExplodeFaces={quickBehaviorConfig.pipelineExplodeFaces}
+        pipelineKeepHighest={quickBehaviorConfig.pipelineKeepHighest}
+        pipelineKeepLowest={quickBehaviorConfig.pipelineKeepLowest}
+        pipelineDropHighest={quickBehaviorConfig.pipelineDropHighest}
+        pipelineDropLowest={quickBehaviorConfig.pipelineDropLowest}
+        pipelineCountSuccessAtOrAbove={
+          quickBehaviorConfig.pipelineCountSuccessAtOrAbove
+        }
+        pipelineCountEqualFaces={quickBehaviorConfig.pipelineCountEqualFaces}
+        pipelineCountRangeMin={quickBehaviorConfig.pipelineCountRangeMin}
+        pipelineCountRangeMax={quickBehaviorConfig.pipelineCountRangeMax}
+        pipelineOutput={quickBehaviorConfig.pipelineOutput}
+        pipelineSuccessThreshold={quickBehaviorConfig.pipelineSuccessThreshold}
+        pipelineCompare={quickBehaviorConfig.pipelineCompare}
+        pipelineCritSuccessFaces={quickBehaviorConfig.pipelineCritSuccessFaces}
+        pipelineCritFailureFaces={quickBehaviorConfig.pipelineCritFailureFaces}
+        onChangePipelineRerollFaces={quickBehaviorConfig.setPipelineRerollFaces}
+        onChangePipelineRerollOnce={quickBehaviorConfig.setPipelineRerollOnce}
+        onChangePipelineExplodeFaces={
+          quickBehaviorConfig.setPipelineExplodeFaces
+        }
+        onChangePipelineKeepHighest={quickBehaviorConfig.setPipelineKeepHighest}
+        onChangePipelineKeepLowest={quickBehaviorConfig.setPipelineKeepLowest}
+        onChangePipelineDropHighest={quickBehaviorConfig.setPipelineDropHighest}
+        onChangePipelineDropLowest={quickBehaviorConfig.setPipelineDropLowest}
+        onChangePipelineCountSuccessAtOrAbove={
+          quickBehaviorConfig.setPipelineCountSuccessAtOrAbove
+        }
+        onChangePipelineCountEqualFaces={
+          quickBehaviorConfig.setPipelineCountEqualFaces
+        }
+        onChangePipelineCountRangeMin={
+          quickBehaviorConfig.setPipelineCountRangeMin
+        }
+        onChangePipelineCountRangeMax={
+          quickBehaviorConfig.setPipelineCountRangeMax
+        }
+        onChangePipelineOutput={quickBehaviorConfig.setPipelineOutput}
+        onChangePipelineSuccessThreshold={
+          quickBehaviorConfig.setPipelineSuccessThreshold
+        }
+        onChangePipelineCompare={quickBehaviorConfig.setPipelineCompare}
+        onChangePipelineCritSuccessFaces={
+          quickBehaviorConfig.setPipelineCritSuccessFaces
+        }
+        onChangePipelineCritFailureFaces={
+          quickBehaviorConfig.setPipelineCritFailureFaces
+        }
       />
 
       <QuickQtyModal

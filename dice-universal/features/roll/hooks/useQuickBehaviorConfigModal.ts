@@ -1,3 +1,5 @@
+// dice-universal\features\roll\hooks\useQuickBehaviorConfigModal.ts
+
 import { useState } from "react";
 import type { RuleBehaviorKey } from "../../../core/rules/behaviorRegistry";
 import {
@@ -23,6 +25,12 @@ function applyFieldDefault(
     setConfigSuccessAtOrAbove: (value: string) => void;
     setConfigFailFaces: (value: string) => void;
     setConfigGlitchRule: (value: string) => void;
+    setConfigTargetValue: (value: string) => void;
+    setConfigDegreeStep: (value: string) => void;
+    setConfigCritSuccessMin: (value: string) => void;
+    setConfigCritSuccessMax: (value: string) => void;
+    setConfigCritFailureMin: (value: string) => void;
+    setConfigCritFailureMax: (value: string) => void;
   },
 ) {
   switch (key) {
@@ -65,6 +73,30 @@ function applyFieldDefault(
     case "glitchRule":
       setters.setConfigGlitchRule(value);
       break;
+
+    case "targetValue":
+      setters.setConfigTargetValue(value);
+      break;
+
+    case "degreeStep":
+      setters.setConfigDegreeStep(value);
+      break;
+
+    case "critSuccessMin":
+      setters.setConfigCritSuccessMin(value);
+      break;
+
+    case "critSuccessMax":
+      setters.setConfigCritSuccessMax(value);
+      break;
+
+    case "critFailureMin":
+      setters.setConfigCritFailureMin(value);
+      break;
+
+    case "critFailureMax":
+      setters.setConfigCritFailureMax(value);
+      break;
   }
 }
 
@@ -80,6 +112,12 @@ function getFieldValue(params: {
   configSuccessAtOrAbove: string;
   configFailFaces: string;
   configGlitchRule: string;
+  configTargetValue: string;
+  configDegreeStep: string;
+  configCritSuccessMin: string;
+  configCritSuccessMax: string;
+  configCritFailureMin: string;
+  configCritFailureMax: string;
 }) {
   switch (params.key) {
     case "keepCount":
@@ -111,6 +149,24 @@ function getFieldValue(params: {
 
     case "glitchRule":
       return params.configGlitchRule;
+
+    case "targetValue":
+      return params.configTargetValue;
+
+    case "degreeStep":
+      return params.configDegreeStep;
+
+    case "critSuccessMin":
+      return params.configCritSuccessMin;
+
+    case "critSuccessMax":
+      return params.configCritSuccessMax;
+
+    case "critFailureMin":
+      return params.configCritFailureMin;
+
+    case "critFailureMax":
+      return params.configCritFailureMax;
 
     default:
       return "";
@@ -144,12 +200,69 @@ export function useQuickBehaviorConfigModal() {
   const [configCritSuccessFaces, setConfigCritSuccessFaces] = useState("");
   const [configCritFailureFaces, setConfigCritFailureFaces] = useState("");
 
+  const [configTargetValue, setConfigTargetValue] = useState("65");
+  const [configDegreeStep, setConfigDegreeStep] = useState("10");
+  const [configCritSuccessMin, setConfigCritSuccessMin] = useState("1");
+  const [configCritSuccessMax, setConfigCritSuccessMax] = useState("5");
+  const [configCritFailureMin, setConfigCritFailureMin] = useState("95");
+  const [configCritFailureMax, setConfigCritFailureMax] = useState("100");
+
   const [configSuccessAtOrAbove, setConfigSuccessAtOrAbove] = useState("5");
   const [configFailFaces, setConfigFailFaces] = useState("1");
   const [configGlitchRule, setConfigGlitchRule] = useState("ones_gt_successes");
 
   const [configRanges, setConfigRanges] =
     useState<RangeRow[]>(DEFAULT_QUICK_RANGES);
+  const [pipelineRerollFaces, setPipelineRerollFaces] = useState("");
+  const [pipelineRerollOnce, setPipelineRerollOnce] = useState(true);
+  const [pipelineExplodeFaces, setPipelineExplodeFaces] = useState("");
+
+  const [pipelineKeepHighest, setPipelineKeepHighest] = useState("");
+  const [pipelineKeepLowest, setPipelineKeepLowest] = useState("");
+  const [pipelineDropHighest, setPipelineDropHighest] = useState("");
+  const [pipelineDropLowest, setPipelineDropLowest] = useState("");
+
+  const [pipelineCountSuccessAtOrAbove, setPipelineCountSuccessAtOrAbove] =
+    useState("");
+  const [pipelineCountEqualFaces, setPipelineCountEqualFaces] = useState("");
+  const [pipelineCountRangeMin, setPipelineCountRangeMin] = useState("");
+  const [pipelineCountRangeMax, setPipelineCountRangeMax] = useState("");
+
+  const [pipelineOutput, setPipelineOutput] = useState<
+    | "sum"
+    | "successes"
+    | "count_equal"
+    | "count_range"
+    | "first_value"
+    | "values"
+  >("sum");
+
+  const [pipelineSuccessThreshold, setPipelineSuccessThreshold] = useState("");
+  const [pipelineCompare, setPipelineCompare] = useState<"gte" | "lte">("gte");
+  const [pipelineCritSuccessFaces, setPipelineCritSuccessFaces] = useState("");
+  const [pipelineCritFailureFaces, setPipelineCritFailureFaces] = useState("");
+
+  function resetPipelineConfig() {
+    setPipelineRerollFaces("");
+    setPipelineRerollOnce(true);
+    setPipelineExplodeFaces("");
+
+    setPipelineKeepHighest("");
+    setPipelineKeepLowest("");
+    setPipelineDropHighest("");
+    setPipelineDropLowest("");
+
+    setPipelineCountSuccessAtOrAbove("");
+    setPipelineCountEqualFaces("");
+    setPipelineCountRangeMin("");
+    setPipelineCountRangeMax("");
+
+    setPipelineOutput("sum");
+    setPipelineSuccessThreshold("");
+    setPipelineCompare("gte");
+    setPipelineCritSuccessFaces("");
+    setPipelineCritFailureFaces("");
+  }
 
   function open(params: {
     behaviorKey: RuleBehaviorKey;
@@ -173,6 +286,13 @@ export function useQuickBehaviorConfigModal() {
     setConfigFailFaces("1");
     setConfigGlitchRule("ones_gt_successes");
     setConfigRanges(DEFAULT_QUICK_RANGES);
+    resetPipelineConfig();
+    setConfigTargetValue("65");
+    setConfigDegreeStep("10");
+    setConfigCritSuccessMin("1");
+    setConfigCritSuccessMax("5");
+    setConfigCritFailureMin("95");
+    setConfigCritFailureMax("100");
 
     if (behavior) {
       for (const field of behavior.fields) {
@@ -192,6 +312,12 @@ export function useQuickBehaviorConfigModal() {
           setConfigSuccessAtOrAbove,
           setConfigFailFaces,
           setConfigGlitchRule,
+          setConfigTargetValue,
+          setConfigDegreeStep,
+          setConfigCritSuccessMin,
+          setConfigCritSuccessMax,
+          setConfigCritFailureMin,
+          setConfigCritFailureMax,
         });
       }
     }
@@ -218,6 +344,13 @@ export function useQuickBehaviorConfigModal() {
     setConfigFailFaces("1");
     setConfigGlitchRule("ones_gt_successes");
     setConfigRanges(DEFAULT_QUICK_RANGES);
+    resetPipelineConfig();
+    setConfigTargetValue("65");
+    setConfigDegreeStep("10");
+    setConfigCritSuccessMin("1");
+    setConfigCritSuccessMax("5");
+    setConfigCritFailureMin("95");
+    setConfigCritFailureMax("100");
   }
 
   function updateRange(
@@ -235,6 +368,26 @@ export function useQuickBehaviorConfigModal() {
 
     const behavior = getRuleBehaviorDefinition(pendingBehaviorKey);
     if (!behavior) return false;
+    if (pendingBehaviorKey === "custom_pipeline") {
+      const numericFields = [
+        pipelineKeepHighest,
+        pipelineKeepLowest,
+        pipelineDropHighest,
+        pipelineDropLowest,
+        pipelineCountSuccessAtOrAbove,
+        pipelineCountRangeMin,
+        pipelineCountRangeMax,
+        pipelineSuccessThreshold,
+      ];
+
+      for (const value of numericFields) {
+        if (value.trim() !== "" && !Number.isFinite(Number(value))) {
+          return false;
+        }
+      }
+
+      return true;
+    }
 
     for (const field of behavior.fields) {
       if (field.type === "ranges") {
@@ -255,6 +408,12 @@ export function useQuickBehaviorConfigModal() {
           configSuccessAtOrAbove,
           configFailFaces,
           configGlitchRule,
+          configTargetValue,
+          configDegreeStep,
+          configCritSuccessMin,
+          configCritSuccessMax,
+          configCritFailureMin,
+          configCritFailureMax,
         });
 
         if (value.trim() === "") {
@@ -265,7 +424,9 @@ export function useQuickBehaviorConfigModal() {
         if (!Number.isFinite(Number(value))) return false;
 
         if (
-          (field.key === "keepCount" || field.key === "dropCount") &&
+          (field.key === "keepCount" ||
+            field.key === "dropCount" ||
+            field.key === "degreeStep") &&
           Number(value) <= 0
         ) {
           return false;
@@ -278,6 +439,30 @@ export function useQuickBehaviorConfigModal() {
 
   function buildDefaultValues() {
     if (!pendingBehaviorKey) return undefined;
+
+    if (pendingBehaviorKey === "custom_pipeline") {
+      return {
+        pipelineRerollFaces,
+        pipelineRerollOnce,
+        pipelineExplodeFaces,
+
+        pipelineKeepHighest,
+        pipelineKeepLowest,
+        pipelineDropHighest,
+        pipelineDropLowest,
+
+        pipelineCountSuccessAtOrAbove,
+        pipelineCountEqualFaces,
+        pipelineCountRangeMin,
+        pipelineCountRangeMax,
+
+        pipelineOutput,
+        pipelineSuccessThreshold,
+        pipelineCompare,
+        pipelineCritSuccessFaces,
+        pipelineCritFailureFaces,
+      };
+    }
 
     return buildQuickBehaviorDefaultValues({
       behaviorKey: pendingBehaviorKey,
@@ -292,6 +477,12 @@ export function useQuickBehaviorConfigModal() {
       failFaces: configFailFaces,
       glitchRule: configGlitchRule,
       ranges: configRanges,
+      targetValue: configTargetValue,
+      degreeStep: configDegreeStep,
+      critSuccessMin: configCritSuccessMin,
+      critSuccessMax: configCritSuccessMax,
+      critFailureMin: configCritFailureMin,
+      critFailureMax: configCritFailureMax,
     });
   }
 
@@ -329,5 +520,53 @@ export function useQuickBehaviorConfigModal() {
     updateRange,
     isValid,
     buildDefaultValues,
+
+    configTargetValue,
+    configDegreeStep,
+    configCritSuccessMin,
+    configCritSuccessMax,
+    configCritFailureMin,
+    configCritFailureMax,
+
+    setConfigTargetValue,
+    setConfigDegreeStep,
+    setConfigCritSuccessMin,
+    setConfigCritSuccessMax,
+    setConfigCritFailureMin,
+    setConfigCritFailureMax,
+
+    pipelineRerollFaces,
+    pipelineRerollOnce,
+    pipelineExplodeFaces,
+    pipelineKeepHighest,
+    pipelineKeepLowest,
+    pipelineDropHighest,
+    pipelineDropLowest,
+    pipelineCountSuccessAtOrAbove,
+    pipelineCountEqualFaces,
+    pipelineCountRangeMin,
+    pipelineCountRangeMax,
+    pipelineOutput,
+    pipelineSuccessThreshold,
+    pipelineCompare,
+    pipelineCritSuccessFaces,
+    pipelineCritFailureFaces,
+
+    setPipelineRerollFaces,
+    setPipelineRerollOnce,
+    setPipelineExplodeFaces,
+    setPipelineKeepHighest,
+    setPipelineKeepLowest,
+    setPipelineDropHighest,
+    setPipelineDropLowest,
+    setPipelineCountSuccessAtOrAbove,
+    setPipelineCountEqualFaces,
+    setPipelineCountRangeMin,
+    setPipelineCountRangeMax,
+    setPipelineOutput,
+    setPipelineSuccessThreshold,
+    setPipelineCompare,
+    setPipelineCritSuccessFaces,
+    setPipelineCritFailureFaces,
   };
 }

@@ -8,7 +8,8 @@ import type {
   GroupRow,
   GroupDieRow,
 } from "../../../data/repositories/groupsRepo";
-import { formatRuleResult, getPipelineDisplayLines } from "../helpers";
+
+import { RollResultCard } from "./RollResultCard";
 
 type ProfileWithGroups = {
   profile: ProfileRow;
@@ -48,32 +49,6 @@ function getGroupResult(
   results: GroupRollResult[],
 ): GroupRollResult | null {
   return results.find((result) => result.groupId === groupId) ?? null;
-}
-
-function PipelineResultLines({ result }: { result: any }) {
-  const lines = getPipelineDisplayLines(result);
-
-  if (lines.length === 0) {
-    return (
-      <Text style={{ fontWeight: "700" }}>{formatRuleResult(result)}</Text>
-    );
-  }
-
-  return (
-    <View style={{ gap: 3 }}>
-      {lines.map((line, index) => (
-        <Text
-          key={`pipeline-line-${index}`}
-          style={{
-            opacity: line.endsWith(":") ? 1 : 0.72,
-            fontWeight: line.endsWith(":") ? "800" : "400",
-          }}
-        >
-          {line}
-        </Text>
-      ))}
-    </View>
-  );
 }
 
 export function TableActionSection({
@@ -448,15 +423,10 @@ export function TableActionSection({
                   </Text>
 
                   {tableQuickResult.group_eval_result ? (
-                    tableQuickResult.group_eval_result.kind === "pipeline" ? (
-                      <PipelineResultLines
-                        result={tableQuickResult.group_eval_result}
-                      />
-                    ) : (
-                      <Text style={{ fontWeight: "700" }}>
-                        {formatRuleResult(tableQuickResult.group_eval_result)}
-                      </Text>
-                    )
+                    <RollResultCard
+                      result={tableQuickResult.group_eval_result}
+                      title="Résultat rapide"
+                    />
                   ) : null}
 
                   <Text style={{ opacity: 0.72 }}>
@@ -612,18 +582,10 @@ export function TableActionSection({
                     gap: 6,
                   }}
                 >
-                  <Text style={{ fontWeight: "800" }}>Résultat de groupe</Text>
-
-                  {selectedActionResult.group_eval_result.kind ===
-                  "pipeline" ? (
-                    <PipelineResultLines
-                      result={selectedActionResult.group_eval_result}
-                    />
-                  ) : (
-                    <Text style={{ fontWeight: "700" }}>
-                      {formatRuleResult(selectedActionResult.group_eval_result)}
-                    </Text>
-                  )}
+                  <RollResultCard
+                    result={selectedActionResult.group_eval_result}
+                    title="Résultat de groupe"
+                  />
 
                   <Text style={{ opacity: 0.72 }}>
                     Valeurs :{" "}
@@ -639,46 +601,50 @@ export function TableActionSection({
               ) : null}
 
               <View style={{ gap: 8 }}>
-                {selectedActionResult.entries.map((entry) => (
-                  <View
-                    key={entry.entryId}
-                    style={{
-                      padding: 10,
-                      borderWidth: 1,
-                      borderRadius: 10,
-                      gap: 4,
-                    }}
-                  >
-                    <Text style={{ fontWeight: "800" }}>
-                      {entry.qty}d{entry.sides}
-                      {entry.modifier
-                        ? ` ${entry.modifier > 0 ? "+" : ""}${entry.modifier}`
-                        : ""}
-                    </Text>
+                {selectedActionResult.entries.map((entry) => {
+                  const entryLabel = `${entry.qty}d${entry.sides}${
+                    entry.modifier
+                      ? ` ${entry.modifier > 0 ? "+" : ""}${entry.modifier}`
+                      : ""
+                  }`;
 
-                    <Text style={{ opacity: 0.72 }}>
-                      Naturel : {entry.natural_values.join(" + ")}
-                    </Text>
-
-                    <Text style={{ opacity: 0.72 }}>
-                      Signé : {entry.signed_values.join(" + ")}
-                    </Text>
-
-                    <Text style={{ opacity: 0.72 }}>
-                      Total entrée : {entry.final_total}
-                    </Text>
-
-                    {entry.eval_result ? (
-                      entry.eval_result.kind === "pipeline" ? (
-                        <PipelineResultLines result={entry.eval_result} />
+                  return (
+                    <View
+                      key={entry.entryId}
+                      style={{
+                        gap: 8,
+                      }}
+                    >
+                      {entry.eval_result ? (
+                        <RollResultCard
+                          result={entry.eval_result}
+                          title={entryLabel}
+                        />
                       ) : (
-                        <Text style={{ fontWeight: "700" }}>
-                          {formatRuleResult(entry.eval_result)}
-                        </Text>
-                      )
-                    ) : null}
-                  </View>
-                ))}
+                        <View
+                          style={{
+                            padding: 10,
+                            borderWidth: 1,
+                            borderRadius: 10,
+                            gap: 4,
+                          }}
+                        >
+                          <Text style={{ fontWeight: "800" }}>
+                            {entryLabel}
+                          </Text>
+
+                          <Text style={{ opacity: 0.72 }}>
+                            Valeurs : {entry.natural_values.join(" + ")}
+                          </Text>
+
+                          <Text style={{ fontSize: 18, fontWeight: "800" }}>
+                            Total : {entry.final_total}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
               </View>
 
               {!selectedActionResult.group_eval_result ? (

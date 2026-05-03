@@ -1,3 +1,5 @@
+// dice-universal\features\roll\helpers\buildDraftTempRuleFromPreset.ts
+
 import { buildRuleFromBehavior } from "../../../core/rules/buildRuleFromBehavior";
 import type { RuleBehaviorKey } from "../../../core/rules/behaviorRegistry";
 import type { RuleUsageKind } from "../../../data/repositories/rulesRepo";
@@ -88,12 +90,183 @@ function readRanges(
     );
 }
 
+function parseNumberList(value: unknown): number[] {
+  if (typeof value !== "string") return [];
+
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map(Number)
+    .filter(Number.isFinite);
+}
+
+function parseOptionalPositiveInt(value: unknown): number | null {
+  if (typeof value !== "string") return null;
+
+  const text = value.trim();
+  if (!text) return null;
+
+  const n = Number(text);
+  if (!Number.isFinite(n) || n <= 0) return null;
+
+  return Math.floor(n);
+}
+
+function readBoolean(
+  values: Record<string, unknown> | undefined,
+  key: string,
+  fallback: boolean,
+): boolean {
+  const value = values?.[key];
+  return typeof value === "boolean" ? value : fallback;
+}
+
+function readPipelineOutput(values: Record<string, unknown> | undefined) {
+  const value = values?.pipelineOutput;
+
+  if (
+    value === "sum" ||
+    value === "successes" ||
+    value === "count_equal" ||
+    value === "count_range" ||
+    value === "first_value" ||
+    value === "values"
+  ) {
+    return value;
+  }
+
+  return "sum";
+}
+
+function buildQuickPipelineParams(values: Record<string, unknown> | undefined) {
+  const steps: any[] = [];
+
+  const rerollFaces = parseNumberList(values?.pipelineRerollFaces);
+  if (rerollFaces.length > 0) {
+    steps.push({
+      op: "reroll",
+      faces: rerollFaces,
+      once: readBoolean(values, "pipelineRerollOnce", true),
+    });
+  }
+
+  const explodeFaces = parseNumberList(values?.pipelineExplodeFaces);
+  if (explodeFaces.length > 0) {
+    steps.push({
+      op: "explode",
+      faces: explodeFaces,
+    });
+  }
+
+  const keepHighest = parseOptionalPositiveInt(values?.pipelineKeepHighest);
+  if (keepHighest != null) {
+    steps.push({ op: "keep_highest", n: keepHighest });
+  }
+
+  const keepLowest = parseOptionalPositiveInt(values?.pipelineKeepLowest);
+  if (keepLowest != null) {
+    steps.push({ op: "keep_lowest", n: keepLowest });
+  }
+
+  const dropHighest = parseOptionalPositiveInt(values?.pipelineDropHighest);
+  if (dropHighest != null) {
+    steps.push({ op: "drop_highest", n: dropHighest });
+  }
+
+  const dropLowest = parseOptionalPositiveInt(values?.pipelineDropLowest);
+  if (dropLowest != null) {
+    steps.push({ op: "drop_lowest", n: dropLowest });
+  }
+
+  const countSuccessAtOrAbove = parseOptionalPositiveInt(
+    values?.pipelineCountSuccessAtOrAbove,
+  );
+
+  if (countSuccessAtOrAbove != null) {
+    steps.push({
+      op: "count_successes",
+      at_or_above: countSuccessAtOrAbove,
+    });
+  }
+
+  const countEqualFaces = parseNumberList(values?.pipelineCountEqualFaces);
+  if (countEqualFaces.length > 0) {
+    steps.push({
+      op: "count_equal",
+      faces: countEqualFaces,
+    });
+  }
+
+  const countRangeMin = Number(values?.pipelineCountRangeMin);
+  const countRangeMax = Number(values?.pipelineCountRangeMax);
+
+  if (
+    typeof values?.pipelineCountRangeMin === "string" &&
+    typeof values?.pipelineCountRangeMax === "string" &&
+    values.pipelineCountRangeMin.trim() !== "" &&
+    values.pipelineCountRangeMax.trim() !== "" &&
+    Number.isFinite(countRangeMin) &&
+    Number.isFinite(countRangeMax)
+  ) {
+    steps.push({
+      op: "count_range",
+      min: countRangeMin,
+      max: countRangeMax,
+    });
+  }
+
+  const thresholdRaw = values?.pipelineSuccessThreshold;
+  const successThreshold =
+    typeof thresholdRaw === "string" && thresholdRaw.trim() !== ""
+      ? Number(thresholdRaw)
+      : null;
+
+  const compare =
+    values?.pipelineCompare === "lte" || values?.pipelineCompare === "gte"
+      ? values.pipelineCompare
+      : "gte";
+
+  return {
+    steps,
+    output: readPipelineOutput(values),
+    success_threshold:
+      successThreshold != null && Number.isFinite(successThreshold)
+        ? successThreshold
+        : undefined,
+    compare,
+    crit_success_faces: parseNumberList(values?.pipelineCritSuccessFaces),
+    crit_failure_faces: parseNumberList(values?.pipelineCritFailureFaces),
+  };
+}
+
 export function buildDraftTempRuleFromPreset(params: {
   preset: QuickRulePresetDefinition;
   sides: number;
   actionName?: string;
 }): DraftTempRule {
   const { preset, sides, actionName } = params;
+
+  if (preset.behaviorKey === "custom_pipeline") {
+    const paramsJson = JSON.stringify(
+      buildQuickPipelineParams(preset.defaultValues),
+    );
+
+    return {
+      id: `temp-rule-${preset.key}-${sides}`,
+      name: `${actionName ?? preset.label} — règle`,
+      kind: "pipeline",
+      behavior_key: "custom_pipeline",
+      category: preset.scope,
+      params_json: paramsJson,
+      ui_schema_json: JSON.stringify({
+        behavior_key: "custom_pipeline",
+        category: preset.scope,
+        fields: [],
+      }),
+      usage_kind: "generated",
+    };
+  }
 
   const built = buildRuleFromBehavior({
     actionName: actionName ?? preset.label,
@@ -103,6 +276,12 @@ export function buildDraftTempRuleFromPreset(params: {
     successThreshold: readString(preset.defaultValues, "successThreshold"),
     critSuccessFaces: readString(preset.defaultValues, "critSuccessFaces"),
     critFailureFaces: readString(preset.defaultValues, "critFailureFaces"),
+    targetValue: readString(preset.defaultValues, "targetValue"),
+    degreeStep: readString(preset.defaultValues, "degreeStep"),
+    critSuccessMin: readString(preset.defaultValues, "critSuccessMin"),
+    critSuccessMax: readString(preset.defaultValues, "critSuccessMax"),
+    critFailureMin: readString(preset.defaultValues, "critFailureMin"),
+    critFailureMax: readString(preset.defaultValues, "critFailureMax"),
     successAtOrAbove: readString(preset.defaultValues, "successAtOrAbove"),
     failFaces: readString(preset.defaultValues, "failFaces"),
     glitchRule: readString(preset.defaultValues, "glitchRule"),

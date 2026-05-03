@@ -1,8 +1,11 @@
+// dice-universal\features\roll\components\QuickRollSection.tsx
+
 import { useMemo } from "react";
 import { View, Text, Pressable } from "react-native";
 import type { GroupRollResult } from "../../../core/roll/roll";
 import type { RuleRow } from "../../../data/repositories/rulesRepo";
-import { getRuleNameFromId, formatRuleResult } from "../helpers";
+import { getRuleNameFromId } from "../helpers";
+import { RollResultCard } from "./RollResultCard";
 
 type DraftDie = {
   sides: number;
@@ -105,311 +108,36 @@ function getEntryResultForIndex(result: GroupRollResult | null, index: number) {
   return result.entries[index] ?? null;
 }
 
-function formatValueList(values: number[]) {
-  if (!values || values.length === 0) return "—";
-  return values.join(" + ");
+function getEntryLabel(entryResult: GroupRollResult["entries"][number]) {
+  return `${entryResult.qty}d${entryResult.sides}${
+    entryResult.modifier
+      ? ` ${entryResult.modifier > 0 ? "+" : ""}${entryResult.modifier}`
+      : ""
+  }`;
 }
 
-function renderEntryRuleDetails(
+function renderFallbackEntryResult(
   entryResult: GroupRollResult["entries"][number],
 ) {
-  const res = entryResult.eval_result;
-
-  if (!res) {
-    return (
-      <>
-        <Text style={{ fontSize: 20, fontWeight: "800" }}>
-          {entryResult.final_total}
-        </Text>
-
-        <Text style={{ opacity: 0.72 }}>
-          ({formatValueList(entryResult.signed_values)})
-        </Text>
-      </>
-    );
-  }
-
-  if (res.kind === "sum") {
-    return (
-      <>
-        <Text style={{ fontSize: 20, fontWeight: "800" }}>{res.total}</Text>
-
-        <Text style={{ opacity: 0.72 }}>
-          ({formatValueList(entryResult.signed_values)})
-        </Text>
-      </>
-    );
-  }
-
-  if (res.kind === "single_check") {
-    return (
-      <>
-        <Text style={{ opacity: 0.72 }}>Naturel : {res.natural}</Text>
-
-        <Text style={{ marginTop: 2, fontWeight: "700" }}>
-          {formatRuleResult(res)}
-        </Text>
-
-        <Text style={{ fontSize: 20, fontWeight: "800", marginTop: 4 }}>
-          Final : {res.final}
-        </Text>
-      </>
-    );
-  }
-
-  if (res.kind === "success_pool") {
-    return (
-      <>
-        <Text style={{ opacity: 0.72 }}>
-          Jets : {formatValueList(entryResult.natural_values)}
-        </Text>
-
-        <Text style={{ marginTop: 2, fontWeight: "700" }}>
-          {formatRuleResult(res)}
-        </Text>
-      </>
-    );
-  }
-
-  if (res.kind === "table_lookup") {
-    return (
-      <>
-        <Text style={{ opacity: 0.72 }}>Valeur : {res.value}</Text>
-
-        <Text style={{ marginTop: 2, fontWeight: "700" }}>{res.label}</Text>
-      </>
-    );
-  }
-
-  if (res.kind === "banded_sum") {
-    return (
-      <>
-        <Text style={{ opacity: 0.72 }}>
-          Valeurs : {formatValueList(entryResult.natural_values)}
-        </Text>
-
-        <Text style={{ marginTop: 2, fontWeight: "700" }}>
-          {formatRuleResult(res)}
-        </Text>
-
-        <Text style={{ fontSize: 20, fontWeight: "800", marginTop: 4 }}>
-          Total : {res.total}
-        </Text>
-      </>
-    );
-  }
-
-  if (res.kind === "highest_of_pool" || res.kind === "lowest_of_pool") {
-    return (
-      <>
-        <Text style={{ opacity: 0.72 }}>
-          Jets : {formatValueList(res.natural_values)}
-        </Text>
-
-        <Text style={{ opacity: 0.72 }}>Dé conservé : {res.kept}</Text>
-
-        <Text style={{ marginTop: 2, fontWeight: "700" }}>
-          {formatRuleResult(res)}
-        </Text>
-
-        <Text style={{ fontSize: 20, fontWeight: "800", marginTop: 4 }}>
-          Final : {res.final}
-        </Text>
-      </>
-    );
-  }
-
-  if (res.kind === "keep_highest_n" || res.kind === "keep_lowest_n") {
-    return (
-      <>
-        <Text style={{ opacity: 0.72 }}>
-          Jets : {formatValueList(res.natural_values)}
-        </Text>
-
-        <Text style={{ opacity: 0.72 }}>
-          Gardés : {formatValueList(res.kept)}
-        </Text>
-
-        {Array.isArray(res.final) ? (
-          <Text style={{ fontSize: 20, fontWeight: "800", marginTop: 4 }}>
-            Résultat : {formatValueList(res.final)}
-          </Text>
-        ) : (
-          <Text style={{ fontSize: 20, fontWeight: "800", marginTop: 4 }}>
-            Total : {res.final ?? "—"}
-          </Text>
-        )}
-      </>
-    );
-  }
-
-  if (res.kind === "drop_highest_n" || res.kind === "drop_lowest_n") {
-    return (
-      <>
-        <Text style={{ opacity: 0.72 }}>
-          Jets : {formatValueList(res.natural_values)}
-        </Text>
-
-        <Text style={{ opacity: 0.72 }}>
-          Restants : {formatValueList(res.remaining)}
-        </Text>
-
-        {Array.isArray(res.final) ? (
-          <Text style={{ fontSize: 20, fontWeight: "800", marginTop: 4 }}>
-            Résultat : {formatValueList(res.final)}
-          </Text>
-        ) : (
-          <Text style={{ fontSize: 20, fontWeight: "800", marginTop: 4 }}>
-            Total : {res.final ?? "—"}
-          </Text>
-        )}
-      </>
-    );
-  }
-
-  if (res.kind === "pipeline") {
-    const steps = Array.isArray(res.meta?.steps) ? res.meta.steps : [];
-
-    const explodeSteps = steps.filter((step: any) => step.op === "explode_one");
-
-    const rerollSteps = steps.filter((step: any) => step.op === "reroll_one");
-
-    return (
-      <>
-        <Text style={{ opacity: 0.72 }}>
-          Jets initiaux : {formatValueList(res.values)}
-        </Text>
-
-        {explodeSteps.length > 0 ? (
-          <View style={{ marginTop: 4, gap: 2 }}>
-            <Text style={{ fontWeight: "700" }}>Explosions :</Text>
-
-            {explodeSteps.map((step: any, index: number) => (
-              <Text key={`explode-${index}`} style={{ opacity: 0.72 }}>
-                {step.trigger} → +{step.extra}
-              </Text>
-            ))}
-          </View>
-        ) : null}
-
-        {rerollSteps.length > 0 ? (
-          <View style={{ marginTop: 4, gap: 2 }}>
-            <Text style={{ fontWeight: "700" }}>Relances :</Text>
-
-            {rerollSteps.map((step: any, index: number) => (
-              <Text key={`reroll-${index}`} style={{ opacity: 0.72 }}>
-                {step.from} → {step.to}
-              </Text>
-            ))}
-          </View>
-        ) : null}
-
-        <Text style={{ opacity: 0.72, marginTop: 4 }}>
-          Valeurs finales : {formatValueList(res.kept)}
-        </Text>
-
-        <Text style={{ marginTop: 2, fontWeight: "700" }}>
-          {formatRuleResult(res)}
-        </Text>
-
-        {res.final != null ? (
-          <Text style={{ fontSize: 20, fontWeight: "800", marginTop: 4 }}>
-            Final : {res.final}
-          </Text>
-        ) : null}
-      </>
-    );
-  }
-
   return (
-    <>
-      <Text style={{ fontSize: 20, fontWeight: "800" }}>
-        {entryResult.final_total}
-      </Text>
+    <View
+      style={{
+        padding: 10,
+        borderWidth: 1,
+        borderRadius: 10,
+        gap: 6,
+      }}
+    >
+      <Text style={{ fontWeight: "800" }}>{getEntryLabel(entryResult)}</Text>
 
       <Text style={{ opacity: 0.72 }}>
-        ({formatValueList(entryResult.signed_values)})
-      </Text>
-    </>
-  );
-}
-
-function renderGroupRuleDetails(result: GroupRollResult) {
-  const res = result.group_eval_result;
-  if (!res) return null;
-
-  if (res.kind === "success_pool") {
-    return (
-      <>
-        <Text style={{ fontWeight: "700" }}>{formatRuleResult(res)}</Text>
-
-        <Text style={{ opacity: 0.72, marginTop: 6 }}>
-          Jets :{" "}
-          {result.entries.flatMap((entry) => entry.natural_values).join(" + ")}
-        </Text>
-      </>
-    );
-  }
-
-  if (res.kind === "keep_highest_n" || res.kind === "keep_lowest_n") {
-    return (
-      <>
-        <Text style={{ opacity: 0.72 }}>
-          Jets : {formatValueList(res.natural_values)}
-        </Text>
-
-        <Text style={{ opacity: 0.72 }}>
-          Gardés : {formatValueList(res.kept)}
-        </Text>
-
-        {Array.isArray(res.final) ? (
-          <Text style={{ fontSize: 20, fontWeight: "800", marginTop: 4 }}>
-            Résultat : {formatValueList(res.final)}
-          </Text>
-        ) : (
-          <Text style={{ fontSize: 20, fontWeight: "800", marginTop: 4 }}>
-            Total : {res.final ?? "—"}
-          </Text>
-        )}
-      </>
-    );
-  }
-
-  if (res.kind === "drop_highest_n" || res.kind === "drop_lowest_n") {
-    return (
-      <>
-        <Text style={{ opacity: 0.72 }}>
-          Jets : {formatValueList(res.natural_values)}
-        </Text>
-
-        <Text style={{ opacity: 0.72 }}>
-          Restants : {formatValueList(res.remaining)}
-        </Text>
-
-        {Array.isArray(res.final) ? (
-          <Text style={{ fontSize: 20, fontWeight: "800", marginTop: 4 }}>
-            Résultat : {formatValueList(res.final)}
-          </Text>
-        ) : (
-          <Text style={{ fontSize: 20, fontWeight: "800", marginTop: 4 }}>
-            Total : {res.final ?? "—"}
-          </Text>
-        )}
-      </>
-    );
-  }
-
-  return (
-    <>
-      <Text style={{ fontWeight: "700" }}>{formatRuleResult(res)}</Text>
-
-      <Text style={{ opacity: 0.72, marginTop: 6 }}>
-        Valeurs :{" "}
-        {result.entries.flatMap((entry) => entry.natural_values).join(" + ")}
+        Valeurs : {entryResult.natural_values.join(" + ")}
       </Text>
 
-      <Text style={{ opacity: 0.72 }}>Total : {result.total}</Text>
-    </>
+      <Text style={{ fontSize: 18, fontWeight: "800" }}>
+        Total : {entryResult.final_total}
+      </Text>
+    </View>
   );
 }
 
@@ -629,7 +357,14 @@ export function QuickRollSection({
 
                       {entryResult ? (
                         <View style={{ paddingTop: 6, borderTopWidth: 1 }}>
-                          {renderEntryRuleDetails(entryResult)}
+                          {entryResult.eval_result ? (
+                            <RollResultCard
+                              result={entryResult.eval_result}
+                              title={getEntryLabel(entryResult)}
+                            />
+                          ) : (
+                            renderFallbackEntryResult(entryResult)
+                          )}
                         </View>
                       ) : null}
                     </View>
@@ -771,11 +506,21 @@ export function QuickRollSection({
 
                     {groupResult?.group_eval_result && index === 0 ? (
                       <View style={{ paddingTop: 6, borderTopWidth: 1 }}>
-                        {renderGroupRuleDetails(groupResult)}
+                        <RollResultCard
+                          result={groupResult.group_eval_result}
+                          title="Résultat de groupe"
+                        />
                       </View>
                     ) : entryResult ? (
                       <View style={{ paddingTop: 6, borderTopWidth: 1 }}>
-                        {renderEntryRuleDetails(entryResult)}
+                        {entryResult.eval_result ? (
+                          <RollResultCard
+                            result={entryResult.eval_result}
+                            title={getEntryLabel(entryResult)}
+                          />
+                        ) : (
+                          renderFallbackEntryResult(entryResult)
+                        )}
                       </View>
                     ) : null}
                   </View>
