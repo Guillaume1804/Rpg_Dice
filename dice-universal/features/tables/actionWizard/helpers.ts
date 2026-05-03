@@ -29,6 +29,17 @@ function parseNumberList(value: string): number[] {
     .filter(Number.isFinite);
 }
 
+function isValidNumberList(value: string): boolean {
+  const text = value.trim();
+  if (!text) return true;
+
+  return text
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .every((item) => Number.isFinite(Number(item)));
+}
+
 function parseOptionalPositiveInt(value: string): number | null {
   const text = value.trim();
   if (!text) return null;
@@ -46,18 +57,30 @@ function buildPipelineParamsFromDraft(
 
   const rerollFaces = parseNumberList(draft.pipelineRerollFaces);
   if (rerollFaces.length > 0) {
+    const maxRerollsPerDie = parseOptionalPositiveInt(
+      draft.pipelineMaxRerollsPerDie,
+    );
+
     steps.push({
       op: "reroll",
       faces: rerollFaces,
       once: draft.pipelineRerollOnce,
+      ...(maxRerollsPerDie != null ? { max_rerolls: maxRerollsPerDie } : {}),
     });
   }
 
   const explodeFaces = parseNumberList(draft.pipelineExplodeFaces);
   if (explodeFaces.length > 0) {
+    const maxExplosionsPerDie = parseOptionalPositiveInt(
+      draft.pipelineMaxExplosionsPerDie,
+    );
+
     steps.push({
       op: "explode",
       faces: explodeFaces,
+      ...(maxExplosionsPerDie != null
+        ? { max_explosions: maxExplosionsPerDie }
+        : {}),
     });
   }
 
@@ -142,6 +165,8 @@ function buildPipelineParamsFromDraft(
     compare: draft.pipelineCompare,
     crit_success_faces: parseNumberList(draft.pipelineCritSuccessFaces),
     crit_failure_faces: parseNumberList(draft.pipelineCritFailureFaces),
+    complication_faces: parseNumberList(draft.pipelineComplicationFaces),
+    complication_rule: draft.pipelineComplicationRule,
   };
 }
 
@@ -217,6 +242,68 @@ export function validateActionWizardStep(
         !Number.isFinite(Number(draft.pipelineDropLowest))
       ) {
         return "Le nombre de dés à retirer doit être un nombre valide.";
+      }
+
+      if (
+        draft.pipelineMaxRerollsPerDie.trim() !== "" &&
+        !Number.isFinite(Number(draft.pipelineMaxRerollsPerDie))
+      ) {
+        return "Le nombre maximum de relances par dé doit être un nombre valide.";
+      }
+
+      if (
+        draft.pipelineMaxRerollsPerDie.trim() !== "" &&
+        Number(draft.pipelineMaxRerollsPerDie) <= 0
+      ) {
+        return "Le nombre maximum de relances par dé doit être supérieur à 0.";
+      }
+
+      if (
+        draft.pipelineMaxExplosionsPerDie.trim() !== "" &&
+        !Number.isFinite(Number(draft.pipelineMaxExplosionsPerDie))
+      ) {
+        return "Le nombre maximum d’explosions par dé doit être un nombre valide.";
+      }
+
+      if (
+        draft.pipelineMaxExplosionsPerDie.trim() !== "" &&
+        Number(draft.pipelineMaxExplosionsPerDie) <= 0
+      ) {
+        return "Le nombre maximum d’explosions par dé doit être supérieur à 0.";
+      }
+
+      if (
+        draft.pipelineComplicationRule !== "none" &&
+        draft.pipelineComplicationRule !== "any" &&
+        draft.pipelineComplicationRule !== "gte_successes" &&
+        draft.pipelineComplicationRule !== "gt_successes" &&
+        draft.pipelineComplicationRule !== "zero_successes"
+      ) {
+        return "La règle de complication du pipeline est invalide.";
+      }
+
+      if (!isValidNumberList(draft.pipelineRerollFaces)) {
+        return "Les faces à relancer doivent être une liste de nombres valide.";
+      }
+
+      if (!isValidNumberList(draft.pipelineExplodeFaces)) {
+        return "Les faces d’explosion doivent être une liste de nombres valide.";
+      }
+
+      if (!isValidNumberList(draft.pipelineCountEqualFaces)) {
+        return "Les faces exactes à compter doivent être une liste de nombres valide.";
+      }
+
+      if (!isValidNumberList(draft.pipelineCritSuccessFaces)) {
+        return "Les faces de réussite critique doivent être une liste de nombres valide.";
+      }
+
+      if (!isValidNumberList(draft.pipelineCritFailureFaces)) {
+        return "Les faces d’échec critique doivent être une liste de nombres valide.";
+      }
+
+      if (!isValidNumberList(draft.pipelineComplicationFaces)) {
+        return "Les faces de complication doivent être une liste de nombres valide.";
       }
 
       if (
@@ -490,7 +577,77 @@ export function buildActionWizardSummary(draft: ActionWizardDraft): string {
   }
 
   if (draft.behaviorType === "custom_pipeline") {
-    return `${draft.name} • ${dieLabel} • pipeline personnalisé`;
+    const parts: string[] = [];
+
+    if (draft.pipelineRerollFaces.trim()) {
+      parts.push(
+        `relance ${draft.pipelineRerollFaces}${
+          draft.pipelineMaxRerollsPerDie.trim()
+            ? ` max ${draft.pipelineMaxRerollsPerDie}/dé`
+            : ""
+        }`,
+      );
+    }
+
+    if (draft.pipelineExplodeFaces.trim()) {
+      parts.push(
+        `explosion ${draft.pipelineExplodeFaces}${
+          draft.pipelineMaxExplosionsPerDie.trim()
+            ? ` max ${draft.pipelineMaxExplosionsPerDie}/dé`
+            : ""
+        }`,
+      );
+    }
+
+    if (draft.pipelineKeepHighest.trim()) {
+      parts.push(`garde ${draft.pipelineKeepHighest} meilleurs`);
+    }
+
+    if (draft.pipelineKeepLowest.trim()) {
+      parts.push(`garde ${draft.pipelineKeepLowest} plus faibles`);
+    }
+
+    if (draft.pipelineDropHighest.trim()) {
+      parts.push(`retire ${draft.pipelineDropHighest} meilleurs`);
+    }
+
+    if (draft.pipelineDropLowest.trim()) {
+      parts.push(`retire ${draft.pipelineDropLowest} plus faibles`);
+    }
+
+    if (draft.pipelineCountSuccessAtOrAbove.trim()) {
+      parts.push(`succès ≥ ${draft.pipelineCountSuccessAtOrAbove}`);
+    }
+
+    if (draft.pipelineCountEqualFaces.trim()) {
+      parts.push(`compte faces ${draft.pipelineCountEqualFaces}`);
+    }
+
+    if (
+      draft.pipelineCountRangeMin.trim() &&
+      draft.pipelineCountRangeMax.trim()
+    ) {
+      parts.push(
+        `compte ${draft.pipelineCountRangeMin}-${draft.pipelineCountRangeMax}`,
+      );
+    }
+
+    if (draft.pipelineComplicationFaces.trim()) {
+      parts.push(`complications ${draft.pipelineComplicationFaces}`);
+    }
+
+    if (draft.pipelineCritSuccessFaces.trim()) {
+      parts.push(`critique + ${draft.pipelineCritSuccessFaces}`);
+    }
+
+    if (draft.pipelineCritFailureFaces.trim()) {
+      parts.push(`critique - ${draft.pipelineCritFailureFaces}`);
+    }
+
+    const pipelineLabel =
+      parts.length > 0 ? parts.join(", ") : "pipeline personnalisé";
+
+    return `${draft.name} • ${dieLabel} • ${pipelineLabel}`;
   }
 
   return draft.name || "Nouvelle action";

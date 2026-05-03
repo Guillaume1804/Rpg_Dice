@@ -1,5 +1,6 @@
 // dice-universal\features\tables\actionWizard\steps\ActionWizardStepBehavior.tsx
 
+import type { ReactNode } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 import type { ActionWizardDraft } from "../types";
 
@@ -18,7 +19,7 @@ type Props = {
   onRemoveRangeRow: (index: number) => void;
 };
 
-function FieldLabel({ children }: { children: React.ReactNode }) {
+function FieldLabel({ children }: { children: ReactNode }) {
   return <Text style={{ fontWeight: "700" }}>{children}</Text>;
 }
 
@@ -273,6 +274,22 @@ export function ActionWizardStepBehavior({
                 <Text style={{ fontWeight: "700" }}>Tant que possible</Text>
               </Pressable>
             </View>
+            <View style={{ gap: 8 }}>
+              <FieldLabel>Nombre max de relances par dé</FieldLabel>
+              <BoxInput
+                value={draft.pipelineMaxRerollsPerDie}
+                onChangeText={(value) =>
+                  onUpdateDraft("pipelineMaxRerollsPerDie", value)
+                }
+                placeholder="Optionnel, ex: 2"
+                keyboardType="numeric"
+              />
+
+              <Text style={{ opacity: 0.72 }}>
+                Laisse vide pour ne pas fixer de limite précise. La limite
+                s’applique à chaque dé individuellement.
+              </Text>
+            </View>
           </View>
 
           <View style={{ gap: 8 }}>
@@ -284,6 +301,23 @@ export function ActionWizardStepBehavior({
               }
               placeholder="Ex: 6 ou 10"
             />
+          </View>
+
+          <View style={{ gap: 8 }}>
+            <FieldLabel>Nombre max d’explosions par dé</FieldLabel>
+            <BoxInput
+              value={draft.pipelineMaxExplosionsPerDie}
+              onChangeText={(value) =>
+                onUpdateDraft("pipelineMaxExplosionsPerDie", value)
+              }
+              placeholder="Optionnel, ex: 3"
+              keyboardType="numeric"
+            />
+
+            <Text style={{ opacity: 0.72 }}>
+              Laisse vide pour permettre les explosions tant que la face ciblée
+              ressort. La limite s’applique à chaque dé individuellement.
+            </Text>
           </View>
 
           <View style={{ gap: 8 }}>
@@ -475,6 +509,63 @@ export function ActionWizardStepBehavior({
               }
               placeholder="Optionnel, ex: 1"
             />
+          </View>
+
+          <View style={{ gap: 8 }}>
+            <FieldLabel>Faces de complication</FieldLabel>
+            <BoxInput
+              value={draft.pipelineComplicationFaces}
+              onChangeText={(value) =>
+                onUpdateDraft("pipelineComplicationFaces", value)
+              }
+              placeholder="Optionnel, ex: 1 ou 1,2"
+            />
+          </View>
+
+          <View style={{ gap: 8 }}>
+            <FieldLabel>Règle de complication</FieldLabel>
+
+            {[
+              {
+                key: "none",
+                label: "Aucune complication",
+              },
+              {
+                key: "any",
+                label: "Complication si au moins une face ciblée apparaît",
+              },
+              {
+                key: "gt_successes",
+                label: "Complication si complications > succès",
+              },
+              {
+                key: "gte_successes",
+                label: "Complication si complications ≥ succès",
+              },
+              {
+                key: "zero_successes",
+                label: "Complication si aucune réussite",
+              },
+            ].map((option) => (
+              <Pressable
+                key={option.key}
+                onPress={() =>
+                  onUpdateDraft(
+                    "pipelineComplicationRule",
+                    option.key as ActionWizardDraft["pipelineComplicationRule"],
+                  )
+                }
+                style={{
+                  padding: 10,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  opacity:
+                    draft.pipelineComplicationRule === option.key ? 1 : 0.7,
+                }}
+              >
+                <Text style={{ fontWeight: "700" }}>{option.label}</Text>
+              </Pressable>
+            ))}
           </View>
         </>
       )}

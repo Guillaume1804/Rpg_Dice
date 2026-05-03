@@ -137,6 +137,8 @@ function runPipeline(
   const meta: any = {
     steps: [],
     successes: undefined,
+    complications: undefined,
+    complication_faces: undefined,
     count_equal: undefined,
     count_range: undefined,
     lookup: undefined,
@@ -192,8 +194,7 @@ function runPipeline(
 
     if (step.op === "reroll") {
       const faces = new Set(step.faces || []);
-      const maxR = step.max_rerolls ?? 100;
-      let rerolls = 0;
+      const maxRerollsPerDie = step.max_rerolls ?? 100;
 
       const next: number[] = [];
 
@@ -201,20 +202,21 @@ function runPipeline(
         let cur = v;
         let localRerolls = 0;
 
-        while (faces.has(cur) && rerolls < maxR) {
-          const from = cur;
-          const to = randInt(1, sides);
-
-          rerolls++;
+        while (faces.has(cur) && localRerolls < maxRerollsPerDie) {
           localRerolls++;
-          cur = to;
+
+          const previous = cur;
+          const rolled = randInt(1, sides);
 
           meta.steps.push({
             op: "reroll_one",
-            from,
-            to,
+            from: previous,
+            to: rolled,
+            chain_start: v,
             reroll_index: localRerolls,
           });
+
+          cur = rolled;
 
           if (step.once) break;
         }
@@ -223,20 +225,13 @@ function runPipeline(
       }
 
       kept = next;
-
-      meta.steps.push({
-        op: step.op,
-        kept: cloneArray(kept),
-        rerolls,
-      });
-
+      meta.steps.push({ op: step.op, kept: cloneArray(kept) });
       continue;
     }
 
     if (step.op === "explode") {
       const faces = new Set(step.faces || []);
-      const maxE = step.max_explosions ?? 100;
-      let explosions = 0;
+      const maxExplosionsPerDie = step.max_explosions ?? 100;
 
       const next: number[] = [];
 
@@ -244,15 +239,23 @@ function runPipeline(
         next.push(v);
 
         let cur = v;
-        while (faces.has(cur) && explosions < maxE) {
-          explosions++;
-          cur = randInt(1, sides);
-          next.push(cur);
+        let localExplosions = 0;
+
+        while (faces.has(cur) && localExplosions < maxExplosionsPerDie) {
+          localExplosions++;
+
+          const extra = randInt(1, sides);
+          next.push(extra);
+
           meta.steps.push({
             op: "explode_one",
-            trigger: v,
-            extra: cur,
+            trigger: cur,
+            extra,
+            chain_start: v,
+            explosion_index: localExplosions,
           });
+
+          cur = extra;
         }
       }
 
@@ -318,6 +321,23 @@ function runPipeline(
     }
   }
 
+  const complicationFaces = new Set(params.complication_faces || []);
+
+  if (complicationFaces.size > 0) {
+    const complications = kept.filter((value) =>
+      complicationFaces.has(value),
+    ).length;
+
+    meta.complications = complications;
+    meta.complication_faces = [...complicationFaces];
+
+    meta.steps.push({
+      op: "count_complications",
+      faces: [...complicationFaces],
+      complications,
+    });
+  }
+
   const { sum } = applySignModifier(kept, sign, modifier);
 
   let final: number | null = sum;
@@ -381,12 +401,45 @@ function runPipeline(
         ? final <= params.success_threshold
         : final >= params.success_threshold;
 
+    const complications =
+      typeof meta.complications === "number" ? meta.complications : 0;
+
+    const successes =
+      typeof meta.successes === "number" ? meta.successes : final;
+
+    const complicationRule = params.complication_rule ?? "none";
+
+    let outcome: string = ok ? "success" : "failure";
+
+    const hasComplication =
+      complicationRule === "any"
+        ? complications > 0
+        : complicationRule === "gt_successes"
+          ? complications > Number(successes ?? 0)
+          : complicationRule === "gte_successes"
+            ? complications >= Number(successes ?? 0) && complications > 0
+            : complicationRule === "zero_successes"
+              ? Number(successes ?? 0) <= 0 && complications > 0
+              : false;
+
+    if (hasComplication) {
+      if (!ok || Number(successes ?? 0) <= 0) {
+        outcome = "crit_glitch";
+      } else {
+        outcome = "glitch";
+      }
+    }
+
     return {
       kind: "pipeline",
       values: initialNatural,
       kept,
       final,
-      meta: { ...meta, outcome: ok ? "success" : "failure", compare },
+      meta: {
+        ...meta,
+        outcome,
+        compare,
+      },
     };
   }
 
@@ -725,6 +778,19 @@ export function evaluateRule(
       success_threshold:
         p.success_threshold == null ? undefined : Number(p.success_threshold),
       compare: p.compare === "lte" ? "lte" : "gte",
+      
+      complication_faces: Array.isArray(p.complication_faces)
+        ? p.complication_faces.map(Number).filter(Number.isFinite)
+        : undefined,
+
+      complication_rule:
+        p.complication_rule === "any" ||
+        p.complication_rule === "gt_successes" ||
+        p.complication_rule === "gte_successes" ||
+        p.complication_rule === "zero_successes" ||
+        p.complication_rule === "none"
+          ? p.complication_rule
+          : undefined,
     };
 
     return runPipeline(ctx.values, ctx, params);

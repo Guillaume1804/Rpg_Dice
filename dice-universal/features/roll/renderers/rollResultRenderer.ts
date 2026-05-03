@@ -94,6 +94,13 @@ function formatPipelineSteps(meta: any): string[] {
       continue;
     }
 
+    if (step.op === "count_complications") {
+      lines.push(
+        `Complications sur ${formatValues(step.faces)} : ${step.complications}`,
+      );
+      continue;
+    }
+
     if (step.op === "count_equal") {
       lines.push(`Valeurs ${formatValues(step.faces)} : ${step.count}`);
       continue;

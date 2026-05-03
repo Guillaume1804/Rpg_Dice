@@ -604,6 +604,8 @@ export default function RollScreen() {
         pipelineRerollFaces={quickBehaviorConfig.pipelineRerollFaces}
         pipelineRerollOnce={quickBehaviorConfig.pipelineRerollOnce}
         pipelineExplodeFaces={quickBehaviorConfig.pipelineExplodeFaces}
+        pipelineMaxRerolls={quickBehaviorConfig.pipelineMaxRerolls}
+        pipelineMaxExplosions={quickBehaviorConfig.pipelineMaxExplosions}
         pipelineKeepHighest={quickBehaviorConfig.pipelineKeepHighest}
         pipelineKeepLowest={quickBehaviorConfig.pipelineKeepLowest}
         pipelineDropHighest={quickBehaviorConfig.pipelineDropHighest}
@@ -619,10 +621,18 @@ export default function RollScreen() {
         pipelineCompare={quickBehaviorConfig.pipelineCompare}
         pipelineCritSuccessFaces={quickBehaviorConfig.pipelineCritSuccessFaces}
         pipelineCritFailureFaces={quickBehaviorConfig.pipelineCritFailureFaces}
+        pipelineComplicationFaces={
+          quickBehaviorConfig.pipelineComplicationFaces
+        }
+        pipelineComplicationRule={quickBehaviorConfig.pipelineComplicationRule}
         onChangePipelineRerollFaces={quickBehaviorConfig.setPipelineRerollFaces}
         onChangePipelineRerollOnce={quickBehaviorConfig.setPipelineRerollOnce}
         onChangePipelineExplodeFaces={
           quickBehaviorConfig.setPipelineExplodeFaces
+        }
+        onChangePipelineMaxRerolls={quickBehaviorConfig.setPipelineMaxRerolls}
+        onChangePipelineMaxExplosions={
+          quickBehaviorConfig.setPipelineMaxExplosions
         }
         onChangePipelineKeepHighest={quickBehaviorConfig.setPipelineKeepHighest}
         onChangePipelineKeepLowest={quickBehaviorConfig.setPipelineKeepLowest}
@@ -650,6 +660,12 @@ export default function RollScreen() {
         }
         onChangePipelineCritFailureFaces={
           quickBehaviorConfig.setPipelineCritFailureFaces
+        }
+        onChangePipelineComplicationFaces={
+          quickBehaviorConfig.setPipelineComplicationFaces
+        }
+        onChangePipelineComplicationRule={
+          quickBehaviorConfig.setPipelineComplicationRule
         }
       />
 

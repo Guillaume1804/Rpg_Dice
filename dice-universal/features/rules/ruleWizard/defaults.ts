@@ -37,20 +37,29 @@ export function createDefaultRuleWizardDraft(): RuleWizardDraft {
 
     pipelineRerollFaces: "",
     pipelineRerollOnce: true,
+    pipelineMaxRerollsPerDie: "",
+
     pipelineExplodeFaces: "",
+    pipelineMaxExplosionsPerDie: "",
+
     pipelineKeepHighest: "",
     pipelineKeepLowest: "",
     pipelineDropHighest: "",
     pipelineDropLowest: "",
+
     pipelineCountSuccessAtOrAbove: "",
     pipelineCountEqualFaces: "",
     pipelineCountRangeMin: "",
     pipelineCountRangeMax: "",
+
     pipelineOutput: "sum",
     pipelineSuccessThreshold: "",
     pipelineCompare: "gte",
     pipelineCritSuccessFaces: "",
     pipelineCritFailureFaces: "",
+
+    pipelineComplicationFaces: "",
+    pipelineComplicationRule: "none",
 
     ranges: DEFAULT_RULE_RANGES,
   };

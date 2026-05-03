@@ -366,6 +366,60 @@ export function CreateRuleWizardModal({
                         }}
                       />
 
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          flexWrap: "wrap",
+                          gap: 8,
+                        }}
+                      >
+                        <Pressable
+                          onPress={() =>
+                            onUpdateDraft("pipelineRerollOnce", true)
+                          }
+                          style={{
+                            padding: 10,
+                            borderWidth: 1,
+                            borderRadius: 10,
+                            opacity: draft.pipelineRerollOnce ? 1 : 0.7,
+                          }}
+                        >
+                          <Text style={{ fontWeight: "700" }}>
+                            Une seule fois
+                          </Text>
+                        </Pressable>
+
+                        <Pressable
+                          onPress={() =>
+                            onUpdateDraft("pipelineRerollOnce", false)
+                          }
+                          style={{
+                            padding: 10,
+                            borderWidth: 1,
+                            borderRadius: 10,
+                            opacity: !draft.pipelineRerollOnce ? 1 : 0.7,
+                          }}
+                        >
+                          <Text style={{ fontWeight: "700" }}>
+                            Tant que possible
+                          </Text>
+                        </Pressable>
+                      </View>
+
+                      <TextInput
+                        value={draft.pipelineMaxRerollsPerDie}
+                        onChangeText={(value) =>
+                          onUpdateDraft("pipelineMaxRerollsPerDie", value)
+                        }
+                        placeholder="Max relances par dé, optionnel, ex: 2"
+                        keyboardType="number-pad"
+                        style={{
+                          borderWidth: 1,
+                          borderRadius: 10,
+                          padding: 10,
+                        }}
+                      />
+
                       <TextInput
                         value={draft.pipelineExplodeFaces}
                         onChangeText={(value) =>
@@ -380,11 +434,53 @@ export function CreateRuleWizardModal({
                       />
 
                       <TextInput
+                        value={draft.pipelineMaxExplosionsPerDie}
+                        onChangeText={(value) =>
+                          onUpdateDraft("pipelineMaxExplosionsPerDie", value)
+                        }
+                        placeholder="Max explosions par dé, optionnel, ex: 3"
+                        keyboardType="number-pad"
+                        style={{
+                          borderWidth: 1,
+                          borderRadius: 10,
+                          padding: 10,
+                        }}
+                      />
+
+                      <TextInput
                         value={draft.pipelineKeepHighest}
                         onChangeText={(value) =>
                           onUpdateDraft("pipelineKeepHighest", value)
                         }
                         placeholder="Garder les meilleurs dés, ex: 2"
+                        keyboardType="number-pad"
+                        style={{
+                          borderWidth: 1,
+                          borderRadius: 10,
+                          padding: 10,
+                        }}
+                      />
+
+                      <TextInput
+                        value={draft.pipelineKeepLowest}
+                        onChangeText={(value) =>
+                          onUpdateDraft("pipelineKeepLowest", value)
+                        }
+                        placeholder="Garder les plus faibles dés, ex: 2"
+                        keyboardType="number-pad"
+                        style={{
+                          borderWidth: 1,
+                          borderRadius: 10,
+                          padding: 10,
+                        }}
+                      />
+
+                      <TextInput
+                        value={draft.pipelineDropHighest}
+                        onChangeText={(value) =>
+                          onUpdateDraft("pipelineDropHighest", value)
+                        }
+                        placeholder="Retirer les meilleurs dés, ex: 1"
                         keyboardType="number-pad"
                         style={{
                           borderWidth: 1,
@@ -422,6 +518,47 @@ export function CreateRuleWizardModal({
                       />
 
                       <TextInput
+                        value={draft.pipelineCountEqualFaces}
+                        onChangeText={(value) =>
+                          onUpdateDraft("pipelineCountEqualFaces", value)
+                        }
+                        placeholder="Compter les faces exactes, ex: 1 ou 6,10"
+                        style={{
+                          borderWidth: 1,
+                          borderRadius: 10,
+                          padding: 10,
+                        }}
+                      />
+
+                      <TextInput
+                        value={draft.pipelineCountRangeMin}
+                        onChangeText={(value) =>
+                          onUpdateDraft("pipelineCountRangeMin", value)
+                        }
+                        placeholder="Plage à compter — minimum, ex: 2"
+                        keyboardType="number-pad"
+                        style={{
+                          borderWidth: 1,
+                          borderRadius: 10,
+                          padding: 10,
+                        }}
+                      />
+
+                      <TextInput
+                        value={draft.pipelineCountRangeMax}
+                        onChangeText={(value) =>
+                          onUpdateDraft("pipelineCountRangeMax", value)
+                        }
+                        placeholder="Plage à compter — maximum, ex: 5"
+                        keyboardType="number-pad"
+                        style={{
+                          borderWidth: 1,
+                          borderRadius: 10,
+                          padding: 10,
+                        }}
+                      />
+
+                      <TextInput
                         value={draft.pipelineSuccessThreshold}
                         onChangeText={(value) =>
                           onUpdateDraft("pipelineSuccessThreshold", value)
@@ -434,6 +571,134 @@ export function CreateRuleWizardModal({
                           padding: 10,
                         }}
                       />
+
+                      <Text style={{ fontWeight: "700" }}>
+                        Comparaison du seuil final
+                      </Text>
+
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          flexWrap: "wrap",
+                          gap: 8,
+                        }}
+                      >
+                        <Pressable
+                          onPress={() =>
+                            onUpdateDraft("pipelineCompare", "gte")
+                          }
+                          style={{
+                            padding: 10,
+                            borderWidth: 1,
+                            borderRadius: 10,
+                            opacity: draft.pipelineCompare === "gte" ? 1 : 0.7,
+                          }}
+                        >
+                          <Text style={{ fontWeight: "700" }}>≥ seuil</Text>
+                        </Pressable>
+
+                        <Pressable
+                          onPress={() =>
+                            onUpdateDraft("pipelineCompare", "lte")
+                          }
+                          style={{
+                            padding: 10,
+                            borderWidth: 1,
+                            borderRadius: 10,
+                            opacity: draft.pipelineCompare === "lte" ? 1 : 0.7,
+                          }}
+                        >
+                          <Text style={{ fontWeight: "700" }}>≤ seuil</Text>
+                        </Pressable>
+                      </View>
+
+                      <TextInput
+                        value={draft.pipelineCritSuccessFaces}
+                        onChangeText={(value) =>
+                          onUpdateDraft("pipelineCritSuccessFaces", value)
+                        }
+                        placeholder="Faces de réussite critique, ex: 6 ou 20"
+                        style={{
+                          borderWidth: 1,
+                          borderRadius: 10,
+                          padding: 10,
+                        }}
+                      />
+
+                      <TextInput
+                        value={draft.pipelineCritFailureFaces}
+                        onChangeText={(value) =>
+                          onUpdateDraft("pipelineCritFailureFaces", value)
+                        }
+                        placeholder="Faces d’échec critique, ex: 1"
+                        style={{
+                          borderWidth: 1,
+                          borderRadius: 10,
+                          padding: 10,
+                        }}
+                      />
+
+                      <TextInput
+                        value={draft.pipelineComplicationFaces}
+                        onChangeText={(value) =>
+                          onUpdateDraft("pipelineComplicationFaces", value)
+                        }
+                        placeholder="Faces de complication, ex: 1 ou 1,2"
+                        style={{
+                          borderWidth: 1,
+                          borderRadius: 10,
+                          padding: 10,
+                        }}
+                      />
+
+                      <Text style={{ fontWeight: "700" }}>
+                        Règle de complication
+                      </Text>
+
+                      <View style={{ gap: 8 }}>
+                        {[
+                          { key: "none", label: "Aucune complication" },
+                          {
+                            key: "any",
+                            label: "Si au moins une face ciblée apparaît",
+                          },
+                          {
+                            key: "gt_successes",
+                            label: "Si complications > succès",
+                          },
+                          {
+                            key: "gte_successes",
+                            label: "Si complications ≥ succès",
+                          },
+                          {
+                            key: "zero_successes",
+                            label: "Si aucune réussite",
+                          },
+                        ].map((option) => (
+                          <Pressable
+                            key={option.key}
+                            onPress={() =>
+                              onUpdateDraft(
+                                "pipelineComplicationRule",
+                                option.key as RuleWizardDraft["pipelineComplicationRule"],
+                              )
+                            }
+                            style={{
+                              padding: 10,
+                              borderWidth: 1,
+                              borderRadius: 10,
+                              opacity:
+                                draft.pipelineComplicationRule === option.key
+                                  ? 1
+                                  : 0.7,
+                            }}
+                          >
+                            <Text style={{ fontWeight: "700" }}>
+                              {option.label}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </View>
 
                       <Text style={{ fontWeight: "700" }}>Sortie finale</Text>
 

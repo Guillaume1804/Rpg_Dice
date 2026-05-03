@@ -1,3 +1,5 @@
+// dice-universal\features\rules\components\RulesListSection.tsx
+
 import { View, Text, Pressable, ScrollView } from "react-native";
 import type { RuleRow } from "../../../data/repositories/rulesRepo";
 

@@ -29,6 +29,9 @@ type Props = {
   pipelineRerollOnce: boolean;
   pipelineExplodeFaces: string;
 
+  pipelineMaxRerolls: string;
+  pipelineMaxExplosions: string;
+
   pipelineKeepHighest: string;
   pipelineKeepLowest: string;
   pipelineDropHighest: string;
@@ -51,6 +54,13 @@ type Props = {
   pipelineCompare: "gte" | "lte";
   pipelineCritSuccessFaces: string;
   pipelineCritFailureFaces: string;
+  pipelineComplicationFaces: string;
+  pipelineComplicationRule:
+    | "none"
+    | "any"
+    | "gt_successes"
+    | "gte_successes"
+    | "zero_successes";
 
   configTargetValue: string;
   configDegreeStep: string;
@@ -86,6 +96,9 @@ type Props = {
   onChangePipelineRerollOnce: (value: boolean) => void;
   onChangePipelineExplodeFaces: (value: string) => void;
 
+  onChangePipelineMaxRerolls: (value: string) => void;
+  onChangePipelineMaxExplosions: (value: string) => void;
+
   onChangePipelineKeepHighest: (value: string) => void;
   onChangePipelineKeepLowest: (value: string) => void;
   onChangePipelineDropHighest: (value: string) => void;
@@ -110,6 +123,11 @@ type Props = {
   onChangePipelineCompare: (value: "gte" | "lte") => void;
   onChangePipelineCritSuccessFaces: (value: string) => void;
   onChangePipelineCritFailureFaces: (value: string) => void;
+
+  onChangePipelineComplicationFaces: (value: string) => void;
+  onChangePipelineComplicationRule: (
+    value: "none" | "any" | "gt_successes" | "gte_successes" | "zero_successes",
+  ) => void;
 
   onClose: () => void;
   onConfirm: () => void;
@@ -142,6 +160,8 @@ export function QuickBehaviorConfigModal({
   pipelineRerollFaces,
   pipelineRerollOnce,
   pipelineExplodeFaces,
+  pipelineMaxRerolls,
+  pipelineMaxExplosions,
   pipelineKeepHighest,
   pipelineKeepLowest,
   pipelineDropHighest,
@@ -155,6 +175,8 @@ export function QuickBehaviorConfigModal({
   pipelineCompare,
   pipelineCritSuccessFaces,
   pipelineCritFailureFaces,
+  pipelineComplicationFaces,
+  pipelineComplicationRule,
 
   onChangeTargetValue,
   onChangeDegreeStep,
@@ -177,6 +199,8 @@ export function QuickBehaviorConfigModal({
   onChangePipelineRerollFaces,
   onChangePipelineRerollOnce,
   onChangePipelineExplodeFaces,
+  onChangePipelineMaxRerolls,
+  onChangePipelineMaxExplosions,
   onChangePipelineKeepHighest,
   onChangePipelineKeepLowest,
   onChangePipelineDropHighest,
@@ -190,6 +214,8 @@ export function QuickBehaviorConfigModal({
   onChangePipelineCompare,
   onChangePipelineCritSuccessFaces,
   onChangePipelineCritFailureFaces,
+  onChangePipelineComplicationFaces,
+  onChangePipelineComplicationRule,
 
   onClose,
   onConfirm,
@@ -381,10 +407,24 @@ export function QuickBehaviorConfigModal({
               </Pressable>
 
               <PipelineInput
+                label="Nombre maximum de relances par dé"
+                value={pipelineMaxRerolls}
+                onChangeText={onChangePipelineMaxRerolls}
+                placeholder="Vide = jusqu’à 100 par dé"
+              />
+
+              <PipelineInput
                 label="Explosion sur les faces"
                 value={pipelineExplodeFaces}
                 onChangeText={onChangePipelineExplodeFaces}
                 placeholder="Ex: 6"
+              />
+
+              <PipelineInput
+                label="Nombre maximum d’explosions par dé"
+                value={pipelineMaxExplosions}
+                onChangeText={onChangePipelineMaxExplosions}
+                placeholder="Vide = jusqu’à 100 par dé"
               />
 
               <Text style={{ fontWeight: "800" }}>Garder / retirer</Text>
@@ -418,6 +458,53 @@ export function QuickBehaviorConfigModal({
               />
 
               <Text style={{ fontWeight: "800" }}>Comptage</Text>
+
+              <PipelineInput
+                label="Faces de complication"
+                value={pipelineComplicationFaces}
+                onChangeText={onChangePipelineComplicationFaces}
+                placeholder="Ex: 1"
+              />
+
+              <Text style={{ opacity: 0.72 }}>Règle de complication</Text>
+
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                {[
+                  { key: "none", label: "Aucune" },
+                  { key: "any", label: "Dès qu’il y en a" },
+                  { key: "gt_successes", label: "> succès" },
+                  { key: "gte_successes", label: "≥ succès" },
+                  { key: "zero_successes", label: "Si zéro succès" },
+                ].map((option) => (
+                  <Pressable
+                    key={option.key}
+                    onPress={() =>
+                      onChangePipelineComplicationRule(
+                        option.key as typeof pipelineComplicationRule,
+                      )
+                    }
+                    style={{
+                      paddingVertical: 10,
+                      paddingHorizontal: 12,
+                      borderWidth: 1,
+                      borderRadius: 10,
+                      opacity:
+                        pipelineComplicationRule === option.key ? 1 : 0.7,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontWeight:
+                          pipelineComplicationRule === option.key
+                            ? "800"
+                            : "500",
+                      }}
+                    >
+                      {option.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
 
               <PipelineInput
                 label="Compter les succès à partir de"

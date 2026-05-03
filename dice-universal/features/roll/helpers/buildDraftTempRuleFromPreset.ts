@@ -144,18 +144,26 @@ function buildQuickPipelineParams(values: Record<string, unknown> | undefined) {
 
   const rerollFaces = parseNumberList(values?.pipelineRerollFaces);
   if (rerollFaces.length > 0) {
+    const maxRerolls = parseOptionalPositiveInt(values?.pipelineMaxRerolls);
+
     steps.push({
       op: "reroll",
       faces: rerollFaces,
       once: readBoolean(values, "pipelineRerollOnce", true),
+      ...(maxRerolls != null ? { max_rerolls: maxRerolls } : {}),
     });
   }
 
   const explodeFaces = parseNumberList(values?.pipelineExplodeFaces);
   if (explodeFaces.length > 0) {
+    const maxExplosions = parseOptionalPositiveInt(
+      values?.pipelineMaxExplosions,
+    );
+
     steps.push({
       op: "explode",
       faces: explodeFaces,
+      ...(maxExplosions != null ? { max_explosions: maxExplosions } : {}),
     });
   }
 
@@ -237,6 +245,16 @@ function buildQuickPipelineParams(values: Record<string, unknown> | undefined) {
     compare,
     crit_success_faces: parseNumberList(values?.pipelineCritSuccessFaces),
     crit_failure_faces: parseNumberList(values?.pipelineCritFailureFaces),
+    complication_faces: parseNumberList(values?.pipelineComplicationFaces),
+
+    complication_rule:
+      values?.pipelineComplicationRule === "any" ||
+      values?.pipelineComplicationRule === "gt_successes" ||
+      values?.pipelineComplicationRule === "gte_successes" ||
+      values?.pipelineComplicationRule === "zero_successes" ||
+      values?.pipelineComplicationRule === "none"
+        ? values.pipelineComplicationRule
+        : "none",
   };
 }
 

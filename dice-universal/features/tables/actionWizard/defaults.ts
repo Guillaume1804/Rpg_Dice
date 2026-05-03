@@ -101,7 +101,10 @@ export function createDefaultActionWizardDraft(): ActionWizardDraft {
 
     pipelineRerollFaces: "",
     pipelineRerollOnce: true,
+    pipelineMaxRerollsPerDie: "",
+
     pipelineExplodeFaces: "",
+    pipelineMaxExplosionsPerDie: "",
     pipelineKeepHighest: "",
     pipelineKeepLowest: "",
     pipelineDropHighest: "",
@@ -115,5 +118,7 @@ export function createDefaultActionWizardDraft(): ActionWizardDraft {
     pipelineCompare: "gte",
     pipelineCritSuccessFaces: "",
     pipelineCritFailureFaces: "",
+    pipelineComplicationFaces: "",
+    pipelineComplicationRule: "none",
   };
 }

@@ -1,4 +1,4 @@
-// core/rules/types.ts 
+// core/rules/types.ts
 
 export type RuleInput = {
   values: number[];
@@ -68,18 +68,26 @@ export type PipelineStep =
 export type PipelineParams = {
   steps: PipelineStep[];
   output?:
-  | "sum"
-  | "successes"
-  | "count_equal"
-  | "count_range"
-  | "first_value"
-  | "values"
-  | "lookup_label"
-  | "lookup_value";
+    | "sum"
+    | "successes"
+    | "count_equal"
+    | "count_range"
+    | "first_value"
+    | "values"
+    | "lookup_label"
+    | "lookup_value";
   crit_success_faces?: number[];
   crit_failure_faces?: number[];
   success_threshold?: number | null;
   compare?: "gte" | "lte";
+
+  complication_faces?: number[];
+  complication_rule?:
+    | "none"
+    | "any"
+    | "gt_successes"
+    | "gte_successes"
+    | "zero_successes";
 };
 
 export type UniversalRuleParams =
@@ -94,38 +102,38 @@ export type UniversalRuleParams =
 export type RuleResult =
   | { kind: "sum"; total: number; values?: number[] }
   | {
-    kind: "single_check";
-    outcome: "crit_success" | "crit_failure" | "success" | "failure";
-    threshold: number | null;
-    natural: number;
-    final: number;
-    compare: "gte" | "lte";
-  }
+      kind: "single_check";
+      outcome: "crit_success" | "crit_failure" | "success" | "failure";
+      threshold: number | null;
+      natural: number;
+      final: number;
+      compare: "gte" | "lte";
+    }
   | {
-    kind: "success_pool";
-    successes: number;
-    fail_count: number;
-    fail_faces: number[];
-    outcome: "crit_glitch" | "glitch" | "success" | "failure";
-  }
+      kind: "success_pool";
+      successes: number;
+      fail_count: number;
+      fail_faces: number[];
+      outcome: "crit_glitch" | "glitch" | "success" | "failure";
+    }
   | { kind: "table_lookup"; value: number; label: string }
   | { kind: "banded_sum"; total: number; label: string }
   | {
-    kind: "highest_of_pool";
-    kept: number;
-    natural_values: number[];
-    threshold: number | null;
-    final: number;
-    compare: "gte" | "lte";
-    outcome: "crit_success" | "crit_failure" | "success" | "failure";
-  }
+      kind: "highest_of_pool";
+      kept: number;
+      natural_values: number[];
+      threshold: number | null;
+      final: number;
+      compare: "gte" | "lte";
+      outcome: "crit_success" | "crit_failure" | "success" | "failure";
+    }
   | {
-    kind: "pipeline";
-    values: number[];
-    kept: number[];
-    final: number | null;
-    meta: any;
-  }
+      kind: "pipeline";
+      values: number[];
+      kept: number[];
+      final: number | null;
+      meta: any;
+    }
   | { kind: "unknown"; message: string };
 
 export type RuleEvaluator<TParams = UniversalRuleParams> = (

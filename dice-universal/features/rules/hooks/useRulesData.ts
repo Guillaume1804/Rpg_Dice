@@ -1,3 +1,5 @@
+// dice-universal\features\rules\hooks\useRulesData.ts
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Db } from "../../../data/db/database";
 import type {
@@ -20,7 +22,7 @@ type SaveRulePayload = {
   name: string;
   kind: string;
   params_json: string;
-  supported_sides_json: string;
+  supported_sides_json: string | null;
   scope: RuleScope;
 };
 
@@ -91,12 +93,14 @@ export function useRulesData({ db }: UseRulesDataParams) {
             ? "system_template"
             : "user_template";
 
+        const supportedSidesJson = payload.supported_sides_json ?? "[]";
+
         if (editingRule) {
           await updateRule(db, editingRule.id, {
             name: trimmedName,
             kind: payload.kind,
             params_json: payload.params_json,
-            supported_sides_json: payload.supported_sides_json,
+            supported_sides_json: supportedSidesJson,
             scope: payload.scope,
             usage_kind: usageKind,
           });
@@ -106,7 +110,7 @@ export function useRulesData({ db }: UseRulesDataParams) {
             kind: payload.kind,
             params_json: payload.params_json,
             is_system: 0,
-            supported_sides_json: payload.supported_sides_json,
+            supported_sides_json: supportedSidesJson,
             scope: payload.scope,
             usage_kind: "user_template",
           });

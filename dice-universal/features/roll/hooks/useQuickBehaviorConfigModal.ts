@@ -217,6 +217,9 @@ export function useQuickBehaviorConfigModal() {
   const [pipelineRerollOnce, setPipelineRerollOnce] = useState(true);
   const [pipelineExplodeFaces, setPipelineExplodeFaces] = useState("");
 
+  const [pipelineMaxRerolls, setPipelineMaxRerolls] = useState("");
+  const [pipelineMaxExplosions, setPipelineMaxExplosions] = useState("");
+
   const [pipelineKeepHighest, setPipelineKeepHighest] = useState("");
   const [pipelineKeepLowest, setPipelineKeepLowest] = useState("");
   const [pipelineDropHighest, setPipelineDropHighest] = useState("");
@@ -242,10 +245,18 @@ export function useQuickBehaviorConfigModal() {
   const [pipelineCritSuccessFaces, setPipelineCritSuccessFaces] = useState("");
   const [pipelineCritFailureFaces, setPipelineCritFailureFaces] = useState("");
 
+  const [pipelineComplicationFaces, setPipelineComplicationFaces] =
+    useState("");
+  const [pipelineComplicationRule, setPipelineComplicationRule] = useState<
+    "none" | "any" | "gt_successes" | "gte_successes" | "zero_successes"
+  >("none");
+
   function resetPipelineConfig() {
     setPipelineRerollFaces("");
     setPipelineRerollOnce(true);
     setPipelineExplodeFaces("");
+    setPipelineMaxRerolls("");
+    setPipelineMaxExplosions("");
 
     setPipelineKeepHighest("");
     setPipelineKeepLowest("");
@@ -262,6 +273,8 @@ export function useQuickBehaviorConfigModal() {
     setPipelineCompare("gte");
     setPipelineCritSuccessFaces("");
     setPipelineCritFailureFaces("");
+    setPipelineComplicationFaces("");
+    setPipelineComplicationRule("none");
   }
 
   function open(params: {
@@ -370,6 +383,8 @@ export function useQuickBehaviorConfigModal() {
     if (!behavior) return false;
     if (pendingBehaviorKey === "custom_pipeline") {
       const numericFields = [
+        pipelineMaxRerolls,
+        pipelineMaxExplosions,
         pipelineKeepHighest,
         pipelineKeepLowest,
         pipelineDropHighest,
@@ -382,6 +397,14 @@ export function useQuickBehaviorConfigModal() {
 
       for (const value of numericFields) {
         if (value.trim() !== "" && !Number.isFinite(Number(value))) {
+          return false;
+        }
+      }
+
+      const positiveIntegerFields = [pipelineMaxRerolls, pipelineMaxExplosions];
+
+      for (const value of positiveIntegerFields) {
+        if (value.trim() !== "" && Number(value) <= 0) {
           return false;
         }
       }
@@ -445,6 +468,8 @@ export function useQuickBehaviorConfigModal() {
         pipelineRerollFaces,
         pipelineRerollOnce,
         pipelineExplodeFaces,
+        pipelineMaxRerolls,
+        pipelineMaxExplosions,
 
         pipelineKeepHighest,
         pipelineKeepLowest,
@@ -461,6 +486,9 @@ export function useQuickBehaviorConfigModal() {
         pipelineCompare,
         pipelineCritSuccessFaces,
         pipelineCritFailureFaces,
+
+        pipelineComplicationFaces,
+        pipelineComplicationRule,
       };
     }
 
@@ -538,6 +566,8 @@ export function useQuickBehaviorConfigModal() {
     pipelineRerollFaces,
     pipelineRerollOnce,
     pipelineExplodeFaces,
+    pipelineMaxRerolls,
+    pipelineMaxExplosions,
     pipelineKeepHighest,
     pipelineKeepLowest,
     pipelineDropHighest,
@@ -551,10 +581,14 @@ export function useQuickBehaviorConfigModal() {
     pipelineCompare,
     pipelineCritSuccessFaces,
     pipelineCritFailureFaces,
+    pipelineComplicationFaces,
+    pipelineComplicationRule,
 
     setPipelineRerollFaces,
     setPipelineRerollOnce,
     setPipelineExplodeFaces,
+    setPipelineMaxRerolls,
+    setPipelineMaxExplosions,
     setPipelineKeepHighest,
     setPipelineKeepLowest,
     setPipelineDropHighest,
@@ -568,5 +602,7 @@ export function useQuickBehaviorConfigModal() {
     setPipelineCompare,
     setPipelineCritSuccessFaces,
     setPipelineCritFailureFaces,
+    setPipelineComplicationFaces,
+    setPipelineComplicationRule,
   };
 }

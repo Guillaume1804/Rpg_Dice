@@ -1,3 +1,5 @@
+// dice-universal\features\rules\hooks\useHumanRuleEditor.ts
+
 import { useMemo, useState } from "react";
 import type { RuleRow, RuleScope } from "../../../data/repositories/rulesRepo";
 import type { ActionWizardDraft } from "../../tables/actionWizard/types";
@@ -28,6 +30,28 @@ function stringifyPreviewResult(result: any): string {
   return JSON.stringify(result, null, 2);
 }
 
+function toHumanEditorAdvancedBehaviorType(
+  behaviorType: ActionWizardDraft["behaviorType"],
+): RuleFormState["advancedBehaviorType"] {
+  switch (behaviorType) {
+    case "sum_total":
+    case "single_check":
+    case "success_pool":
+    case "table_lookup":
+    case "banded_sum":
+    case "highest_of_pool":
+    case "lowest_of_pool":
+    case "keep_highest_n":
+    case "keep_lowest_n":
+    case "drop_highest_n":
+    case "drop_lowest_n":
+      return behaviorType;
+
+    default:
+      return "single_check";
+  }
+}
+
 function buildFormStateFromWizardDraft(
   draft: ActionWizardDraft,
   tableName: string,
@@ -48,7 +72,7 @@ function buildFormStateFromWizardDraft(
               ? "table_lookup"
               : "single_check",
 
-    advancedBehaviorType: draft.behaviorType ?? "single_check",
+    advancedBehaviorType: toHumanEditorAdvancedBehaviorType(draft.behaviorType),
 
     supportedSidesText: draft.die.sides ? String(draft.die.sides) : "",
     scope: draft.behaviorType === "success_pool" ? "group" : "entry",
@@ -103,6 +127,16 @@ export function useHumanRuleEditor() {
   }
 
   function openCreateFromWizard(draft: ActionWizardDraft, tableName: string) {
+    if (
+      draft.behaviorType === "custom_pipeline" ||
+      draft.behaviorType === "threshold_degrees"
+    ) {
+      setFormError(
+        "Ce type de règle doit être configuré directement dans le wizard d’action ou le wizard de règle moderne.",
+      );
+      return;
+    }
+
     resetForm();
 
     const nextForm = buildFormStateFromWizardDraft(draft, tableName);
@@ -120,6 +154,15 @@ export function useHumanRuleEditor() {
   }
 
   function openEdit(rule: RuleRow) {
+    if (rule.kind === "pipeline") {
+      resetForm();
+      setEditingRule(null);
+      setFormError(
+        "Les règles pipeline personnalisées ne sont pas éditables dans cet ancien éditeur. Utilise le wizard de règle moderne.",
+      );
+      return;
+    }
+
     setEditingRule(rule);
     setForm(fillRuleFormFromExistingRule(rule));
     setPreviewResult("");

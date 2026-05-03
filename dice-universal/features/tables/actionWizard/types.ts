@@ -63,20 +63,34 @@ export type ActionWizardDraft = {
 
   pipelineRerollFaces: string;
   pipelineRerollOnce: boolean;
+  pipelineMaxRerollsPerDie: string;
+
   pipelineExplodeFaces: string;
+  pipelineMaxExplosionsPerDie: string;
+
   pipelineKeepHighest: string;
   pipelineKeepLowest: string;
   pipelineDropHighest: string;
   pipelineDropLowest: string;
+
   pipelineCountSuccessAtOrAbove: string;
   pipelineCountEqualFaces: string;
   pipelineCountRangeMin: string;
   pipelineCountRangeMax: string;
+
   pipelineOutput: PipelineOutputMode;
   pipelineSuccessThreshold: string;
   pipelineCompare: "gte" | "lte";
   pipelineCritSuccessFaces: string;
   pipelineCritFailureFaces: string;
+
+  pipelineComplicationFaces: string;
+  pipelineComplicationRule:
+    | "none"
+    | "any"
+    | "gt_successes"
+    | "gte_successes"
+    | "zero_successes";
 
   creationMode: "auto" | "advanced";
 };

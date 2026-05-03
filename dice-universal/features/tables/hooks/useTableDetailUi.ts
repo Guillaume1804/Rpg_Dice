@@ -1,3 +1,5 @@
+// dice-universal\features\tables\hooks\useTableDetailUi.ts
+
 import { useState } from "react";
 import type { ProfileRow } from "../../../data/repositories/profilesRepo";
 import type { GroupRow, GroupDieRow } from "../../../data/repositories/groupsRepo";
