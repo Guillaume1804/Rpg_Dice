@@ -202,26 +202,34 @@ function runPipeline(
         let localRerolls = 0;
 
         while (faces.has(cur) && rerolls < maxR) {
+          const from = cur;
+          const to = randInt(1, sides);
+
           rerolls++;
           localRerolls++;
-          cur = randInt(1, sides);
+          cur = to;
+
+          meta.steps.push({
+            op: "reroll_one",
+            from,
+            to,
+            reroll_index: localRerolls,
+          });
+
           if (step.once) break;
         }
 
         next.push(cur);
-
-        if (localRerolls > 0) {
-          meta.steps.push({
-            op: "reroll_one",
-            from: v,
-            to: cur,
-            rerolls: localRerolls,
-          });
-        }
       }
 
       kept = next;
-      meta.steps.push({ op: step.op, kept: cloneArray(kept) });
+
+      meta.steps.push({
+        op: step.op,
+        kept: cloneArray(kept),
+        rerolls,
+      });
+
       continue;
     }
 

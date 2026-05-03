@@ -574,14 +574,7 @@ export function TableActionSection({
           ) : (
             <>
               {selectedActionResult.group_eval_result ? (
-                <View
-                  style={{
-                    padding: 10,
-                    borderWidth: 1,
-                    borderRadius: 10,
-                    gap: 6,
-                  }}
-                >
+                <View style={{ gap: 6 }}>
                   <RollResultCard
                     result={selectedActionResult.group_eval_result}
                     title="Résultat de groupe"
@@ -623,9 +616,6 @@ export function TableActionSection({
                       ) : (
                         <View
                           style={{
-                            padding: 10,
-                            borderWidth: 1,
-                            borderRadius: 10,
                             gap: 4,
                           }}
                         >
