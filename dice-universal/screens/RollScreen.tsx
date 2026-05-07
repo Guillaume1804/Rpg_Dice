@@ -10,6 +10,11 @@ import { RollModals } from "../features/roll/components/RollModals";
 import { QuickRollSection } from "../features/roll/components/QuickRollSection";
 import { TableActionSection } from "../features/roll/components/TableActionSection";
 
+import { SessionBar } from "../features/roll/components/SessionBar";
+import { PreparedRollCard } from "../features/roll/components/PreparedRollCard";
+import { ActionRail } from "../features/roll/components/ActionRail";
+import { StickyRollButton } from "../features/roll/components/StickyRollButton";
+
 import { useDraftTableActions } from "../features/roll/hooks/useDraftTableActions";
 import { useRollExecution } from "../features/roll/hooks/useRollExecution";
 import { useQuickRollDraft } from "../features/roll/hooks/useQuickRollDraft";
@@ -27,13 +32,128 @@ import { useQuickBehaviorConfigModal } from "../features/roll/hooks/useQuickBeha
 import { useQuickQtyModal } from "../features/roll/hooks/useQuickQtyModal";
 import { useQuickDieBehaviorPicker } from "../features/roll/hooks/useQuickDieBehaviorPicker";
 
+type DraftDieSummary = {
+  sides: number;
+  qty: number;
+  modifier?: number;
+  sign?: number;
+};
+
+type DraftGroupSummary = {
+  id: string;
+  name: string;
+  dice: DraftDieSummary[];
+};
+
+function formatSignedModifier(modifier?: number) {
+  const safeModifier = Number.isFinite(modifier) ? Number(modifier) : 0;
+
+  if (safeModifier === 0) return "";
+
+  return ` ${safeModifier > 0 ? "+" : "-"} ${Math.abs(safeModifier)}`;
+}
+
+function formatDraftDieLabel(die: DraftDieSummary) {
+  const sign = die.sign === -1 ? "- " : "";
+  return `${sign}${die.qty}d${die.sides}${formatSignedModifier(die.modifier)}`;
+}
+
+function formatDraftGroupDiceLabel(group: DraftGroupSummary | null) {
+  if (!group || group.dice.length === 0) return null;
+
+  return group.dice.map(formatDraftDieLabel).join(" + ");
+}
+
+function findStandardQuickGroup(groups: DraftGroupSummary[]) {
+  return (
+    groups.find(
+      (group) =>
+        group.name === "Jet libre" &&
+        group.dice.length > 0,
+    ) ?? null
+  );
+}
+
+type PreparedRoll =
+  | {
+    source: "free";
+  }
+  | {
+    source: "action";
+    profileId: string;
+    groupId: string;
+    label: string;
+  };
+
+type SavedActionDieSummary = {
+  sides: number;
+  qty: number;
+  modifier?: number;
+  sign?: number;
+  rule_id?: string | null;
+};
+
+type SavedActionGroupSummary = {
+  rule_id?: string | null;
+};
+
+type RuleNameMap = Record<
+  string,
+  {
+    name: string;
+  }
+>;
+
+function formatSavedActionDiceLabel(dice: SavedActionDieSummary[]) {
+  if (dice.length === 0) return "Aucun dé";
+
+  return dice
+    .map((die) => {
+      const sign = die.sign === -1 ? "- " : "";
+      return `${sign}${die.qty}d${die.sides}${formatSignedModifier(
+        die.modifier,
+      )}`;
+    })
+    .join(" + ");
+}
+
+function getSavedActionBehaviorLabel(params: {
+  group: SavedActionGroupSummary;
+  dice: SavedActionDieSummary[];
+  rulesMap: RuleNameMap;
+}) {
+  if (params.group.rule_id && params.rulesMap[params.group.rule_id]) {
+    return params.rulesMap[params.group.rule_id].name;
+  }
+
+  const firstDieRuleId = params.dice.find((die) => die.rule_id)?.rule_id;
+
+  if (firstDieRuleId && params.rulesMap[firstDieRuleId]) {
+    return params.rulesMap[firstDieRuleId].name;
+  }
+
+  return "Somme simple";
+}
+
+function formatSavedActionDetail(params: {
+  group: SavedActionGroupSummary;
+  dice: SavedActionDieSummary[];
+  rulesMap: RuleNameMap;
+}) {
+  const diceLabel = formatSavedActionDiceLabel(params.dice);
+  const behaviorLabel = getSavedActionBehaviorLabel(params);
+
+  return `${diceLabel} · ${behaviorLabel}`;
+}
+
 export default function RollScreen() {
   type RollMode = "quick" | "table";
   const [mode, setMode] = useState<RollMode>("quick");
+  const [preparedRoll, setPreparedRoll] = useState<PreparedRoll | null>(null);
 
   const db = useDb();
-  const { activeTableId, setActiveTableId } = useActiveTable();
-
+  const { activeTableId, setActiveTableId, clearActiveTableId } =
+    useActiveTable();
   const [results, setResults] = useState<GroupRollResult[]>([]);
   const [showSaveOptions, setShowSaveOptions] = useState(false);
   const [showNameModal, setShowNameModal] = useState(false);
@@ -244,6 +364,35 @@ export default function RollScreen() {
 
   function handleClearQuickRoll() {
     clearDraft();
+
+    if (preparedRoll?.source === "free") {
+      setPreparedRoll(null);
+    }
+  }
+
+  function handleClearPreparedRoll() {
+    if (preparedRoll?.source === "free") {
+      clearDraft();
+    }
+
+    setPreparedRoll(null);
+  }
+
+  async function handleRollPrepared() {
+    if (!preparedRoll) return;
+
+    if (preparedRoll.source === "free") {
+      const group = standardPreparedQuickGroup;
+
+      if (!group) return;
+
+      await rollSingleDraftGroup(group.id);
+      return;
+    }
+
+    if (preparedRoll.source === "action") {
+      await rollSavedGroup(preparedRoll.profileId, preparedRoll.groupId);
+    }
   }
 
   async function handleOpenSaveDraftModal() {
@@ -266,9 +415,9 @@ export default function RollScreen() {
 
   async function handleSaveDraftTarget(params: {
     mode:
-      | "new_table_new_profile"
-      | "existing_table_new_profile"
-      | "existing_table_existing_profile";
+    | "new_table_new_profile"
+    | "existing_table_new_profile"
+    | "existing_table_existing_profile";
     tableName?: string;
     profileName?: string;
     tableId?: string;
@@ -338,6 +487,115 @@ export default function RollScreen() {
     profiles[0]?.profile ??
     null;
 
+  const activeProfileEntry =
+    profiles.find((entry) => entry.profile.id === activeProfile?.id) ?? null;
+
+  const actionRailItems = useMemo(
+    () =>
+      activeProfileEntry?.groups.map(({ group, dice }) => ({
+        id: group.id,
+        name: group.name,
+        detail: formatSavedActionDetail({
+          group,
+          dice,
+          rulesMap,
+        }),
+      })) ?? [],
+    [activeProfileEntry, rulesMap],
+  );
+
+  function handlePrepareSavedAction(groupId: string) {
+    if (!activeProfile) return;
+
+    const action = activeProfileEntry?.groups.find(
+      (entry) => entry.group.id === groupId,
+    );
+
+    if (!action) return;
+
+    setPreparedRoll({
+      source: "action",
+      profileId: activeProfile.id,
+      groupId,
+      label: action.group.name,
+    });
+
+    setMode("table");
+  }
+
+  function handleCycleProfile() {
+    if (profiles.length <= 1) return;
+
+    const currentIndex = profiles.findIndex(
+      (entry) => entry.profile.id === selectedProfileId,
+    );
+
+    const safeCurrentIndex = currentIndex >= 0 ? currentIndex : 0;
+    const nextIndex = (safeCurrentIndex + 1) % profiles.length;
+
+    setSelectedProfileId(profiles[nextIndex].profile.id);
+  }
+
+  function handleAddQuickStandardDie(sides: number) {
+    addQuickStandardDie(sides);
+    setPreparedRoll({ source: "free" });
+    setMode("quick");
+  }
+
+  const standardPreparedQuickGroup = useMemo(
+    () => findStandardQuickGroup(draftGroups),
+    [draftGroups],
+  );
+
+  const preparedQuickRollDetail = useMemo(
+    () => formatDraftGroupDiceLabel(standardPreparedQuickGroup),
+    [standardPreparedQuickGroup],
+  );
+
+  const hasPreparedQuickRoll = !!preparedQuickRollDetail;
+
+  const preparedActionEntry = useMemo(() => {
+    if (preparedRoll?.source !== "action") return null;
+
+    const profileEntry = profiles.find(
+      (entry) => entry.profile.id === preparedRoll.profileId,
+    );
+
+    return (
+      profileEntry?.groups.find(
+        (entry) => entry.group.id === preparedRoll.groupId,
+      ) ?? null
+    );
+  }, [preparedRoll, profiles]);
+
+  const preparedActionDetail = useMemo(() => {
+    if (!preparedActionEntry) return null;
+
+    return formatSavedActionDetail({
+      group: preparedActionEntry.group,
+      dice: preparedActionEntry.dice,
+      rulesMap,
+    });
+  }, [preparedActionEntry, rulesMap]);
+
+  const preparedCardName =
+    preparedRoll?.source === "free"
+      ? hasPreparedQuickRoll
+        ? "Jet libre"
+        : null
+      : preparedRoll?.source === "action"
+        ? preparedRoll.label
+        : null;
+
+  const preparedCardDetail =
+    preparedRoll?.source === "free"
+      ? preparedQuickRollDetail
+      : preparedRoll?.source === "action"
+        ? preparedActionDetail
+        : null;
+
+  const hasPreparedRoll = !!preparedCardName && !!preparedCardDetail;
+
   function handleAdjustTableQuickQty(delta: number) {
     setTableQuickQty((current) => Math.max(1, current + delta));
   }
@@ -383,23 +641,50 @@ export default function RollScreen() {
     <View style={{ flex: 1 }}>
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 150 }}
         showsVerticalScrollIndicator={false}
       >
+        <SessionBar
+          tableName={table?.name ?? null}
+          activeProfileName={activeProfile?.name ?? null}
+          hasActiveTable={hasActiveTable}
+          profileCount={profiles.length}
+          onPressProfile={handleCycleProfile}
+          onClearTable={async () => {
+            await clearActiveTableId();
+            setSelectedProfileId(null);
+            setResults([]);
+            setTableQuickResult(null);
+            setMode("quick");
+          }}
+        />
+
         {hasActiveTable ? (
-          <View
-            style={{
-              padding: 14,
-              borderWidth: 1,
-              borderRadius: 14,
-            }}
-          >
-            <Text style={{ opacity: 0.72 }}>Table active</Text>
-            <Text style={{ marginTop: 4, fontSize: 24, fontWeight: "900" }}>
-              {table.name}
-            </Text>
+          <View style={{ marginTop: 12 }}>
+            <ActionRail
+              profileName={activeProfile?.name ?? null}
+              actions={actionRailItems}
+              selectedActionId={
+                preparedRoll?.source === "action" ? preparedRoll.groupId : null
+              }
+              onPrepareAction={handlePrepareSavedAction}
+            />
           </View>
         ) : null}
+
+        <View style={{ marginTop: 12 }}>
+          <PreparedRollCard
+            name={preparedCardName}
+            detail={preparedCardDetail}
+            isEmpty={!hasPreparedRoll}
+            onClear={hasPreparedRoll ? handleClearPreparedRoll : undefined}
+            onSave={
+              preparedRoll?.source === "free" && hasPreparedRoll
+                ? handleOpenSaveDraftModal
+                : undefined
+            }
+          />
+        </View>
 
         <View
           style={{
@@ -454,7 +739,7 @@ export default function RollScreen() {
             tableQuickResult={tableQuickResult}
             onSelectTableQuickDie={setTableQuickSides}
             onAdjustTableQuickQty={handleAdjustTableQuickQty}
-            onOpenTableQuickBehaviorPicker={() => {}}
+            onOpenTableQuickBehaviorPicker={() => { }}
             onRollTableQuickAction={handleRollTableQuickAction}
             onSaveQuickRollAsAction={handleSaveQuickRollAsAction}
           />
@@ -474,7 +759,7 @@ export default function RollScreen() {
             onToggleSaveOptions={() => setShowSaveOptions((v) => !v)}
             onToggleAdvanced={() => setShowAdvanced((v) => !v)}
             onAddDraftGroup={addDraftGroup}
-            onAddQuickStandardDie={addQuickStandardDie}
+            onAddQuickStandardDie={handleAddQuickStandardDie}
             onSelectDraftGroup={setSelectedDraftGroupId}
             onRenameDraftGroup={openRenameDraftGroupModal}
             onEditDraftGroupRule={openDraftGroupRuleEditor}
@@ -537,7 +822,7 @@ export default function RollScreen() {
         style={{
           position: "absolute",
           right: 20,
-          bottom: 90,
+          bottom: 108,
           width: 56,
           height: 56,
           borderWidth: 1,
@@ -551,6 +836,11 @@ export default function RollScreen() {
           +
         </Text>
       </Pressable>
+
+      <StickyRollButton
+        disabled={!hasPreparedRoll}
+        onPress={handleRollPrepared}
+      />
 
       <QuickDieBehaviorPickerModal
         visible={quickDieBehaviorPicker.visible}
