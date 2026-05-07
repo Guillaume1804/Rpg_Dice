@@ -15,6 +15,7 @@ import { PreparedRollCard } from "../features/roll/components/PreparedRollCard";
 import { ActionRail } from "../features/roll/components/ActionRail";
 import { StickyRollButton } from "../features/roll/components/StickyRollButton";
 import { ResultPanel } from "../features/roll/components/ResultPanel";
+import { PreparedRollEditSheet } from "../features/roll/components/PreparedRollEditSheet";
 
 import { useDraftTableActions } from "../features/roll/hooks/useDraftTableActions";
 import { useRollExecution } from "../features/roll/hooks/useRollExecution";
@@ -152,6 +153,7 @@ export default function RollScreen() {
   const [mode, setMode] = useState<RollMode>("quick");
   const [preparedRoll, setPreparedRoll] = useState<PreparedRoll | null>(null);
   const [latestResult, setLatestResult] = useState<GroupRollResult | null>(null);
+  const [showPreparedEditSheet, setShowPreparedEditSheet] = useState(false);
 
   const db = useDb();
   const { activeTableId, setActiveTableId, clearActiveTableId } =
@@ -364,6 +366,21 @@ export default function RollScreen() {
     reloadGroups();
   }, [revision, tableId, reloadGroups]);
 
+  useEffect(() => {
+    if (preparedRoll?.source !== "action") return;
+
+    const stillExists = profiles.some((profileEntry) =>
+      profileEntry.groups.some(
+        (entry) => entry.group.id === preparedRoll.groupId,
+      ),
+    );
+
+    if (!stillExists) {
+      setPreparedRoll(null);
+      setLatestResult(null);
+    }
+  }, [profiles, preparedRoll]);
+
   function handleClearQuickRoll() {
     clearDraft();
 
@@ -379,6 +396,7 @@ export default function RollScreen() {
 
     setPreparedRoll(null);
     setLatestResult(null);
+    setShowPreparedEditSheet(false);
   }
 
   async function handleRollPrepared() {
@@ -529,7 +547,7 @@ export default function RollScreen() {
       label: action.group.name,
     });
     setLatestResult(null);
-    setMode("table");
+    setMode("quick");
   }
 
   function handleCycleProfile() {
@@ -552,6 +570,48 @@ export default function RollScreen() {
     setMode("quick");
   }
 
+  function handleOpenPreparedEdit() {
+    if (preparedRoll?.source !== "free") return;
+    if (!standardPreparedQuickGroup) return;
+
+    setShowPreparedEditSheet(true);
+  }
+
+  function handleClosePreparedEdit() {
+    setShowPreparedEditSheet(false);
+  }
+
+  function handleAdjustPreparedDieQty(index: number, delta: number) {
+    if (preparedRoll?.source !== "free") return;
+    if (!standardPreparedQuickGroup) return;
+
+    adjustDraftDieQty(standardPreparedQuickGroup.id, index, delta);
+    setLatestResult(null);
+  }
+
+  function handleEditPreparedDie(index: number) {
+    if (preparedRoll?.source !== "free") return;
+    if (!standardPreparedQuickGroup) return;
+
+    const die = standardPreparedQuickGroup.dice[index];
+    if (!die) return;
+
+    quickQtyModal.open(
+      standardPreparedQuickGroup.id,
+      index,
+      die.qty,
+      die.modifier ?? 0,
+    );
+  }
+
+  function handleRemovePreparedDie(index: number) {
+    if (preparedRoll?.source !== "free") return;
+    if (!standardPreparedQuickGroup) return;
+
+    removeDraftDie(standardPreparedQuickGroup.id, index);
+    setLatestResult(null);
+  }
+
   const standardPreparedQuickGroup = useMemo(
     () => findStandardQuickGroup(draftGroups),
     [draftGroups],
@@ -559,6 +619,18 @@ export default function RollScreen() {
 
   const preparedQuickRollDetail = useMemo(
     () => formatDraftGroupDiceLabel(standardPreparedQuickGroup),
+    [standardPreparedQuickGroup],
+  );
+
+  const preparedQuickEditDice = useMemo(
+    () =>
+      standardPreparedQuickGroup?.dice.map((die) => ({
+        sides: die.sides,
+        qty: die.qty,
+        modifier: die.modifier ?? 0,
+        sign: die.sign ?? 1,
+        ruleLabel: null,
+      })) ?? [],
     [standardPreparedQuickGroup],
   );
 
@@ -638,6 +710,16 @@ export default function RollScreen() {
     setMode("quick");
   }
 
+  useEffect(() => {
+    if (preparedRoll?.source !== "free") return;
+
+    if (!hasPreparedQuickRoll) {
+      setPreparedRoll(null);
+      setLatestResult(null);
+      setShowPreparedEditSheet(false);
+    }
+  }, [hasPreparedQuickRoll, preparedRoll]);
+
   if (error) {
     return (
       <View style={{ flex: 1, padding: 16 }}>
@@ -688,6 +770,11 @@ export default function RollScreen() {
             name={preparedCardName}
             detail={preparedCardDetail}
             isEmpty={!hasPreparedRoll}
+            onEdit={
+              preparedRoll?.source === "free" && hasPreparedRoll
+                ? handleOpenPreparedEdit
+                : undefined
+            }
             onClear={hasPreparedRoll ? handleClearPreparedRoll : undefined}
             onSave={
               preparedRoll?.source === "free" && hasPreparedRoll
@@ -701,6 +788,7 @@ export default function RollScreen() {
           <ResultPanel result={latestResult} />
         </View>
 
+        {/*    
         <View
           style={{
             flexDirection: "row",
@@ -736,7 +824,7 @@ export default function RollScreen() {
             <Text style={{ fontWeight: "600" }}>🎮 Table</Text>
           </Pressable>
         </View>
-
+        
         {mode === "table" && hasActiveTable && (
           <TableActionSection
             profiles={profiles}
@@ -759,41 +847,40 @@ export default function RollScreen() {
             onSaveQuickRollAsAction={handleSaveQuickRollAsAction}
           />
         )}
+        */}
 
-        {mode === "quick" && (
-          <QuickRollSection
-            simplified={true}
-            hideInternalRollControls={true}
-            title={hasActiveTable ? "Jet libre" : "Jet"}
-            standardDice={STANDARD_DICE}
-            draftGroups={draftGroups}
-            draftResults={draftResults}
-            selectedDraftGroupId={selectedDraftGroupId}
-            tableIsSystem={table?.is_system === 1}
-            showSaveOptions={showSaveOptions}
-            showAdvanced={showAdvanced}
-            onToggleSaveOptions={() => setShowSaveOptions((v) => !v)}
-            onToggleAdvanced={() => setShowAdvanced((v) => !v)}
-            onAddDraftGroup={addDraftGroup}
-            onAddQuickStandardDie={handleAddQuickStandardDie}
-            onSelectDraftGroup={setSelectedDraftGroupId}
-            onRenameDraftGroup={openRenameDraftGroupModal}
-            onEditDraftGroupRule={openDraftGroupRuleEditor}
-            onRemoveDraftGroup={removeDraftGroup}
-            onEditDraftDie={openDraftEditor}
-            onOpenDieConfig={quickDieBehaviorPicker.open}
-            onRemoveDraftDie={removeDraftDie}
-            onRollDraft={rollDraft}
-            onRollQuickGroup={rollSingleDraftGroup}
-            onClearQuickGroup={clearDraftGroup}
-            onClearDraft={handleClearQuickRoll}
-            onReplaceCurrentTable={replaceCurrentTable}
-            onCreateNewTable={handleOpenSaveDraftModal}
-            availableRules={availableRules}
-            onEditQuickDieQty={quickQtyModal.open}
-            onAdjustQuickDieQty={quickQtyModal.adjust}
-          />
-        )}
+        <QuickRollSection
+          simplified={true}
+          hideInternalRollControls={true}
+          title="Dés libres"
+          standardDice={STANDARD_DICE}
+          draftGroups={draftGroups}
+          draftResults={draftResults}
+          selectedDraftGroupId={selectedDraftGroupId}
+          tableIsSystem={table?.is_system === 1}
+          showSaveOptions={showSaveOptions}
+          showAdvanced={showAdvanced}
+          onToggleSaveOptions={() => setShowSaveOptions((v) => !v)}
+          onToggleAdvanced={() => setShowAdvanced((v) => !v)}
+          onAddDraftGroup={addDraftGroup}
+          onAddQuickStandardDie={handleAddQuickStandardDie}
+          onSelectDraftGroup={setSelectedDraftGroupId}
+          onRenameDraftGroup={openRenameDraftGroupModal}
+          onEditDraftGroupRule={openDraftGroupRuleEditor}
+          onRemoveDraftGroup={removeDraftGroup}
+          onEditDraftDie={openDraftEditor}
+          onOpenDieConfig={quickDieBehaviorPicker.open}
+          onRemoveDraftDie={removeDraftDie}
+          onRollDraft={rollDraft}
+          onRollQuickGroup={rollSingleDraftGroup}
+          onClearQuickGroup={clearDraftGroup}
+          onClearDraft={handleClearQuickRoll}
+          onReplaceCurrentTable={replaceCurrentTable}
+          onCreateNewTable={handleOpenSaveDraftModal}
+          availableRules={availableRules}
+          onEditQuickDieQty={quickQtyModal.open}
+          onAdjustQuickDieQty={quickQtyModal.adjust}
+        />
 
         <RollModals
           draftGroups={draftGroups}
@@ -973,6 +1060,16 @@ export default function RollScreen() {
         onChangePipelineComplicationRule={
           quickBehaviorConfig.setPipelineComplicationRule
         }
+      />
+
+      <PreparedRollEditSheet
+        visible={showPreparedEditSheet}
+        title="Modifier le jet libre"
+        dice={preparedQuickEditDice}
+        onClose={handleClosePreparedEdit}
+        onAdjustDieQty={handleAdjustPreparedDieQty}
+        onEditDie={handleEditPreparedDie}
+        onRemoveDie={handleRemovePreparedDie}
       />
 
       <QuickQtyModal
