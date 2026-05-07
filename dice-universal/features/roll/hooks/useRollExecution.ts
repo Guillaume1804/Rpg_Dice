@@ -56,21 +56,21 @@ function buildGroupResult(
         sign: d.sign ?? 1,
         rule: rule
           ? {
-              id: rule.id,
-              name: rule.name,
-              kind: rule.kind,
-              params_json: rule.params_json,
-            }
+            id: rule.id,
+            name: rule.name,
+            kind: rule.kind,
+            params_json: rule.params_json,
+          }
           : null,
       };
     }),
     groupRule: groupRule
       ? {
-          id: groupRule.id,
-          name: groupRule.name,
-          kind: groupRule.kind,
-          params_json: groupRule.params_json,
-        }
+        id: groupRule.id,
+        name: groupRule.name,
+        kind: groupRule.kind,
+        params_json: groupRule.params_json,
+      }
       : null,
     evaluateRule,
   });
@@ -134,8 +134,8 @@ export function useRollExecution({
   rulesMap,
   setResults,
 }: Params) {
-  async function rollSavedTable() {
-    if (!table) return;
+  async function rollSavedTable(): Promise<GroupRollResult[] | null> {
+    if (!table) return null;
 
     const rolled: GroupRollResult[] = [];
 
@@ -147,13 +147,17 @@ export function useRollExecution({
 
     setResults(rolled);
     await persistRollEvent(db, table, `Jet complet — ${table.name}`, rolled);
+
+    return rolled;
   }
 
-  async function rollSavedProfile(profileId: string) {
-    if (!table) return;
+  async function rollSavedProfile(
+    profileId: string,
+  ): Promise<GroupRollResult[] | null> {
+    if (!table) return null;
 
     const profileEntry = profiles.find((p) => p.profile.id === profileId);
-    if (!profileEntry) return;
+    if (!profileEntry) return null;
 
     const rolled = profileEntry.groups.map(({ group, dice }) =>
       buildGroupResult(profileEntry.profile.name, group, dice, rulesMap),
@@ -166,16 +170,21 @@ export function useRollExecution({
       `Jet profil — ${table.name} — ${profileEntry.profile.name}`,
       rolled,
     );
+
+    return rolled;
   }
 
-  async function rollSavedGroup(profileId: string, groupId: string) {
-    if (!table) return;
+  async function rollSavedGroup(
+    profileId: string,
+    groupId: string,
+  ): Promise<GroupRollResult | null> {
+    if (!table) return null;
 
     const profileEntry = profiles.find((p) => p.profile.id === profileId);
-    if (!profileEntry) return;
+    if (!profileEntry) return null;
 
     const groupEntry = profileEntry.groups.find((g) => g.group.id === groupId);
-    if (!groupEntry) return;
+    if (!groupEntry) return null;
 
     const rolled = [
       buildGroupResult(
@@ -187,12 +196,15 @@ export function useRollExecution({
     ];
 
     setResults((prev) => upsertResults(prev, rolled));
+
     await persistRollEvent(
       db,
       table,
       `Jet action — ${table.name} — ${profileEntry.profile.name} — ${groupEntry.group.name}`,
       rolled,
     );
+
+    return rolled[0] ?? null;
   }
 
   return {

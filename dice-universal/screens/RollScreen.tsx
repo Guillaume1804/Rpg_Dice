@@ -14,6 +14,7 @@ import { SessionBar } from "../features/roll/components/SessionBar";
 import { PreparedRollCard } from "../features/roll/components/PreparedRollCard";
 import { ActionRail } from "../features/roll/components/ActionRail";
 import { StickyRollButton } from "../features/roll/components/StickyRollButton";
+import { ResultPanel } from "../features/roll/components/ResultPanel";
 
 import { useDraftTableActions } from "../features/roll/hooks/useDraftTableActions";
 import { useRollExecution } from "../features/roll/hooks/useRollExecution";
@@ -150,6 +151,7 @@ export default function RollScreen() {
   type RollMode = "quick" | "table";
   const [mode, setMode] = useState<RollMode>("quick");
   const [preparedRoll, setPreparedRoll] = useState<PreparedRoll | null>(null);
+  const [latestResult, setLatestResult] = useState<GroupRollResult | null>(null);
 
   const db = useDb();
   const { activeTableId, setActiveTableId, clearActiveTableId } =
@@ -376,6 +378,7 @@ export default function RollScreen() {
     }
 
     setPreparedRoll(null);
+    setLatestResult(null);
   }
 
   async function handleRollPrepared() {
@@ -386,12 +389,18 @@ export default function RollScreen() {
 
       if (!group) return;
 
-      await rollSingleDraftGroup(group.id);
+      const result = await rollSingleDraftGroup(group.id);
+      setLatestResult(result);
       return;
     }
 
     if (preparedRoll.source === "action") {
-      await rollSavedGroup(preparedRoll.profileId, preparedRoll.groupId);
+      const result = await rollSavedGroup(
+        preparedRoll.profileId,
+        preparedRoll.groupId,
+      );
+
+      setLatestResult(result);
     }
   }
 
@@ -519,7 +528,7 @@ export default function RollScreen() {
       groupId,
       label: action.group.name,
     });
-
+    setLatestResult(null);
     setMode("table");
   }
 
@@ -539,6 +548,7 @@ export default function RollScreen() {
   function handleAddQuickStandardDie(sides: number) {
     addQuickStandardDie(sides);
     setPreparedRoll({ source: "free" });
+    setLatestResult(null);
     setMode("quick");
   }
 
@@ -655,6 +665,7 @@ export default function RollScreen() {
             setSelectedProfileId(null);
             setResults([]);
             setTableQuickResult(null);
+            setLatestResult(null);
             setMode("quick");
           }}
         />
@@ -684,6 +695,10 @@ export default function RollScreen() {
                 : undefined
             }
           />
+        </View>
+
+        <View style={{ marginTop: 12 }}>
+          <ResultPanel result={latestResult} />
         </View>
 
         <View
