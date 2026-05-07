@@ -386,6 +386,8 @@ export default function RollScreen() {
 
     if (preparedRoll?.source === "free") {
       setPreparedRoll(null);
+      setLatestResult(null);
+      setShowPreparedEditSheet(false);
     }
   }
 
@@ -747,7 +749,9 @@ export default function RollScreen() {
             setSelectedProfileId(null);
             setResults([]);
             setTableQuickResult(null);
+            setPreparedRoll(null);
             setLatestResult(null);
+            setShowPreparedEditSheet(false);
             setMode("quick");
           }}
         />
