@@ -44,6 +44,7 @@ type DraftGroupState = {
 
 type QuickRollSectionProps = {
   simplified?: boolean;
+  hideInternalRollControls?: boolean;
   title: string;
   standardDice: number[];
   draftGroups: DraftGroupState[];
@@ -109,11 +110,10 @@ function getEntryResultForIndex(result: GroupRollResult | null, index: number) {
 }
 
 function getEntryLabel(entryResult: GroupRollResult["entries"][number]) {
-  return `${entryResult.qty}d${entryResult.sides}${
-    entryResult.modifier
-      ? ` ${entryResult.modifier > 0 ? "+" : ""}${entryResult.modifier}`
-      : ""
-  }`;
+  return `${entryResult.qty}d${entryResult.sides}${entryResult.modifier
+    ? ` ${entryResult.modifier > 0 ? "+" : ""}${entryResult.modifier}`
+    : ""
+    }`;
 }
 
 function renderFallbackEntryResult(
@@ -143,6 +143,7 @@ function renderFallbackEntryResult(
 
 export function QuickRollSection({
   simplified = false,
+  hideInternalRollControls = false,
   title,
   standardDice,
   draftGroups,
@@ -355,7 +356,7 @@ export function QuickRollSection({
                         </View>
                       </View>
 
-                      {entryResult ? (
+                      {!hideInternalRollControls && entryResult ? (
                         <View style={{ paddingTop: 6, borderTopWidth: 1 }}>
                           {entryResult.eval_result ? (
                             <RollResultCard
@@ -373,37 +374,39 @@ export function QuickRollSection({
               </View>
             )}
 
-            <View
-              style={{
-                flexDirection: "row",
-                flexWrap: "wrap",
-                gap: 8,
-              }}
-            >
-              <Pressable
-                onPress={() => onRollQuickGroup(standardQuickGroup.id)}
+            {!hideInternalRollControls ? (
+              <View
                 style={{
-                  paddingVertical: 12,
-                  paddingHorizontal: 14,
-                  borderWidth: 1,
-                  borderRadius: 10,
+                  flexDirection: "row",
+                  flexWrap: "wrap",
+                  gap: 8,
                 }}
               >
-                <Text style={{ fontWeight: "800" }}>Lancer</Text>
-              </Pressable>
+                <Pressable
+                  onPress={() => onRollQuickGroup(standardQuickGroup.id)}
+                  style={{
+                    paddingVertical: 12,
+                    paddingHorizontal: 14,
+                    borderWidth: 1,
+                    borderRadius: 10,
+                  }}
+                >
+                  <Text style={{ fontWeight: "800" }}>Lancer</Text>
+                </Pressable>
 
-              <Pressable
-                onPress={() => onClearQuickGroup(standardQuickGroup.id)}
-                style={{
-                  paddingVertical: 12,
-                  paddingHorizontal: 14,
-                  borderWidth: 1,
-                  borderRadius: 10,
-                }}
-              >
-                <Text style={{ fontWeight: "700" }}>Reset</Text>
-              </Pressable>
-            </View>
+                <Pressable
+                  onPress={() => onClearQuickGroup(standardQuickGroup.id)}
+                  style={{
+                    paddingVertical: 12,
+                    paddingHorizontal: 14,
+                    borderWidth: 1,
+                    borderRadius: 10,
+                  }}
+                >
+                  <Text style={{ fontWeight: "700" }}>Reset</Text>
+                </Pressable>
+              </View>
+            ) : null}
           </View>
         ) : null}
 
@@ -504,14 +507,16 @@ export function QuickRollSection({
                       </View>
                     </View>
 
-                    {groupResult?.group_eval_result && index === 0 ? (
+                    {!hideInternalRollControls &&
+                      groupResult?.group_eval_result &&
+                      index === 0 ? (
                       <View style={{ paddingTop: 6, borderTopWidth: 1 }}>
                         <RollResultCard
                           result={groupResult.group_eval_result}
                           title="Résultat de groupe"
                         />
                       </View>
-                    ) : entryResult ? (
+                    ) : !hideInternalRollControls && entryResult ? (
                       <View style={{ paddingTop: 6, borderTopWidth: 1 }}>
                         {entryResult.eval_result ? (
                           <RollResultCard
@@ -526,38 +531,39 @@ export function QuickRollSection({
                   </View>
                 );
               })}
-
-              <View
-                style={{
-                  flexDirection: "row",
-                  flexWrap: "wrap",
-                  gap: 8,
-                }}
-              >
-                <Pressable
-                  onPress={() => onRollQuickGroup(group.id)}
+              {!hideInternalRollControls ? (
+                <View
                   style={{
-                    paddingVertical: 12,
-                    paddingHorizontal: 14,
-                    borderWidth: 1,
-                    borderRadius: 10,
+                    flexDirection: "row",
+                    flexWrap: "wrap",
+                    gap: 8,
                   }}
                 >
-                  <Text style={{ fontWeight: "800" }}>Lancer</Text>
-                </Pressable>
+                  <Pressable
+                    onPress={() => onRollQuickGroup(group.id)}
+                    style={{
+                      paddingVertical: 12,
+                      paddingHorizontal: 14,
+                      borderWidth: 1,
+                      borderRadius: 10,
+                    }}
+                  >
+                    <Text style={{ fontWeight: "800" }}>Lancer</Text>
+                  </Pressable>
 
-                <Pressable
-                  onPress={() => onClearQuickGroup(group.id)}
-                  style={{
-                    paddingVertical: 12,
-                    paddingHorizontal: 14,
-                    borderWidth: 1,
-                    borderRadius: 10,
-                  }}
-                >
-                  <Text style={{ fontWeight: "700" }}>Reset</Text>
-                </Pressable>
-              </View>
+                  <Pressable
+                    onPress={() => onClearQuickGroup(group.id)}
+                    style={{
+                      paddingVertical: 12,
+                      paddingHorizontal: 14,
+                      borderWidth: 1,
+                      borderRadius: 10,
+                    }}
+                  >
+                    <Text style={{ fontWeight: "700" }}>Reset</Text>
+                  </Pressable>
+                </View>
+              ) : null}
             </View>
           );
         })}
