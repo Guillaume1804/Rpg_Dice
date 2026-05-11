@@ -9,6 +9,7 @@ import {
 import { getRuleBehaviorDefinition } from "../../../core/rules/behaviorRegistry";
 
 type Scope = "entry" | "group";
+type QuickConfigVariant = "default" | "keep_drop";
 type RangeRow = { min: string; max: string; label: string };
 
 function applyFieldDefault(
@@ -190,6 +191,8 @@ export function useQuickBehaviorConfigModal() {
   const [pendingBehaviorLabel, setPendingBehaviorLabel] = useState("");
   const [pendingBehaviorScope, setPendingBehaviorScope] =
     useState<Scope>("entry");
+  const [pendingConfigVariant, setPendingConfigVariant] =
+    useState<QuickConfigVariant>("default");
 
   const [configKeepCount, setConfigKeepCount] = useState("2");
   const [configDropCount, setConfigDropCount] = useState("1");
@@ -281,10 +284,12 @@ export function useQuickBehaviorConfigModal() {
     behaviorKey: RuleBehaviorKey;
     label: string;
     scope: Scope;
+    variant?: QuickConfigVariant;
   }) {
     setPendingBehaviorKey(params.behaviorKey);
     setPendingBehaviorLabel(params.label);
     setPendingBehaviorScope(params.scope);
+    setPendingConfigVariant(params.variant ?? "default");
 
     const behavior = getRuleBehaviorDefinition(params.behaviorKey);
 
@@ -343,6 +348,7 @@ export function useQuickBehaviorConfigModal() {
     setPendingBehaviorKey(null);
     setPendingBehaviorLabel("");
     setPendingBehaviorScope("entry");
+    setPendingConfigVariant("default");
 
     setConfigKeepCount("2");
     setConfigDropCount("1");
@@ -382,6 +388,15 @@ export function useQuickBehaviorConfigModal() {
     const behavior = getRuleBehaviorDefinition(pendingBehaviorKey);
     if (!behavior) return false;
     if (pendingBehaviorKey === "custom_pipeline") {
+      if (pendingConfigVariant === "keep_drop") {
+        const hasKeepDropConfig =
+          pipelineKeepHighest.trim() !== "" ||
+          pipelineKeepLowest.trim() !== "" ||
+          pipelineDropHighest.trim() !== "" ||
+          pipelineDropLowest.trim() !== "";
+
+        if (!hasKeepDropConfig) return false;
+      }
       const numericFields = [
         pipelineMaxRerolls,
         pipelineMaxExplosions,
@@ -401,7 +416,14 @@ export function useQuickBehaviorConfigModal() {
         }
       }
 
-      const positiveIntegerFields = [pipelineMaxRerolls, pipelineMaxExplosions];
+      const positiveIntegerFields = [
+        pipelineMaxRerolls,
+        pipelineMaxExplosions,
+        pipelineKeepHighest,
+        pipelineKeepLowest,
+        pipelineDropHighest,
+        pipelineDropLowest,
+      ];
 
       for (const value of positiveIntegerFields) {
         if (value.trim() !== "" && Number(value) <= 0) {
@@ -519,6 +541,7 @@ export function useQuickBehaviorConfigModal() {
     pendingBehaviorKey,
     pendingBehaviorLabel,
     pendingBehaviorScope,
+    pendingConfigVariant,
 
     configKeepCount,
     configDropCount,

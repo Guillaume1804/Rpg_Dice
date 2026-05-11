@@ -1,5 +1,3 @@
-// dice-universal\features\roll\hooks\useQuickDieBehaviorPicker.ts
-
 import { useMemo, useState } from "react";
 import {
   RULE_BEHAVIORS,
@@ -8,6 +6,16 @@ import {
 } from "../../../core/rules/behaviorRegistry";
 import { buildDraftTempRuleFromPreset } from "../helpers/buildDraftTempRuleFromPreset";
 import { behaviorNeedsSelectionConfig } from "../helpers/quickBehaviorConfig";
+
+export type QuickBehaviorPickerOption = {
+  optionId: string;
+  behaviorKey: RuleBehaviorKey;
+  context: "quick_roll";
+  enabled: boolean;
+  label?: string;
+  description?: string;
+  variant?: "default" | "keep_drop";
+};
 
 export function useQuickDieBehaviorPicker({
   addQuickPresetDie,
@@ -26,36 +34,78 @@ export function useQuickDieBehaviorPicker({
     setEditingDieSides(null);
   }
 
-  const behaviors = useMemo(() => {
+  const behaviors = useMemo<QuickBehaviorPickerOption[]>(() => {
     if (editingDieSides == null) return [];
 
-    return RULE_BEHAVIORS.filter((behavior) => {
+    const visibleBehaviors = RULE_BEHAVIORS.filter((behavior) => {
+      if (behavior.visibleInQuickPicker === false) return false;
+
       if (!behavior.supportedSides) return true;
       return behavior.supportedSides.includes(editingDieSides);
     }).map((behavior) => ({
+      optionId: behavior.key,
       behaviorKey: behavior.key,
       context: "quick_roll" as const,
       enabled: true,
+      variant: "default" as const,
     }));
+
+    const customPipelineIndex = visibleBehaviors.findIndex(
+      (behavior) => behavior.behaviorKey === "custom_pipeline",
+    );
+
+    const keepDropOption: QuickBehaviorPickerOption = {
+      optionId: "keep_drop_pipeline",
+      behaviorKey: "custom_pipeline",
+      context: "quick_roll",
+      enabled: true,
+      label: "Garder / Retirer des dés",
+      description:
+        "Garde ou retire les meilleurs ou les plus faibles dés, puis calcule le résultat.",
+      variant: "keep_drop",
+    };
+
+    if (customPipelineIndex >= 0) {
+      return [
+        ...visibleBehaviors.slice(0, customPipelineIndex),
+        keepDropOption,
+        ...visibleBehaviors.slice(customPipelineIndex),
+      ];
+    }
+
+    return [...visibleBehaviors, keepDropOption];
   }, [editingDieSides]);
 
   function getDefinition(behaviorKey: RuleBehaviorKey) {
     return getRuleBehaviorDefinition(behaviorKey);
   }
 
-  function select(behaviorKey: RuleBehaviorKey) {
+  function select(option: QuickBehaviorPickerOption) {
     if (editingDieSides == null) return;
 
+    const behaviorKey = option.behaviorKey;
     const def = getDefinition(behaviorKey);
     if (!def) return;
 
-    const quickScope = def.defaultScope === "group" ? "group" : "entry";
+    const quickScope =
+      option.variant === "keep_drop"
+        ? "group"
+        : def.defaultScope === "group"
+          ? "group"
+          : "entry";
 
-    if (behaviorNeedsSelectionConfig(behaviorKey)) {
+    const label = option.label ?? def.label;
+    const description = option.description ?? def.description;
+
+    if (
+      option.variant === "keep_drop" ||
+      behaviorNeedsSelectionConfig(behaviorKey)
+    ) {
       quickBehaviorConfig.open({
         behaviorKey,
-        label: def.label,
+        label,
         scope: quickScope,
+        variant: option.variant ?? "default",
       });
       return;
     }
@@ -69,14 +119,14 @@ export function useQuickDieBehaviorPicker({
     const tempRule = buildDraftTempRuleFromPreset({
       preset: {
         key: behaviorKey,
-        label: def.label,
-        description: def.description,
+        label,
+        description,
         scope: quickScope,
         behaviorKey,
         defaultValues,
       },
       sides: editingDieSides,
-      actionName: def.label,
+      actionName: label,
     });
 
     addQuickPresetDie(editingDieSides, {

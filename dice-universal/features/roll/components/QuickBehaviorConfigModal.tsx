@@ -12,6 +12,7 @@ type Props = {
   visible: boolean;
   pendingBehaviorKey: RuleBehaviorKey | null;
   pendingBehaviorLabel: string;
+  pendingConfigVariant: "default" | "keep_drop";
 
   configKeepCount: string;
   configDropCount: string;
@@ -43,12 +44,12 @@ type Props = {
   pipelineCountRangeMax: string;
 
   pipelineOutput:
-    | "sum"
-    | "successes"
-    | "count_equal"
-    | "count_range"
-    | "first_value"
-    | "values";
+  | "sum"
+  | "successes"
+  | "count_equal"
+  | "count_range"
+  | "first_value"
+  | "values";
 
   pipelineSuccessThreshold: string;
   pipelineCompare: "gte" | "lte";
@@ -56,11 +57,11 @@ type Props = {
   pipelineCritFailureFaces: string;
   pipelineComplicationFaces: string;
   pipelineComplicationRule:
-    | "none"
-    | "any"
-    | "gt_successes"
-    | "gte_successes"
-    | "zero_successes";
+  | "none"
+  | "any"
+  | "gt_successes"
+  | "gte_successes"
+  | "zero_successes";
 
   configTargetValue: string;
   configDegreeStep: string;
@@ -137,6 +138,7 @@ export function QuickBehaviorConfigModal({
   visible,
   pendingBehaviorKey,
   pendingBehaviorLabel,
+  pendingConfigVariant,
 
   configKeepCount,
   configDropCount,
@@ -630,6 +632,7 @@ export function QuickBehaviorConfigModal({
               />
             </>
           ) : null}
+          
           {pendingBehaviorKey !== "custom_pipeline" &&
             behavior?.fields.map((field) => {
               if (field.type === "text" || field.type === "number") {

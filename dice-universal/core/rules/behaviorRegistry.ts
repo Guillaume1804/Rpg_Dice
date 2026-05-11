@@ -23,20 +23,20 @@ type BaseBehaviorField = {
 
 export type RuleBehaviorField =
   | (BaseBehaviorField & {
-      type: "text" | "number";
-      defaultValue: string;
-      placeholder?: string;
-    })
+    type: "text" | "number";
+    defaultValue: string;
+    placeholder?: string;
+  })
   | (BaseBehaviorField & {
-      type: "select";
-      defaultValue: string;
-      options: { value: string; label: string }[];
-    })
+    type: "select";
+    defaultValue: string;
+    options: { value: string; label: string }[];
+  })
   | (BaseBehaviorField & {
-      type: "ranges";
-      paramsKey: "ranges" | "bands";
-      defaultValue: { min: string; max: string; label: string }[];
-    });
+    type: "ranges";
+    paramsKey: "ranges" | "bands";
+    defaultValue: { min: string; max: string; label: string }[];
+  });
 
 export type RuleBehaviorRegistryItem = {
   key: RuleBehaviorKey;
@@ -47,8 +47,19 @@ export type RuleBehaviorRegistryItem = {
   allowedScopes: ("entry" | "group" | "both")[];
   supportedSides: number[] | null;
   fields: RuleBehaviorField[];
-};
 
+  /**
+   * Permet de garder des comportements techniques dans le moteur
+   * sans forcément les afficher dans les choix utilisateur simples.
+   */
+  visibleInQuickPicker?: boolean;
+
+  /**
+   * Permet de regrouper plusieurs comportements techniques
+   * sous une logique UX plus simple.
+   */
+  uxFamily?: "default" | "table_ranges" | "keep_drop" | "advanced";
+};
 export const RULE_BEHAVIORS: RuleBehaviorRegistryItem[] = [
   {
     key: "sum_total",
@@ -58,6 +69,8 @@ export const RULE_BEHAVIORS: RuleBehaviorRegistryItem[] = [
     defaultScope: "entry",
     allowedScopes: ["entry", "group", "both"],
     supportedSides: null,
+    visibleInQuickPicker: false,
+    uxFamily: "default",
     fields: [],
   },
   {
@@ -186,6 +199,8 @@ export const RULE_BEHAVIORS: RuleBehaviorRegistryItem[] = [
     defaultScope: "entry",
     allowedScopes: ["entry", "group", "both"],
     supportedSides: null,
+    visibleInQuickPicker: true,
+    uxFamily: "advanced",
     fields: [],
   },
   {
@@ -229,12 +244,14 @@ export const RULE_BEHAVIORS: RuleBehaviorRegistryItem[] = [
   },
   {
     key: "table_lookup",
-    label: "Table de résultats",
-    description: "Associe une plage de valeurs à un résultat texte.",
+    label: "Table / Paliers",
+    description: "Associe une plage de valeurs à un résultat : table aléatoire, localisation, réussite partielle, palier narratif.",
     kind: "table_lookup",
     defaultScope: "entry",
     allowedScopes: ["entry", "group", "both"],
     supportedSides: null,
+    visibleInQuickPicker: true,
+    uxFamily: "table_ranges",
     fields: [
       {
         key: "ranges",
@@ -257,6 +274,8 @@ export const RULE_BEHAVIORS: RuleBehaviorRegistryItem[] = [
     defaultScope: "group",
     allowedScopes: ["group", "both"],
     supportedSides: null,
+    visibleInQuickPicker: false,
+    uxFamily: "table_ranges",
     fields: [
       {
         key: "ranges",
@@ -279,6 +298,8 @@ export const RULE_BEHAVIORS: RuleBehaviorRegistryItem[] = [
     defaultScope: "group",
     allowedScopes: ["group", "both"],
     supportedSides: null,
+    visibleInQuickPicker: false,
+    uxFamily: "keep_drop",
     fields: [
       {
         key: "compare",
@@ -325,6 +346,8 @@ export const RULE_BEHAVIORS: RuleBehaviorRegistryItem[] = [
     defaultScope: "group",
     allowedScopes: ["group", "both"],
     supportedSides: null,
+    visibleInQuickPicker: false,
+    uxFamily: "keep_drop",
     fields: [
       {
         key: "compare",
@@ -371,6 +394,8 @@ export const RULE_BEHAVIORS: RuleBehaviorRegistryItem[] = [
     defaultScope: "group",
     allowedScopes: ["group", "both"],
     supportedSides: null,
+    visibleInQuickPicker: false,
+    uxFamily: "keep_drop",
     fields: [
       {
         key: "keepCount",
@@ -400,6 +425,8 @@ export const RULE_BEHAVIORS: RuleBehaviorRegistryItem[] = [
     defaultScope: "group",
     allowedScopes: ["group", "both"],
     supportedSides: null,
+    visibleInQuickPicker: false,
+    uxFamily: "keep_drop",
     fields: [
       {
         key: "keepCount",
@@ -429,6 +456,8 @@ export const RULE_BEHAVIORS: RuleBehaviorRegistryItem[] = [
     defaultScope: "group",
     allowedScopes: ["group", "both"],
     supportedSides: null,
+    visibleInQuickPicker: false,
+    uxFamily: "keep_drop",
     fields: [
       {
         key: "dropCount",
@@ -458,6 +487,8 @@ export const RULE_BEHAVIORS: RuleBehaviorRegistryItem[] = [
     defaultScope: "group",
     allowedScopes: ["group", "both"],
     supportedSides: null,
+    visibleInQuickPicker: false,
+    uxFamily: "keep_drop",
     fields: [
       {
         key: "dropCount",

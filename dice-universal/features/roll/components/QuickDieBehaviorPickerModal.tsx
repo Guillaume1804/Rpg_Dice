@@ -4,7 +4,11 @@ import { View, Text, Pressable, ScrollView } from "react-native";
 import type { RuleBehaviorKey } from "../../../core/rules/behaviorRegistry";
 
 type BehaviorOption = {
+    optionId: string;
     behaviorKey: RuleBehaviorKey;
+    label?: string;
+    description?: string;
+    variant?: "default" | "keep_drop";
 };
 
 type BehaviorDefinition = {
@@ -19,7 +23,7 @@ type Props = {
     editingDieSides: number | null;
     behaviors: BehaviorOption[];
     getDefinition: (behaviorKey: RuleBehaviorKey) => BehaviorDefinition | null;
-    onSelectBehavior: (behaviorKey: RuleBehaviorKey) => void;
+    onSelectBehavior: (option: BehaviorOption) => void;
     onClose: () => void;
 };
 
@@ -73,8 +77,8 @@ export function QuickDieBehaviorPickerModal({
 
                         return (
                             <Pressable
-                                key={behavior.behaviorKey}
-                                onPress={() => onSelectBehavior(behavior.behaviorKey)}
+                                key={behavior.optionId}
+                                onPress={() => onSelectBehavior(behavior)}
                                 style={{
                                     padding: 12,
                                     borderWidth: 1,
@@ -82,10 +86,14 @@ export function QuickDieBehaviorPickerModal({
                                     gap: 4,
                                 }}
                             >
-                                <Text style={{ fontWeight: "700" }}>{def.label}</Text>
+                                <Text style={{ fontWeight: "700" }}>
+                                    {behavior.label ?? def.label}
+                                </Text>
 
-                                {def.description ? (
-                                    <Text style={{ opacity: 0.7 }}>{def.description}</Text>
+                                {behavior.description ?? def.description ? (
+                                    <Text style={{ opacity: 0.7 }}>
+                                        {behavior.description ?? def.description}
+                                    </Text>
                                 ) : null}
                             </Pressable>
                         );
