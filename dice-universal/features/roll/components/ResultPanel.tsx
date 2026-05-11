@@ -2,6 +2,9 @@ import { Text, View } from "react-native";
 import type { GroupRollResult } from "../../../core/roll/roll";
 import { RollResultCard } from "./RollResultCard";
 
+import { arcane } from "../../../theme/arcaneTheme";
+import { arcaneStyles } from "../../../theme/arcaneStyles";
+
 type ResultPanelProps = {
     result: GroupRollResult | null;
 };
@@ -22,34 +25,67 @@ export function ResultPanel({ result }: ResultPanelProps) {
     return (
         <View
             style={{
-                padding: 14,
-                borderWidth: 1,
-                borderRadius: 18,
-                gap: 12,
+                ...arcaneStyles.card,
+                borderColor: result ? arcane.colors.accent : arcane.colors.border,
+                backgroundColor: result
+                    ? arcane.colors.backgroundElevated
+                    : arcane.colors.surface,
+                gap: arcane.spacing.md,
             }}
         >
-            <View style={{ gap: 4 }}>
-                <Text style={{ opacity: 0.62, fontSize: 12, fontWeight: "800" }}>
+            <View style={{ gap: arcane.spacing.xs }}>
+                <Text
+                    style={{
+                        color: arcane.colors.textSubtle,
+                        fontSize: arcane.typography.tiny,
+                        fontWeight: "900",
+                        textTransform: "uppercase",
+                        letterSpacing: 0.8,
+                    }}
+                >
                     Résultat
                 </Text>
 
                 {!result ? (
                     <>
-                        <Text style={{ fontSize: 20, fontWeight: "900" }}>
-                            Aucun résultat
+                        <Text
+                            style={{
+                                color: arcane.colors.text,
+                                fontSize: 20,
+                                fontWeight: "900",
+                            }}
+                        >
+                            En attente du lancer
                         </Text>
 
-                        <Text style={{ opacity: 0.68, lineHeight: 20 }}>
-                            Lance un jet préparé pour afficher son résultat ici.
+                        <Text
+                            style={{
+                                color: arcane.colors.textMuted,
+                                lineHeight: 20,
+                            }}
+                        >
+                            Lance un jet préparé pour révéler le résultat ici.
                         </Text>
                     </>
                 ) : (
                     <>
-                        <Text style={{ fontSize: 22, fontWeight: "900" }}>
+                        <Text
+                            style={{
+                                color: arcane.colors.text,
+                                fontSize: 22,
+                                fontWeight: "900",
+                            }}
+                        >
                             {result.label}
                         </Text>
 
-                        <Text style={{ opacity: 0.72 }}>
+                        <Text
+                            style={{
+                                color: arcane.colors.accent,
+                                fontSize: 18,
+                                fontWeight: "900",
+                            }}
+                        >
                             Total global : {result.total}
                         </Text>
                     </>
@@ -57,7 +93,7 @@ export function ResultPanel({ result }: ResultPanelProps) {
             </View>
 
             {result ? (
-                <View style={{ gap: 10 }}>
+                <View style={{ gap: arcane.spacing.sm }}>
                     {result.group_eval_result ? (
                         <RollResultCard
                             result={result.group_eval_result}
@@ -69,10 +105,8 @@ export function ResultPanel({ result }: ResultPanelProps) {
                         <View
                             key={entry.entryId}
                             style={{
-                                padding: 10,
-                                borderWidth: 1,
-                                borderRadius: 12,
-                                gap: 8,
+                                ...arcaneStyles.cardSoft,
+                                gap: arcane.spacing.sm,
                             }}
                         >
                             {entry.eval_result ? (
@@ -82,15 +116,30 @@ export function ResultPanel({ result }: ResultPanelProps) {
                                 />
                             ) : (
                                 <>
-                                    <Text style={{ fontWeight: "900" }}>
+                                    <Text
+                                        style={{
+                                            color: arcane.colors.text,
+                                            fontWeight: "900",
+                                        }}
+                                    >
                                         {getEntryLabel(entry)}
                                     </Text>
 
-                                    <Text style={{ opacity: 0.72 }}>
+                                    <Text
+                                        style={{
+                                            color: arcane.colors.textMuted,
+                                        }}
+                                    >
                                         Valeurs : {formatValues(entry.natural_values)}
                                     </Text>
 
-                                    <Text style={{ fontSize: 18, fontWeight: "900" }}>
+                                    <Text
+                                        style={{
+                                            color: arcane.colors.text,
+                                            fontSize: 18,
+                                            fontWeight: "900",
+                                        }}
+                                    >
                                         Total : {entry.final_total}
                                     </Text>
                                 </>
@@ -101,11 +150,18 @@ export function ResultPanel({ result }: ResultPanelProps) {
                     {!result.group_eval_result && result.entries.length > 1 ? (
                         <View
                             style={{
-                                paddingTop: 10,
+                                paddingTop: arcane.spacing.sm,
                                 borderTopWidth: 1,
+                                borderTopColor: arcane.colors.border,
                             }}
                         >
-                            <Text style={{ fontSize: 24, fontWeight: "900" }}>
+                            <Text
+                                style={{
+                                    color: arcane.colors.accent,
+                                    fontSize: 24,
+                                    fontWeight: "900",
+                                }}
+                            >
                                 Total : {result.total}
                             </Text>
                         </View>

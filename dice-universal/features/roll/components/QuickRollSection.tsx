@@ -7,6 +7,9 @@ import type { RuleRow } from "../../../data/repositories/rulesRepo";
 import { getRuleNameFromId } from "../helpers";
 import { RollResultCard } from "./RollResultCard";
 
+import { arcane } from "../../../theme/arcaneTheme";
+import { arcaneStyles } from "../../../theme/arcaneStyles";
+
 type DraftDie = {
   sides: number;
   qty: number;
@@ -122,19 +125,34 @@ function renderFallbackEntryResult(
   return (
     <View
       style={{
-        padding: 10,
-        borderWidth: 1,
-        borderRadius: 10,
-        gap: 6,
+        ...arcaneStyles.cardSoft,
+        gap: arcane.spacing.sm,
       }}
     >
-      <Text style={{ fontWeight: "800" }}>{getEntryLabel(entryResult)}</Text>
+      <Text
+        style={{
+          color: arcane.colors.text,
+          fontWeight: "900",
+        }}
+      >
+        {getEntryLabel(entryResult)}
+      </Text>
 
-      <Text style={{ opacity: 0.72 }}>
+      <Text
+        style={{
+          color: arcane.colors.textMuted,
+        }}
+      >
         Valeurs : {entryResult.natural_values.join(" + ")}
       </Text>
 
-      <Text style={{ fontSize: 18, fontWeight: "800" }}>
+      <Text
+        style={{
+          color: arcane.colors.text,
+          fontSize: 18,
+          fontWeight: "900",
+        }}
+      >
         Total : {entryResult.final_total}
       </Text>
     </View>
@@ -206,10 +224,8 @@ export function QuickRollSection({
       <View style={{ marginTop: 12, gap: 12 }}>
         <View
           style={{
-            padding: 14,
-            borderWidth: 1,
-            borderRadius: 14,
-            gap: 10,
+            ...arcaneStyles.card,
+            gap: arcane.spacing.md,
           }}
         >
           <View
@@ -220,7 +236,7 @@ export function QuickRollSection({
               gap: 8,
             }}
           >
-            <Text style={{ fontSize: 16, fontWeight: "800" }}>{title}</Text>
+            <Text style={arcaneStyles.sectionTitle}>{title}</Text>
           </View>
 
           <View
@@ -236,16 +252,29 @@ export function QuickRollSection({
                 onPress={() => onAddQuickStandardDie(sides)}
                 onLongPress={() => onOpenDieConfig(sides)}
                 delayLongPress={300}
-                style={{
+                style={({ pressed }) => ({
                   minWidth: 64,
+                  minHeight: 56,
                   paddingVertical: 14,
                   paddingHorizontal: 14,
                   borderWidth: 1,
-                  borderRadius: 12,
+                  borderColor: arcane.colors.border,
+                  borderRadius: arcane.radius.md,
                   alignItems: "center",
-                }}
+                  justifyContent: "center",
+                  backgroundColor: pressed
+                    ? arcane.colors.surfaceSoft
+                    : arcane.colors.surfaceAlt,
+                  transform: [{ scale: pressed ? 0.96 : 1 }],
+                })}
               >
-                <Text style={{ fontWeight: "800", fontSize: 16 }}>
+                <Text
+                  style={{
+                    color: arcane.colors.text,
+                    fontWeight: "900",
+                    fontSize: 16,
+                  }}
+                >
                   d{sides}
                 </Text>
               </Pressable>
@@ -253,7 +282,7 @@ export function QuickRollSection({
           </View>
         </View>
 
-        {standardQuickGroup ? (
+        {standardQuickGroup && !hideInternalRollControls ? (
           <View
             style={{
               padding: 14,
@@ -571,13 +600,11 @@ export function QuickRollSection({
         {showAdvanced ? (
           <View
             style={{
-              padding: 14,
-              borderWidth: 1,
-              borderRadius: 14,
-              gap: 10,
+              ...arcaneStyles.card,
+              gap: arcane.spacing.md,
             }}
           >
-            <Text style={{ fontSize: 16, fontWeight: "800" }}>
+            <Text style={arcaneStyles.sectionTitle}>
               Action temporaire
             </Text>
 
@@ -590,19 +617,31 @@ export function QuickRollSection({
             >
               <Pressable
                 onPress={onAddDraftGroup}
-                style={{
+                style={({ pressed }) => ({
                   paddingVertical: 10,
                   paddingHorizontal: 12,
                   borderWidth: 1,
-                  borderRadius: 10,
-                }}
+                  borderColor: arcane.colors.accent,
+                  borderRadius: arcane.radius.pill,
+                  backgroundColor: pressed
+                    ? arcane.colors.surfaceSoft
+                    : arcane.colors.accentSoft,
+                  opacity: pressed ? 0.86 : 1,
+                })}
               >
-                <Text style={{ fontWeight: "700" }}>+ Nouvelle action</Text>
+                <Text
+                  style={{
+                    color: arcane.colors.text,
+                    fontWeight: "900",
+                  }}
+                >
+                  + Nouvelle action
+                </Text>
               </Pressable>
             </View>
 
             {draftGroups.length === 0 ? (
-              <Text style={{ opacity: 0.72 }}>
+              <Text style={arcaneStyles.muted}>
                 Aucune action temporaire pour le moment.
               </Text>
             ) : (
@@ -823,7 +862,7 @@ export function QuickRollSection({
           gap: 10,
         }}
       >
-        <Text style={{ fontSize: 16, fontWeight: "800" }}>{title}</Text>
+        <Text style={arcaneStyles.sectionTitle}>{title}</Text>
 
         <View
           style={{
@@ -836,16 +875,33 @@ export function QuickRollSection({
             <Pressable
               key={sides}
               onPress={() => onAddQuickStandardDie(sides)}
-              style={{
+              onLongPress={() => onOpenDieConfig(sides)}
+              delayLongPress={300}
+              style={({ pressed }) => ({
                 minWidth: 64,
-                paddingVertical: 12,
+                minHeight: 56,
+                paddingVertical: 14,
                 paddingHorizontal: 14,
                 borderWidth: 1,
-                borderRadius: 12,
+                borderColor: arcane.colors.border,
+                borderRadius: arcane.radius.md,
                 alignItems: "center",
-              }}
+                justifyContent: "center",
+                backgroundColor: pressed
+                  ? arcane.colors.surfaceSoft
+                  : arcane.colors.surfaceAlt,
+                transform: [{ scale: pressed ? 0.96 : 1 }],
+              })}
             >
-              <Text style={{ fontWeight: "800" }}>d{sides}</Text>
+              <Text
+                style={{
+                  color: arcane.colors.text,
+                  fontWeight: "900",
+                  fontSize: 16,
+                }}
+              >
+                d{sides}
+              </Text>
             </Pressable>
           ))}
         </View>

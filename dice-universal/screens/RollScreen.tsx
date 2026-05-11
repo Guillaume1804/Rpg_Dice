@@ -10,6 +10,8 @@ import { RollModals } from "../features/roll/components/RollModals";
 import { QuickRollSection } from "../features/roll/components/QuickRollSection";
 import { TableActionSection } from "../features/roll/components/TableActionSection";
 
+import { arcane } from "../theme/arcaneTheme";
+
 import { SessionBar } from "../features/roll/components/SessionBar";
 import { PreparedRollCard } from "../features/roll/components/PreparedRollCard";
 import { ActionRail } from "../features/roll/components/ActionRail";
@@ -732,10 +734,13 @@ export default function RollScreen() {
   }
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: arcane.colors.background }}>
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 16, paddingBottom: 150 }}
+        contentContainerStyle={{
+          padding: arcane.spacing.lg,
+          paddingBottom: 150,
+        }}
         showsVerticalScrollIndicator={false}
       >
         <SessionBar
@@ -926,20 +931,33 @@ export default function RollScreen() {
 
       <Pressable
         onPress={() => setShowAdvanced((v) => !v)}
-        style={{
+        style={({ pressed }) => ({
           position: "absolute",
           right: 20,
           bottom: 108,
           width: 56,
           height: 56,
           borderWidth: 1,
-          borderRadius: 999,
+          borderColor: arcane.colors.border,
+          borderRadius: arcane.radius.pill,
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: "white",
-        }}
+          backgroundColor: showAdvanced
+            ? arcane.colors.arcane
+            : arcane.colors.surfaceAlt,
+          opacity: pressed ? 0.82 : 1,
+          transform: [{ scale: pressed ? 0.96 : 1 }],
+          ...arcane.shadow.button,
+        })}
       >
-        <Text style={{ fontSize: 28, fontWeight: "700", lineHeight: 30 }}>
+        <Text
+          style={{
+            fontSize: 28,
+            fontWeight: "900",
+            lineHeight: 30,
+            color: arcane.colors.text,
+          }}
+        >
           +
         </Text>
       </Pressable>

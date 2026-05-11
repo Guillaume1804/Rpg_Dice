@@ -1,5 +1,8 @@
 import { Pressable, Text, View } from "react-native";
 
+import { arcane } from "../../../theme/arcaneTheme";
+import { arcaneStyles } from "../../../theme/arcaneStyles";
+
 type PreparedRollCardProps = {
     title?: string;
     name: string | null;
@@ -9,6 +12,55 @@ type PreparedRollCardProps = {
     onClear?: () => void;
     onSave?: () => void;
 };
+
+function PreparedActionButton({
+    label,
+    onPress,
+    variant = "default",
+}: {
+    label: string;
+    onPress: () => void;
+    variant?: "default" | "accent" | "danger";
+}) {
+    const backgroundColor =
+        variant === "accent"
+            ? arcane.colors.accentSoft
+            : variant === "danger"
+                ? arcane.colors.failureSoft
+                : arcane.colors.surfaceAlt;
+
+    const borderColor =
+        variant === "accent"
+            ? arcane.colors.accent
+            : variant === "danger"
+                ? arcane.colors.failure
+                : arcane.colors.border;
+
+    return (
+        <Pressable
+            onPress={onPress}
+            style={({ pressed }) => ({
+                paddingVertical: 10,
+                paddingHorizontal: 12,
+                borderWidth: 1,
+                borderColor,
+                borderRadius: arcane.radius.pill,
+                backgroundColor: pressed ? arcane.colors.surfaceSoft : backgroundColor,
+                opacity: pressed ? 0.86 : 1,
+                transform: [{ scale: pressed ? 0.97 : 1 }],
+            })}
+        >
+            <Text
+                style={{
+                    color: arcane.colors.text,
+                    fontWeight: "900",
+                }}
+            >
+                {label}
+            </Text>
+        </Pressable>
+    );
+}
 
 export function PreparedRollCard({
     title = "Jet préparé",
@@ -22,35 +74,64 @@ export function PreparedRollCard({
     return (
         <View
             style={{
-                padding: 14,
-                borderWidth: 1,
-                borderRadius: 18,
-                gap: 12,
+                ...arcaneStyles.card,
+                gap: arcane.spacing.md,
             }}
         >
-            <View style={{ gap: 4 }}>
-                <Text style={{ opacity: 0.62, fontSize: 12, fontWeight: "800" }}>
+            <View style={{ gap: arcane.spacing.xs }}>
+                <Text
+                    style={{
+                        color: arcane.colors.textSubtle,
+                        fontSize: arcane.typography.tiny,
+                        fontWeight: "900",
+                        textTransform: "uppercase",
+                        letterSpacing: 0.8,
+                    }}
+                >
                     {title}
                 </Text>
 
                 {isEmpty ? (
                     <>
-                        <Text style={{ fontSize: 20, fontWeight: "900" }}>
-                            Aucun jet sélectionné
+                        <Text
+                            style={{
+                                color: arcane.colors.text,
+                                fontSize: 20,
+                                fontWeight: "900",
+                            }}
+                        >
+                            Prépare un jet
                         </Text>
 
-                        <Text style={{ opacity: 0.68, lineHeight: 20 }}>
+                        <Text
+                            style={{
+                                color: arcane.colors.textMuted,
+                                lineHeight: 20,
+                            }}
+                        >
                             Choisis un dé libre ou une action pour préparer ton prochain jet.
                         </Text>
                     </>
                 ) : (
                     <>
-                        <Text style={{ fontSize: 22, fontWeight: "900" }}>
+                        <Text
+                            style={{
+                                color: arcane.colors.text,
+                                fontSize: 22,
+                                fontWeight: "900",
+                            }}
+                        >
                             {name ?? "Jet"}
                         </Text>
 
                         {detail ? (
-                            <Text style={{ opacity: 0.76, fontSize: 15, lineHeight: 21 }}>
+                            <Text
+                                style={{
+                                    color: arcane.colors.textMuted,
+                                    fontSize: 15,
+                                    lineHeight: 21,
+                                }}
+                            >
                                 {detail}
                             </Text>
                         ) : null}
@@ -63,49 +144,27 @@ export function PreparedRollCard({
                     style={{
                         flexDirection: "row",
                         flexWrap: "wrap",
-                        gap: 8,
+                        gap: arcane.spacing.sm,
                     }}
                 >
                     {onEdit ? (
-                        <Pressable
+                        <PreparedActionButton
+                            label="Modifier"
                             onPress={onEdit}
-                            style={{
-                                paddingVertical: 10,
-                                paddingHorizontal: 12,
-                                borderWidth: 1,
-                                borderRadius: 999,
-                            }}
-                        >
-                            <Text style={{ fontWeight: "800" }}>Modifier</Text>
-                        </Pressable>
+                            variant="accent"
+                        />
                     ) : null}
 
                     {onClear ? (
-                        <Pressable
+                        <PreparedActionButton
+                            label="Vider"
                             onPress={onClear}
-                            style={{
-                                paddingVertical: 10,
-                                paddingHorizontal: 12,
-                                borderWidth: 1,
-                                borderRadius: 999,
-                            }}
-                        >
-                            <Text style={{ fontWeight: "800" }}>Vider</Text>
-                        </Pressable>
+                            variant="danger"
+                        />
                     ) : null}
 
                     {onSave ? (
-                        <Pressable
-                            onPress={onSave}
-                            style={{
-                                paddingVertical: 10,
-                                paddingHorizontal: 12,
-                                borderWidth: 1,
-                                borderRadius: 999,
-                            }}
-                        >
-                            <Text style={{ fontWeight: "800" }}>Sauvegarder</Text>
-                        </Pressable>
+                        <PreparedActionButton label="Sauvegarder" onPress={onSave} />
                     ) : null}
                 </View>
             ) : null}

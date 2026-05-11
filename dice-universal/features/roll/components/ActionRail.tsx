@@ -1,5 +1,8 @@
 import { Pressable, ScrollView, Text, View } from "react-native";
 
+import { arcane } from "../../../theme/arcaneTheme";
+import { arcaneStyles } from "../../../theme/arcaneStyles";
+
 export type ActionRailItem = {
     id: string;
     name: string;
@@ -24,24 +27,41 @@ export function ActionRail({
     return (
         <View
             style={{
-                padding: 14,
-                borderWidth: 1,
-                borderRadius: 18,
-                gap: 12,
+                ...arcaneStyles.card,
+                gap: arcane.spacing.md,
             }}
         >
-            <View style={{ gap: 4 }}>
-                <Text style={{ opacity: 0.62, fontSize: 12, fontWeight: "800" }}>
+            <View style={{ gap: arcane.spacing.xs }}>
+                <Text
+                    style={{
+                        color: arcane.colors.textSubtle,
+                        fontSize: arcane.typography.tiny,
+                        fontWeight: "900",
+                        textTransform: "uppercase",
+                        letterSpacing: 0.8,
+                    }}
+                >
                     Actions rapides
                 </Text>
 
-                <Text style={{ fontSize: 18, fontWeight: "900" }}>
+                <Text
+                    style={{
+                        color: arcane.colors.text,
+                        fontSize: 18,
+                        fontWeight: "900",
+                    }}
+                >
                     Actions de {profileName}
                 </Text>
             </View>
 
             {actions.length === 0 ? (
-                <Text style={{ opacity: 0.68, lineHeight: 20 }}>
+                <Text
+                    style={{
+                        color: arcane.colors.textMuted,
+                        lineHeight: 20,
+                    }}
+                >
                     Ce profil n’a encore aucune action. Tu peux en créer depuis l’écran de
                     table.
                 </Text>
@@ -50,8 +70,8 @@ export function ActionRail({
                     horizontal
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={{
-                        gap: 10,
-                        paddingRight: 4,
+                        gap: arcane.spacing.sm,
+                        paddingRight: arcane.spacing.xs,
                     }}
                 >
                     {actions.map((action) => {
@@ -61,19 +81,27 @@ export function ActionRail({
                             <Pressable
                                 key={action.id}
                                 onPress={() => onPrepareAction(action.id)}
-                                style={{
-                                    width: 150,
-                                    minHeight: 92,
-                                    padding: 12,
+                                style={({ pressed }) => ({
+                                    width: 154,
+                                    minHeight: 100,
+                                    padding: arcane.spacing.md,
                                     borderWidth: 1,
-                                    borderRadius: 16,
+                                    borderColor: isSelected
+                                        ? arcane.colors.accent
+                                        : arcane.colors.border,
+                                    borderRadius: arcane.radius.lg,
+                                    backgroundColor: isSelected
+                                        ? arcane.colors.accentSoft
+                                        : arcane.colors.surfaceAlt,
                                     justifyContent: "space-between",
-                                    opacity: isSelected ? 1 : 0.82,
-                                }}
+                                    opacity: pressed ? 0.86 : isSelected ? 1 : 0.9,
+                                    transform: [{ scale: pressed ? 0.97 : 1 }],
+                                })}
                             >
                                 <Text
                                     numberOfLines={1}
                                     style={{
+                                        color: arcane.colors.text,
                                         fontSize: 16,
                                         fontWeight: "900",
                                     }}
@@ -84,8 +112,8 @@ export function ActionRail({
                                 <Text
                                     numberOfLines={2}
                                     style={{
-                                        marginTop: 8,
-                                        opacity: 0.72,
+                                        marginTop: arcane.spacing.sm,
+                                        color: arcane.colors.textMuted,
                                         lineHeight: 18,
                                     }}
                                 >
@@ -95,9 +123,10 @@ export function ActionRail({
                                 {isSelected ? (
                                     <Text
                                         style={{
-                                            marginTop: 8,
+                                            marginTop: arcane.spacing.sm,
+                                            color: arcane.colors.accent,
                                             fontSize: 12,
-                                            fontWeight: "800",
+                                            fontWeight: "900",
                                         }}
                                     >
                                         Prêt à lancer
