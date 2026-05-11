@@ -48,6 +48,8 @@ type DraftGroupState = {
 type QuickRollSectionProps = {
   simplified?: boolean;
   hideInternalRollControls?: boolean;
+  hideDicePicker?: boolean;
+  hideStandardQuickGroup?: boolean;
   title: string;
   standardDice: number[];
   draftGroups: DraftGroupState[];
@@ -162,6 +164,8 @@ function renderFallbackEntryResult(
 export function QuickRollSection({
   simplified = false,
   hideInternalRollControls = false,
+  hideDicePicker = false,
+  hideStandardQuickGroup = false,
   title,
   standardDice,
   draftGroups,
@@ -222,67 +226,69 @@ export function QuickRollSection({
   if (simplified) {
     return (
       <View style={{ marginTop: 12, gap: 12 }}>
-        <View
-          style={{
-            ...arcaneStyles.card,
-            gap: arcane.spacing.md,
-          }}
-        >
+        {!hideDicePicker ? (
           <View
             style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: 8,
+              ...arcaneStyles.card,
+              gap: arcane.spacing.md,
             }}
           >
-            <Text style={arcaneStyles.sectionTitle}>{title}</Text>
-          </View>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <Text style={arcaneStyles.sectionTitle}>{title}</Text>
+            </View>
 
-          <View
-            style={{
-              flexDirection: "row",
-              flexWrap: "wrap",
-              gap: 8,
-            }}
-          >
-            {standardDice.map((sides) => (
-              <Pressable
-                key={sides}
-                onPress={() => onAddQuickStandardDie(sides)}
-                onLongPress={() => onOpenDieConfig(sides)}
-                delayLongPress={300}
-                style={({ pressed }) => ({
-                  minWidth: 64,
-                  minHeight: 56,
-                  paddingVertical: 14,
-                  paddingHorizontal: 14,
-                  borderWidth: 1,
-                  borderColor: arcane.colors.border,
-                  borderRadius: arcane.radius.md,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: pressed
-                    ? arcane.colors.surfaceSoft
-                    : arcane.colors.surfaceAlt,
-                  transform: [{ scale: pressed ? 0.96 : 1 }],
-                })}
-              >
-                <Text
-                  style={{
-                    color: arcane.colors.text,
-                    fontWeight: "900",
-                    fontSize: 16,
-                  }}
+            <View
+              style={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                gap: 8,
+              }}
+            >
+              {standardDice.map((sides) => (
+                <Pressable
+                  key={sides}
+                  onPress={() => onAddQuickStandardDie(sides)}
+                  onLongPress={() => onOpenDieConfig(sides)}
+                  delayLongPress={300}
+                  style={({ pressed }) => ({
+                    minWidth: 64,
+                    minHeight: 56,
+                    paddingVertical: 14,
+                    paddingHorizontal: 14,
+                    borderWidth: 1,
+                    borderColor: arcane.colors.border,
+                    borderRadius: arcane.radius.md,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: pressed
+                      ? arcane.colors.surfaceSoft
+                      : arcane.colors.surfaceAlt,
+                    transform: [{ scale: pressed ? 0.96 : 1 }],
+                  })}
                 >
-                  d{sides}
-                </Text>
-              </Pressable>
-            ))}
+                  <Text
+                    style={{
+                      color: arcane.colors.text,
+                      fontWeight: "900",
+                      fontSize: 16,
+                    }}
+                  >
+                    d{sides}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
-        </View>
+        ) : null}
 
-        {standardQuickGroup && !hideInternalRollControls ? (
+        {!hideStandardQuickGroup && standardQuickGroup && !hideInternalRollControls ? (
           <View
             style={{
               padding: 14,

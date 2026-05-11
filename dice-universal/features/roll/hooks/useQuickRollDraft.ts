@@ -215,10 +215,10 @@ export function useQuickRollDraft({
       if (!targetGroup) {
         targetGroup = createQuickGroup("Jet libre");
         next = [...next, targetGroup];
-        setSelectedDraftGroupId(targetGroup.id);
       }
 
       const targetGroupId = targetGroup.id;
+      setSelectedDraftGroupId(targetGroupId);
 
       return next.map((group) => {
         if (group.id !== targetGroupId) return group;
@@ -266,7 +266,10 @@ export function useQuickRollDraft({
     setDraftResults([]);
   }
 
-  function addQuickPresetDie(sides: number, preset: QuickPresetSelection) {
+  function addQuickPresetDie(
+    sides: number,
+    preset: QuickPresetSelection,
+  ): string {
     const newGroup =
       preset.scope === "group"
         ? createQuickGroup(`Jet libre — ${preset.rule.name}`, preset.rule)
@@ -291,9 +294,16 @@ export function useQuickRollDraft({
           rule_temp: preset.rule,
         };
 
-    setDraftGroups((prev) => [...prev, { ...newGroup, dice: [newDie] }]);
-    setSelectedDraftGroupId(newGroup.id);
+    const nextGroup: DraftGroupState = {
+      ...newGroup,
+      dice: [newDie],
+    };
+
+    setDraftGroups((prev) => [...prev, nextGroup]);
+    setSelectedDraftGroupId(nextGroup.id);
     setDraftResults([]);
+
+    return nextGroup.id;
   }
 
   function addDieToDraft(
