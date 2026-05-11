@@ -1059,6 +1059,7 @@ export default function RollScreen() {
         visible={quickBehaviorConfig.visible}
         pendingBehaviorKey={quickBehaviorConfig.pendingBehaviorKey}
         pendingBehaviorLabel={quickBehaviorConfig.pendingBehaviorLabel}
+        pendingConfigVariant={quickBehaviorConfig.pendingConfigVariant}
         configKeepCount={quickBehaviorConfig.configKeepCount}
         configDropCount={quickBehaviorConfig.configDropCount}
         configResultMode={quickBehaviorConfig.configResultMode}

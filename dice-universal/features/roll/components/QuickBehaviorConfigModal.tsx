@@ -44,12 +44,12 @@ type Props = {
   pipelineCountRangeMax: string;
 
   pipelineOutput:
-  | "sum"
-  | "successes"
-  | "count_equal"
-  | "count_range"
-  | "first_value"
-  | "values";
+    | "sum"
+    | "successes"
+    | "count_equal"
+    | "count_range"
+    | "first_value"
+    | "values";
 
   pipelineSuccessThreshold: string;
   pipelineCompare: "gte" | "lte";
@@ -57,11 +57,11 @@ type Props = {
   pipelineCritFailureFaces: string;
   pipelineComplicationFaces: string;
   pipelineComplicationRule:
-  | "none"
-  | "any"
-  | "gt_successes"
-  | "gte_successes"
-  | "zero_successes";
+    | "none"
+    | "any"
+    | "gt_successes"
+    | "gte_successes"
+    | "zero_successes";
 
   configTargetValue: string;
   configDegreeStep: string;
@@ -384,7 +384,74 @@ export function QuickBehaviorConfigModal({
         ) : null}
 
         <ScrollView contentContainerStyle={{ gap: 12 }}>
-          {pendingBehaviorKey === "custom_pipeline" ? (
+          {pendingBehaviorKey === "custom_pipeline" &&
+          pendingConfigVariant === "keep_drop" ? (
+            <>
+              <Text style={{ fontWeight: "800" }}>Garder / retirer</Text>
+
+              <PipelineInput
+                label="Garder les meilleurs"
+                value={pipelineKeepHighest}
+                onChangeText={onChangePipelineKeepHighest}
+                placeholder="Ex: 2"
+              />
+
+              <PipelineInput
+                label="Garder les plus faibles"
+                value={pipelineKeepLowest}
+                onChangeText={onChangePipelineKeepLowest}
+                placeholder="Ex: 2"
+              />
+
+              <PipelineInput
+                label="Retirer les meilleurs"
+                value={pipelineDropHighest}
+                onChangeText={onChangePipelineDropHighest}
+                placeholder="Ex: 1"
+              />
+
+              <PipelineInput
+                label="Retirer les plus faibles"
+                value={pipelineDropLowest}
+                onChangeText={onChangePipelineDropLowest}
+                placeholder="Ex: 1"
+              />
+
+              <Text style={{ fontWeight: "800" }}>Résultat</Text>
+
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                {[
+                  { key: "sum", label: "Somme" },
+                  { key: "values", label: "Valeurs" },
+                ].map((option) => (
+                  <Pressable
+                    key={option.key}
+                    onPress={() =>
+                      onChangePipelineOutput(
+                        option.key as typeof pipelineOutput,
+                      )
+                    }
+                    style={{
+                      paddingVertical: 10,
+                      paddingHorizontal: 12,
+                      borderWidth: 1,
+                      borderRadius: 10,
+                      opacity: pipelineOutput === option.key ? 1 : 0.7,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontWeight:
+                          pipelineOutput === option.key ? "800" : "500",
+                      }}
+                    >
+                      {option.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </>
+          ) : pendingBehaviorKey === "custom_pipeline" ? (
             <>
               <Text style={{ fontWeight: "800" }}>Relances et explosions</Text>
 
@@ -632,7 +699,7 @@ export function QuickBehaviorConfigModal({
               />
             </>
           ) : null}
-          
+
           {pendingBehaviorKey !== "custom_pipeline" &&
             behavior?.fields.map((field) => {
               if (field.type === "text" || field.type === "number") {
