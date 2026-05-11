@@ -11,6 +11,8 @@ import { QuickRollSection } from "../features/roll/components/QuickRollSection";
 import { TableActionSection } from "../features/roll/components/TableActionSection";
 
 import { arcane } from "../theme/arcaneTheme";
+import { useArcaneLayout } from "../theme/useArcaneLayout";
+import { arcaneStyles } from "../theme/arcaneStyles";
 
 import { SessionBar } from "../features/roll/components/SessionBar";
 import { PreparedRollCard } from "../features/roll/components/PreparedRollCard";
@@ -152,6 +154,8 @@ function formatSavedActionDetail(params: {
 
 export default function RollScreen() {
   type RollMode = "quick" | "table";
+  const layout = useArcaneLayout();
+
   const [mode, setMode] = useState<RollMode>("quick");
   const [preparedRoll, setPreparedRoll] = useState<PreparedRoll | null>(null);
   const [latestResult, setLatestResult] = useState<GroupRollResult | null>(null);
@@ -726,20 +730,35 @@ export default function RollScreen() {
 
   if (error) {
     return (
-      <View style={{ flex: 1, padding: 16 }}>
-        <Text style={{ fontSize: 18, fontWeight: "700" }}>Erreur</Text>
-        <Text style={{ marginTop: 8 }}>{error}</Text>
+      <View
+        style={[
+          arcaneStyles.screen,
+          {
+            paddingTop: layout.insets.top + arcane.spacing.lg,
+            paddingHorizontal: layout.horizontalPadding,
+            justifyContent: "center",
+          },
+        ]}
+      >
+        <Text style={arcaneStyles.sectionTitle}>Erreur</Text>
+        <Text style={[arcaneStyles.muted, { marginTop: arcane.spacing.sm }]}>
+          {error}
+        </Text>
       </View>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: arcane.colors.background }}>
+    <View style={arcaneStyles.screen}>
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{
-          padding: arcane.spacing.lg,
-          paddingBottom: 150,
+          paddingTop: layout.insets.top + arcane.spacing.md,
+          paddingHorizontal: layout.horizontalPadding,
+          paddingBottom: layout.scrollBottomPadding,
+          alignSelf: "center",
+          width: "100%",
+          maxWidth: layout.maxContentWidth,
         }}
         showsVerticalScrollIndicator={false}
       >
@@ -933,12 +952,14 @@ export default function RollScreen() {
         onPress={() => setShowAdvanced((v) => !v)}
         style={({ pressed }) => ({
           position: "absolute",
-          right: 20,
-          bottom: 108,
+          right: layout.horizontalPadding + 4,
+          bottom: layout.bottomBarHeight + 16,
           width: 56,
           height: 56,
           borderWidth: 1,
-          borderColor: arcane.colors.border,
+          borderColor: showAdvanced
+            ? arcane.colors.arcane
+            : arcane.colors.border,
           borderRadius: arcane.radius.pill,
           alignItems: "center",
           justifyContent: "center",
@@ -955,7 +976,7 @@ export default function RollScreen() {
             fontSize: 28,
             fontWeight: "900",
             lineHeight: 30,
-            color: arcane.colors.text,
+            color: showAdvanced ? arcane.colors.white : arcane.colors.text,
           }}
         >
           +
