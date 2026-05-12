@@ -86,7 +86,8 @@ export default function RollScreen() {
   const db = useDb();
   const { activeTableId, setActiveTableId, clearActiveTableId } =
     useActiveTable();
-  const [, setResults] = useState<GroupRollResult[]>([]); const [showSaveOptions, setShowSaveOptions] = useState(false);
+  const [, setResults] = useState<GroupRollResult[]>([]); 
+  const [showSaveOptions, setShowSaveOptions] = useState(false);
   const [showNameModal, setShowNameModal] = useState(false);
   const [newTableName, setNewTableName] = useState("");
   const [newProfileName, setNewProfileName] = useState("Profil principal");
