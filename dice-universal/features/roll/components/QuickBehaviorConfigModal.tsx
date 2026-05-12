@@ -14,6 +14,10 @@ type Props = {
   pendingBehaviorLabel: string;
   pendingConfigVariant: "default" | "keep_drop";
 
+  keepDropMode: "keep" | "drop";
+  keepDropTarget: "highest" | "lowest";
+  keepDropCount: string;
+
   configKeepCount: string;
   configDropCount: string;
   configResultMode: string;
@@ -44,12 +48,12 @@ type Props = {
   pipelineCountRangeMax: string;
 
   pipelineOutput:
-    | "sum"
-    | "successes"
-    | "count_equal"
-    | "count_range"
-    | "first_value"
-    | "values";
+  | "sum"
+  | "successes"
+  | "count_equal"
+  | "count_range"
+  | "first_value"
+  | "values";
 
   pipelineSuccessThreshold: string;
   pipelineCompare: "gte" | "lte";
@@ -57,11 +61,11 @@ type Props = {
   pipelineCritFailureFaces: string;
   pipelineComplicationFaces: string;
   pipelineComplicationRule:
-    | "none"
-    | "any"
-    | "gt_successes"
-    | "gte_successes"
-    | "zero_successes";
+  | "none"
+  | "any"
+  | "gt_successes"
+  | "gte_successes"
+  | "zero_successes";
 
   configTargetValue: string;
   configDegreeStep: string;
@@ -130,6 +134,10 @@ type Props = {
     value: "none" | "any" | "gt_successes" | "gte_successes" | "zero_successes",
   ) => void;
 
+  onChangeKeepDropMode: (value: "keep" | "drop") => void;
+  onChangeKeepDropTarget: (value: "highest" | "lowest") => void;
+  onChangeKeepDropCount: (value: string) => void;
+
   onClose: () => void;
   onConfirm: () => void;
 };
@@ -139,6 +147,10 @@ export function QuickBehaviorConfigModal({
   pendingBehaviorKey,
   pendingBehaviorLabel,
   pendingConfigVariant,
+
+  keepDropMode,
+  keepDropTarget,
+  keepDropCount,
 
   configKeepCount,
   configDropCount,
@@ -218,6 +230,10 @@ export function QuickBehaviorConfigModal({
   onChangePipelineCritFailureFaces,
   onChangePipelineComplicationFaces,
   onChangePipelineComplicationRule,
+
+  onChangeKeepDropMode,
+  onChangeKeepDropTarget,
+  onChangeKeepDropCount,
 
   onClose,
   onConfirm,
@@ -385,35 +401,76 @@ export function QuickBehaviorConfigModal({
 
         <ScrollView contentContainerStyle={{ gap: 12 }}>
           {pendingBehaviorKey === "custom_pipeline" &&
-          pendingConfigVariant === "keep_drop" ? (
+            pendingConfigVariant === "keep_drop" ? (
             <>
               <Text style={{ fontWeight: "800" }}>Garder / retirer</Text>
 
-              <PipelineInput
-                label="Garder les meilleurs"
-                value={pipelineKeepHighest}
-                onChangeText={onChangePipelineKeepHighest}
-                placeholder="Ex: 2"
-              />
+              <Text style={{ opacity: 0.72 }}>Action</Text>
+
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                {[
+                  { key: "keep", label: "Garder" },
+                  { key: "drop", label: "Retirer" },
+                ].map((option) => {
+                  const isSelected = keepDropMode === option.key;
+
+                  return (
+                    <Pressable
+                      key={option.key}
+                      onPress={() =>
+                        onChangeKeepDropMode(option.key as "keep" | "drop")
+                      }
+                      style={{
+                        paddingVertical: 10,
+                        paddingHorizontal: 12,
+                        borderWidth: 1,
+                        borderRadius: 10,
+                        opacity: isSelected ? 1 : 0.7,
+                      }}
+                    >
+                      <Text style={{ fontWeight: isSelected ? "800" : "500" }}>
+                        {option.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              <Text style={{ opacity: 0.72 }}>Cible</Text>
+
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                {[
+                  { key: "highest", label: "Les meilleurs dés" },
+                  { key: "lowest", label: "Les plus faibles dés" },
+                ].map((option) => {
+                  const isSelected = keepDropTarget === option.key;
+
+                  return (
+                    <Pressable
+                      key={option.key}
+                      onPress={() =>
+                        onChangeKeepDropTarget(option.key as "highest" | "lowest")
+                      }
+                      style={{
+                        paddingVertical: 10,
+                        paddingHorizontal: 12,
+                        borderWidth: 1,
+                        borderRadius: 10,
+                        opacity: isSelected ? 1 : 0.7,
+                      }}
+                    >
+                      <Text style={{ fontWeight: isSelected ? "800" : "500" }}>
+                        {option.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
 
               <PipelineInput
-                label="Garder les plus faibles"
-                value={pipelineKeepLowest}
-                onChangeText={onChangePipelineKeepLowest}
-                placeholder="Ex: 2"
-              />
-
-              <PipelineInput
-                label="Retirer les meilleurs"
-                value={pipelineDropHighest}
-                onChangeText={onChangePipelineDropHighest}
-                placeholder="Ex: 1"
-              />
-
-              <PipelineInput
-                label="Retirer les plus faibles"
-                value={pipelineDropLowest}
-                onChangeText={onChangePipelineDropLowest}
+                label="Nombre de dés"
+                value={keepDropCount}
+                onChangeText={onChangeKeepDropCount}
                 placeholder="Ex: 1"
               />
 
@@ -423,32 +480,29 @@ export function QuickBehaviorConfigModal({
                 {[
                   { key: "sum", label: "Somme" },
                   { key: "values", label: "Valeurs" },
-                ].map((option) => (
-                  <Pressable
-                    key={option.key}
-                    onPress={() =>
-                      onChangePipelineOutput(
-                        option.key as typeof pipelineOutput,
-                      )
-                    }
-                    style={{
-                      paddingVertical: 10,
-                      paddingHorizontal: 12,
-                      borderWidth: 1,
-                      borderRadius: 10,
-                      opacity: pipelineOutput === option.key ? 1 : 0.7,
-                    }}
-                  >
-                    <Text
+                ].map((option) => {
+                  const isSelected = pipelineOutput === option.key;
+
+                  return (
+                    <Pressable
+                      key={option.key}
+                      onPress={() =>
+                        onChangePipelineOutput(option.key as typeof pipelineOutput)
+                      }
                       style={{
-                        fontWeight:
-                          pipelineOutput === option.key ? "800" : "500",
+                        paddingVertical: 10,
+                        paddingHorizontal: 12,
+                        borderWidth: 1,
+                        borderRadius: 10,
+                        opacity: isSelected ? 1 : 0.7,
                       }}
                     >
-                      {option.label}
-                    </Text>
-                  </Pressable>
-                ))}
+                      <Text style={{ fontWeight: isSelected ? "800" : "500" }}>
+                        {option.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
               </View>
             </>
           ) : pendingBehaviorKey === "custom_pipeline" ? (

@@ -81,6 +81,7 @@ export const RULE_BEHAVIORS: RuleBehaviorRegistryItem[] = [
     defaultScope: "entry",
     allowedScopes: ["entry", "group", "both"],
     supportedSides: null,
+    visibleInQuickPicker: true,
     fields: [
       {
         key: "compare",
@@ -128,6 +129,7 @@ export const RULE_BEHAVIORS: RuleBehaviorRegistryItem[] = [
     defaultScope: "entry",
     allowedScopes: ["entry", "group", "both"],
     supportedSides: [100],
+    visibleInQuickPicker: true,
     fields: [
       {
         key: "compare",
@@ -211,6 +213,7 @@ export const RULE_BEHAVIORS: RuleBehaviorRegistryItem[] = [
     defaultScope: "group",
     allowedScopes: ["group", "both"],
     supportedSides: null,
+    visibleInQuickPicker: true,
     fields: [
       {
         key: "successAtOrAbove",

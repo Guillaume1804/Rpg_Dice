@@ -10,6 +10,8 @@ import { getRuleBehaviorDefinition } from "../../../core/rules/behaviorRegistry"
 
 type Scope = "entry" | "group";
 type QuickConfigVariant = "default" | "keep_drop";
+type KeepDropMode = "keep" | "drop";
+type KeepDropTarget = "highest" | "lowest";
 type RangeRow = { min: string; max: string; label: string };
 
 function applyFieldDefault(
@@ -193,6 +195,10 @@ export function useQuickBehaviorConfigModal() {
     useState<Scope>("entry");
   const [pendingConfigVariant, setPendingConfigVariant] =
     useState<QuickConfigVariant>("default");
+  const [keepDropMode, setKeepDropMode] = useState<KeepDropMode>("keep");
+  const [keepDropTarget, setKeepDropTarget] =
+    useState<KeepDropTarget>("highest");
+  const [keepDropCount, setKeepDropCount] = useState("1");
 
   const [configKeepCount, setConfigKeepCount] = useState("2");
   const [configDropCount, setConfigDropCount] = useState("1");
@@ -291,6 +297,10 @@ export function useQuickBehaviorConfigModal() {
     setPendingBehaviorScope(params.scope);
     setPendingConfigVariant(params.variant ?? "default");
 
+    setKeepDropMode("keep");
+    setKeepDropTarget("highest");
+    setKeepDropCount("1");
+
     const behavior = getRuleBehaviorDefinition(params.behaviorKey);
 
     setConfigKeepCount("2");
@@ -350,6 +360,10 @@ export function useQuickBehaviorConfigModal() {
     setPendingBehaviorScope("entry");
     setPendingConfigVariant("default");
 
+    setKeepDropMode("keep");
+    setKeepDropTarget("highest");
+    setKeepDropCount("1");
+
     setConfigKeepCount("2");
     setConfigDropCount("1");
     setConfigResultMode("sum");
@@ -389,13 +403,11 @@ export function useQuickBehaviorConfigModal() {
     if (!behavior) return false;
     if (pendingBehaviorKey === "custom_pipeline") {
       if (pendingConfigVariant === "keep_drop") {
-        const hasKeepDropConfig =
-          pipelineKeepHighest.trim() !== "" ||
-          pipelineKeepLowest.trim() !== "" ||
-          pipelineDropHighest.trim() !== "" ||
-          pipelineDropLowest.trim() !== "";
+        const count = Number(keepDropCount);
 
-        if (!hasKeepDropConfig) return false;
+        if (!Number.isFinite(count) || count <= 0) {
+          return false;
+        }
       }
       const numericFields = [
         pipelineMaxRerolls,
@@ -486,6 +498,34 @@ export function useQuickBehaviorConfigModal() {
     if (!pendingBehaviorKey) return undefined;
 
     if (pendingBehaviorKey === "custom_pipeline") {
+      const resolvedKeepHighest =
+        pendingConfigVariant === "keep_drop" &&
+          keepDropMode === "keep" &&
+          keepDropTarget === "highest"
+          ? keepDropCount
+          : pipelineKeepHighest;
+
+      const resolvedKeepLowest =
+        pendingConfigVariant === "keep_drop" &&
+          keepDropMode === "keep" &&
+          keepDropTarget === "lowest"
+          ? keepDropCount
+          : pipelineKeepLowest;
+
+      const resolvedDropHighest =
+        pendingConfigVariant === "keep_drop" &&
+          keepDropMode === "drop" &&
+          keepDropTarget === "highest"
+          ? keepDropCount
+          : pipelineDropHighest;
+
+      const resolvedDropLowest =
+        pendingConfigVariant === "keep_drop" &&
+          keepDropMode === "drop" &&
+          keepDropTarget === "lowest"
+          ? keepDropCount
+          : pipelineDropLowest;
+
       return {
         pipelineRerollFaces,
         pipelineRerollOnce,
@@ -493,10 +533,10 @@ export function useQuickBehaviorConfigModal() {
         pipelineMaxRerolls,
         pipelineMaxExplosions,
 
-        pipelineKeepHighest,
-        pipelineKeepLowest,
-        pipelineDropHighest,
-        pipelineDropLowest,
+        pipelineKeepHighest: resolvedKeepHighest,
+        pipelineKeepLowest: resolvedKeepLowest,
+        pipelineDropHighest: resolvedDropHighest,
+        pipelineDropLowest: resolvedDropLowest,
 
         pipelineCountSuccessAtOrAbove,
         pipelineCountEqualFaces,
@@ -543,6 +583,10 @@ export function useQuickBehaviorConfigModal() {
     pendingBehaviorScope,
     pendingConfigVariant,
 
+    keepDropMode,
+    keepDropTarget,
+    keepDropCount,
+
     configKeepCount,
     configDropCount,
     configResultMode,
@@ -565,6 +609,10 @@ export function useQuickBehaviorConfigModal() {
     setConfigSuccessAtOrAbove,
     setConfigFailFaces,
     setConfigGlitchRule,
+
+    setKeepDropMode,
+    setKeepDropTarget,
+    setKeepDropCount,
 
     open,
     close,

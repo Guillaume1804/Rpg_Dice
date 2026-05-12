@@ -1060,6 +1060,12 @@ export default function RollScreen() {
         pendingBehaviorKey={quickBehaviorConfig.pendingBehaviorKey}
         pendingBehaviorLabel={quickBehaviorConfig.pendingBehaviorLabel}
         pendingConfigVariant={quickBehaviorConfig.pendingConfigVariant}
+        keepDropMode={quickBehaviorConfig.keepDropMode}
+        keepDropTarget={quickBehaviorConfig.keepDropTarget}
+        keepDropCount={quickBehaviorConfig.keepDropCount}
+        onChangeKeepDropMode={quickBehaviorConfig.setKeepDropMode}
+        onChangeKeepDropTarget={quickBehaviorConfig.setKeepDropTarget}
+        onChangeKeepDropCount={quickBehaviorConfig.setKeepDropCount}
         configKeepCount={quickBehaviorConfig.configKeepCount}
         configDropCount={quickBehaviorConfig.configDropCount}
         configResultMode={quickBehaviorConfig.configResultMode}

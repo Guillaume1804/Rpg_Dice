@@ -38,7 +38,7 @@ export function useQuickDieBehaviorPicker({
     if (editingDieSides == null) return [];
 
     const visibleBehaviors = RULE_BEHAVIORS.filter((behavior) => {
-      if (behavior.visibleInQuickPicker === false) return false;
+      if (behavior.visibleInQuickPicker !== true) return false;
 
       if (!behavior.supportedSides) return true;
       return behavior.supportedSides.includes(editingDieSides);
@@ -89,7 +89,7 @@ export function useQuickDieBehaviorPicker({
 
     const quickScope =
       option.variant === "keep_drop"
-        ? "group"
+        ? "entry"
         : def.defaultScope === "group"
           ? "group"
           : "entry";
