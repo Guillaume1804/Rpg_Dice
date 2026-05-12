@@ -8,7 +8,6 @@ import { useDataRefresh } from "../data/state/DataRefreshProvider";
 
 import { RollModals } from "../features/roll/components/RollModals";
 import { QuickRollSection } from "../features/roll/components/QuickRollSection";
-import { TableActionSection } from "../features/roll/components/TableActionSection";
 
 import { arcane } from "../theme/arcaneTheme";
 import { useArcaneLayout } from "../theme/useArcaneLayout";
@@ -27,8 +26,7 @@ import { useRollExecution } from "../features/roll/hooks/useRollExecution";
 import { useQuickRollDraft } from "../features/roll/hooks/useQuickRollDraft";
 import { useRollTableData } from "../features/roll/hooks/useRollTableData";
 
-import { GroupRollResult, rollGroup } from "../core/roll/roll";
-import { evaluateRule } from "../core/rules/evaluate";
+import { GroupRollResult } from "../core/roll/roll";
 
 import { buildDraftTempRuleFromPreset } from "../features/roll/helpers/buildDraftTempRuleFromPreset";
 
@@ -391,10 +389,8 @@ function formatSavedActionDetail(params: {
 }
 
 export default function RollScreen() {
-  type RollMode = "quick" | "table";
   const layout = useArcaneLayout();
 
-  const [mode, setMode] = useState<RollMode>("quick");
   const [preparedRoll, setPreparedRoll] = useState<PreparedRoll | null>(null);
   const [latestResult, setLatestResult] = useState<GroupRollResult | null>(null);
   const [showPreparedEditSheet, setShowPreparedEditSheet] = useState(false);
@@ -427,12 +423,6 @@ export default function RollScreen() {
   );
 
   const quickBehaviorConfig = useQuickBehaviorConfigModal();
-
-  const [tableQuickSides, setTableQuickSides] = useState(20);
-  const [tableQuickQty, setTableQuickQty] = useState(1);
-  const [tableQuickModifier] = useState(0);
-  const [tableQuickResult, setTableQuickResult] =
-    useState<GroupRollResult | null>(null);
 
   const { revision } = useDataRefresh();
 
@@ -471,12 +461,6 @@ export default function RollScreen() {
       setSelectedProfileId(profiles[0].profile.id);
     }
   }, [profiles, selectedProfileId]);
-
-  useEffect(() => {
-    if (!table) {
-      setMode("quick");
-    }
-  }, [table]);
 
   const {
     draftGroups,
@@ -562,7 +546,7 @@ export default function RollScreen() {
     replaceDraftDieWithQtySplit,
   });
 
-  const { rollSavedTable, rollSavedProfile, rollSavedGroup } = useRollExecution(
+  const { rollSavedGroup } = useRollExecution(
     {
       db,
       table,
@@ -759,7 +743,6 @@ export default function RollScreen() {
     setSelectedDraftGroupId(createdGroupId);
     setPreparedRoll({ source: "free" });
     setLatestResult(null);
-    setMode("quick");
 
     quickBehaviorConfig.close();
     quickDieBehaviorPicker.close();
@@ -805,7 +788,6 @@ export default function RollScreen() {
       label: action.group.name,
     });
     setLatestResult(null);
-    setMode("quick");
   }
 
   function handleCycleProfile() {
@@ -825,7 +807,6 @@ export default function RollScreen() {
     addQuickStandardDie(sides);
     setPreparedRoll({ source: "free" });
     setLatestResult(null);
-    setMode("quick");
   }
 
   function handleOpenPreparedEdit() {
@@ -967,38 +948,6 @@ export default function RollScreen() {
 
   const hasPreparedRoll = !!preparedCardName && !!preparedCardDetail;
 
-  function handleAdjustTableQuickQty(delta: number) {
-    setTableQuickQty((current) => Math.max(1, current + delta));
-  }
-
-  function handleRollTableQuickAction() {
-    if (!activeProfile) return;
-
-    const result = rollGroup({
-      groupId: `table-quick-${activeProfile.id}`,
-      label: `Jet rapide — ${activeProfile.name}`,
-      entries: [
-        {
-          entryId: `table-quick-entry-${Date.now()}`,
-          sides: tableQuickSides,
-          qty: tableQuickQty,
-          modifier: tableQuickModifier,
-          sign: 1,
-          rule: null,
-        },
-      ],
-      groupRule: null,
-      evaluateRule,
-    });
-
-    setTableQuickResult(result);
-  }
-
-  function handleSaveQuickRollAsAction() {
-    // Temporaire : on reconnectera cette sauvegarde proprement ensuite.
-    setMode("quick");
-  }
-
   useEffect(() => {
     if (preparedRoll?.source !== "free") return;
 
@@ -1053,11 +1002,9 @@ export default function RollScreen() {
             await clearActiveTableId();
             setSelectedProfileId(null);
             setResults([]);
-            setTableQuickResult(null);
             setPreparedRoll(null);
             setLatestResult(null);
             setShowPreparedEditSheet(false);
-            setMode("quick");
           }}
         />
 
@@ -1096,67 +1043,6 @@ export default function RollScreen() {
         <View style={{ marginTop: 12 }}>
           <ResultPanel result={latestResult} />
         </View>
-
-        {/*    
-        <View
-          style={{
-            flexDirection: "row",
-            marginTop: 12,
-            borderWidth: 1,
-            borderRadius: 12,
-            overflow: "hidden",
-          }}
-        >
-          <Pressable
-            onPress={() => setMode("quick")}
-            style={{
-              flex: 1,
-              padding: 10,
-              alignItems: "center",
-              backgroundColor: mode === "quick" ? "#ddd" : "transparent",
-            }}
-          >
-            <Text style={{ fontWeight: "600" }}>⚡ Rapide</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => setMode("table")}
-            disabled={!hasActiveTable}
-            style={{
-              flex: 1,
-              padding: 10,
-              alignItems: "center",
-              opacity: hasActiveTable ? 1 : 0.3,
-              backgroundColor: mode === "table" ? "#ddd" : "transparent",
-            }}
-          >
-            <Text style={{ fontWeight: "600" }}>🎮 Table</Text>
-          </Pressable>
-        </View>
-        
-        {mode === "table" && hasActiveTable && (
-          <TableActionSection
-            profiles={profiles}
-            selectedProfileId={selectedProfileId}
-            results={results}
-            onSelectProfile={setSelectedProfileId}
-            onRollProfile={rollSavedProfile}
-            onRollGroup={rollSavedGroup}
-            onRollAll={rollSavedTable}
-            activeProfile={activeProfile}
-            tableQuickSides={tableQuickSides}
-            tableQuickQty={tableQuickQty}
-            tableQuickModifier={tableQuickModifier}
-            tableQuickBehaviorLabel={null}
-            tableQuickResult={tableQuickResult}
-            onSelectTableQuickDie={setTableQuickSides}
-            onAdjustTableQuickQty={handleAdjustTableQuickQty}
-            onOpenTableQuickBehaviorPicker={() => { }}
-            onRollTableQuickAction={handleRollTableQuickAction}
-            onSaveQuickRollAsAction={handleSaveQuickRollAsAction}
-          />
-        )}
-        */}
 
         <View style={{ marginTop: arcane.spacing.md }}>
           <FreeDicePad
