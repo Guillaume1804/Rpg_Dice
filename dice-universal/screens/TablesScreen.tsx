@@ -46,7 +46,6 @@ export default function TablesScreen() {
 
   async function loadTables() {
     const rows = await listTables(db);
-    console.log("TABLES FOUND:", rows.length, rows.map((t) => t.name));
     const enriched: TableListItem[] = [];
     for (const table of rows) {
       const stats = await getTableStats(db, table.id);
@@ -73,12 +72,16 @@ export default function TablesScreen() {
   }
 
   async function handleCreateTable() {
+    const name = newTableName.trim();
+
+    if (!name || isCreating) return;
+
     try {
       setError(null);
       setIsCreating(true);
 
       const createdId = await createTable(db, {
-        name: newTableName,
+        name,
         is_system: 0,
       });
 
@@ -104,7 +107,6 @@ export default function TablesScreen() {
           setError(null);
 
           const rows = await listTables(db);
-          console.log("TABLES FOUND ON FOCUS:", rows.length, rows.map((t) => t.name));
           const enriched: TableListItem[] = [];
           for (const table of rows) {
             const stats = await getTableStats(db, table.id);
@@ -558,38 +560,49 @@ export default function TablesScreen() {
           <View
             style={{
               flex: 1,
-              backgroundColor: "rgba(0,0,0,0.5)",
+              backgroundColor: "rgba(0,0,0,0.62)",
               justifyContent: "center",
-              padding: 16,
+              padding: arcane.spacing.md,
             }}
           >
             <View
               style={{
-                backgroundColor: "white",
-                borderRadius: 12,
-                padding: 16,
-                borderWidth: 1,
-                gap: 12,
+                ...arcaneStyles.card,
+                gap: arcane.spacing.md,
               }}
             >
-              <Text style={{ fontSize: 16, fontWeight: "700" }}>
-                Créer une table
-              </Text>
+              <View style={{ gap: arcane.spacing.xs }}>
+                <Text
+                  style={{
+                    color: arcane.colors.text,
+                    fontSize: 20,
+                    fontWeight: "900",
+                  }}
+                >
+                  Créer une table
+                </Text>
 
-              <Text style={{ opacity: 0.72 }}>
-                Donne un nom à ta nouvelle table personnalisée.
-              </Text>
+                <Text style={arcaneStyles.muted}>
+                  Donne un nom à ta nouvelle table personnalisée.
+                </Text>
+              </View>
 
               <TextInput
                 value={newTableName}
                 onChangeText={setNewTableName}
                 placeholder="Nom de la table"
+                placeholderTextColor={arcane.colors.textSubtle}
                 editable={!isCreating}
                 style={{
+                  color: arcane.colors.text,
+                  backgroundColor: arcane.colors.surfaceAlt,
                   borderWidth: 1,
-                  borderRadius: 10,
+                  borderColor: arcane.colors.border,
+                  borderRadius: arcane.radius.md,
                   paddingHorizontal: 12,
-                  paddingVertical: 10,
+                  paddingVertical: 12,
+                  fontSize: 16,
+                  fontWeight: "700",
                 }}
               />
 
@@ -597,7 +610,7 @@ export default function TablesScreen() {
                 style={{
                   flexDirection: "row",
                   justifyContent: "flex-end",
-                  gap: 8,
+                  gap: arcane.spacing.sm,
                 }}
               >
                 <Pressable
@@ -607,28 +620,50 @@ export default function TablesScreen() {
                       setNewTableName("");
                     }
                   }}
-                  style={{
+                  style={({ pressed }) => ({
                     paddingVertical: 10,
-                    paddingHorizontal: 12,
+                    paddingHorizontal: 14,
                     borderWidth: 1,
-                    borderRadius: 10,
-                  }}
+                    borderColor: arcane.colors.border,
+                    borderRadius: arcane.radius.pill,
+                    backgroundColor: arcane.colors.surfaceAlt,
+                    opacity: pressed ? 0.82 : 1,
+                  })}
                 >
-                  <Text>Annuler</Text>
+                  <Text
+                    style={{
+                      color: arcane.colors.text,
+                      fontWeight: "900",
+                    }}
+                  >
+                    Annuler
+                  </Text>
                 </Pressable>
 
                 <Pressable
                   onPress={handleCreateTable}
-                  disabled={isCreating}
-                  style={{
+                  disabled={isCreating || newTableName.trim().length === 0}
+                  style={({ pressed }) => ({
                     paddingVertical: 10,
-                    paddingHorizontal: 12,
+                    paddingHorizontal: 14,
                     borderWidth: 1,
-                    borderRadius: 10,
-                    opacity: isCreating ? 0.6 : 1,
-                  }}
+                    borderColor: arcane.colors.accent,
+                    borderRadius: arcane.radius.pill,
+                    backgroundColor: arcane.colors.accentSoft,
+                    opacity:
+                      isCreating || newTableName.trim().length === 0
+                        ? 0.45
+                        : pressed
+                          ? 0.82
+                          : 1,
+                  })}
                 >
-                  <Text style={{ fontWeight: "700" }}>
+                  <Text
+                    style={{
+                      color: arcane.colors.text,
+                      fontWeight: "900",
+                    }}
+                  >
                     {isCreating ? "Création..." : "Créer"}
                   </Text>
                 </Pressable>
