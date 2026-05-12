@@ -1,31 +1,20 @@
-// dice-universal/features/roll/components/QuickDieBehaviorPickerModal.tsx
-
 import { View, Text, Pressable, ScrollView } from "react-native";
 import type { RuleBehaviorKey } from "../../../core/rules/behaviorRegistry";
-
-type BehaviorOption = {
-  optionId: string;
-  behaviorKey: RuleBehaviorKey;
-  context: "quick_roll";
-  enabled: boolean;
-  label?: string;
-  description?: string;
-  variant?: "default" | "keep_drop";
-};
+import type { QuickBehaviorPickerOption } from "../hooks/useQuickDieBehaviorPicker";
 
 type BehaviorDefinition = {
   key: RuleBehaviorKey;
   label: string;
   description?: string;
-  scope?: "entry" | "group" | "both";
+  defaultScope?: "entry" | "group" | "both";
 };
 
 type Props = {
   visible: boolean;
   editingDieSides: number | null;
-  behaviors: BehaviorOption[];
+  behaviors: QuickBehaviorPickerOption[];
   getDefinition: (behaviorKey: RuleBehaviorKey) => BehaviorDefinition | null;
-  onSelectBehavior: (option: BehaviorOption) => void;
+  onSelectBehavior: (option: QuickBehaviorPickerOption) => void;
   onClose: () => void;
 };
 
@@ -65,11 +54,11 @@ export function QuickDieBehaviorPickerModal({
         </Text>
 
         <Text style={{ opacity: 0.7 }}>
-          Choisis un preset de règle compatible avec ce dé.
+          Choisis le type de comportement à appliquer à ce jet.
         </Text>
 
         <ScrollView
-          style={{ maxHeight: 320 }}
+          style={{ maxHeight: 360 }}
           contentContainerStyle={{ gap: 8 }}
           showsVerticalScrollIndicator={true}
         >
@@ -77,25 +66,26 @@ export function QuickDieBehaviorPickerModal({
             const def = getDefinition(behavior.behaviorKey);
             if (!def) return null;
 
+            const label = behavior.label ?? def.label;
+            const description = behavior.description ?? def.description;
+
             return (
               <Pressable
                 key={behavior.optionId}
                 onPress={() => onSelectBehavior(behavior)}
+                disabled={!behavior.enabled}
                 style={{
                   padding: 12,
                   borderWidth: 1,
                   borderRadius: 10,
                   gap: 4,
+                  opacity: behavior.enabled ? 1 : 0.45,
                 }}
               >
-                <Text style={{ fontWeight: "700" }}>
-                  {behavior.label ?? def.label}
-                </Text>
+                <Text style={{ fontWeight: "700" }}>{label}</Text>
 
-                {(behavior.description ?? def.description) ? (
-                  <Text style={{ opacity: 0.7 }}>
-                    {behavior.description ?? def.description}
-                  </Text>
+                {description ? (
+                  <Text style={{ opacity: 0.7 }}>{description}</Text>
                 ) : null}
               </Pressable>
             );

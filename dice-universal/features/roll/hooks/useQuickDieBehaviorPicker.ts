@@ -7,6 +7,8 @@ import {
 import { buildDraftTempRuleFromPreset } from "../helpers/buildDraftTempRuleFromPreset";
 import { behaviorNeedsSelectionConfig } from "../helpers/quickBehaviorConfig";
 
+export type QuickBehaviorPickerVariant = "default" | "keep_drop";
+
 export type QuickBehaviorPickerOption = {
   optionId: string;
   behaviorKey: RuleBehaviorKey;
@@ -14,8 +16,43 @@ export type QuickBehaviorPickerOption = {
   enabled: boolean;
   label?: string;
   description?: string;
-  variant?: "default" | "keep_drop";
+  variant: QuickBehaviorPickerVariant;
 };
+
+const QUICK_BEHAVIOR_ORDER: string[] = [
+  "single_check",
+  "threshold_degrees",
+  "success_pool",
+  "table_lookup",
+  "keep_drop_pipeline",
+  "custom_pipeline",
+];
+
+function isBehaviorCompatibleWithSides(params: {
+  behaviorKey: RuleBehaviorKey;
+  sides: number;
+}) {
+  const definition = getRuleBehaviorDefinition(params.behaviorKey);
+  if (!definition) return false;
+
+  if (!definition.supportedSides) return true;
+
+  return definition.supportedSides.includes(params.sides);
+}
+
+function sortQuickOptions(
+  options: QuickBehaviorPickerOption[],
+): QuickBehaviorPickerOption[] {
+  return [...options].sort((a, b) => {
+    const aIndex = QUICK_BEHAVIOR_ORDER.indexOf(a.optionId);
+    const bIndex = QUICK_BEHAVIOR_ORDER.indexOf(b.optionId);
+
+    const safeAIndex = aIndex >= 0 ? aIndex : QUICK_BEHAVIOR_ORDER.length;
+    const safeBIndex = bIndex >= 0 ? bIndex : QUICK_BEHAVIOR_ORDER.length;
+
+    return safeAIndex - safeBIndex;
+  });
+}
 
 export function useQuickDieBehaviorPicker({
   addQuickPresetDie,
@@ -37,12 +74,15 @@ export function useQuickDieBehaviorPicker({
   const behaviors = useMemo<QuickBehaviorPickerOption[]>(() => {
     if (editingDieSides == null) return [];
 
-    const visibleBehaviors = RULE_BEHAVIORS.filter((behavior) => {
-      if (behavior.visibleInQuickPicker !== true) return false;
+    const visibleBehaviors: QuickBehaviorPickerOption[] = RULE_BEHAVIORS.filter(
+      (behavior) => {
+        if (behavior.visibleInQuickPicker === false) return false;
 
-      if (!behavior.supportedSides) return true;
-      return behavior.supportedSides.includes(editingDieSides);
-    }).map((behavior) => ({
+        if (!behavior.supportedSides) return true;
+
+        return behavior.supportedSides.includes(editingDieSides);
+      },
+    ).map((behavior) => ({
       optionId: behavior.key,
       behaviorKey: behavior.key,
       context: "quick_roll" as const,
@@ -50,30 +90,32 @@ export function useQuickDieBehaviorPicker({
       variant: "default" as const,
     }));
 
-    const customPipelineIndex = visibleBehaviors.findIndex(
-      (behavior) => behavior.behaviorKey === "custom_pipeline",
-    );
+    const shouldShowKeepDrop = isBehaviorCompatibleWithSides({
+      behaviorKey: "custom_pipeline",
+      sides: editingDieSides,
+    });
 
     const keepDropOption: QuickBehaviorPickerOption = {
       optionId: "keep_drop_pipeline",
       behaviorKey: "custom_pipeline",
       context: "quick_roll",
-      enabled: true,
+      enabled: shouldShowKeepDrop,
       label: "Garder / Retirer des dés",
       description:
         "Garde ou retire les meilleurs ou les plus faibles dés, puis calcule le résultat.",
       variant: "keep_drop",
     };
 
-    if (customPipelineIndex >= 0) {
-      return [
-        ...visibleBehaviors.slice(0, customPipelineIndex),
-        keepDropOption,
-        ...visibleBehaviors.slice(customPipelineIndex),
-      ];
-    }
+    const options = shouldShowKeepDrop
+      ? [...visibleBehaviors, keepDropOption]
+      : visibleBehaviors;
 
-    return [...visibleBehaviors, keepDropOption];
+    const uniqueOptions = options.filter(
+      (option, index, list) =>
+        list.findIndex((item) => item.optionId === option.optionId) === index,
+    );
+
+    return sortQuickOptions(uniqueOptions);
   }, [editingDieSides]);
 
   function getDefinition(behaviorKey: RuleBehaviorKey) {
@@ -81,6 +123,7 @@ export function useQuickDieBehaviorPicker({
   }
 
   function select(option: QuickBehaviorPickerOption) {
+    if (!option.enabled) return;
     if (editingDieSides == null) return;
 
     const behaviorKey = option.behaviorKey;
@@ -105,7 +148,7 @@ export function useQuickDieBehaviorPicker({
         behaviorKey,
         label,
         scope: quickScope,
-        variant: option.variant ?? "default",
+        variant: option.variant,
       });
       return;
     }
