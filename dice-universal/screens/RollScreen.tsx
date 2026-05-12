@@ -26,7 +26,7 @@ import { useRollExecution } from "../features/roll/hooks/useRollExecution";
 import { useQuickRollDraft } from "../features/roll/hooks/useQuickRollDraft";
 import { useRollTableData } from "../features/roll/hooks/useRollTableData";
 
-import { GroupRollResult } from "../core/roll/roll";
+import type { GroupRollResult } from "../core/roll/roll";
 
 import { buildDraftTempRuleFromPreset } from "../features/roll/helpers/buildDraftTempRuleFromPreset";
 
