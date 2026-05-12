@@ -16,12 +16,92 @@ function formatValues(values: number[]) {
 
 function getEntryLabel(entry: GroupRollResult["entries"][number]) {
     return `${entry.qty}d${entry.sides}${entry.modifier
-            ? ` ${entry.modifier > 0 ? "+" : ""}${entry.modifier}`
-            : ""
+        ? ` ${entry.modifier > 0 ? "+" : ""}${entry.modifier}`
+        : ""
         }`;
 }
 
+function getResultHeadline(result: GroupRollResult) {
+    const evalResult =
+        result.group_eval_result ??
+        result.entries.find((entry) => entry.eval_result)?.eval_result ??
+        null;
+
+    if (!evalResult) {
+        return {
+            title: `Total : ${result.total}`,
+            subtitle: "Résultat numérique simple",
+        };
+    }
+
+    const anyResult = evalResult as any;
+
+    if (anyResult.is_critical_failure || anyResult.critical_failure) {
+        return {
+            title: "❌ Échec critique",
+            subtitle: `Total : ${result.total}`,
+        };
+    }
+
+    if (anyResult.is_critical_success || anyResult.critical_success) {
+        return {
+            title: "💥 Réussite critique",
+            subtitle: `Total : ${result.total}`,
+        };
+    }
+
+    if (anyResult.is_success === true || anyResult.success === true) {
+        return {
+            title: "✅ Réussite",
+            subtitle: `Total : ${result.total}`,
+        };
+    }
+
+    if (anyResult.is_success === false || anyResult.success === false) {
+        return {
+            title: "❌ Échec",
+            subtitle: `Total : ${result.total}`,
+        };
+    }
+
+    if (typeof anyResult.successes === "number") {
+        const complication =
+            anyResult.has_complication ||
+            anyResult.complication ||
+            anyResult.is_complication;
+
+        return {
+            title: complication
+                ? `⚠️ ${anyResult.successes} succès + complication`
+                : `🎯 ${anyResult.successes} succès`,
+            subtitle: `Total : ${result.total}`,
+        };
+    }
+
+    if (typeof anyResult.final_total === "number") {
+        return {
+            title: `Total : ${anyResult.final_total}`,
+            subtitle: "Résultat interprété",
+        };
+    }
+
+    if (typeof anyResult.label === "string" && anyResult.label.trim()) {
+        return {
+            title: anyResult.label,
+            subtitle: `Total : ${result.total}`,
+        };
+    }
+
+    return {
+        title: `Total : ${result.total}`,
+        subtitle: "Résultat interprété",
+    };
+}
+
 export function ResultPanel({ result }: ResultPanelProps) {
+
+    const headline = result ? getResultHeadline(result) : null;
+
     return (
         <View
             style={{
@@ -79,15 +159,36 @@ export function ResultPanel({ result }: ResultPanelProps) {
                             {result.label}
                         </Text>
 
-                        <Text
+                        <View
                             style={{
-                                color: arcane.colors.accent,
-                                fontSize: 18,
-                                fontWeight: "900",
+                                marginTop: arcane.spacing.xs,
+                                padding: arcane.spacing.md,
+                                borderWidth: 1,
+                                borderColor: arcane.colors.accent,
+                                borderRadius: arcane.radius.lg,
+                                backgroundColor: arcane.colors.accentSoft,
+                                gap: arcane.spacing.xs,
                             }}
                         >
-                            Total global : {result.total}
-                        </Text>
+                            <Text
+                                style={{
+                                    color: arcane.colors.text,
+                                    fontSize: 24,
+                                    fontWeight: "900",
+                                }}
+                            >
+                                {headline?.title ?? `Total : ${result.total}`}
+                            </Text>
+
+                            <Text
+                                style={{
+                                    color: arcane.colors.textMuted,
+                                    fontWeight: "700",
+                                }}
+                            >
+                                {headline?.subtitle ?? "Résultat du lancer"}
+                            </Text>
+                        </View>
                     </>
                 )}
             </View>
