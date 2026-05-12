@@ -46,7 +46,7 @@ export default function TablesScreen() {
 
   async function loadTables() {
     const rows = await listTables(db);
-
+    console.log("TABLES FOUND:", rows.length, rows.map((t) => t.name));
     const enriched: TableListItem[] = [];
     for (const table of rows) {
       const stats = await getTableStats(db, table.id);
@@ -104,7 +104,7 @@ export default function TablesScreen() {
           setError(null);
 
           const rows = await listTables(db);
-
+          console.log("TABLES FOUND ON FOCUS:", rows.length, rows.map((t) => t.name));
           const enriched: TableListItem[] = [];
           for (const table of rows) {
             const stats = await getTableStats(db, table.id);
@@ -328,22 +328,34 @@ export default function TablesScreen() {
         {tables.length === 0 ? (
           <View
             style={{
-              marginTop: 16,
-              padding: 16,
-              borderWidth: 1,
-              borderRadius: 12,
+              ...arcaneStyles.card,
+              marginTop: arcane.spacing.md,
+              gap: arcane.spacing.sm,
             }}
           >
-            <Text style={{ fontSize: 16, fontWeight: "700" }}>
+            <Text
+              style={{
+                color: arcane.colors.text,
+                fontSize: 18,
+                fontWeight: "900",
+              }}
+            >
               Aucune table disponible
             </Text>
-            <Text style={{ marginTop: 6, opacity: 0.7 }}>
+
+            <Text style={arcaneStyles.muted}>
               Crée ta première table personnalisée.
             </Text>
           </View>
         ) : (
           <FlatList
-            style={{ marginTop: 16 }}
+            style={{
+              marginTop: 16,
+              flex: 1,
+            }}
+            contentContainerStyle={{
+              paddingBottom: 32,
+            }}
             data={tables}
             keyExtractor={(item) => item.table.id}
             ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
@@ -356,25 +368,43 @@ export default function TablesScreen() {
                   onPress={() => {
                     router.push(`/tables/${table.id}` as any);
                   }}
-                  style={{
-                    padding: 14,
-                    borderWidth: 1,
-                    borderRadius: 12,
-                  }}
+                  style={({ pressed }) => ({
+                    ...arcaneStyles.card,
+                    gap: arcane.spacing.sm,
+                    borderColor: isActive ? arcane.colors.accent : arcane.colors.border,
+                    backgroundColor: isActive
+                      ? arcane.colors.accentSoft
+                      : arcane.colors.backgroundElevated,
+                    opacity: pressed ? 0.88 : 1,
+                    transform: [{ scale: pressed ? 0.99 : 1 }],
+                  })}
                 >
                   <View
                     style={{
                       flexDirection: "row",
                       justifyContent: "space-between",
                       alignItems: "flex-start",
+                      gap: arcane.spacing.sm,
                     }}
                   >
-                    <View style={{ flex: 1, paddingRight: 12 }}>
-                      <Text style={{ fontSize: 16, fontWeight: "700" }}>
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={{
+                          color: arcane.colors.text,
+                          fontSize: 18,
+                          fontWeight: "900",
+                        }}
+                      >
                         {table.name}
                       </Text>
 
-                      <Text style={{ marginTop: 4, opacity: 0.7 }}>
+                      <Text
+                        style={{
+                          marginTop: 4,
+                          color: arcane.colors.textMuted,
+                          fontWeight: "600",
+                        }}
+                      >
                         {table.is_system === 1 ? "Table système" : "Table perso"}
                       </Text>
                     </View>
@@ -382,13 +412,22 @@ export default function TablesScreen() {
                     {isActive ? (
                       <View
                         style={{
-                          paddingVertical: 4,
-                          paddingHorizontal: 8,
+                          paddingVertical: 5,
+                          paddingHorizontal: 10,
                           borderWidth: 1,
-                          borderRadius: 999,
+                          borderColor: arcane.colors.accent,
+                          borderRadius: arcane.radius.pill,
+                          backgroundColor: arcane.colors.accentSoft,
                         }}
                       >
-                        <Text style={{ fontWeight: "700" }}>Active</Text>
+                        <Text
+                          style={{
+                            color: arcane.colors.text,
+                            fontWeight: "900",
+                          }}
+                        >
+                          Active
+                        </Text>
                       </View>
                     ) : null}
                   </View>
@@ -397,24 +436,23 @@ export default function TablesScreen() {
                     style={{
                       flexDirection: "row",
                       flexWrap: "wrap",
-                      marginTop: 10,
+                      gap: arcane.spacing.sm,
                     }}
                   >
-                    <Text style={{ opacity: 0.8, marginRight: 12 }}>
-                      {stats.profile_count} profil
-                      {stats.profile_count > 1 ? "s" : ""}
+                    <Text style={{ color: arcane.colors.textMuted }}>
+                      {stats.profile_count} profil{stats.profile_count > 1 ? "s" : ""}
                     </Text>
 
-                    <Text style={{ opacity: 0.8, marginRight: 12 }}>
+                    <Text style={{ color: arcane.colors.textMuted }}>
                       {stats.group_count} action{stats.group_count > 1 ? "s" : ""}
                     </Text>
 
-                    <Text style={{ opacity: 0.8 }}>
+                    <Text style={{ color: arcane.colors.textMuted }}>
                       {stats.die_count} entrée{stats.die_count > 1 ? "s" : ""}
                     </Text>
                   </View>
 
-                  <Text style={{ marginTop: 10, opacity: 0.6 }}>
+                  <Text style={{ color: arcane.colors.textSubtle }}>
                     Appuyer pour gérer les profils et actions
                   </Text>
 
@@ -422,51 +460,82 @@ export default function TablesScreen() {
                     style={{
                       flexDirection: "row",
                       flexWrap: "wrap",
-                      gap: 8,
-                      marginTop: 10,
+                      gap: arcane.spacing.sm,
+                      marginTop: arcane.spacing.xs,
                     }}
                   >
                     <Pressable
                       onPress={async () => {
                         await setActiveTableId(table.id);
                       }}
-                      style={{
-                        paddingVertical: 8,
-                        paddingHorizontal: 10,
-                        borderWidth: 1,
-                        borderRadius: 8,
-                        opacity: isActive ? 0.55 : 1,
-                      }}
                       disabled={isActive}
+                      style={({ pressed }) => ({
+                        paddingVertical: 9,
+                        paddingHorizontal: 12,
+                        borderWidth: 1,
+                        borderColor: isActive ? arcane.colors.accent : arcane.colors.border,
+                        borderRadius: arcane.radius.pill,
+                        backgroundColor: isActive
+                          ? arcane.colors.accentSoft
+                          : arcane.colors.surfaceAlt,
+                        opacity: isActive ? 0.65 : pressed ? 0.82 : 1,
+                      })}
                     >
-                      <Text>{isActive ? "Déjà active" : "Activer"}</Text>
+                      <Text
+                        style={{
+                          color: arcane.colors.text,
+                          fontWeight: "900",
+                        }}
+                      >
+                        {isActive ? "Déjà active" : "Activer"}
+                      </Text>
                     </Pressable>
 
                     <Pressable
                       onPress={() => {
                         router.push(`/tables/${table.id}` as any);
                       }}
-                      style={{
-                        paddingVertical: 8,
-                        paddingHorizontal: 10,
+                      style={({ pressed }) => ({
+                        paddingVertical: 9,
+                        paddingHorizontal: 12,
                         borderWidth: 1,
-                        borderRadius: 8,
-                      }}
+                        borderColor: arcane.colors.border,
+                        borderRadius: arcane.radius.pill,
+                        backgroundColor: arcane.colors.surfaceAlt,
+                        opacity: pressed ? 0.82 : 1,
+                      })}
                     >
-                      <Text>Ouvrir</Text>
+                      <Text
+                        style={{
+                          color: arcane.colors.text,
+                          fontWeight: "900",
+                        }}
+                      >
+                        Ouvrir
+                      </Text>
                     </Pressable>
 
                     {table.is_system !== 1 ? (
                       <Pressable
                         onPress={() => handleDeleteTable(table.id)}
-                        style={{
-                          paddingVertical: 8,
-                          paddingHorizontal: 10,
+                        style={({ pressed }) => ({
+                          paddingVertical: 9,
+                          paddingHorizontal: 12,
                           borderWidth: 1,
-                          borderRadius: 8,
-                        }}
+                          borderColor: arcane.colors.failure,
+                          borderRadius: arcane.radius.pill,
+                          backgroundColor: arcane.colors.failureSoft,
+                          opacity: pressed ? 0.82 : 1,
+                        })}
                       >
-                        <Text>Supprimer</Text>
+                        <Text
+                          style={{
+                            color: arcane.colors.text,
+                            fontWeight: "900",
+                          }}
+                        >
+                          Supprimer
+                        </Text>
                       </Pressable>
                     ) : null}
                   </View>
