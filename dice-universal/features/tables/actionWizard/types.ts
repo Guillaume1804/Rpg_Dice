@@ -12,6 +12,8 @@ export type PipelineOutputMode =
   | "count_range"
   | "first_value";
 
+export type ActionBehaviorVariant = "default" | "keep_drop";
+
 export type ActionDieDraft = {
   sides: number | null;
   qty: number;
@@ -28,12 +30,14 @@ export type ActionRangeDraft = {
 export type ActionWizardDraft = {
   name: string;
   behaviorType: ActionBehaviorType | null;
+  behaviorVariant: ActionBehaviorVariant;
 
   /**
    * Compat temporaire avec l'ancien wizard.
    * On garde `die` pour éviter de casser tous les composants d’un coup.
    * La vraie source pour les actions composées devient `dice`.
    */
+  
   die: ActionDieDraft;
   dice: ActionDieDraft[];
 
@@ -86,11 +90,11 @@ export type ActionWizardDraft = {
 
   pipelineComplicationFaces: string;
   pipelineComplicationRule:
-    | "none"
-    | "any"
-    | "gt_successes"
-    | "gte_successes"
-    | "zero_successes";
+  | "none"
+  | "any"
+  | "gt_successes"
+  | "gte_successes"
+  | "zero_successes";
 
   creationMode: "auto" | "advanced";
 };

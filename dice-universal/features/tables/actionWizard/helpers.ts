@@ -216,6 +216,18 @@ export function validateActionWizardStep(
     }
 
     if (draft.behaviorType === "custom_pipeline") {
+      if (draft.behaviorVariant === "keep_drop") {
+        const hasKeepDropConfig =
+          draft.pipelineKeepHighest.trim() !== "" ||
+          draft.pipelineKeepLowest.trim() !== "" ||
+          draft.pipelineDropHighest.trim() !== "" ||
+          draft.pipelineDropLowest.trim() !== "";
+
+        if (!hasKeepDropConfig) {
+          return "Choisis au moins une opération : garder ou retirer des dés.";
+        }
+      }
+
       if (
         draft.pipelineKeepHighest.trim() !== "" &&
         !Number.isFinite(Number(draft.pipelineKeepHighest))
@@ -517,15 +529,14 @@ export function buildActionWizardSummary(draft: ActionWizardDraft): string {
   const dieLabel =
     draft.dice && draft.dice.length > 0
       ? draft.dice
-          .map(
-            (die) =>
-              `${die.qty}d${die.sides}${
-                die.modifier !== 0
-                  ? ` ${die.modifier > 0 ? "+" : ""}${die.modifier}`
-                  : ""
-              }${die.sign === -1 ? " (-)" : ""}`,
-          )
-          .join(" + ")
+        .map(
+          (die) =>
+            `${die.qty}d${die.sides}${die.modifier !== 0
+              ? ` ${die.modifier > 0 ? "+" : ""}${die.modifier}`
+              : ""
+            }${die.sign === -1 ? " (-)" : ""}`,
+        )
+        .join(" + ")
       : "aucun dé";
 
   if (draft.behaviorType === "single_check") {
@@ -579,22 +590,40 @@ export function buildActionWizardSummary(draft: ActionWizardDraft): string {
   if (draft.behaviorType === "custom_pipeline") {
     const parts: string[] = [];
 
+    if (draft.behaviorVariant === "keep_drop") {
+      if (draft.pipelineKeepHighest.trim()) {
+        return `${draft.name} • ${dieLabel} • garde ${draft.pipelineKeepHighest} meilleurs`;
+      }
+
+      if (draft.pipelineKeepLowest.trim()) {
+        return `${draft.name} • ${dieLabel} • garde ${draft.pipelineKeepLowest} plus faibles`;
+      }
+
+      if (draft.pipelineDropHighest.trim()) {
+        return `${draft.name} • ${dieLabel} • retire ${draft.pipelineDropHighest} meilleurs`;
+      }
+
+      if (draft.pipelineDropLowest.trim()) {
+        return `${draft.name} • ${dieLabel} • retire ${draft.pipelineDropLowest} plus faibles`;
+      }
+
+      return `${draft.name} • ${dieLabel} • garder / retirer des dés`;
+    }
+
     if (draft.pipelineRerollFaces.trim()) {
       parts.push(
-        `relance ${draft.pipelineRerollFaces}${
-          draft.pipelineMaxRerollsPerDie.trim()
-            ? ` max ${draft.pipelineMaxRerollsPerDie}/dé`
-            : ""
+        `relance ${draft.pipelineRerollFaces}${draft.pipelineMaxRerollsPerDie.trim()
+          ? ` max ${draft.pipelineMaxRerollsPerDie}/dé`
+          : ""
         }`,
       );
     }
 
     if (draft.pipelineExplodeFaces.trim()) {
       parts.push(
-        `explosion ${draft.pipelineExplodeFaces}${
-          draft.pipelineMaxExplosionsPerDie.trim()
-            ? ` max ${draft.pipelineMaxExplosionsPerDie}/dé`
-            : ""
+        `explosion ${draft.pipelineExplodeFaces}${draft.pipelineMaxExplosionsPerDie.trim()
+          ? ` max ${draft.pipelineMaxExplosionsPerDie}/dé`
+          : ""
         }`,
       );
     }

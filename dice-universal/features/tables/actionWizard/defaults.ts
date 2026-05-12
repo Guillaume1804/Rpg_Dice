@@ -70,6 +70,7 @@ export function createDefaultActionWizardDraft(): ActionWizardDraft {
   return {
     name: "",
     behaviorType: null,
+    behaviorVariant: "default",
 
     die: dice[0],
     dice,

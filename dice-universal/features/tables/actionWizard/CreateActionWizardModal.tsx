@@ -61,6 +61,7 @@ type Props = {
   onRemoveRangeRow: (index: number) => void;
   onSetBehaviorType: (
     value: NonNullable<ActionWizardDraft["behaviorType"]>,
+    variant?: ActionWizardDraft["behaviorVariant"],
   ) => void;
 };
 
@@ -180,6 +181,7 @@ export function CreateActionWizardModal({
             {step === "type" ? (
               <ActionWizardStepType
                 value={draft.behaviorType}
+                variant={draft.behaviorVariant}
                 onSelect={onSetBehaviorType}
               />
             ) : null}

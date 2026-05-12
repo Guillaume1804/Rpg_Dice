@@ -66,8 +66,8 @@ export function useCreateActionWizard() {
       const nextDice =
         prev.dice.length > 0
           ? prev.dice.map((die, index) =>
-              index === 0 ? { ...die, [key]: value } : die,
-            )
+            index === 0 ? { ...die, [key]: value } : die,
+          )
           : [{ ...createDieDraft(), [key]: value }];
 
       return {
@@ -148,16 +148,25 @@ export function useCreateActionWizard() {
     }));
   }
 
-  function setBehaviorType(behaviorType: ActionBehaviorType) {
+  function setBehaviorType(
+    behaviorType: ActionBehaviorType,
+    variant: ActionWizardDraft["behaviorVariant"] = "default",
+  ) {
     const dice = getDefaultDiceForBehavior(behaviorType);
 
     setDraft((prev) => ({
       ...prev,
       behaviorType,
+      behaviorVariant: variant,
       selectedRuleId: null,
       creationMode: "auto",
       die: dice[0],
       dice,
+      pipelineOutput: variant === "keep_drop" ? "sum" : prev.pipelineOutput,
+      pipelineKeepHighest: "",
+      pipelineKeepLowest: "",
+      pipelineDropHighest: "",
+      pipelineDropLowest: "",
     }));
   }
 
