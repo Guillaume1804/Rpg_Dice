@@ -40,6 +40,7 @@ const MODERN_RULE_KINDS = new Set([
   "sum",
   "sum_total",
   "banded_sum",
+  "threshold_degrees",
   "highest_of_pool",
   "lowest_of_pool",
   "keep_highest_n",
