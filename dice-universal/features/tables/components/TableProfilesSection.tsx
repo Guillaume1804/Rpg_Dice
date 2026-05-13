@@ -1,3 +1,5 @@
+// dice-universal\features\tables\components\TableProfilesSection.tsx
+
 import { useMemo, useState } from "react";
 import { View, Text, Pressable } from "react-native";
 import type { ProfileRow } from "../../../data/repositories/profilesRepo";
@@ -5,6 +7,9 @@ import type {
   GroupRow,
   GroupDieRow,
 } from "../../../data/repositories/groupsRepo";
+
+import { arcane } from "../../../theme/arcaneTheme";
+import { arcaneStyles } from "../../../theme/arcaneStyles";
 
 type ProfileWithGroups = {
   profile: ProfileRow;
@@ -44,14 +49,21 @@ function SmallButton({
   return (
     <Pressable
       onPress={onPress}
-      style={{
-        paddingVertical: 7,
-        paddingHorizontal: 10,
+      style={({ pressed }) => ({
+        paddingVertical: 8,
+        paddingHorizontal: 11,
         borderWidth: 1,
-        borderRadius: 10,
-      }}
+        borderColor: arcane.colors.border,
+        borderRadius: arcane.radius.pill,
+        backgroundColor: pressed
+          ? arcane.colors.surfaceSoft
+          : arcane.colors.surfaceAlt,
+        opacity: pressed ? 0.86 : 1,
+      })}
     >
-      <Text style={{ fontWeight: "600" }}>{label}</Text>
+      <Text style={{ color: arcane.colors.text, fontWeight: "800" }}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -91,8 +103,10 @@ export function TableProfilesSection({
 
   if (profiles.length === 0) {
     return (
-      <View style={{ borderWidth: 1, borderRadius: 12, padding: 12 }}>
-        <Text style={{ opacity: 0.7 }}>
+      <View style={arcaneStyles.card}>
+        <Text style={arcaneStyles.sectionTitle}>Aucun profil</Text>
+
+        <Text style={[arcaneStyles.muted, { marginTop: arcane.spacing.xs }]}>
           Aucun profil dans cette table pour le moment.
         </Text>
       </View>
@@ -101,8 +115,8 @@ export function TableProfilesSection({
 
   if (!selectedProfileEntry) {
     return (
-      <View style={{ gap: 12 }}>
-        <Text style={{ fontSize: 18, fontWeight: "800" }}>Profils</Text>
+      <View style={{ gap: arcane.spacing.md }}>
+        <Text style={arcaneStyles.sectionTitle}>Profils</Text>
 
         {profiles.map(({ profile, groups }) => (
           <Pressable
@@ -111,19 +125,25 @@ export function TableProfilesSection({
               setSelectedProfileId(profile.id);
               onProfileDetailViewChange?.(true);
             }}
-            style={{
-              borderWidth: 1,
-              borderRadius: 14,
-              padding: 12,
-              gap: 8,
-            }}
+            style={({ pressed }) => ({
+              ...arcaneStyles.card,
+              gap: arcane.spacing.sm,
+              opacity: pressed ? 0.88 : 1,
+              transform: [{ scale: pressed ? 0.99 : 1 }],
+            })}
           >
             <View>
-              <Text style={{ fontSize: 20, fontWeight: "800" }}>
+              <Text
+                style={{
+                  color: arcane.colors.text,
+                  fontSize: 20,
+                  fontWeight: "900",
+                }}
+              >
                 {profile.name}
               </Text>
 
-              <Text style={{ opacity: 0.7 }}>
+              <Text style={arcaneStyles.muted}>
                 {groups.length} action{groups.length > 1 ? "s" : ""}
               </Text>
             </View>
@@ -153,7 +173,7 @@ export function TableProfilesSection({
   const { profile, groups } = selectedProfileEntry;
 
   return (
-    <View style={{ gap: 12 }}>
+    <View style={{ gap: arcane.spacing.md }}>
       <View style={{ gap: 8 }}>
         <SmallButton
           label="← Profils"
@@ -165,17 +185,21 @@ export function TableProfilesSection({
 
         <View
           style={{
-            borderWidth: 1,
-            borderRadius: 14,
-            padding: 12,
-            gap: 8,
+            ...arcaneStyles.card,
+            gap: arcane.spacing.sm,
           }}
         >
-          <Text style={{ fontSize: 22, fontWeight: "900" }}>
+          <Text
+            style={{
+              color: arcane.colors.text,
+              fontSize: 24,
+              fontWeight: "900",
+            }}
+          >
             {profile.name}
           </Text>
 
-          <Text style={{ opacity: 0.7 }}>
+          <Text style={arcaneStyles.muted}>
             {groups.length} action{groups.length > 1 ? "s" : ""}
           </Text>
 
@@ -199,25 +223,37 @@ export function TableProfilesSection({
       </View>
 
       {groups.length === 0 ? (
-        <Text style={{ opacity: 0.7 }}>Aucune action pour ce profil.</Text>
+        <View style={arcaneStyles.cardSoft}>
+          <Text style={{ color: arcane.colors.text, fontWeight: "800" }}>
+            Aucune action
+          </Text>
+
+          <Text style={[arcaneStyles.muted, { marginTop: arcane.spacing.xs }]}>
+            Ce profil ne contient pas encore d’action.
+          </Text>
+        </View>
       ) : (
         <View style={{ gap: 10 }}>
           {groups.map(({ group, dice }) => (
             <View
               key={group.id}
               style={{
-                borderWidth: 1,
-                borderRadius: 12,
-                padding: 12,
-                gap: 10,
+                ...arcaneStyles.card,
+                gap: arcane.spacing.sm,
               }}
             >
               <View style={{ gap: 6 }}>
-                <Text style={{ fontWeight: "800", fontSize: 17 }}>
+                <Text
+                  style={{
+                    color: arcane.colors.text,
+                    fontWeight: "900",
+                    fontSize: 18,
+                  }}
+                >
                   {group.name}
                 </Text>
 
-                <Text style={{ opacity: 0.7 }}>
+                <Text style={arcaneStyles.muted}>
                   Règle de groupe : {getRuleName(group.rule_id ?? null)}
                 </Text>
               </View>
@@ -246,26 +282,46 @@ export function TableProfilesSection({
               ) : null}
 
               {dice.length === 0 ? (
-                <Text style={{ opacity: 0.7 }}>
-                  Aucun dé dans cette action.
-                </Text>
+                <View style={arcaneStyles.cardSoft}>
+                  <Text
+                    style={{
+                      color: arcane.colors.text,
+                      fontWeight: "800",
+                    }}
+                  >
+                    Aucun dé
+                  </Text>
+
+                  <Text
+                    style={[
+                      arcaneStyles.muted,
+                      { marginTop: arcane.spacing.xs },
+                    ]}
+                  >
+                    Cette action ne contient pas encore d’entrée de dés.
+                  </Text>
+                </View>
               ) : (
                 <View style={{ gap: 8 }}>
                   {dice.map((die) => (
                     <View
                       key={die.id}
                       style={{
-                        borderWidth: 1,
-                        borderRadius: 12,
-                        padding: 10,
-                        gap: 6,
+                        ...arcaneStyles.cardSoft,
+                        gap: arcane.spacing.xs,
                       }}
                     >
-                      <Text style={{ fontWeight: "800", fontSize: 15 }}>
+                      <Text
+                        style={{
+                          color: arcane.colors.text,
+                          fontWeight: "900",
+                          fontSize: 15,
+                        }}
+                      >
                         {formatDie(die)}
                       </Text>
 
-                      <Text style={{ opacity: 0.7 }}>
+                      <Text style={arcaneStyles.muted}>
                         Règle : {getRuleName(die.rule_id ?? null)}
                       </Text>
 

@@ -1,3 +1,5 @@
+// dice-universal\app\tables\[id].tsx
+
 import { useLocalSearchParams } from "expo-router";
 import { useMemo, useState } from "react";
 import { View, Text, ScrollView } from "react-native";
@@ -29,6 +31,10 @@ import { useHumanRuleEditor } from "../../features/rules/hooks/useHumanRuleEdito
 import { HumanRuleEditorModal } from "../../features/rules/components/HumanRuleEditorModal";
 import { useRulesData } from "../../features/rules/hooks/useRulesData";
 
+import { arcane } from "../../theme/arcaneTheme";
+import { useArcaneLayout } from "../../theme/useArcaneLayout";
+import { arcaneStyles } from "../../theme/arcaneStyles";
+
 function getFirstValidWizardDieSides(dice: { sides: number | null }[]) {
   const firstValidDie = dice.find((die) => die.sides != null && die.sides > 0);
 
@@ -37,6 +43,8 @@ function getFirstValidWizardDieSides(dice: { sides: number | null }[]) {
 
 export default function TableDetailScreen() {
   const db = useDb();
+  const layout = useArcaneLayout();
+
   const { saveRule } = useRulesData({ db });
   const { id } = useLocalSearchParams<{ id: string }>();
 
@@ -319,20 +327,58 @@ export default function TableDetailScreen() {
 
   if (error) {
     return (
-      <View style={{ flex: 1, padding: 16 }}>
-        <Text style={{ fontSize: 18, fontWeight: "600" }}>Erreur</Text>
-        <Text style={{ marginTop: 8 }}>{error}</Text>
+      <View
+        style={[
+          arcaneStyles.screen,
+          {
+            paddingTop: layout.insets.top + arcane.spacing.lg,
+            paddingHorizontal: layout.horizontalPadding,
+            justifyContent: "center",
+          },
+        ]}
+      >
+        <View style={arcaneStyles.card}>
+          <Text style={arcaneStyles.sectionTitle}>Erreur</Text>
+
+          <Text style={[arcaneStyles.muted, { marginTop: arcane.spacing.sm }]}>
+            {error}
+          </Text>
+        </View>
       </View>
     );
   }
 
   if (!table) {
     return (
-      <View style={{ flex: 1, padding: 16 }}>
-        <Text style={{ fontSize: 18, fontWeight: "600" }}>
-          Table introuvable
-        </Text>
-        <Text style={{ marginTop: 8, opacity: 0.7 }}>id: {tableId}</Text>
+      <View
+        style={[
+          arcaneStyles.screen,
+          {
+            paddingTop: layout.insets.top + arcane.spacing.lg,
+            paddingHorizontal: layout.horizontalPadding,
+            justifyContent: "center",
+          },
+        ]}
+      >
+        <View style={arcaneStyles.card}>
+          <Text style={arcaneStyles.sectionTitle}>Table introuvable</Text>
+
+          <Text style={[arcaneStyles.muted, { marginTop: arcane.spacing.sm }]}>
+            Cette table n’existe plus ou n’a pas pu être chargée.
+          </Text>
+
+          <Text
+            style={[
+              arcaneStyles.muted,
+              {
+                marginTop: arcane.spacing.sm,
+                fontSize: arcane.typography.tiny,
+              },
+            ]}
+          >
+            id: {tableId}
+          </Text>
+        </View>
       </View>
     );
   }
@@ -365,164 +411,186 @@ export default function TableDetailScreen() {
   const actionWizardError = wizardSubmitError ?? wizardError;
 
   return (
-    <View style={{ flex: 1, padding: 16, gap: 12 }}>
-      {!isProfileDetailView ? (
-        <TableDetailHeader
-          tableName={table.name}
-          isSystem={isSystem}
-          onRenameTable={() => openRenameTableModal(table.name)}
-          onCreateProfile={openCreateProfileModal}
-        />
-      ) : null}
-
-      <ScrollView>
-        <TableProfilesSection
-          profiles={profiles}
-          isSystem={isSystem}
-          getRuleName={getRuleName}
-          onProfileDetailViewChange={setIsProfileDetailView}
-          onRenameProfile={openRenameProfileModal}
-          onCreateGroup={handleOpenCreateActionWizard}
-          onDeleteProfile={submitDeleteProfile}
-          onRenameGroup={openRenameGroupModal}
-          onEditGroupRule={openEditGroupRuleModal}
-          onCreateDie={openCreateDieModal}
-          onDeleteGroup={submitDeleteGroup}
-          onEditDie={openEditDieModal}
-          onDeleteDie={submitDeleteDie}
-        />
-      </ScrollView>
-
-      <TableRenameModal
-        visible={showRenameModal}
-        value={renameValue}
-        onChangeValue={setRenameValue}
-        onClose={closeRenameTableModal}
-        onSubmit={submitRenameTable}
-      />
-
-      <TableGroupModals
-        modernRules={modernRules}
-        legacyRules={legacyRules}
-        showRenameGroupModal={showRenameGroupModal}
-        renameGroupValue={renameGroupValue}
-        onChangeRenameGroupValue={setRenameGroupValue}
-        onCloseRenameGroupModal={closeRenameGroupModal}
-        onSubmitRenameGroup={submitRenameGroup}
-        showEditGroupRuleModal={showEditGroupRuleModal}
-        editingGroupForRule={editingGroupForRule}
-        selectedGroupRuleId={selectedGroupRuleId}
-        onSelectGroupRuleId={setSelectedGroupRuleId}
-        onCloseEditGroupRuleModal={closeEditGroupRuleModal}
-        onSubmitEditGroupRule={submitEditGroupRule}
-      />
-
-      <TableProfileModals
-        showCreateProfileModal={showCreateProfileModal}
-        newProfileName={newProfileName}
-        onChangeNewProfileName={setNewProfileName}
-        onCloseCreateProfileModal={closeCreateProfileModal}
-        onSubmitCreateProfile={submitCreateProfile}
-        showRenameProfileModal={showRenameProfileModal}
-        renameProfileValue={renameProfileValue}
-        onChangeRenameProfileValue={setRenameProfileValue}
-        onCloseRenameProfileModal={closeRenameProfileModal}
-        onSubmitRenameProfile={submitRenameProfile}
-      />
-
-      <TableDieModals
-        showCreateDieModal={showCreateDieModal}
-        targetGroupForNewDie={targetGroupForNewDie}
-        newDieSides={newDieSides}
-        newDieQty={newDieQty}
-        newDieModifier={newDieModifier}
-        newDieSign={newDieSign}
-        newDieRuleId={newDieRuleId}
-        modernRules={modernRules}
-        legacyRules={legacyRules}
-        onChangeNewDieSides={setNewDieSides}
-        onChangeNewDieQty={setNewDieQty}
-        onChangeNewDieModifier={setNewDieModifier}
-        onChangeNewDieSign={setNewDieSign}
-        onChangeNewDieRuleId={setNewDieRuleId}
-        onCloseCreateDieModal={closeCreateDieModal}
-        onSubmitCreateDie={submitCreateDie}
-        editingDie={editingDie}
-        editDieSides={editDieSides}
-        editDieQty={editDieQty}
-        editDieModifier={editDieModifier}
-        editDieSign={editDieSign}
-        selectedRuleId={selectedRuleId}
-        onChangeEditDieSides={setEditDieSides}
-        onChangeEditDieQty={setEditDieQty}
-        onChangeEditDieModifier={setEditDieModifier}
-        onChangeEditDieSign={setEditDieSign}
-        onChangeSelectedRuleId={setSelectedRuleId}
-        onCloseEditDieModal={closeEditDieModal}
-        onSubmitEditDie={submitEditDie}
-      />
-
-      <CreateActionWizardModal
-        visible={showCreateActionWizard && wizardVisible}
-        step={wizardStep}
-        stepIndex={wizardStepIndex}
-        totalSteps={wizardTotalSteps}
-        draft={wizardDraft}
-        error={actionWizardError}
-        compatibleRules={compatibleRulesForWizard}
-        onClose={handleCloseCreateActionWizard}
-        onBack={goWizardBack}
-        onNext={goWizardNext}
-        onSubmit={handleSubmitCreateActionWizard}
-        onUpdateDraft={updateWizardDraft}
-        onUpdateDie={updateWizardDie}
-        onSelectRuleId={(ruleId) => updateWizardDraft("selectedRuleId", ruleId)}
-        onSelectCreationMode={(mode) => updateWizardDraft("creationMode", mode)}
-        onOpenAdvancedRuleEditor={handleOpenAdvancedRuleEditor}
-        onUpdateRangeRow={updateWizardRangeRow}
-        onAddRangeRow={addWizardRangeRow}
-        onRemoveRangeRow={removeWizardRangeRow}
-        onSetBehaviorType={setWizardBehaviorType}
-        onUpdateDieAt={updateWizardDieAt}
-        onAddDie={addWizardDie}
-        onRemoveDie={removeWizardDie}
-      />
-
-      <HumanRuleEditorModal
-        visible={showEditModal}
-        editingRule={editingRule}
-        form={form}
-        formError={formError}
-        previewValues={previewValues}
-        previewSides={previewSides}
-        previewModifier={previewModifier}
-        previewSign={previewSign}
-        previewResult={previewResult}
-        onChangePreviewValues={setPreviewValues}
-        onChangePreviewSides={setPreviewSides}
-        onChangePreviewModifier={setPreviewModifier}
-        onChangePreviewSign={setPreviewSign}
-        onUpdateForm={updateForm}
-        onUpdateRangeRow={updateRangeRow}
-        onAddRangeRow={addRangeRow}
-        onRemoveRangeRow={removeRangeRow}
-        onSetScope={setScope}
-        onSetSupportedSidesText={setSupportedSidesText}
-        onComputePreview={computePreview}
-        onClose={closeEditor}
-        onSave={async () => {
-          const payload = getRulePayload();
-
-          await saveRule({
-            editingRule: null,
-            payload,
-          });
-
-          closeEditor();
-          await load();
-          notifyDataChanged();
+    <View style={arcaneStyles.screen}>
+      <View
+        style={{
+          flex: 1,
+          paddingTop: layout.insets.top + arcane.spacing.md,
+          paddingHorizontal: layout.horizontalPadding,
+          paddingBottom: layout.insets.bottom + arcane.spacing.md,
+          alignSelf: "center",
+          width: "100%",
+          maxWidth: layout.maxContentWidth,
+          gap: arcane.spacing.md,
         }}
-      />
+      >
+        {!isProfileDetailView ? (
+          <TableDetailHeader
+            tableName={table.name}
+            isSystem={isSystem}
+            onRenameTable={() => openRenameTableModal(table.name)}
+            onCreateProfile={openCreateProfileModal}
+          />
+        ) : null}
+
+        <ScrollView
+          contentContainerStyle={{
+            paddingBottom: layout.insets.bottom + arcane.spacing.xl,
+          }}
+          showsVerticalScrollIndicator={false}
+        >
+          <TableProfilesSection
+            profiles={profiles}
+            isSystem={isSystem}
+            getRuleName={getRuleName}
+            onProfileDetailViewChange={setIsProfileDetailView}
+            onRenameProfile={openRenameProfileModal}
+            onCreateGroup={handleOpenCreateActionWizard}
+            onDeleteProfile={submitDeleteProfile}
+            onRenameGroup={openRenameGroupModal}
+            onEditGroupRule={openEditGroupRuleModal}
+            onCreateDie={openCreateDieModal}
+            onDeleteGroup={submitDeleteGroup}
+            onEditDie={openEditDieModal}
+            onDeleteDie={submitDeleteDie}
+          />
+        </ScrollView>
+
+        <TableRenameModal
+          visible={showRenameModal}
+          value={renameValue}
+          onChangeValue={setRenameValue}
+          onClose={closeRenameTableModal}
+          onSubmit={submitRenameTable}
+        />
+
+        <TableGroupModals
+          modernRules={modernRules}
+          legacyRules={legacyRules}
+          showRenameGroupModal={showRenameGroupModal}
+          renameGroupValue={renameGroupValue}
+          onChangeRenameGroupValue={setRenameGroupValue}
+          onCloseRenameGroupModal={closeRenameGroupModal}
+          onSubmitRenameGroup={submitRenameGroup}
+          showEditGroupRuleModal={showEditGroupRuleModal}
+          editingGroupForRule={editingGroupForRule}
+          selectedGroupRuleId={selectedGroupRuleId}
+          onSelectGroupRuleId={setSelectedGroupRuleId}
+          onCloseEditGroupRuleModal={closeEditGroupRuleModal}
+          onSubmitEditGroupRule={submitEditGroupRule}
+        />
+
+        <TableProfileModals
+          showCreateProfileModal={showCreateProfileModal}
+          newProfileName={newProfileName}
+          onChangeNewProfileName={setNewProfileName}
+          onCloseCreateProfileModal={closeCreateProfileModal}
+          onSubmitCreateProfile={submitCreateProfile}
+          showRenameProfileModal={showRenameProfileModal}
+          renameProfileValue={renameProfileValue}
+          onChangeRenameProfileValue={setRenameProfileValue}
+          onCloseRenameProfileModal={closeRenameProfileModal}
+          onSubmitRenameProfile={submitRenameProfile}
+        />
+
+        <TableDieModals
+          showCreateDieModal={showCreateDieModal}
+          targetGroupForNewDie={targetGroupForNewDie}
+          newDieSides={newDieSides}
+          newDieQty={newDieQty}
+          newDieModifier={newDieModifier}
+          newDieSign={newDieSign}
+          newDieRuleId={newDieRuleId}
+          modernRules={modernRules}
+          legacyRules={legacyRules}
+          onChangeNewDieSides={setNewDieSides}
+          onChangeNewDieQty={setNewDieQty}
+          onChangeNewDieModifier={setNewDieModifier}
+          onChangeNewDieSign={setNewDieSign}
+          onChangeNewDieRuleId={setNewDieRuleId}
+          onCloseCreateDieModal={closeCreateDieModal}
+          onSubmitCreateDie={submitCreateDie}
+          editingDie={editingDie}
+          editDieSides={editDieSides}
+          editDieQty={editDieQty}
+          editDieModifier={editDieModifier}
+          editDieSign={editDieSign}
+          selectedRuleId={selectedRuleId}
+          onChangeEditDieSides={setEditDieSides}
+          onChangeEditDieQty={setEditDieQty}
+          onChangeEditDieModifier={setEditDieModifier}
+          onChangeEditDieSign={setEditDieSign}
+          onChangeSelectedRuleId={setSelectedRuleId}
+          onCloseEditDieModal={closeEditDieModal}
+          onSubmitEditDie={submitEditDie}
+        />
+
+        <CreateActionWizardModal
+          visible={showCreateActionWizard && wizardVisible}
+          step={wizardStep}
+          stepIndex={wizardStepIndex}
+          totalSteps={wizardTotalSteps}
+          draft={wizardDraft}
+          error={actionWizardError}
+          compatibleRules={compatibleRulesForWizard}
+          onClose={handleCloseCreateActionWizard}
+          onBack={goWizardBack}
+          onNext={goWizardNext}
+          onSubmit={handleSubmitCreateActionWizard}
+          onUpdateDraft={updateWizardDraft}
+          onUpdateDie={updateWizardDie}
+          onSelectRuleId={(ruleId) =>
+            updateWizardDraft("selectedRuleId", ruleId)
+          }
+          onSelectCreationMode={(mode) =>
+            updateWizardDraft("creationMode", mode)
+          }
+          onOpenAdvancedRuleEditor={handleOpenAdvancedRuleEditor}
+          onUpdateRangeRow={updateWizardRangeRow}
+          onAddRangeRow={addWizardRangeRow}
+          onRemoveRangeRow={removeWizardRangeRow}
+          onSetBehaviorType={setWizardBehaviorType}
+          onUpdateDieAt={updateWizardDieAt}
+          onAddDie={addWizardDie}
+          onRemoveDie={removeWizardDie}
+        />
+
+        <HumanRuleEditorModal
+          visible={showEditModal}
+          editingRule={editingRule}
+          form={form}
+          formError={formError}
+          previewValues={previewValues}
+          previewSides={previewSides}
+          previewModifier={previewModifier}
+          previewSign={previewSign}
+          previewResult={previewResult}
+          onChangePreviewValues={setPreviewValues}
+          onChangePreviewSides={setPreviewSides}
+          onChangePreviewModifier={setPreviewModifier}
+          onChangePreviewSign={setPreviewSign}
+          onUpdateForm={updateForm}
+          onUpdateRangeRow={updateRangeRow}
+          onAddRangeRow={addRangeRow}
+          onRemoveRangeRow={removeRangeRow}
+          onSetScope={setScope}
+          onSetSupportedSidesText={setSupportedSidesText}
+          onComputePreview={computePreview}
+          onClose={closeEditor}
+          onSave={async () => {
+            const payload = getRulePayload();
+
+            await saveRule({
+              editingRule: null,
+              payload,
+            });
+
+            closeEditor();
+            await load();
+            notifyDataChanged();
+          }}
+        />
+      </View>
     </View>
   );
 }
