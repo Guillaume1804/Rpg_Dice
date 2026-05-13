@@ -1,4 +1,4 @@
-// dice-universal\features\rules\components\HumanRuleEditorModal.tsx
+// dice-universal/features/rules/components/HumanRuleEditorModal.tsx
 
 import {
   Modal,
@@ -11,6 +11,9 @@ import {
 import type { RuleRow, RuleScope } from "../../../data/repositories/rulesRepo";
 import { RULE_FAMILIES } from "../config/ruleFamilies";
 import type { RuleFormState } from "../helpers/ruleForm";
+
+import { arcane } from "../../../theme/arcaneTheme";
+import { arcaneStyles } from "../../../theme/arcaneStyles";
 
 type Props = {
   visible: boolean;
@@ -61,6 +64,219 @@ function getScopeLabel(scope: RuleScope) {
   return "Les deux";
 }
 
+function FieldLabel({ children }: { children: string }) {
+  return (
+    <Text
+      style={{
+        color: arcane.colors.textMuted,
+        fontWeight: "800",
+      }}
+    >
+      {children}
+    </Text>
+  );
+}
+
+function SectionLabel({ children }: { children: string }) {
+  return (
+    <Text
+      style={{
+        color: arcane.colors.textSubtle,
+        fontSize: arcane.typography.tiny,
+        fontWeight: "900",
+        textTransform: "uppercase",
+        letterSpacing: 0.8,
+      }}
+    >
+      {children}
+    </Text>
+  );
+}
+
+function BoxInput({
+  value,
+  onChangeText,
+  placeholder,
+  keyboardType = "default",
+  editable = true,
+}: {
+  value: string;
+  onChangeText: (value: string) => void;
+  placeholder: string;
+  keyboardType?: "default" | "numeric" | "numbers-and-punctuation";
+  editable?: boolean;
+}) {
+  return (
+    <TextInput
+      value={value}
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+      placeholderTextColor={arcane.colors.textSubtle}
+      selectionColor={arcane.colors.accent}
+      keyboardType={keyboardType}
+      editable={editable}
+      style={{
+        minHeight: 48,
+        borderWidth: 1,
+        borderColor: arcane.colors.border,
+        borderRadius: arcane.radius.md,
+        paddingHorizontal: 12,
+        paddingVertical: 11,
+        backgroundColor: arcane.colors.surfaceAlt,
+        color: arcane.colors.text,
+        fontSize: 16,
+        fontWeight: "700",
+        opacity: editable ? 1 : 0.62,
+      }}
+    />
+  );
+}
+function ChoiceCard({
+  title,
+  description,
+  selected,
+  disabled,
+  onPress,
+}: {
+  title: string;
+  description?: string;
+  selected?: boolean;
+  disabled?: boolean;
+  onPress?: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled || !onPress}
+      style={({ pressed }) => ({
+        ...arcaneStyles.cardSoft,
+        gap: arcane.spacing.xs,
+        borderColor: selected ? arcane.colors.accent : arcane.colors.border,
+        backgroundColor: selected
+          ? arcane.colors.accentSoft
+          : arcane.colors.surfaceAlt,
+        opacity: disabled ? 0.62 : pressed ? 0.86 : 1,
+        transform: [{ scale: pressed ? 0.99 : 1 }],
+      })}
+    >
+      <Text
+        style={{
+          color: arcane.colors.text,
+          fontSize: 15,
+          fontWeight: selected ? "900" : "800",
+        }}
+      >
+        {title}
+      </Text>
+
+      {description ? (
+        <Text
+          style={{
+            color: arcane.colors.textMuted,
+            lineHeight: 19,
+          }}
+        >
+          {description}
+        </Text>
+      ) : null}
+    </Pressable>
+  );
+}
+
+function PillButton({
+  label,
+  onPress,
+  variant = "default",
+  disabled = false,
+}: {
+  label: string;
+  onPress: () => void;
+  variant?: "default" | "accent" | "danger";
+  disabled?: boolean;
+}) {
+  const borderColor =
+    variant === "accent"
+      ? arcane.colors.accent
+      : variant === "danger"
+        ? arcane.colors.failure
+        : arcane.colors.border;
+
+  const backgroundColor =
+    variant === "accent"
+      ? arcane.colors.accentSoft
+      : variant === "danger"
+        ? arcane.colors.failureSoft
+        : arcane.colors.surfaceAlt;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => ({
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        borderWidth: 1,
+        borderColor,
+        borderRadius: arcane.radius.pill,
+        backgroundColor,
+        opacity: disabled ? 0.48 : pressed ? 0.84 : 1,
+        transform: [{ scale: pressed && !disabled ? 0.97 : 1 }],
+      })}
+    >
+      <Text
+        style={{
+          color: arcane.colors.text,
+          fontWeight: "900",
+        }}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function SectionCard({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <View
+      style={{
+        ...arcaneStyles.cardSoft,
+        gap: arcane.spacing.sm,
+      }}
+    >
+      <Text
+        style={{
+          color: arcane.colors.text,
+          fontSize: 16,
+          fontWeight: "900",
+        }}
+      >
+        {title}
+      </Text>
+
+      {description ? (
+        <Text
+          style={{
+            color: arcane.colors.textMuted,
+            lineHeight: 19,
+          }}
+        >
+          {description}
+        </Text>
+      ) : null}
+
+      {children}
+    </View>
+  );
+}
+
 export function HumanRuleEditorModal({
   visible,
   editingRule,
@@ -82,11 +298,13 @@ export function HumanRuleEditorModal({
   onComputePreview,
   onClose,
   onSave,
-  onSetScope,
-  onSetSupportedSidesText,
 }: Props) {
   const lockedScope = getForcedScopeForFamily(form.family);
   const displayedScope = lockedScope ?? form.scope;
+
+  const isReadOnlySystemRule =
+    editingRule?.usage_kind === "system_template" ||
+    editingRule?.is_system === 1;
 
   return (
     <Modal
@@ -98,511 +316,435 @@ export function HumanRuleEditorModal({
       <View
         style={{
           flex: 1,
-          backgroundColor: "rgba(0,0,0,0.5)",
+          backgroundColor: "rgba(0,0,0,0.68)",
           justifyContent: "center",
-          padding: 16,
+          padding: arcane.spacing.md,
         }}
       >
         <View
           style={{
-            backgroundColor: "white",
-            borderRadius: 12,
-            padding: 16,
-            borderWidth: 1,
+            ...arcaneStyles.card,
             maxHeight: "92%",
+            gap: arcane.spacing.md,
+            borderColor: arcane.colors.accent,
           }}
         >
-          <Text style={{ fontSize: 18, fontWeight: "800" }}>
-            {editingRule ? "Modifier une règle" : "Créer une règle"}
-          </Text>
+          <View style={{ gap: arcane.spacing.xs }}>
+            <SectionLabel>Éditeur avancé</SectionLabel>
 
-          <ScrollView style={{ marginTop: 12 }}>
-            <Text style={{ fontWeight: "700" }}>Nom</Text>
-            <TextInput
-              value={form.name}
-              onChangeText={(value) => onUpdateForm("name", value)}
-              placeholder="Ex: Test d’attaque D20"
+            <Text style={arcaneStyles.sectionTitle}>
+              {isReadOnlySystemRule
+                ? "Consulter une règle système"
+                : editingRule
+                  ? "Modifier une règle"
+                  : "Créer une règle"}
+            </Text>
+
+            <Text style={arcaneStyles.muted}>
+              {isReadOnlySystemRule
+                ? "Cette règle système est protégée. Tu peux la consulter et la tester, mais pas la modifier."
+                : "Configure précisément une règle de lancer, ses dés compatibles, sa portée et sa prévisualisation."}
+            </Text>
+          </View>
+
+          {isReadOnlySystemRule ? (
+            <View
               style={{
-                marginTop: 8,
-                borderWidth: 1,
-                borderRadius: 10,
-                padding: 10,
+                ...arcaneStyles.cardSoft,
+                borderColor: arcane.colors.warning,
+                backgroundColor: arcane.colors.warningSoft,
               }}
-            />
-
-            <Text style={{ marginTop: 16, fontWeight: "700" }}>
-              Famille de règle
-            </Text>
-            <Text style={{ opacity: 0.7, marginTop: 4 }}>
-              Choisis d’abord le type de comportement que cette règle doit
-              avoir.
-            </Text>
-
-            {RULE_FAMILIES.map((family) => (
-              <Pressable
-                key={family.key}
-                onPress={() => onUpdateForm("family", family.key)}
+            >
+              <Text
                 style={{
-                  marginTop: 8,
-                  padding: 10,
-                  borderWidth: 1,
-                  borderRadius: 10,
-                  opacity: form.family === family.key ? 1 : 0.7,
+                  color: arcane.colors.text,
+                  fontWeight: "900",
                 }}
               >
-                <Text
-                  style={{
-                    fontWeight: form.family === family.key ? "700" : "400",
-                  }}
-                >
-                  {family.label}
-                </Text>
-                <Text style={{ opacity: 0.7, marginTop: 2 }}>
-                  {family.description}
-                </Text>
-              </Pressable>
-            ))}
+                Règle protégée
+              </Text>
 
-            <Text style={{ marginTop: 16, fontWeight: "700" }}>
-              Dés compatibles
-            </Text>
-            <Text style={{ opacity: 0.7, marginTop: 4 }}>
-              Indique les types de dés utilisables avec cette règle, séparés par
-              des virgules.
-            </Text>
-            <TextInput
-              value={form.supportedSidesText}
-              onChangeText={(value) =>
-                onUpdateForm("supportedSidesText", value)
-              }
-              placeholder="Ex: 6 ou 20, 100"
-              style={{
-                marginTop: 8,
-                borderWidth: 1,
-                borderRadius: 10,
-                padding: 10,
-              }}
-            />
+              <Text style={arcaneStyles.muted}>
+                Les règles système servent de modèles de base. Pour créer ta
+                propre variante, utilise la création guidée ou l’éditeur avancé.
+              </Text>
+            </View>
+          ) : null}
 
-            <Text style={{ marginTop: 16, fontWeight: "700" }}>Portée</Text>
-            <Text style={{ opacity: 0.7, marginTop: 4 }}>
-              Détermine si la règle s’applique à une entrée de dés, à un groupe
-              complet, ou aux deux.
-            </Text>
+          <ScrollView
+            contentContainerStyle={{
+              gap: arcane.spacing.md,
+              paddingBottom: arcane.spacing.sm,
+            }}
+            showsVerticalScrollIndicator
+            keyboardShouldPersistTaps="handled"
+          >
+            <SectionCard title="Identité">
+              <FieldLabel>Nom</FieldLabel>
+              <BoxInput
+                value={form.name}
+                onChangeText={(value) => onUpdateForm("name", value)}
+                placeholder="Ex: Test d’attaque D20"
+                editable={!isReadOnlySystemRule}
+              />
+            </SectionCard>
 
-            {isScopeLocked(form.family) ? (
-              <View
-                style={{
-                  marginTop: 8,
-                  padding: 10,
-                  borderWidth: 1,
-                  borderRadius: 10,
-                  opacity: 0.8,
-                }}
-              >
-                <Text style={{ fontWeight: "700" }}>
-                  {getScopeLabel(displayedScope)}
-                </Text>
-                <Text style={{ opacity: 0.7, marginTop: 4 }}>
-                  Cette famille impose automatiquement une portée de groupe.
-                </Text>
-              </View>
-            ) : (
-              <View style={{ marginTop: 8, gap: 8 }}>
-                {(["entry", "group", "both"] as RuleScope[]).map((scope) => (
-                  <Pressable
-                    key={scope}
-                    onPress={() => onUpdateForm("scope", scope)}
-                    style={{
-                      padding: 10,
-                      borderWidth: 1,
-                      borderRadius: 10,
-                      opacity: form.scope === scope ? 1 : 0.7,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontWeight: form.scope === scope ? "700" : "400",
-                      }}
-                    >
-                      {getScopeLabel(scope)}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            )}
+            <SectionCard
+              title="Famille de règle"
+              description="Choisis le type de comportement principal que cette règle doit avoir."
+            >
+              {RULE_FAMILIES.map((family) => (
+                <ChoiceCard
+                  key={family.key}
+                  title={family.label}
+                  description={family.description}
+                  selected={form.family === family.key}
+                  disabled={isReadOnlySystemRule}
+                  onPress={() => onUpdateForm("family", family.key)}
+                />
+              ))}
+            </SectionCard>
+
+            <SectionCard
+              title="Dés compatibles"
+              description="Indique les types de dés utilisables avec cette règle, séparés par des virgules."
+            >
+              <BoxInput
+                value={form.supportedSidesText}
+                onChangeText={(value) =>
+                  onUpdateForm("supportedSidesText", value)
+                }
+                placeholder="Ex: 6 ou 20, 100"
+                editable={!isReadOnlySystemRule}
+              />
+            </SectionCard>
+
+            <SectionCard
+              title="Portée"
+              description="Détermine si la règle s’applique à une entrée de dés, à un groupe complet, ou aux deux."
+            >
+              {isScopeLocked(form.family) ? (
+                <ChoiceCard
+                  title={getScopeLabel(displayedScope)}
+                  description="Cette famille impose automatiquement une portée de groupe."
+                  selected
+                  disabled
+                />
+              ) : (
+                <View style={{ gap: arcane.spacing.sm }}>
+                  {(["entry", "group", "both"] as RuleScope[]).map((scope) => (
+                    <ChoiceCard
+                      key={scope}
+                      title={getScopeLabel(scope)}
+                      selected={form.scope === scope}
+                      disabled={isReadOnlySystemRule}
+                      onPress={() => onUpdateForm("scope", scope)}
+                    />
+                  ))}
+                </View>
+              )}
+            </SectionCard>
 
             {(form.family === "single_check" ||
               form.family === "highest_of_pool") && (
-                <>
-                  <Text style={{ marginTop: 16, fontWeight: "700" }}>
-                    Comparaison
-                  </Text>
+              <SectionCard title="Test contre un seuil">
+                <FieldLabel>Comparaison</FieldLabel>
 
-                  <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
-                    <Pressable
-                      onPress={() => onUpdateForm("compare", "gte")}
-                      style={{
-                        padding: 10,
-                        borderWidth: 1,
-                        borderRadius: 10,
-                        opacity: form.compare === "gte" ? 1 : 0.7,
-                      }}
-                    >
-                      <Text>Seuil haut (≥)</Text>
-                    </Pressable>
-
-                    <Pressable
-                      onPress={() => onUpdateForm("compare", "lte")}
-                      style={{
-                        padding: 10,
-                        borderWidth: 1,
-                        borderRadius: 10,
-                        opacity: form.compare === "lte" ? 1 : 0.7,
-                      }}
-                    >
-                      <Text>Seuil bas (≤)</Text>
-                    </Pressable>
-                  </View>
-
-                  <Text style={{ marginTop: 12 }}>Seuil de réussite</Text>
-                  <TextInput
-                    value={form.successThreshold}
-                    onChangeText={(value) =>
-                      onUpdateForm("successThreshold", value)
-                    }
-                    placeholder="10"
-                    keyboardType="numeric"
-                    style={{
-                      marginTop: 8,
-                      borderWidth: 1,
-                      borderRadius: 10,
-                      padding: 10,
-                    }}
+                <View
+                  style={{
+                    flexDirection: "row",
+                    gap: arcane.spacing.sm,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <PillButton
+                    label="Seuil haut (≥)"
+                    onPress={() => onUpdateForm("compare", "gte")}
+                    variant={form.compare === "gte" ? "accent" : "default"}
+                    disabled={isReadOnlySystemRule}
                   />
 
-                  <Text style={{ marginTop: 12 }}>
-                    Faces de réussite critique
-                  </Text>
-                  <TextInput
-                    value={form.critSuccessFaces}
-                    onChangeText={(value) =>
-                      onUpdateForm("critSuccessFaces", value)
-                    }
-                    placeholder="20"
-                    style={{
-                      marginTop: 8,
-                      borderWidth: 1,
-                      borderRadius: 10,
-                      padding: 10,
-                    }}
+                  <PillButton
+                    label="Seuil bas (≤)"
+                    onPress={() => onUpdateForm("compare", "lte")}
+                    variant={form.compare === "lte" ? "accent" : "default"}
+                    disabled={isReadOnlySystemRule}
                   />
+                </View>
 
-                  <Text style={{ marginTop: 12 }}>Faces d’échec critique</Text>
-                  <TextInput
-                    value={form.critFailureFaces}
-                    onChangeText={(value) =>
-                      onUpdateForm("critFailureFaces", value)
-                    }
-                    placeholder="1"
-                    style={{
-                      marginTop: 8,
-                      borderWidth: 1,
-                      borderRadius: 10,
-                      padding: 10,
-                    }}
-                  />
-                </>
-              )}
+                <FieldLabel>Seuil de réussite</FieldLabel>
+                <BoxInput
+                  value={form.successThreshold}
+                  onChangeText={(value) =>
+                    onUpdateForm("successThreshold", value)
+                  }
+                  placeholder="10"
+                  keyboardType="numeric"
+                  editable={!isReadOnlySystemRule}
+                />
+
+                <FieldLabel>Faces de réussite critique</FieldLabel>
+                <BoxInput
+                  value={form.critSuccessFaces}
+                  onChangeText={(value) =>
+                    onUpdateForm("critSuccessFaces", value)
+                  }
+                  placeholder="20"
+                  editable={!isReadOnlySystemRule}
+                />
+
+                <FieldLabel>Faces d’échec critique</FieldLabel>
+                <BoxInput
+                  value={form.critFailureFaces}
+                  onChangeText={(value) =>
+                    onUpdateForm("critFailureFaces", value)
+                  }
+                  placeholder="1"
+                  editable={!isReadOnlySystemRule}
+                />
+              </SectionCard>
+            )}
 
             {form.family === "success_pool" && (
-              <>
-                <Text style={{ marginTop: 16, fontWeight: "700" }}>
-                  Pool de succès
-                </Text>
-
-                <Text style={{ marginTop: 12 }}>Réussite à partir de</Text>
-                <TextInput
+              <SectionCard title="Pool de succès">
+                <FieldLabel>Réussite à partir de</FieldLabel>
+                <BoxInput
                   value={form.successAtOrAbove}
                   onChangeText={(value) =>
                     onUpdateForm("successAtOrAbove", value)
                   }
                   placeholder="5"
                   keyboardType="numeric"
-                  style={{
-                    marginTop: 8,
-                    borderWidth: 1,
-                    borderRadius: 10,
-                    padding: 10,
-                  }}
+                  editable={!isReadOnlySystemRule}
                 />
 
-                <Text style={{ marginTop: 12 }}>Faces d’échec spécial</Text>
-                <TextInput
+                <FieldLabel>Faces d’échec spécial</FieldLabel>
+                <BoxInput
                   value={form.failFaces}
                   onChangeText={(value) => onUpdateForm("failFaces", value)}
                   placeholder="1"
-                  style={{
-                    marginTop: 8,
-                    borderWidth: 1,
-                    borderRadius: 10,
-                    padding: 10,
-                  }}
+                  editable={!isReadOnlySystemRule}
                 />
 
-                <Text style={{ marginTop: 12 }}>Règle de complication</Text>
+                <FieldLabel>Règle de complication</FieldLabel>
 
                 {[
                   {
                     key: "ones_gt_successes",
-                    label: "Complication si échecs spéciaux > réussites",
+                    label: "Si échecs spéciaux > réussites",
                   },
                   {
                     key: "ones_gte_successes",
-                    label: "Complication si échecs spéciaux ≥ réussites",
+                    label: "Si échecs spéciaux ≥ réussites",
                   },
                   {
                     key: "none",
                     label: "Aucune complication",
                   },
                 ].map((option) => (
-                  <Pressable
+                  <ChoiceCard
                     key={option.key}
+                    title={option.label}
+                    selected={form.glitchRule === option.key}
+                    disabled={isReadOnlySystemRule}
                     onPress={() =>
                       onUpdateForm(
                         "glitchRule",
                         option.key as RuleFormState["glitchRule"],
                       )
                     }
-                    style={{
-                      marginTop: 8,
-                      padding: 10,
-                      borderWidth: 1,
-                      borderRadius: 10,
-                      opacity: form.glitchRule === option.key ? 1 : 0.7,
-                    }}
-                  >
-                    <Text>{option.label}</Text>
-                  </Pressable>
+                  />
                 ))}
-              </>
+              </SectionCard>
             )}
 
             {(form.family === "banded_sum" ||
               form.family === "table_lookup") && (
-                <>
-                  <Text style={{ marginTop: 16, fontWeight: "700" }}>
-                    {form.family === "banded_sum" ? "Paliers" : "Intervalles"}
-                  </Text>
-                  <Text style={{ opacity: 0.7, marginTop: 4 }}>
-                    Définis les plages numériques et le résultat associé.
-                  </Text>
-
-                  {form.ranges.map((row, index) => (
-                    <View
-                      key={index}
-                      style={{
-                        marginTop: 10,
-                        padding: 10,
-                        borderWidth: 1,
-                        borderRadius: 10,
-                        gap: 8,
-                      }}
-                    >
-                      <TextInput
-                        value={row.min}
-                        onChangeText={(value) =>
-                          onUpdateRangeRow(index, "min", value)
-                        }
-                        placeholder="Min"
-                        keyboardType="numeric"
-                        style={{
-                          borderWidth: 1,
-                          borderRadius: 8,
-                          padding: 8,
-                        }}
-                      />
-
-                      <TextInput
-                        value={row.max}
-                        onChangeText={(value) =>
-                          onUpdateRangeRow(index, "max", value)
-                        }
-                        placeholder="Max"
-                        keyboardType="numeric"
-                        style={{
-                          borderWidth: 1,
-                          borderRadius: 8,
-                          padding: 8,
-                        }}
-                      />
-
-                      <TextInput
-                        value={row.label}
-                        onChangeText={(value) =>
-                          onUpdateRangeRow(index, "label", value)
-                        }
-                        placeholder="Label"
-                        style={{
-                          borderWidth: 1,
-                          borderRadius: 8,
-                          padding: 8,
-                        }}
-                      />
-
-                      <Pressable
-                        onPress={() => onRemoveRangeRow(index)}
-                        style={{
-                          padding: 8,
-                          borderWidth: 1,
-                          borderRadius: 8,
-                        }}
-                      >
-                        <Text>Supprimer cette ligne</Text>
-                      </Pressable>
-                    </View>
-                  ))}
-
-                  <Pressable
-                    onPress={onAddRangeRow}
+              <SectionCard
+                title={form.family === "banded_sum" ? "Paliers" : "Intervalles"}
+                description="Définis les plages numériques et le résultat associé."
+              >
+                {form.ranges.map((row, index) => (
+                  <View
+                    key={index}
                     style={{
-                      marginTop: 10,
-                      padding: 10,
-                      borderWidth: 1,
-                      borderRadius: 10,
+                      ...arcaneStyles.cardSoft,
+                      gap: arcane.spacing.sm,
                     }}
                   >
-                    <Text>Ajouter une ligne</Text>
-                  </Pressable>
-                </>
-              )}
+                    <Text
+                      style={{
+                        color: arcane.colors.text,
+                        fontWeight: "900",
+                      }}
+                    >
+                      Ligne {index + 1}
+                    </Text>
 
-            <Text style={{ marginTop: 18, fontWeight: "800" }}>
-              Prévisualisation
-            </Text>
-            <Text style={{ opacity: 0.7, marginTop: 4 }}>
-              Tu peux simuler un résultat pour vérifier que la règle se comporte
-              comme prévu.
-            </Text>
+                    <BoxInput
+                      value={row.min}
+                      onChangeText={(value) =>
+                        onUpdateRangeRow(index, "min", value)
+                      }
+                      placeholder="Min"
+                      keyboardType="numeric"
+                      editable={!isReadOnlySystemRule}
+                    />
 
-            <Text style={{ marginTop: 12 }}>Valeurs test</Text>
-            <TextInput
-              value={previewValues}
-              onChangeText={onChangePreviewValues}
-              placeholder="1, 4, 6"
-              style={{
-                marginTop: 8,
-                borderWidth: 1,
-                borderRadius: 10,
-                padding: 10,
-              }}
-            />
+                    <BoxInput
+                      value={row.max}
+                      onChangeText={(value) =>
+                        onUpdateRangeRow(index, "max", value)
+                      }
+                      placeholder="Max"
+                      keyboardType="numeric"
+                      editable={!isReadOnlySystemRule}
+                    />
 
-            <Text style={{ marginTop: 12 }}>Faces</Text>
-            <TextInput
-              value={previewSides}
-              onChangeText={onChangePreviewSides}
-              placeholder="6"
-              keyboardType="numeric"
-              style={{
-                marginTop: 8,
-                borderWidth: 1,
-                borderRadius: 10,
-                padding: 10,
-              }}
-            />
+                    <BoxInput
+                      value={row.label}
+                      onChangeText={(value) =>
+                        onUpdateRangeRow(index, "label", value)
+                      }
+                      placeholder="Label"
+                      editable={!isReadOnlySystemRule}
+                    />
 
-            <Text style={{ marginTop: 12 }}>Modificateur</Text>
-            <TextInput
-              value={previewModifier}
-              onChangeText={onChangePreviewModifier}
-              placeholder="0"
-              style={{
-                marginTop: 8,
-                borderWidth: 1,
-                borderRadius: 10,
-                padding: 10,
-              }}
-            />
+                    {!isReadOnlySystemRule ? (
+                      <PillButton
+                        label="Supprimer cette ligne"
+                        onPress={() => onRemoveRangeRow(index)}
+                        variant="danger"
+                      />
+                    ) : null}
+                  </View>
+                ))}
 
-            <Text style={{ marginTop: 12 }}>Signe</Text>
-            <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
-              <Pressable
-                onPress={() => onChangePreviewSign("1")}
-                style={{
-                  padding: 10,
-                  borderWidth: 1,
-                  borderRadius: 10,
-                  opacity: previewSign === "1" ? 1 : 0.7,
-                }}
-              >
-                <Text>+</Text>
-              </Pressable>
+                {!isReadOnlySystemRule ? (
+                  <PillButton
+                    label="Ajouter une ligne"
+                    onPress={onAddRangeRow}
+                    variant="accent"
+                  />
+                ) : null}
+              </SectionCard>
+            )}
 
-              <Pressable
-                onPress={() => onChangePreviewSign("-1")}
-                style={{
-                  padding: 10,
-                  borderWidth: 1,
-                  borderRadius: 10,
-                  opacity: previewSign === "-1" ? 1 : 0.7,
-                }}
-              >
-                <Text>-</Text>
-              </Pressable>
-            </View>
-
-            <Pressable
-              onPress={onComputePreview}
-              style={{
-                marginTop: 12,
-                padding: 10,
-                borderWidth: 1,
-                borderRadius: 10,
-              }}
+            <SectionCard
+              title="Prévisualisation"
+              description="Simule un résultat pour vérifier que la règle se comporte comme prévu."
             >
-              <Text style={{ fontWeight: "700" }}>Calculer un aperçu</Text>
-            </Pressable>
+              <FieldLabel>Valeurs test</FieldLabel>
+              <BoxInput
+                value={previewValues}
+                onChangeText={onChangePreviewValues}
+                placeholder="1, 4, 6"
+              />
 
-            {formError ? (
-              <Text style={{ marginTop: 10 }}>{formError}</Text>
-            ) : null}
+              <FieldLabel>Faces</FieldLabel>
+              <BoxInput
+                value={previewSides}
+                onChangeText={onChangePreviewSides}
+                placeholder="6"
+                keyboardType="numeric"
+              />
 
-            {previewResult ? (
+              <FieldLabel>Modificateur</FieldLabel>
+              <BoxInput
+                value={previewModifier}
+                onChangeText={onChangePreviewModifier}
+                placeholder="0"
+                keyboardType="numbers-and-punctuation"
+              />
+
+              <FieldLabel>Signe</FieldLabel>
               <View
                 style={{
-                  marginTop: 10,
-                  padding: 10,
-                  borderWidth: 1,
-                  borderRadius: 10,
+                  flexDirection: "row",
+                  gap: arcane.spacing.sm,
+                  flexWrap: "wrap",
                 }}
               >
-                <Text selectable>{previewResult}</Text>
+                <PillButton
+                  label="+"
+                  onPress={() => onChangePreviewSign("1")}
+                  variant={previewSign === "1" ? "accent" : "default"}
+                />
+
+                <PillButton
+                  label="−"
+                  onPress={() => onChangePreviewSign("-1")}
+                  variant={previewSign === "-1" ? "accent" : "default"}
+                />
               </View>
-            ) : null}
+
+              <PillButton
+                label="Calculer un aperçu"
+                onPress={onComputePreview}
+                variant="accent"
+              />
+
+              {formError ? (
+                <View
+                  style={{
+                    ...arcaneStyles.cardSoft,
+                    borderColor: arcane.colors.failure,
+                    backgroundColor: arcane.colors.failureSoft,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: arcane.colors.text,
+                      fontWeight: "800",
+                    }}
+                  >
+                    {formError}
+                  </Text>
+                </View>
+              ) : null}
+
+              {previewResult ? (
+                <View
+                  style={{
+                    ...arcaneStyles.cardSoft,
+                    backgroundColor: arcane.colors.surfaceAlt,
+                  }}
+                >
+                  <Text
+                    selectable
+                    style={{
+                      color: arcane.colors.text,
+                      fontFamily: "monospace",
+                      lineHeight: 20,
+                    }}
+                  >
+                    {previewResult}
+                  </Text>
+                </View>
+              ) : null}
+            </SectionCard>
           </ScrollView>
 
           <View
             style={{
               flexDirection: "row",
               justifyContent: "flex-end",
-              gap: 8,
-              marginTop: 12,
+              flexWrap: "wrap",
+              gap: arcane.spacing.sm,
             }}
           >
-            <Pressable
+            <PillButton
+              label={isReadOnlySystemRule ? "Fermer" : "Annuler"}
               onPress={onClose}
-              style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
-            >
-              <Text>Annuler</Text>
-            </Pressable>
+            />
 
-            <Pressable
-              onPress={onSave}
-              style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
-            >
-              <Text style={{ fontWeight: "700" }}>Sauvegarder</Text>
-            </Pressable>
+            {!isReadOnlySystemRule ? (
+              <PillButton
+                label="Sauvegarder"
+                onPress={onSave}
+                variant="accent"
+              />
+            ) : null}
           </View>
         </View>
       </View>

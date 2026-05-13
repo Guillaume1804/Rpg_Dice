@@ -1,10 +1,20 @@
 // dice-universal/features/rules/ruleWizard/CreateRuleWizardModal.tsx
 
-import { View, Text, Pressable, TextInput, ScrollView } from "react-native";
+import {
+  View,
+  Text,
+  Pressable,
+  TextInput,
+  ScrollView,
+  type KeyboardTypeOptions,
+} from "react-native";
 import type { RuleBehaviorKey } from "../../../core/rules/behaviorRegistry";
 import type { RuleWizardDraft, RuleWizardScope, RuleWizardStep } from "./types";
 
 import { RULE_BEHAVIORS } from "../../../core/rules/behaviorRegistry";
+
+import { arcane } from "../../../theme/arcaneTheme";
+import { arcaneStyles } from "../../../theme/arcaneStyles";
 
 type Props = {
   visible: boolean;
@@ -148,6 +158,440 @@ function formatPreviewResult(result: unknown): string {
   }
 }
 
+function WizardPillButton({
+  label,
+  onPress,
+  variant = "default",
+}: {
+  label: string;
+  onPress: () => void;
+  variant?: "default" | "accent";
+}) {
+  const isAccent = variant === "accent";
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        borderWidth: 1,
+        borderColor: isAccent ? arcane.colors.accent : arcane.colors.border,
+        borderRadius: arcane.radius.pill,
+        backgroundColor: isAccent
+          ? arcane.colors.accentSoft
+          : arcane.colors.surfaceAlt,
+        opacity: pressed ? 0.84 : 1,
+        transform: [{ scale: pressed ? 0.97 : 1 }],
+      })}
+    >
+      <Text
+        style={{
+          color: arcane.colors.text,
+          fontWeight: "900",
+        }}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function WizardStepDot({ active }: { active: boolean }) {
+  return (
+    <View
+      style={{
+        flex: 1,
+        height: 6,
+        borderWidth: 1,
+        borderColor: active ? arcane.colors.accent : arcane.colors.border,
+        borderRadius: arcane.radius.pill,
+        backgroundColor: active
+          ? arcane.colors.accentSoft
+          : arcane.colors.surfaceAlt,
+        opacity: active ? 1 : 0.55,
+      }}
+    />
+  );
+}
+
+function WizardFieldLabel({ children }: { children: string }) {
+  return (
+    <Text
+      style={{
+        color: arcane.colors.textMuted,
+        fontWeight: "800",
+      }}
+    >
+      {children}
+    </Text>
+  );
+}
+
+function WizardInput({
+  value,
+  onChangeText,
+  placeholder,
+  keyboardType = "default",
+  editable = true,
+}: {
+  value: string;
+  onChangeText: (value: string) => void;
+  placeholder: string;
+  keyboardType?: KeyboardTypeOptions;
+  editable?: boolean;
+}) {
+  return (
+    <TextInput
+      value={value}
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+      placeholderTextColor={arcane.colors.textSubtle}
+      selectionColor={arcane.colors.accent}
+      keyboardType={keyboardType}
+      editable={editable}
+      style={{
+        minHeight: 48,
+        borderWidth: 1,
+        borderColor: arcane.colors.border,
+        borderRadius: arcane.radius.md,
+        paddingHorizontal: 12,
+        paddingVertical: 11,
+        backgroundColor: arcane.colors.surfaceAlt,
+        color: arcane.colors.text,
+        fontSize: 16,
+        fontWeight: "700",
+        opacity: editable ? 1 : 0.62,
+      }}
+    />
+  );
+}
+
+function WizardSection({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <View
+      style={{
+        ...arcaneStyles.cardSoft,
+        gap: arcane.spacing.sm,
+      }}
+    >
+      <Text
+        style={{
+          color: arcane.colors.text,
+          fontSize: 16,
+          fontWeight: "900",
+        }}
+      >
+        {title}
+      </Text>
+
+      {description ? (
+        <Text
+          style={{
+            color: arcane.colors.textMuted,
+            lineHeight: 19,
+          }}
+        >
+          {description}
+        </Text>
+      ) : null}
+
+      {children}
+    </View>
+  );
+}
+
+function WizardChoiceCard({
+  title,
+  description,
+  selected,
+  onPress,
+}: {
+  title: string;
+  description?: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        ...arcaneStyles.cardSoft,
+        gap: arcane.spacing.xs,
+        borderColor: selected ? arcane.colors.accent : arcane.colors.border,
+        backgroundColor: selected
+          ? arcane.colors.accentSoft
+          : arcane.colors.surfaceAlt,
+        opacity: pressed ? 0.86 : 1,
+        transform: [{ scale: pressed ? 0.99 : 1 }],
+      })}
+    >
+      <Text
+        style={{
+          color: arcane.colors.text,
+          fontSize: 15,
+          fontWeight: selected ? "900" : "800",
+        }}
+      >
+        {title}
+      </Text>
+
+      {description ? (
+        <Text
+          style={{
+            color: arcane.colors.textMuted,
+            lineHeight: 19,
+          }}
+        >
+          {description}
+        </Text>
+      ) : null}
+
+      {selected ? (
+        <Text
+          style={{
+            color: arcane.colors.accent,
+            fontWeight: "900",
+            marginTop: 2,
+          }}
+        >
+          Sélectionné
+        </Text>
+      ) : null}
+    </Pressable>
+  );
+}
+
+function BehaviorChoiceCard({
+  title,
+  description,
+  selected,
+  onPress,
+}: {
+  title: string;
+  description: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        ...arcaneStyles.cardSoft,
+        gap: arcane.spacing.xs,
+        borderColor: selected ? arcane.colors.accent : arcane.colors.border,
+        backgroundColor: selected
+          ? arcane.colors.accentSoft
+          : arcane.colors.surfaceAlt,
+        opacity: pressed ? 0.86 : 1,
+        transform: [{ scale: pressed ? 0.99 : 1 }],
+      })}
+    >
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: arcane.spacing.sm,
+        }}
+      >
+        <View style={{ flex: 1, gap: 4 }}>
+          <Text
+            style={{
+              color: arcane.colors.text,
+              fontSize: 16,
+              fontWeight: selected ? "900" : "800",
+            }}
+          >
+            {title}
+          </Text>
+
+          <Text
+            style={{
+              color: arcane.colors.textMuted,
+              lineHeight: 19,
+            }}
+          >
+            {description}
+          </Text>
+        </View>
+
+        {selected ? (
+          <View
+            style={{
+              paddingVertical: 5,
+              paddingHorizontal: 9,
+              borderWidth: 1,
+              borderColor: arcane.colors.accent,
+              borderRadius: arcane.radius.pill,
+              backgroundColor: arcane.colors.accentSoft,
+            }}
+          >
+            <Text
+              style={{
+                color: arcane.colors.text,
+                fontSize: 12,
+                fontWeight: "900",
+              }}
+            >
+              Actif
+            </Text>
+          </View>
+        ) : null}
+      </View>
+    </Pressable>
+  );
+}
+
+function WizardInputGroup({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <View style={{ gap: arcane.spacing.sm }}>
+      <WizardFieldLabel>{label}</WizardFieldLabel>
+      {children}
+    </View>
+  );
+}
+
+function WizardChoicePill({
+  label,
+  selected,
+  onPress,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        borderWidth: 1,
+        borderColor: selected ? arcane.colors.accent : arcane.colors.border,
+        borderRadius: arcane.radius.pill,
+        backgroundColor: selected
+          ? arcane.colors.accentSoft
+          : arcane.colors.surfaceAlt,
+        opacity: pressed ? 0.84 : selected ? 1 : 0.78,
+        transform: [{ scale: pressed ? 0.97 : 1 }],
+      })}
+    >
+      <Text
+        style={{
+          color: arcane.colors.text,
+          fontWeight: selected ? "900" : "800",
+        }}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function WizardRangeCard({
+  index,
+  row,
+  onUpdateRangeRow,
+  onRemoveRangeRow,
+}: {
+  index: number;
+  row: RuleWizardDraft["ranges"][number];
+  onUpdateRangeRow: (
+    index: number,
+    key: "min" | "max" | "label",
+    value: string,
+  ) => void;
+  onRemoveRangeRow: (index: number) => void;
+}) {
+  return (
+    <View
+      style={{
+        ...arcaneStyles.cardSoft,
+        gap: arcane.spacing.sm,
+      }}
+    >
+      <Text
+        style={{
+          color: arcane.colors.text,
+          fontWeight: "900",
+        }}
+      >
+        Plage {index + 1}
+      </Text>
+
+      <View style={{ flexDirection: "row", gap: arcane.spacing.sm }}>
+        <View style={{ flex: 1 }}>
+          <WizardInputGroup label="Min">
+            <WizardInput
+              value={row.min}
+              onChangeText={(value) => onUpdateRangeRow(index, "min", value)}
+              placeholder="Min"
+              keyboardType="number-pad"
+            />
+          </WizardInputGroup>
+        </View>
+
+        <View style={{ flex: 1 }}>
+          <WizardInputGroup label="Max">
+            <WizardInput
+              value={row.max}
+              onChangeText={(value) => onUpdateRangeRow(index, "max", value)}
+              placeholder="Max"
+              keyboardType="number-pad"
+            />
+          </WizardInputGroup>
+        </View>
+      </View>
+
+      <WizardInputGroup label="Libellé">
+        <WizardInput
+          value={row.label}
+          onChangeText={(value) => onUpdateRangeRow(index, "label", value)}
+          placeholder="Ex: Réussite partielle"
+        />
+      </WizardInputGroup>
+
+      <Pressable
+        onPress={() => onRemoveRangeRow(index)}
+        style={({ pressed }) => ({
+          alignSelf: "flex-start",
+          paddingVertical: 10,
+          paddingHorizontal: 12,
+          borderWidth: 1,
+          borderColor: arcane.colors.failure,
+          borderRadius: arcane.radius.pill,
+          backgroundColor: arcane.colors.failureSoft,
+          opacity: pressed ? 0.84 : 1,
+        })}
+      >
+        <Text
+          style={{
+            color: arcane.colors.text,
+            fontWeight: "900",
+          }}
+        >
+          Supprimer cette plage
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
 export function CreateRuleWizardModal({
   visible,
   step,
@@ -214,544 +658,516 @@ export function CreateRuleWizardModal({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: "rgba(0,0,0,0.5)",
+        backgroundColor: "rgba(0,0,0,0.68)",
         justifyContent: "center",
-        padding: 20,
+        padding: arcane.spacing.md,
       }}
     >
       <View
         style={{
-          backgroundColor: "white",
-          borderRadius: 14,
-          padding: 16,
-          gap: 12,
+          ...arcaneStyles.card,
+          gap: arcane.spacing.md,
           maxHeight: "92%",
+          borderColor: arcane.colors.accent,
         }}
       >
-        <Text style={{ fontSize: 18, fontWeight: "800" }}>Créer une règle</Text>
+        <View style={{ gap: arcane.spacing.xs }}>
+          <Text
+            style={{
+              color: arcane.colors.textSubtle,
+              fontSize: arcane.typography.tiny,
+              fontWeight: "900",
+              textTransform: "uppercase",
+              letterSpacing: 0.8,
+            }}
+          >
+            Création guidée
+          </Text>
 
-        <Text style={{ opacity: 0.7 }}>
-          Étape {stepIndex + 1}/{totalSteps}
-        </Text>
+          <Text style={arcaneStyles.sectionTitle}>Créer une règle</Text>
 
-        {error ? <Text style={{ color: "#b00020" }}>{error}</Text> : null}
+          <Text style={arcaneStyles.muted}>
+            Étape {stepIndex + 1}/{totalSteps}
+          </Text>
 
-        <ScrollView contentContainerStyle={{ gap: 12 }}>
+          <View
+            style={{
+              flexDirection: "row",
+              gap: 6,
+              marginTop: arcane.spacing.xs,
+            }}
+          >
+            {Array.from({ length: totalSteps }).map((_, index) => (
+              <WizardStepDot key={index} active={index <= stepIndex} />
+            ))}
+          </View>
+        </View>
+
+        {error ? (
+          <View
+            style={{
+              ...arcaneStyles.cardSoft,
+              borderColor: arcane.colors.failure,
+              backgroundColor: arcane.colors.failureSoft,
+            }}
+          >
+            <Text
+              style={{
+                color: arcane.colors.text,
+                fontWeight: "800",
+              }}
+            >
+              {error}
+            </Text>
+          </View>
+        ) : null}
+
+        <ScrollView
+          contentContainerStyle={{
+            gap: arcane.spacing.md,
+            paddingBottom: arcane.spacing.sm,
+          }}
+          showsVerticalScrollIndicator
+          keyboardShouldPersistTaps="handled"
+        >
           {step === "name" ? (
-            <>
-              <Text style={{ fontWeight: "700" }}>Nom de la règle</Text>
-              <TextInput
+            <WizardSection
+              title="Nom de la règle"
+              description="Donne un nom clair à cette règle pour la retrouver facilement dans l’atelier."
+            >
+              <WizardFieldLabel>Nom</WizardFieldLabel>
+
+              <WizardInput
                 value={draft.name}
                 onChangeText={(value) => onUpdateDraft("name", value)}
                 placeholder="Ex: Test D20 difficulté 15"
-                style={{
-                  borderWidth: 1,
-                  borderRadius: 10,
-                  paddingHorizontal: 12,
-                  paddingVertical: 10,
-                  fontSize: 16,
-                }}
               />
-            </>
+            </WizardSection>
           ) : null}
 
           {step === "scope" ? (
-            <>
-              <Text style={{ fontWeight: "700" }}>
-                Cette règle s’applique à quoi ?
-              </Text>
-
+            <WizardSection
+              title="Portée de la règle"
+              description="Choisis si cette règle s’applique à une entrée de dés, à une action complète, ou aux deux."
+            >
               {scopeOptions.map((option) => (
-                <Pressable
+                <WizardChoiceCard
                   key={option.key}
+                  title={option.label}
+                  description={option.description}
+                  selected={draft.scope === option.key}
                   onPress={() => onSetScope(option.key as RuleWizardScope)}
-                  style={{
-                    padding: 12,
-                    borderWidth: 1,
-                    borderRadius: 10,
-                    opacity: draft.scope === option.key ? 1 : 0.7,
-                    gap: 4,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontWeight: draft.scope === option.key ? "800" : "600",
-                    }}
-                  >
-                    {option.label}
-                  </Text>
-                  <Text style={{ opacity: 0.7 }}>{option.description}</Text>
-                </Pressable>
+                />
               ))}
-            </>
+            </WizardSection>
           ) : null}
 
           {step === "dice" ? (
-            <>
-              <Text style={{ fontWeight: "700" }}>Dés compatibles</Text>
-              <Text style={{ opacity: 0.7 }}>
-                Écris une liste séparée par des virgules, ou “all” pour tous les
-                dés.
-              </Text>
+            <WizardSection
+              title="Dés compatibles"
+              description="Indique les types de dés utilisables avec cette règle. Tu peux écrire une liste séparée par des virgules, ou “all” pour tous les dés."
+            >
+              <WizardFieldLabel>Faces compatibles</WizardFieldLabel>
 
-              <TextInput
+              <WizardInput
                 value={draft.supportedSidesText}
                 editable={!selectedBehavior?.supportedSides}
                 onChangeText={(value) =>
                   onUpdateDraft("supportedSidesText", value)
                 }
                 placeholder="Ex: 20 ou 6,10,100 ou all"
-                style={{
-                  borderWidth: 1,
-                  borderRadius: 10,
-                  paddingHorizontal: 12,
-                  paddingVertical: 10,
-                  fontSize: 16,
-                }}
               />
+
               {selectedBehavior?.supportedSides ? (
-                <Text style={{ opacity: 0.6 }}>
+                <Text style={arcaneStyles.muted}>
                   Déterminé automatiquement par le comportement sélectionné.
                 </Text>
               ) : null}
-            </>
+            </WizardSection>
           ) : null}
 
           {step === "behavior" ? (
             <>
-              <Text style={{ fontWeight: "700" }}>Comportement</Text>
-
-              {RULE_BEHAVIORS.map((option) => (
-                <Pressable
-                  key={option.key}
-                  onPress={() => onSetBehaviorKey(option.key)}
-                  style={{
-                    padding: 12,
-                    borderWidth: 1,
-                    borderRadius: 10,
-                    opacity: draft.behaviorKey === option.key ? 1 : 0.7,
-                    gap: 4,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontWeight:
-                        draft.behaviorKey === option.key ? "800" : "600",
-                    }}
-                  >
-                    {option.label}
-                  </Text>
-                  <Text style={{ opacity: 0.7 }}>{option.description}</Text>
-                </Pressable>
-              ))}
+              <WizardSection
+                title="Comportement"
+                description="Choisis la logique principale de cette règle. Les paramètres précis apparaîtront ensuite selon le comportement sélectionné."
+              >
+                {RULE_BEHAVIORS.map((option) => (
+                  <BehaviorChoiceCard
+                    key={option.key}
+                    title={option.label}
+                    description={option.description}
+                    selected={draft.behaviorKey === option.key}
+                    onPress={() => onSetBehaviorKey(option.key)}
+                  />
+                ))}
+              </WizardSection>
 
               {selectedBehavior ? (
                 <>
                   {draft.behaviorKey === "custom_pipeline" ? (
                     <>
-                      <Text style={{ fontWeight: "800" }}>
-                        Pipeline personnalisé
-                      </Text>
-
-                      <TextInput
-                        value={draft.pipelineRerollFaces}
-                        onChangeText={(value) =>
-                          onUpdateDraft("pipelineRerollFaces", value)
-                        }
-                        placeholder="Relancer les faces, ex: 1 ou 1,2"
-                        style={{
-                          borderWidth: 1,
-                          borderRadius: 10,
-                          padding: 10,
-                        }}
-                      />
-
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          flexWrap: "wrap",
-                          gap: 8,
-                        }}
+                      <WizardSection
+                        title="Pipeline personnalisé"
+                        description="Combine plusieurs opérations : relances, explosions, dés gardés, comptage, seuils, critiques et complications."
                       >
-                        <Pressable
-                          onPress={() =>
-                            onUpdateDraft("pipelineRerollOnce", true)
-                          }
-                          style={{
-                            padding: 10,
-                            borderWidth: 1,
-                            borderRadius: 10,
-                            opacity: draft.pipelineRerollOnce ? 1 : 0.7,
-                          }}
-                        >
-                          <Text style={{ fontWeight: "700" }}>
-                            Une seule fois
-                          </Text>
-                        </Pressable>
+                        <Text style={arcaneStyles.muted}>
+                          Les champs laissés vides sont ignorés. Cela permet de
+                          composer une règle avancée sans devoir tout
+                          renseigner.
+                        </Text>
+                      </WizardSection>
 
-                        <Pressable
-                          onPress={() =>
-                            onUpdateDraft("pipelineRerollOnce", false)
-                          }
-                          style={{
-                            padding: 10,
-                            borderWidth: 1,
-                            borderRadius: 10,
-                            opacity: !draft.pipelineRerollOnce ? 1 : 0.7,
-                          }}
-                        >
-                          <Text style={{ fontWeight: "700" }}>
-                            Tant que possible
-                          </Text>
-                        </Pressable>
-                      </View>
-
-                      <TextInput
-                        value={draft.pipelineMaxRerollsPerDie}
-                        onChangeText={(value) =>
-                          onUpdateDraft("pipelineMaxRerollsPerDie", value)
-                        }
-                        placeholder="Max relances par dé, optionnel, ex: 2"
-                        keyboardType="number-pad"
-                        style={{
-                          borderWidth: 1,
-                          borderRadius: 10,
-                          padding: 10,
-                        }}
-                      />
-
-                      <TextInput
-                        value={draft.pipelineExplodeFaces}
-                        onChangeText={(value) =>
-                          onUpdateDraft("pipelineExplodeFaces", value)
-                        }
-                        placeholder="Explosion sur faces, ex: 6"
-                        style={{
-                          borderWidth: 1,
-                          borderRadius: 10,
-                          padding: 10,
-                        }}
-                      />
-
-                      <TextInput
-                        value={draft.pipelineMaxExplosionsPerDie}
-                        onChangeText={(value) =>
-                          onUpdateDraft("pipelineMaxExplosionsPerDie", value)
-                        }
-                        placeholder="Max explosions par dé, optionnel, ex: 3"
-                        keyboardType="number-pad"
-                        style={{
-                          borderWidth: 1,
-                          borderRadius: 10,
-                          padding: 10,
-                        }}
-                      />
-
-                      <TextInput
-                        value={draft.pipelineKeepHighest}
-                        onChangeText={(value) =>
-                          onUpdateDraft("pipelineKeepHighest", value)
-                        }
-                        placeholder="Garder les meilleurs dés, ex: 2"
-                        keyboardType="number-pad"
-                        style={{
-                          borderWidth: 1,
-                          borderRadius: 10,
-                          padding: 10,
-                        }}
-                      />
-
-                      <TextInput
-                        value={draft.pipelineKeepLowest}
-                        onChangeText={(value) =>
-                          onUpdateDraft("pipelineKeepLowest", value)
-                        }
-                        placeholder="Garder les plus faibles dés, ex: 2"
-                        keyboardType="number-pad"
-                        style={{
-                          borderWidth: 1,
-                          borderRadius: 10,
-                          padding: 10,
-                        }}
-                      />
-
-                      <TextInput
-                        value={draft.pipelineDropHighest}
-                        onChangeText={(value) =>
-                          onUpdateDraft("pipelineDropHighest", value)
-                        }
-                        placeholder="Retirer les meilleurs dés, ex: 1"
-                        keyboardType="number-pad"
-                        style={{
-                          borderWidth: 1,
-                          borderRadius: 10,
-                          padding: 10,
-                        }}
-                      />
-
-                      <TextInput
-                        value={draft.pipelineDropLowest}
-                        onChangeText={(value) =>
-                          onUpdateDraft("pipelineDropLowest", value)
-                        }
-                        placeholder="Retirer les plus faibles dés, ex: 1"
-                        keyboardType="number-pad"
-                        style={{
-                          borderWidth: 1,
-                          borderRadius: 10,
-                          padding: 10,
-                        }}
-                      />
-
-                      <TextInput
-                        value={draft.pipelineCountSuccessAtOrAbove}
-                        onChangeText={(value) =>
-                          onUpdateDraft("pipelineCountSuccessAtOrAbove", value)
-                        }
-                        placeholder="Compter les succès à partir de, ex: 5"
-                        keyboardType="number-pad"
-                        style={{
-                          borderWidth: 1,
-                          borderRadius: 10,
-                          padding: 10,
-                        }}
-                      />
-
-                      <TextInput
-                        value={draft.pipelineCountEqualFaces}
-                        onChangeText={(value) =>
-                          onUpdateDraft("pipelineCountEqualFaces", value)
-                        }
-                        placeholder="Compter les faces exactes, ex: 1 ou 6,10"
-                        style={{
-                          borderWidth: 1,
-                          borderRadius: 10,
-                          padding: 10,
-                        }}
-                      />
-
-                      <TextInput
-                        value={draft.pipelineCountRangeMin}
-                        onChangeText={(value) =>
-                          onUpdateDraft("pipelineCountRangeMin", value)
-                        }
-                        placeholder="Plage à compter — minimum, ex: 2"
-                        keyboardType="number-pad"
-                        style={{
-                          borderWidth: 1,
-                          borderRadius: 10,
-                          padding: 10,
-                        }}
-                      />
-
-                      <TextInput
-                        value={draft.pipelineCountRangeMax}
-                        onChangeText={(value) =>
-                          onUpdateDraft("pipelineCountRangeMax", value)
-                        }
-                        placeholder="Plage à compter — maximum, ex: 5"
-                        keyboardType="number-pad"
-                        style={{
-                          borderWidth: 1,
-                          borderRadius: 10,
-                          padding: 10,
-                        }}
-                      />
-
-                      <TextInput
-                        value={draft.pipelineSuccessThreshold}
-                        onChangeText={(value) =>
-                          onUpdateDraft("pipelineSuccessThreshold", value)
-                        }
-                        placeholder="Seuil final optionnel, ex: 3"
-                        keyboardType="number-pad"
-                        style={{
-                          borderWidth: 1,
-                          borderRadius: 10,
-                          padding: 10,
-                        }}
-                      />
-
-                      <Text style={{ fontWeight: "700" }}>
-                        Comparaison du seuil final
-                      </Text>
-
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          flexWrap: "wrap",
-                          gap: 8,
-                        }}
-                      >
-                        <Pressable
-                          onPress={() =>
-                            onUpdateDraft("pipelineCompare", "gte")
-                          }
-                          style={{
-                            padding: 10,
-                            borderWidth: 1,
-                            borderRadius: 10,
-                            opacity: draft.pipelineCompare === "gte" ? 1 : 0.7,
-                          }}
-                        >
-                          <Text style={{ fontWeight: "700" }}>≥ seuil</Text>
-                        </Pressable>
-
-                        <Pressable
-                          onPress={() =>
-                            onUpdateDraft("pipelineCompare", "lte")
-                          }
-                          style={{
-                            padding: 10,
-                            borderWidth: 1,
-                            borderRadius: 10,
-                            opacity: draft.pipelineCompare === "lte" ? 1 : 0.7,
-                          }}
-                        >
-                          <Text style={{ fontWeight: "700" }}>≤ seuil</Text>
-                        </Pressable>
-                      </View>
-
-                      <TextInput
-                        value={draft.pipelineCritSuccessFaces}
-                        onChangeText={(value) =>
-                          onUpdateDraft("pipelineCritSuccessFaces", value)
-                        }
-                        placeholder="Faces de réussite critique, ex: 6 ou 20"
-                        style={{
-                          borderWidth: 1,
-                          borderRadius: 10,
-                          padding: 10,
-                        }}
-                      />
-
-                      <TextInput
-                        value={draft.pipelineCritFailureFaces}
-                        onChangeText={(value) =>
-                          onUpdateDraft("pipelineCritFailureFaces", value)
-                        }
-                        placeholder="Faces d’échec critique, ex: 1"
-                        style={{
-                          borderWidth: 1,
-                          borderRadius: 10,
-                          padding: 10,
-                        }}
-                      />
-
-                      <TextInput
-                        value={draft.pipelineComplicationFaces}
-                        onChangeText={(value) =>
-                          onUpdateDraft("pipelineComplicationFaces", value)
-                        }
-                        placeholder="Faces de complication, ex: 1 ou 1,2"
-                        style={{
-                          borderWidth: 1,
-                          borderRadius: 10,
-                          padding: 10,
-                        }}
-                      />
-
-                      <Text style={{ fontWeight: "700" }}>
-                        Règle de complication
-                      </Text>
-
-                      <View style={{ gap: 8 }}>
-                        {[
-                          { key: "none", label: "Aucune complication" },
-                          {
-                            key: "any",
-                            label: "Si au moins une face ciblée apparaît",
-                          },
-                          {
-                            key: "gt_successes",
-                            label: "Si complications > succès",
-                          },
-                          {
-                            key: "gte_successes",
-                            label: "Si complications ≥ succès",
-                          },
-                          {
-                            key: "zero_successes",
-                            label: "Si aucune réussite",
-                          },
-                        ].map((option) => (
-                          <Pressable
-                            key={option.key}
-                            onPress={() =>
-                              onUpdateDraft(
-                                "pipelineComplicationRule",
-                                option.key as RuleWizardDraft["pipelineComplicationRule"],
-                              )
+                      <WizardSection title="Relances">
+                        <WizardInputGroup label="Relancer les faces">
+                          <WizardInput
+                            value={draft.pipelineRerollFaces}
+                            onChangeText={(value) =>
+                              onUpdateDraft("pipelineRerollFaces", value)
                             }
+                            placeholder="Ex: 1 ou 1,2"
+                          />
+                        </WizardInputGroup>
+
+                        <WizardInputGroup label="Mode de relance">
+                          <View
                             style={{
-                              padding: 10,
-                              borderWidth: 1,
-                              borderRadius: 10,
-                              opacity:
-                                draft.pipelineComplicationRule === option.key
-                                  ? 1
-                                  : 0.7,
+                              flexDirection: "row",
+                              flexWrap: "wrap",
+                              gap: 8,
                             }}
                           >
-                            <Text style={{ fontWeight: "700" }}>
-                              {option.label}
-                            </Text>
-                          </Pressable>
-                        ))}
-                      </View>
+                            <WizardChoicePill
+                              label="Une seule fois"
+                              selected={draft.pipelineRerollOnce}
+                              onPress={() =>
+                                onUpdateDraft("pipelineRerollOnce", true)
+                              }
+                            />
 
-                      <Text style={{ fontWeight: "700" }}>Sortie finale</Text>
+                            <WizardChoicePill
+                              label="Tant que possible"
+                              selected={!draft.pipelineRerollOnce}
+                              onPress={() =>
+                                onUpdateDraft("pipelineRerollOnce", false)
+                              }
+                            />
+                          </View>
+                        </WizardInputGroup>
 
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          flexWrap: "wrap",
-                          gap: 8,
-                        }}
-                      >
-                        {[
-                          { key: "sum", label: "Somme" },
-                          { key: "values", label: "Valeurs" },
-                          { key: "successes", label: "Succès" },
-                          { key: "count_equal", label: "Faces exactes" },
-                          { key: "count_range", label: "Plage" },
-                          { key: "first_value", label: "Première valeur" },
-                        ].map((option) => (
-                          <Pressable
-                            key={option.key}
-                            onPress={() =>
+                        <WizardInputGroup label="Max relances par dé">
+                          <WizardInput
+                            value={draft.pipelineMaxRerollsPerDie}
+                            onChangeText={(value) =>
+                              onUpdateDraft("pipelineMaxRerollsPerDie", value)
+                            }
+                            placeholder="Optionnel, ex: 2"
+                            keyboardType="number-pad"
+                          />
+                        </WizardInputGroup>
+                      </WizardSection>
+
+                      <WizardSection title="Explosions">
+                        <WizardInputGroup label="Explosion sur les faces">
+                          <WizardInput
+                            value={draft.pipelineExplodeFaces}
+                            onChangeText={(value) =>
+                              onUpdateDraft("pipelineExplodeFaces", value)
+                            }
+                            placeholder="Ex: 6 ou 10"
+                          />
+                        </WizardInputGroup>
+
+                        <WizardInputGroup label="Max explosions par dé">
+                          <WizardInput
+                            value={draft.pipelineMaxExplosionsPerDie}
+                            onChangeText={(value) =>
                               onUpdateDraft(
-                                "pipelineOutput",
-                                option.key as RuleWizardDraft["pipelineOutput"],
+                                "pipelineMaxExplosionsPerDie",
+                                value,
                               )
                             }
+                            placeholder="Optionnel, ex: 3"
+                            keyboardType="number-pad"
+                          />
+                        </WizardInputGroup>
+                      </WizardSection>
+
+                      <WizardSection
+                        title="Garder / retirer"
+                        description="Contrôle les dés conservés ou exclus avant la sortie finale."
+                      >
+                        <WizardInputGroup label="Garder les meilleurs dés">
+                          <WizardInput
+                            value={draft.pipelineKeepHighest}
+                            onChangeText={(value) =>
+                              onUpdateDraft("pipelineKeepHighest", value)
+                            }
+                            placeholder="Ex: 2"
+                            keyboardType="number-pad"
+                          />
+                        </WizardInputGroup>
+
+                        <WizardInputGroup label="Garder les plus faibles dés">
+                          <WizardInput
+                            value={draft.pipelineKeepLowest}
+                            onChangeText={(value) =>
+                              onUpdateDraft("pipelineKeepLowest", value)
+                            }
+                            placeholder="Ex: 2"
+                            keyboardType="number-pad"
+                          />
+                        </WizardInputGroup>
+
+                        <WizardInputGroup label="Retirer les meilleurs dés">
+                          <WizardInput
+                            value={draft.pipelineDropHighest}
+                            onChangeText={(value) =>
+                              onUpdateDraft("pipelineDropHighest", value)
+                            }
+                            placeholder="Ex: 1"
+                            keyboardType="number-pad"
+                          />
+                        </WizardInputGroup>
+
+                        <WizardInputGroup label="Retirer les plus faibles dés">
+                          <WizardInput
+                            value={draft.pipelineDropLowest}
+                            onChangeText={(value) =>
+                              onUpdateDraft("pipelineDropLowest", value)
+                            }
+                            placeholder="Ex: 1"
+                            keyboardType="number-pad"
+                          />
+                        </WizardInputGroup>
+                      </WizardSection>
+
+                      <WizardSection
+                        title="Comptage"
+                        description="Transforme les dés en succès, faces exactes ou résultats dans une plage."
+                      >
+                        <WizardInputGroup label="Compter les succès à partir de">
+                          <WizardInput
+                            value={draft.pipelineCountSuccessAtOrAbove}
+                            onChangeText={(value) =>
+                              onUpdateDraft(
+                                "pipelineCountSuccessAtOrAbove",
+                                value,
+                              )
+                            }
+                            placeholder="Ex: 5"
+                            keyboardType="number-pad"
+                          />
+                        </WizardInputGroup>
+
+                        <WizardInputGroup label="Compter les faces exactes">
+                          <WizardInput
+                            value={draft.pipelineCountEqualFaces}
+                            onChangeText={(value) =>
+                              onUpdateDraft("pipelineCountEqualFaces", value)
+                            }
+                            placeholder="Ex: 1 ou 6,10"
+                          />
+                        </WizardInputGroup>
+
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            gap: arcane.spacing.sm,
+                          }}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <WizardInputGroup label="Plage min">
+                              <WizardInput
+                                value={draft.pipelineCountRangeMin}
+                                onChangeText={(value) =>
+                                  onUpdateDraft("pipelineCountRangeMin", value)
+                                }
+                                placeholder="Ex: 2"
+                                keyboardType="number-pad"
+                              />
+                            </WizardInputGroup>
+                          </View>
+
+                          <View style={{ flex: 1 }}>
+                            <WizardInputGroup label="Plage max">
+                              <WizardInput
+                                value={draft.pipelineCountRangeMax}
+                                onChangeText={(value) =>
+                                  onUpdateDraft("pipelineCountRangeMax", value)
+                                }
+                                placeholder="Ex: 5"
+                                keyboardType="number-pad"
+                              />
+                            </WizardInputGroup>
+                          </View>
+                        </View>
+                      </WizardSection>
+
+                      <WizardSection
+                        title="Seuil final"
+                        description="Optionnel : compare la sortie finale à une difficulté."
+                      >
+                        <WizardInputGroup label="Seuil final">
+                          <WizardInput
+                            value={draft.pipelineSuccessThreshold}
+                            onChangeText={(value) =>
+                              onUpdateDraft("pipelineSuccessThreshold", value)
+                            }
+                            placeholder="Optionnel, ex: 3"
+                            keyboardType="number-pad"
+                          />
+                        </WizardInputGroup>
+
+                        <WizardInputGroup label="Comparaison">
+                          <View
                             style={{
-                              padding: 10,
-                              borderWidth: 1,
-                              borderRadius: 10,
-                              opacity:
-                                draft.pipelineOutput === option.key ? 1 : 0.7,
+                              flexDirection: "row",
+                              flexWrap: "wrap",
+                              gap: 8,
                             }}
                           >
-                            <Text style={{ fontWeight: "700" }}>
-                              {option.label}
-                            </Text>
-                          </Pressable>
-                        ))}
-                      </View>
+                            <WizardChoicePill
+                              label="≥ seuil"
+                              selected={draft.pipelineCompare === "gte"}
+                              onPress={() =>
+                                onUpdateDraft("pipelineCompare", "gte")
+                              }
+                            />
+
+                            <WizardChoicePill
+                              label="≤ seuil"
+                              selected={draft.pipelineCompare === "lte"}
+                              onPress={() =>
+                                onUpdateDraft("pipelineCompare", "lte")
+                              }
+                            />
+                          </View>
+                        </WizardInputGroup>
+                      </WizardSection>
+
+                      <WizardSection
+                        title="Critiques et complications"
+                        description="Optionnel : ajoute des signaux spéciaux au résultat."
+                      >
+                        <WizardInputGroup label="Faces de réussite critique">
+                          <WizardInput
+                            value={draft.pipelineCritSuccessFaces}
+                            onChangeText={(value) =>
+                              onUpdateDraft("pipelineCritSuccessFaces", value)
+                            }
+                            placeholder="Ex: 6 ou 20"
+                          />
+                        </WizardInputGroup>
+
+                        <WizardInputGroup label="Faces d’échec critique">
+                          <WizardInput
+                            value={draft.pipelineCritFailureFaces}
+                            onChangeText={(value) =>
+                              onUpdateDraft("pipelineCritFailureFaces", value)
+                            }
+                            placeholder="Ex: 1"
+                          />
+                        </WizardInputGroup>
+
+                        <WizardInputGroup label="Faces de complication">
+                          <WizardInput
+                            value={draft.pipelineComplicationFaces}
+                            onChangeText={(value) =>
+                              onUpdateDraft("pipelineComplicationFaces", value)
+                            }
+                            placeholder="Ex: 1 ou 1,2"
+                          />
+                        </WizardInputGroup>
+
+                        <WizardInputGroup label="Règle de complication">
+                          <View style={{ gap: arcane.spacing.sm }}>
+                            {[
+                              { key: "none", label: "Aucune complication" },
+                              {
+                                key: "any",
+                                label: "Si au moins une face ciblée apparaît",
+                              },
+                              {
+                                key: "gt_successes",
+                                label: "Si complications > succès",
+                              },
+                              {
+                                key: "gte_successes",
+                                label: "Si complications ≥ succès",
+                              },
+                              {
+                                key: "zero_successes",
+                                label: "Si aucune réussite",
+                              },
+                            ].map((option) => (
+                              <WizardChoiceCard
+                                key={option.key}
+                                title={option.label}
+                                selected={
+                                  draft.pipelineComplicationRule === option.key
+                                }
+                                onPress={() =>
+                                  onUpdateDraft(
+                                    "pipelineComplicationRule",
+                                    option.key as RuleWizardDraft["pipelineComplicationRule"],
+                                  )
+                                }
+                              />
+                            ))}
+                          </View>
+                        </WizardInputGroup>
+                      </WizardSection>
+
+                      <WizardSection
+                        title="Sortie finale"
+                        description="Choisis ce que la règle renvoie après toutes les opérations."
+                      >
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            flexWrap: "wrap",
+                            gap: 8,
+                          }}
+                        >
+                          {[
+                            { key: "sum", label: "Somme" },
+                            { key: "values", label: "Valeurs" },
+                            { key: "successes", label: "Succès" },
+                            { key: "count_equal", label: "Faces exactes" },
+                            { key: "count_range", label: "Plage" },
+                            { key: "first_value", label: "Première valeur" },
+                          ].map((option) => (
+                            <WizardChoicePill
+                              key={option.key}
+                              label={option.label}
+                              selected={draft.pipelineOutput === option.key}
+                              onPress={() =>
+                                onUpdateDraft(
+                                  "pipelineOutput",
+                                  option.key as RuleWizardDraft["pipelineOutput"],
+                                )
+                              }
+                            />
+                          ))}
+                        </View>
+                      </WizardSection>
                     </>
                   ) : null}
 
-                  {draft.behaviorKey !== "custom_pipeline"
-                    ? selectedBehavior.fields.map((field) => {
+                  {draft.behaviorKey !== "custom_pipeline" ? (
+                    <WizardSection
+                      title="Paramètres"
+                      description="Renseigne les valeurs nécessaires pour ce comportement."
+                    >
+                      {selectedBehavior.fields.map((field) => {
                         if (field.type === "text" || field.type === "number") {
                           return (
-                            <View key={field.key} style={{ gap: 6 }}>
-                              <Text style={{ fontWeight: "700" }}>
-                                {field.label}
-                              </Text>
-
-                              <TextInput
+                            <WizardInputGroup
+                              key={field.key}
+                              label={field.label}
+                            >
+                              <WizardInput
                                 value={String(
                                   draft[field.key as keyof RuleWizardDraft] ??
                                     "",
@@ -762,30 +1178,23 @@ export function CreateRuleWizardModal({
                                     value as RuleWizardDraft[keyof RuleWizardDraft],
                                   )
                                 }
-                                placeholder={field.placeholder}
+                                placeholder={field.placeholder ?? ""}
                                 keyboardType={
                                   field.type === "number"
                                     ? "number-pad"
                                     : "default"
                                 }
-                                style={{
-                                  borderWidth: 1,
-                                  borderRadius: 10,
-                                  paddingHorizontal: 12,
-                                  paddingVertical: 10,
-                                }}
                               />
-                            </View>
+                            </WizardInputGroup>
                           );
                         }
 
                         if (field.type === "select") {
                           return (
-                            <View key={field.key} style={{ gap: 6 }}>
-                              <Text style={{ fontWeight: "700" }}>
-                                {field.label}
-                              </Text>
-
+                            <WizardInputGroup
+                              key={field.key}
+                              label={field.label}
+                            >
                               <View
                                 style={{
                                   flexDirection: "row",
@@ -793,294 +1202,200 @@ export function CreateRuleWizardModal({
                                   gap: 8,
                                 }}
                               >
-                                {field.options.map((option) => (
-                                  <Pressable
-                                    key={option.value}
-                                    onPress={() =>
-                                      onUpdateDraft(
-                                        field.key as keyof RuleWizardDraft,
-                                        option.value as RuleWizardDraft[keyof RuleWizardDraft],
-                                      )
-                                    }
-                                    style={{
-                                      padding: 10,
-                                      borderWidth: 1,
-                                      borderRadius: 10,
-                                      opacity:
-                                        draft[
-                                          field.key as keyof RuleWizardDraft
-                                        ] === option.value
-                                          ? 1
-                                          : 0.7,
-                                    }}
-                                  >
-                                    <Text
-                                      style={{
-                                        fontWeight:
-                                          draft[
-                                            field.key as keyof RuleWizardDraft
-                                          ] === option.value
-                                            ? "800"
-                                            : "500",
-                                      }}
-                                    >
-                                      {option.label}
-                                    </Text>
-                                  </Pressable>
-                                ))}
+                                {field.options.map((option) => {
+                                  const selected =
+                                    draft[
+                                      field.key as keyof RuleWizardDraft
+                                    ] === option.value;
+
+                                  return (
+                                    <WizardChoicePill
+                                      key={option.value}
+                                      label={option.label}
+                                      selected={selected}
+                                      onPress={() =>
+                                        onUpdateDraft(
+                                          field.key as keyof RuleWizardDraft,
+                                          option.value as RuleWizardDraft[keyof RuleWizardDraft],
+                                        )
+                                      }
+                                    />
+                                  );
+                                })}
                               </View>
-                            </View>
+                            </WizardInputGroup>
                           );
                         }
 
                         if (field.type === "ranges") {
                           return (
-                            <View key={field.key} style={{ gap: 8 }}>
-                              <Text style={{ fontWeight: "700" }}>
-                                {field.label}
-                              </Text>
-
-                              {draft.ranges.map((row, index) => (
-                                <View
-                                  key={`range-${index}`}
-                                  style={{
-                                    borderWidth: 1,
-                                    borderRadius: 10,
-                                    padding: 10,
-                                    gap: 8,
-                                  }}
-                                >
-                                  <Text style={{ fontWeight: "700" }}>
-                                    Plage {index + 1}
-                                  </Text>
-
-                                  <View
-                                    style={{ flexDirection: "row", gap: 8 }}
-                                  >
-                                    <TextInput
-                                      value={row.min}
-                                      onChangeText={(value) =>
-                                        onUpdateRangeRow(index, "min", value)
-                                      }
-                                      placeholder="Min"
-                                      keyboardType="number-pad"
-                                      style={{
-                                        flex: 1,
-                                        borderWidth: 1,
-                                        borderRadius: 10,
-                                        paddingHorizontal: 10,
-                                        paddingVertical: 8,
-                                      }}
-                                    />
-
-                                    <TextInput
-                                      value={row.max}
-                                      onChangeText={(value) =>
-                                        onUpdateRangeRow(index, "max", value)
-                                      }
-                                      placeholder="Max"
-                                      keyboardType="number-pad"
-                                      style={{
-                                        flex: 1,
-                                        borderWidth: 1,
-                                        borderRadius: 10,
-                                        paddingHorizontal: 10,
-                                        paddingVertical: 8,
-                                      }}
-                                    />
-                                  </View>
-
-                                  <TextInput
-                                    value={row.label}
-                                    onChangeText={(value) =>
-                                      onUpdateRangeRow(index, "label", value)
-                                    }
-                                    placeholder="Label"
-                                    style={{
-                                      borderWidth: 1,
-                                      borderRadius: 10,
-                                      paddingHorizontal: 10,
-                                      paddingVertical: 8,
-                                    }}
+                            <WizardInputGroup
+                              key={field.key}
+                              label={field.label}
+                            >
+                              <View style={{ gap: arcane.spacing.sm }}>
+                                {draft.ranges.map((row, index) => (
+                                  <WizardRangeCard
+                                    key={`range-${index}`}
+                                    index={index}
+                                    row={row}
+                                    onUpdateRangeRow={onUpdateRangeRow}
+                                    onRemoveRangeRow={onRemoveRangeRow}
                                   />
+                                ))}
 
-                                  <Pressable
-                                    onPress={() => onRemoveRangeRow(index)}
-                                  >
-                                    <Text style={{ opacity: 0.7 }}>
-                                      Supprimer cette plage
-                                    </Text>
-                                  </Pressable>
-                                </View>
-                              ))}
-
-                              <Pressable
-                                onPress={onAddRangeRow}
-                                style={{
-                                  padding: 10,
-                                  borderWidth: 1,
-                                  borderRadius: 10,
-                                  alignItems: "center",
-                                }}
-                              >
-                                <Text style={{ fontWeight: "700" }}>
-                                  + Ajouter une plage
-                                </Text>
-                              </Pressable>
-                            </View>
+                                <WizardPillButton
+                                  label="+ Ajouter une plage"
+                                  onPress={onAddRangeRow}
+                                  variant="accent"
+                                />
+                              </View>
+                            </WizardInputGroup>
                           );
                         }
 
                         return null;
-                      })
-                    : null}
+                      })}
+                    </WizardSection>
+                  ) : null}
                 </>
               ) : null}
             </>
           ) : null}
 
           {step === "summary" ? (
-            <>
-              <Text style={{ fontWeight: "700" }}>Résumé</Text>
-              <Text>Nom : {draft.name}</Text>
-              <Text>Portée : {draft.scope}</Text>
-              <Text>Dés : {draft.supportedSidesText}</Text>
-              <Text>Comportement : {draft.behaviorKey ?? "—"}</Text>
-            </>
+            <WizardSection
+              title="Résumé"
+              description="Vérifie les informations avant de créer la règle."
+            >
+              <View style={{ gap: arcane.spacing.sm }}>
+                <Text style={{ color: arcane.colors.text, fontWeight: "900" }}>
+                  Nom : {draft.name || "—"}
+                </Text>
+
+                <Text
+                  style={{ color: arcane.colors.textMuted, fontWeight: "700" }}
+                >
+                  Portée : {draft.scope}
+                </Text>
+
+                <Text
+                  style={{ color: arcane.colors.textMuted, fontWeight: "700" }}
+                >
+                  Dés : {draft.supportedSidesText || "—"}
+                </Text>
+
+                <Text
+                  style={{ color: arcane.colors.textMuted, fontWeight: "700" }}
+                >
+                  Comportement : {draft.behaviorKey ?? "—"}
+                </Text>
+              </View>
+            </WizardSection>
           ) : null}
 
-          <View
-            style={{
-              borderWidth: 1,
-              borderRadius: 10,
-              padding: 12,
-              gap: 8,
-            }}
+          <WizardSection
+            title="Test rapide"
+            description="Simule quelques valeurs pour vérifier que la règle produit le résultat attendu."
           >
-            <Text style={{ fontWeight: "800" }}>Test rapide</Text>
-
-            <TextInput
+            <WizardFieldLabel>Valeurs</WizardFieldLabel>
+            <WizardInput
               value={previewValuesText}
               onChangeText={onChangePreviewValuesText}
-              placeholder="Valeurs, ex: 12 ou 5,6,2"
-              style={{
-                borderWidth: 1,
-                borderRadius: 10,
-                paddingHorizontal: 10,
-                paddingVertical: 8,
-              }}
+              placeholder="Ex: 12 ou 5,6,2"
             />
 
-            <TextInput
+            <WizardFieldLabel>Faces du dé</WizardFieldLabel>
+            <WizardInput
               value={previewSidesText}
               onChangeText={onChangePreviewSidesText}
-              placeholder="Faces du dé, ex: 20"
+              placeholder="Ex: 20"
               keyboardType="number-pad"
-              style={{
-                borderWidth: 1,
-                borderRadius: 10,
-                paddingHorizontal: 10,
-                paddingVertical: 8,
-              }}
             />
 
-            <TextInput
+            <WizardFieldLabel>Modificateur</WizardFieldLabel>
+            <WizardInput
               value={previewModifierText}
               onChangeText={onChangePreviewModifierText}
-              placeholder="Modificateur"
+              placeholder="Ex: 0"
               keyboardType="numbers-and-punctuation"
-              style={{
-                borderWidth: 1,
-                borderRadius: 10,
-                paddingHorizontal: 10,
-                paddingVertical: 8,
-              }}
             />
 
-            <View style={{ flexDirection: "row", gap: 8 }}>
-              {[
-                { key: "1", label: "Positif" },
-                { key: "-1", label: "Négatif" },
-              ].map((option) => (
-                <Pressable
-                  key={option.key}
-                  onPress={() =>
-                    onChangePreviewSignText(option.key as "1" | "-1")
-                  }
-                  style={{
-                    padding: 10,
-                    borderWidth: 1,
-                    borderRadius: 10,
-                    opacity: previewSignText === option.key ? 1 : 0.7,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontWeight:
-                        previewSignText === option.key ? "800" : "500",
-                    }}
-                  >
-                    {option.label}
-                  </Text>
-                </Pressable>
-              ))}
+            <WizardFieldLabel>Signe</WizardFieldLabel>
+
+            <View style={{ flexDirection: "row", gap: arcane.spacing.sm }}>
+              <WizardPillButton
+                label="Positif"
+                onPress={() => onChangePreviewSignText("1")}
+                variant={previewSignText === "1" ? "accent" : "default"}
+              />
+
+              <WizardPillButton
+                label="Négatif"
+                onPress={() => onChangePreviewSignText("-1")}
+                variant={previewSignText === "-1" ? "accent" : "default"}
+              />
             </View>
 
-            <Text style={{ fontWeight: "700" }}>Résultat</Text>
+            <View
+              style={{
+                ...arcaneStyles.cardSoft,
+                backgroundColor: arcane.colors.surfaceAlt,
+              }}
+            >
+              <Text
+                style={{
+                  color: arcane.colors.textSubtle,
+                  fontSize: arcane.typography.tiny,
+                  fontWeight: "900",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.8,
+                }}
+              >
+                Résultat
+              </Text>
 
-            <Text style={{ opacity: 0.75, lineHeight: 20 }}>
-              {formatPreviewResult(previewResult)}
-            </Text>
-          </View>
+              <Text
+                style={{
+                  color: arcane.colors.text,
+                  marginTop: arcane.spacing.xs,
+                  lineHeight: 20,
+                  fontWeight: "700",
+                }}
+              >
+                {formatPreviewResult(previewResult)}
+              </Text>
+            </View>
+          </WizardSection>
         </ScrollView>
 
         <View
           style={{
             flexDirection: "row",
             justifyContent: "space-between",
-            gap: 8,
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: arcane.spacing.sm,
           }}
         >
-          <Pressable
-            onPress={onClose}
+          <WizardPillButton label="Annuler" onPress={onClose} />
+
+          <View
             style={{
-              paddingVertical: 10,
-              paddingHorizontal: 12,
-              borderWidth: 1,
-              borderRadius: 10,
+              flexDirection: "row",
+              flexWrap: "wrap",
+              gap: arcane.spacing.sm,
             }}
           >
-            <Text>Annuler</Text>
-          </Pressable>
-
-          <View style={{ flexDirection: "row", gap: 8 }}>
             {stepIndex > 0 ? (
-              <Pressable
-                onPress={onBack}
-                style={{
-                  paddingVertical: 10,
-                  paddingHorizontal: 12,
-                  borderWidth: 1,
-                  borderRadius: 10,
-                }}
-              >
-                <Text>Retour</Text>
-              </Pressable>
+              <WizardPillButton label="Retour" onPress={onBack} />
             ) : null}
 
-            <Pressable
+            <WizardPillButton
+              label={isLastStep ? "Créer" : "Suivant"}
               onPress={isLastStep ? onSubmit : onNext}
-              style={{
-                paddingVertical: 10,
-                paddingHorizontal: 12,
-                borderWidth: 1,
-                borderRadius: 10,
-              }}
-            >
-              <Text style={{ fontWeight: "800" }}>
-                {isLastStep ? "Créer" : "Suivant"}
-              </Text>
-            </Pressable>
+              variant="accent"
+            />
           </View>
         </View>
       </View>
