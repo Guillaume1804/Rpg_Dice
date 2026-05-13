@@ -1,7 +1,10 @@
-// DraftGroupRuleModal.tsx
+// dice-universal/features/roll/components/DraftGroupRuleModal.tsx
 
 import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 import type { RuleRow } from "../../../data/repositories/rulesRepo";
+
+import { arcane } from "../../../theme/arcaneTheme";
+import { arcaneStyles } from "../../../theme/arcaneStyles";
 
 type Props = {
   visible: boolean;
@@ -13,6 +16,93 @@ type Props = {
   onSave: () => void;
 };
 
+function RuleOption({
+  label,
+  description,
+  selected,
+  onPress,
+}: {
+  label: string;
+  description?: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        ...arcaneStyles.cardSoft,
+        gap: arcane.spacing.xs,
+        borderColor: selected ? arcane.colors.accent : arcane.colors.border,
+        backgroundColor: selected
+          ? arcane.colors.accentSoft
+          : arcane.colors.surfaceAlt,
+        opacity: pressed ? 0.86 : 1,
+        transform: [{ scale: pressed ? 0.99 : 1 }],
+      })}
+    >
+      <Text
+        style={{
+          color: arcane.colors.text,
+          fontWeight: selected ? "900" : "800",
+        }}
+      >
+        {label}
+      </Text>
+
+      {description ? (
+        <Text
+          style={{
+            color: arcane.colors.textMuted,
+            fontSize: 12,
+          }}
+        >
+          {description}
+        </Text>
+      ) : null}
+    </Pressable>
+  );
+}
+
+function ModalButton({
+  label,
+  onPress,
+  variant = "default",
+}: {
+  label: string;
+  onPress: () => void;
+  variant?: "default" | "accent";
+}) {
+  const isAccent = variant === "accent";
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        borderWidth: 1,
+        borderColor: isAccent ? arcane.colors.accent : arcane.colors.border,
+        borderRadius: arcane.radius.pill,
+        backgroundColor: isAccent
+          ? arcane.colors.accentSoft
+          : arcane.colors.surfaceAlt,
+        opacity: pressed ? 0.84 : 1,
+        transform: [{ scale: pressed ? 0.97 : 1 }],
+      })}
+    >
+      <Text
+        style={{
+          color: arcane.colors.text,
+          fontWeight: "900",
+        }}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
 export function DraftGroupRuleModal({
   visible,
   selectedRuleId,
@@ -23,108 +113,125 @@ export function DraftGroupRuleModal({
   onSave,
 }: Props) {
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onCancel}
+    >
       <View
         style={{
           flex: 1,
-          backgroundColor: "rgba(0,0,0,0.5)",
+          backgroundColor: "rgba(0,0,0,0.64)",
           justifyContent: "center",
           padding: 16,
         }}
       >
         <View
           style={{
-            backgroundColor: "white",
-            borderRadius: 12,
-            padding: 16,
-            borderWidth: 1,
+            ...arcaneStyles.card,
+            gap: arcane.spacing.md,
+            borderColor: arcane.colors.accent,
             maxHeight: "90%",
           }}
         >
-          <Text style={{ fontSize: 16, fontWeight: "700" }}>
-            Configurer la règle de groupe du draft
-          </Text>
-
-          <Pressable
-            onPress={() => onSelectRule(null)}
-            style={{
-              marginTop: 12,
-              padding: 10,
-              borderWidth: 1,
-              borderRadius: 8,
-              opacity: selectedRuleId === null ? 1 : 0.7,
-            }}
-          >
-            <Text style={{ fontWeight: selectedRuleId === null ? "700" : "400" }}>
-              Somme (par défaut)
+          <View style={{ gap: arcane.spacing.xs }}>
+            <Text style={arcaneStyles.sectionTitle}>
+              Règle du groupe temporaire
             </Text>
-          </Pressable>
 
-          <ScrollView style={{ marginTop: 12, maxHeight: 300 }}>
-            <Text style={{ fontWeight: "700" }}>Règles disponibles</Text>
+            <Text style={arcaneStyles.muted}>
+              Choisis une règle appliquée à l’ensemble du groupe de dés.
+            </Text>
+          </View>
+
+          <ScrollView
+            style={{ maxHeight: 420 }}
+            contentContainerStyle={{ gap: arcane.spacing.sm }}
+            showsVerticalScrollIndicator
+          >
+            <RuleOption
+              label="Somme simple"
+              description="Aucune règle de groupe spécifique."
+              selected={selectedRuleId === null}
+              onPress={() => onSelectRule(null)}
+            />
+
+            <Text
+              style={{
+                color: arcane.colors.textSubtle,
+                fontSize: arcane.typography.tiny,
+                fontWeight: "900",
+                textTransform: "uppercase",
+                letterSpacing: 0.8,
+                marginTop: arcane.spacing.xs,
+              }}
+            >
+              Règles disponibles
+            </Text>
+
+            {modernRules.length === 0 && legacyRules.length === 0 ? (
+              <View style={arcaneStyles.cardSoft}>
+                <Text style={arcaneStyles.muted}>
+                  Aucune règle disponible pour ce contexte.
+                </Text>
+              </View>
+            ) : null}
 
             {modernRules.map((rule) => (
-              <Pressable
+              <RuleOption
                 key={rule.id}
+                label={rule.name}
+                description={
+                  rule.is_system === 1 ? "Règle système" : "Règle perso"
+                }
+                selected={selectedRuleId === rule.id}
                 onPress={() => onSelectRule(rule.id)}
-                style={{
-                  padding: 10,
-                  borderWidth: 1,
-                  borderRadius: 8,
-                  marginTop: 8,
-                  opacity: selectedRuleId === rule.id ? 1 : 0.7,
-                }}
-              >
-                <Text style={{ fontWeight: selectedRuleId === rule.id ? "700" : "400" }}>
-                  {rule.name}
-                </Text>
-                <Text style={{ marginTop: 2, opacity: 0.7, fontSize: 12 }}>
-                  {rule.is_system === 1 ? "système" : "perso"}
-                </Text>
-              </Pressable>
+              />
             ))}
 
             {legacyRules.length > 0 ? (
-              <View style={{ marginTop: 16 }}>
-                <Text style={{ fontWeight: "700" }}>Anciennes règles</Text>
+              <View
+                style={{ gap: arcane.spacing.sm, marginTop: arcane.spacing.sm }}
+              >
+                <Text
+                  style={{
+                    color: arcane.colors.textSubtle,
+                    fontSize: arcane.typography.tiny,
+                    fontWeight: "900",
+                    textTransform: "uppercase",
+                    letterSpacing: 0.8,
+                  }}
+                >
+                  Compatibilité
+                </Text>
+
                 {legacyRules.map((rule) => (
-                  <Pressable
+                  <RuleOption
                     key={rule.id}
+                    label={rule.name}
+                    description={`Ancienne famille : ${rule.kind}`}
+                    selected={selectedRuleId === rule.id}
                     onPress={() => onSelectRule(rule.id)}
-                    style={{
-                      padding: 10,
-                      borderWidth: 1,
-                      borderRadius: 8,
-                      marginTop: 8,
-                      opacity: selectedRuleId === rule.id ? 1 : 0.65,
-                    }}
-                  >
-                    <Text style={{ fontWeight: selectedRuleId === rule.id ? "700" : "400" }}>
-                      {rule.name}
-                    </Text>
-                    <Text style={{ marginTop: 2, opacity: 0.7, fontSize: 12 }}>
-                      famille : {rule.kind}
-                    </Text>
-                  </Pressable>
+                  />
                 ))}
               </View>
             ) : null}
           </ScrollView>
 
-          <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 16 }}>
-            <Pressable
-              onPress={onCancel}
-              style={{ padding: 10, borderWidth: 1, borderRadius: 8, marginRight: 10 }}
-            >
-              <Text>Annuler</Text>
-            </Pressable>
-
-            <Pressable
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "flex-end",
+              gap: arcane.spacing.sm,
+            }}
+          >
+            <ModalButton label="Annuler" onPress={onCancel} />
+            <ModalButton
+              label="Sauvegarder"
               onPress={onSave}
-              style={{ padding: 10, borderWidth: 1, borderRadius: 8 }}
-            >
-              <Text style={{ fontWeight: "700" }}>Sauvegarder</Text>
-            </Pressable>
+              variant="accent"
+            />
           </View>
         </View>
       </View>

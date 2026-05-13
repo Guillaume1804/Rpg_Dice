@@ -1,8 +1,21 @@
+// dice-universal/features/tables/components/TableGroupModals.tsx
+
 import { useMemo } from "react";
-import { View, Text, Pressable, TextInput, Modal, ScrollView } from "react-native";
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+
 import type { GroupRow } from "../../../data/repositories/groupsRepo";
 import type { RuleRow } from "../../../data/repositories/rulesRepo";
 import { getRulesForScope } from "../../rules/helpers/ruleCompatibility";
+
+import { arcane } from "../../../theme/arcaneTheme";
+import { arcaneStyles } from "../../../theme/arcaneStyles";
 
 type Props = {
   modernRules: RuleRow[];
@@ -21,6 +34,97 @@ type Props = {
   onCloseEditGroupRuleModal: () => void;
   onSubmitEditGroupRule: () => void | Promise<void>;
 };
+
+function ModalButton({
+  label,
+  onPress,
+  variant = "default",
+}: {
+  label: string;
+  onPress: () => void;
+  variant?: "default" | "accent";
+}) {
+  const isAccent = variant === "accent";
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        paddingVertical: 11,
+        paddingHorizontal: 14,
+        borderWidth: 1,
+        borderColor: isAccent ? arcane.colors.accent : arcane.colors.border,
+        borderRadius: arcane.radius.pill,
+        backgroundColor: isAccent
+          ? arcane.colors.accentSoft
+          : arcane.colors.surfaceAlt,
+        opacity: pressed ? 0.84 : 1,
+        transform: [{ scale: pressed ? 0.97 : 1 }],
+      })}
+    >
+      <Text
+        style={{
+          color: arcane.colors.text,
+          fontWeight: "900",
+        }}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function RuleChoice({
+  label,
+  subtitle,
+  selected,
+  onPress,
+}: {
+  label: string;
+  subtitle?: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        padding: arcane.spacing.md,
+        borderWidth: 1,
+        borderColor: selected ? arcane.colors.accent : arcane.colors.border,
+        borderRadius: arcane.radius.lg,
+        backgroundColor: selected
+          ? arcane.colors.accentSoft
+          : arcane.colors.surfaceAlt,
+        opacity: pressed ? 0.84 : 1,
+        transform: [{ scale: pressed ? 0.99 : 1 }],
+        gap: 4,
+      })}
+    >
+      <Text
+        style={{
+          color: arcane.colors.text,
+          fontSize: 15,
+          fontWeight: selected ? "900" : "800",
+        }}
+      >
+        {label}
+      </Text>
+
+      {subtitle ? (
+        <Text
+          style={{
+            color: arcane.colors.textMuted,
+            fontSize: 12,
+            lineHeight: 17,
+          }}
+        >
+          {subtitle}
+        </Text>
+      ) : null}
+    </Pressable>
+  );
+}
 
 export function TableGroupModals({
   modernRules,
@@ -58,60 +162,91 @@ export function TableGroupModals({
         <View
           style={{
             flex: 1,
-            backgroundColor: "rgba(0,0,0,0.5)",
+            backgroundColor: "rgba(0,0,0,0.68)",
             justifyContent: "center",
-            padding: 16,
+            padding: arcane.spacing.md,
           }}
         >
           <View
             style={{
-              backgroundColor: "white",
-              borderRadius: 12,
-              padding: 16,
-              borderWidth: 1,
+              ...arcaneStyles.card,
+              gap: arcane.spacing.md,
             }}
           >
-            <Text style={{ fontSize: 16, fontWeight: "700" }}>
-              Renommer l’action
-            </Text>
+            <View style={{ gap: arcane.spacing.xs }}>
+              <Text
+                style={{
+                  color: arcane.colors.textSubtle,
+                  fontSize: arcane.typography.tiny,
+                  fontWeight: "900",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.8,
+                }}
+              >
+                Action
+              </Text>
 
-            <TextInput
-              value={renameGroupValue}
-              onChangeText={onChangeRenameGroupValue}
-              placeholder="Nouveau nom de l’action..."
-              style={{
-                marginTop: 12,
-                borderWidth: 1,
-                borderRadius: 10,
-                padding: 10,
-              }}
-            />
+              <Text
+                style={{
+                  color: arcane.colors.text,
+                  fontSize: 22,
+                  fontWeight: "900",
+                }}
+              >
+                Renommer l’action
+              </Text>
+
+              <Text style={arcaneStyles.muted}>
+                Donne un nom clair à cette action pour la retrouver rapidement
+                dans le profil et sur l’écran Jet.
+              </Text>
+            </View>
+
+            <View style={{ gap: arcane.spacing.xs }}>
+              <Text
+                style={{
+                  color: arcane.colors.text,
+                  fontWeight: "800",
+                }}
+              >
+                Nouveau nom
+              </Text>
+
+              <TextInput
+                value={renameGroupValue}
+                onChangeText={onChangeRenameGroupValue}
+                placeholder="Ex: Attaque, Perception, Persuasion..."
+                placeholderTextColor={arcane.colors.textMuted}
+                selectionColor={arcane.colors.accent}
+                style={{
+                  minHeight: 48,
+                  borderWidth: 1,
+                  borderColor: arcane.colors.border,
+                  borderRadius: arcane.radius.md,
+                  paddingHorizontal: 12,
+                  paddingVertical: 10,
+                  backgroundColor: arcane.colors.surfaceAlt,
+                  color: arcane.colors.text,
+                  fontSize: 16,
+                  fontWeight: "700",
+                }}
+              />
+            </View>
 
             <View
               style={{
                 flexDirection: "row",
                 justifyContent: "flex-end",
-                marginTop: 12,
+                flexWrap: "wrap",
+                gap: arcane.spacing.sm,
               }}
             >
-              <Pressable
-                onPress={onCloseRenameGroupModal}
-                style={{
-                  padding: 10,
-                  borderWidth: 1,
-                  borderRadius: 10,
-                  marginRight: 10,
-                }}
-              >
-                <Text>Annuler</Text>
-              </Pressable>
-
-              <Pressable
+              <ModalButton label="Annuler" onPress={onCloseRenameGroupModal} />
+              <ModalButton
+                label="Renommer"
                 onPress={onSubmitRenameGroup}
-                style={{ padding: 10, borderWidth: 1, borderRadius: 10 }}
-              >
-                <Text style={{ fontWeight: "700" }}>Renommer</Text>
-              </Pressable>
+                variant="accent"
+              />
             </View>
           </View>
         </View>
@@ -126,109 +261,137 @@ export function TableGroupModals({
         <View
           style={{
             flex: 1,
-            backgroundColor: "rgba(0,0,0,0.5)",
+            backgroundColor: "rgba(0,0,0,0.68)",
             justifyContent: "center",
-            padding: 16,
+            padding: arcane.spacing.md,
           }}
         >
           <View
             style={{
-              backgroundColor: "white",
-              borderRadius: 12,
-              padding: 16,
-              borderWidth: 1,
+              ...arcaneStyles.card,
               maxHeight: "90%",
+              gap: arcane.spacing.md,
             }}
           >
-            <Text style={{ fontSize: 16, fontWeight: "700" }}>
-              Modifier la règle de l’action
-            </Text>
-
-            {editingGroupForRule ? (
-              <Text style={{ marginTop: 8, opacity: 0.7 }}>
-                Action : {editingGroupForRule.name}
-              </Text>
-            ) : null}
-
-            <ScrollView style={{ marginTop: 12 }}>
-              <Pressable
-                onPress={() => onSelectGroupRuleId(null)}
+            <View style={{ gap: arcane.spacing.xs }}>
+              <Text
                 style={{
-                  marginTop: 8,
-                  padding: 10,
-                  borderWidth: 1,
-                  borderRadius: 8,
-                  opacity: selectedGroupRuleId === null ? 1 : 0.7,
+                  color: arcane.colors.textSubtle,
+                  fontSize: arcane.typography.tiny,
+                  fontWeight: "900",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.8,
                 }}
               >
-                <Text
-                  style={{
-                    fontWeight: selectedGroupRuleId === null ? "700" : "400",
-                  }}
-                >
-                  Somme (par défaut)
-                </Text>
-              </Pressable>
+                Règle d’action
+              </Text>
 
-              <Text style={{ marginTop: 12, fontWeight: "700" }}>
+              <Text
+                style={{
+                  color: arcane.colors.text,
+                  fontSize: 22,
+                  fontWeight: "900",
+                }}
+              >
+                Modifier la règle de l’action
+              </Text>
+
+              {editingGroupForRule ? (
+                <Text style={arcaneStyles.muted}>
+                  Action : {editingGroupForRule.name}
+                </Text>
+              ) : (
+                <Text style={arcaneStyles.muted}>
+                  Choisis le comportement appliqué à l’ensemble de l’action.
+                </Text>
+              )}
+            </View>
+
+            <ScrollView
+              style={{ maxHeight: 420 }}
+              contentContainerStyle={{ gap: arcane.spacing.sm }}
+              showsVerticalScrollIndicator={false}
+            >
+              <RuleChoice
+                label="Somme simple"
+                subtitle="Aucune règle de groupe : les entrées sont additionnées normalement."
+                selected={selectedGroupRuleId === null}
+                onPress={() => onSelectGroupRuleId(null)}
+              />
+
+              <Text
+                style={{
+                  color: arcane.colors.textSubtle,
+                  fontSize: arcane.typography.tiny,
+                  fontWeight: "900",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.8,
+                  marginTop: arcane.spacing.sm,
+                }}
+              >
                 Règles disponibles
               </Text>
 
               {compatibleModernRules.length === 0 &&
-                compatibleLegacyRules.length === 0 ? (
-                <Text style={{ marginTop: 8, opacity: 0.7 }}>
-                  Aucune règle de groupe disponible.
-                </Text>
+              compatibleLegacyRules.length === 0 ? (
+                <View style={arcaneStyles.cardSoft}>
+                  <Text
+                    style={{
+                      color: arcane.colors.text,
+                      fontWeight: "800",
+                    }}
+                  >
+                    Aucune règle de groupe disponible
+                  </Text>
+
+                  <Text
+                    style={[
+                      arcaneStyles.muted,
+                      { marginTop: arcane.spacing.xs },
+                    ]}
+                  >
+                    Crée une règle compatible ou utilise la somme simple.
+                  </Text>
+                </View>
               ) : null}
 
               {compatibleModernRules.map((rule) => (
-                <Pressable
+                <RuleChoice
                   key={rule.id}
+                  label={rule.name}
+                  subtitle={
+                    rule.is_system === 1 ? "Règle système" : "Règle perso"
+                  }
+                  selected={selectedGroupRuleId === rule.id}
                   onPress={() => onSelectGroupRuleId(rule.id)}
-                  style={{
-                    marginTop: 8,
-                    padding: 10,
-                    borderWidth: 1,
-                    borderRadius: 8,
-                    opacity: selectedGroupRuleId === rule.id ? 1 : 0.7,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontWeight: selectedGroupRuleId === rule.id ? "700" : "400",
-                    }}
-                  >
-                    {rule.name}
-                  </Text>
-                </Pressable>
+                />
               ))}
 
               {compatibleLegacyRules.length > 0 ? (
-                <View style={{ marginTop: 12 }}>
-                  <Text style={{ fontWeight: "700" }}>Compatibilité</Text>
+                <>
+                  <Text
+                    style={{
+                      color: arcane.colors.textSubtle,
+                      fontSize: arcane.typography.tiny,
+                      fontWeight: "900",
+                      textTransform: "uppercase",
+                      letterSpacing: 0.8,
+                      marginTop: arcane.spacing.sm,
+                    }}
+                  >
+                    Compatibilité
+                  </Text>
+
                   {compatibleLegacyRules.map((rule) => (
-                    <Pressable
+                    <RuleChoice
                       key={rule.id}
+                      label={rule.name}
+                      subtitle={`Ancienne règle · type : ${rule.kind}`}
+                      selected={selectedGroupRuleId === rule.id}
                       onPress={() => onSelectGroupRuleId(rule.id)}
-                      style={{
-                        marginTop: 8,
-                        padding: 10,
-                        borderWidth: 1,
-                        borderRadius: 8,
-                        opacity: selectedGroupRuleId === rule.id ? 1 : 0.7,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontWeight:
-                            selectedGroupRuleId === rule.id ? "700" : "400",
-                        }}
-                      >
-                        {rule.name}
-                      </Text>
-                    </Pressable>
+                    />
                   ))}
-                </View>
+                </>
               ) : null}
             </ScrollView>
 
@@ -236,27 +399,19 @@ export function TableGroupModals({
               style={{
                 flexDirection: "row",
                 justifyContent: "flex-end",
-                marginTop: 16,
+                flexWrap: "wrap",
+                gap: arcane.spacing.sm,
               }}
             >
-              <Pressable
+              <ModalButton
+                label="Annuler"
                 onPress={onCloseEditGroupRuleModal}
-                style={{
-                  padding: 10,
-                  borderWidth: 1,
-                  borderRadius: 8,
-                  marginRight: 10,
-                }}
-              >
-                <Text>Annuler</Text>
-              </Pressable>
-
-              <Pressable
+              />
+              <ModalButton
+                label="Sauvegarder"
                 onPress={onSubmitEditGroupRule}
-                style={{ padding: 10, borderWidth: 1, borderRadius: 8 }}
-              >
-                <Text style={{ fontWeight: "700" }}>Sauvegarder</Text>
-              </Pressable>
+                variant="accent"
+              />
             </View>
           </View>
         </View>

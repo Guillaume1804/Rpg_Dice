@@ -1,3 +1,5 @@
+// dice-universal/features/roll/components/SaveDraftModal.tsx
+
 import { useEffect, useMemo, useState } from "react";
 import {
   Modal,
@@ -7,6 +9,9 @@ import {
   TextInput,
   View,
 } from "react-native";
+
+import { arcane } from "../../../theme/arcaneTheme";
+import { arcaneStyles } from "../../../theme/arcaneStyles";
 
 type SaveMode =
   | "new_table_new_profile"
@@ -43,6 +48,199 @@ type Props = {
     profileId?: string;
   }) => void | Promise<void>;
 };
+
+function SectionLabel({ children }: { children: string }) {
+  return (
+    <Text
+      style={{
+        color: arcane.colors.textSubtle,
+        fontSize: arcane.typography.tiny,
+        fontWeight: "900",
+        textTransform: "uppercase",
+        letterSpacing: 0.8,
+      }}
+    >
+      {children}
+    </Text>
+  );
+}
+
+function FieldLabel({ children }: { children: string }) {
+  return (
+    <Text
+      style={{
+        color: arcane.colors.textMuted,
+        fontWeight: "800",
+        marginBottom: 6,
+      }}
+    >
+      {children}
+    </Text>
+  );
+}
+
+function ModalInput({
+  value,
+  onChangeText,
+  placeholder,
+}: {
+  value: string;
+  onChangeText: (value: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <TextInput
+      value={value}
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+      placeholderTextColor={arcane.colors.textSubtle}
+      style={{
+        color: arcane.colors.text,
+        backgroundColor: arcane.colors.surfaceAlt,
+        borderWidth: 1,
+        borderColor: arcane.colors.border,
+        borderRadius: arcane.radius.md,
+        paddingHorizontal: 12,
+        paddingVertical: 11,
+        fontSize: 16,
+      }}
+    />
+  );
+}
+
+function ModeOption({
+  label,
+  description,
+  selected,
+  onPress,
+}: {
+  label: string;
+  description: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        ...arcaneStyles.cardSoft,
+        gap: arcane.spacing.xs,
+        borderColor: selected ? arcane.colors.accent : arcane.colors.border,
+        backgroundColor: selected
+          ? arcane.colors.accentSoft
+          : arcane.colors.surfaceAlt,
+        opacity: pressed ? 0.86 : 1,
+        transform: [{ scale: pressed ? 0.99 : 1 }],
+      })}
+    >
+      <Text
+        style={{
+          color: arcane.colors.text,
+          fontWeight: selected ? "900" : "800",
+        }}
+      >
+        {label}
+      </Text>
+
+      <Text
+        style={{
+          color: arcane.colors.textMuted,
+          fontSize: 12,
+          lineHeight: 17,
+        }}
+      >
+        {description}
+      </Text>
+    </Pressable>
+  );
+}
+
+function SelectOption({
+  label,
+  description,
+  selected,
+  onPress,
+}: {
+  label: string;
+  description?: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        ...arcaneStyles.cardSoft,
+        gap: arcane.spacing.xs,
+        borderColor: selected ? arcane.colors.accent : arcane.colors.border,
+        backgroundColor: selected
+          ? arcane.colors.accentSoft
+          : arcane.colors.surfaceAlt,
+        opacity: pressed ? 0.86 : 1,
+        transform: [{ scale: pressed ? 0.99 : 1 }],
+      })}
+    >
+      <Text
+        style={{
+          color: arcane.colors.text,
+          fontWeight: selected ? "900" : "800",
+        }}
+      >
+        {label}
+      </Text>
+
+      {description ? (
+        <Text
+          style={{
+            color: arcane.colors.textMuted,
+            fontSize: 12,
+          }}
+        >
+          {description}
+        </Text>
+      ) : null}
+    </Pressable>
+  );
+}
+
+function ModalButton({
+  label,
+  onPress,
+  variant = "default",
+}: {
+  label: string;
+  onPress: () => void;
+  variant?: "default" | "accent";
+}) {
+  const isAccent = variant === "accent";
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        borderWidth: 1,
+        borderColor: isAccent ? arcane.colors.accent : arcane.colors.border,
+        borderRadius: arcane.radius.pill,
+        backgroundColor: isAccent
+          ? arcane.colors.accentSoft
+          : arcane.colors.surfaceAlt,
+        opacity: pressed ? 0.84 : 1,
+        transform: [{ scale: pressed ? 0.97 : 1 }],
+      })}
+    >
+      <Text
+        style={{
+          color: arcane.colors.text,
+          fontWeight: "900",
+        }}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
 
 export function SaveDraftModal({
   visible,
@@ -88,7 +286,10 @@ export function SaveDraftModal({
       return;
     }
 
-    const exists = selectedTable.profiles.some((p) => p.id === selectedProfileId);
+    const exists = selectedTable.profiles.some(
+      (p) => p.id === selectedProfileId,
+    );
+
     if (!exists) {
       setSelectedProfileId(selectedTable.profiles[0]?.id ?? null);
     }
@@ -121,315 +322,217 @@ export function SaveDraftModal({
   }
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onCancel}
+    >
       <View
         style={{
           flex: 1,
-          backgroundColor: "rgba(0,0,0,0.5)",
+          backgroundColor: "rgba(0,0,0,0.64)",
           justifyContent: "center",
           padding: 16,
         }}
       >
         <View
           style={{
-            backgroundColor: "white",
-            borderRadius: 12,
-            padding: 16,
-            borderWidth: 1,
+            ...arcaneStyles.card,
+            gap: arcane.spacing.md,
+            borderColor: arcane.colors.accent,
             maxHeight: "90%",
-            gap: 12,
           }}
         >
-          <Text style={{ fontSize: 18, fontWeight: "800" }}>
-            Sauvegarder ce jet rapide
-          </Text>
+          <View style={{ gap: arcane.spacing.xs }}>
+            <Text style={arcaneStyles.sectionTitle}>Sauvegarder ce jet</Text>
 
-          <Text style={{ opacity: 0.72 }}>
-            Choisis où enregistrer les actions temporaires actuelles.
-          </Text>
-
-          <View style={{ gap: 8 }}>
-            <Pressable
-              onPress={() => setMode("new_table_new_profile")}
-              style={{
-                padding: 10,
-                borderWidth: 1,
-                borderRadius: 10,
-                opacity: mode === "new_table_new_profile" ? 1 : 0.7,
-              }}
-            >
-              <Text
-                style={{
-                  fontWeight: mode === "new_table_new_profile" ? "700" : "400",
-                }}
-              >
-                Nouvelle table + nouveau profil
-              </Text>
-            </Pressable>
-
-            <Pressable
-              onPress={() => setMode("existing_table_new_profile")}
-              style={{
-                padding: 10,
-                borderWidth: 1,
-                borderRadius: 10,
-                opacity: mode === "existing_table_new_profile" ? 1 : 0.7,
-              }}
-            >
-              <Text
-                style={{
-                  fontWeight:
-                    mode === "existing_table_new_profile" ? "700" : "400",
-                }}
-              >
-                Table existante + nouveau profil
-              </Text>
-            </Pressable>
-
-            <Pressable
-              onPress={() => setMode("existing_table_existing_profile")}
-              style={{
-                padding: 10,
-                borderWidth: 1,
-                borderRadius: 10,
-                opacity:
-                  mode === "existing_table_existing_profile" ? 1 : 0.7,
-              }}
-            >
-              <Text
-                style={{
-                  fontWeight:
-                    mode === "existing_table_existing_profile" ? "700" : "400",
-                }}
-              >
-                Table existante + profil existant
-              </Text>
-            </Pressable>
+            <Text style={arcaneStyles.muted}>
+              Transforme ton jet rapide en action réutilisable dans une table.
+            </Text>
           </View>
 
-          {mode === "new_table_new_profile" ? (
-            <View style={{ gap: 10 }}>
-              <View>
-                <Text style={{ marginBottom: 6, fontWeight: "700" }}>
-                  Nom de la table
-                </Text>
-                <TextInput
-                  value={tableName}
-                  onChangeText={setTableName}
-                  placeholder="Nom de la table"
-                  style={{
-                    borderWidth: 1,
-                    borderRadius: 10,
-                    paddingHorizontal: 12,
-                    paddingVertical: 10,
-                  }}
-                />
-              </View>
+          <ScrollView
+            style={{ maxHeight: 560 }}
+            contentContainerStyle={{ gap: arcane.spacing.md }}
+            showsVerticalScrollIndicator
+          >
+            <View style={{ gap: arcane.spacing.sm }}>
+              <SectionLabel>Destination</SectionLabel>
 
-              <View>
-                <Text style={{ marginBottom: 6, fontWeight: "700" }}>
-                  Nom du profil
-                </Text>
-                <TextInput
-                  value={profileName}
-                  onChangeText={setProfileName}
-                  placeholder="Nom du profil"
-                  style={{
-                    borderWidth: 1,
-                    borderRadius: 10,
-                    paddingHorizontal: 12,
-                    paddingVertical: 10,
-                  }}
-                />
-              </View>
+              <ModeOption
+                label="Nouvelle table + nouveau profil"
+                description="Crée un nouvel espace complet pour ce jet."
+                selected={mode === "new_table_new_profile"}
+                onPress={() => setMode("new_table_new_profile")}
+              />
+
+              <ModeOption
+                label="Table existante + nouveau profil"
+                description="Ajoute ce jet dans une table existante, avec un nouveau profil."
+                selected={mode === "existing_table_new_profile"}
+                onPress={() => setMode("existing_table_new_profile")}
+              />
+
+              <ModeOption
+                label="Table existante + profil existant"
+                description="Ajoute ce jet à un profil déjà créé."
+                selected={mode === "existing_table_existing_profile"}
+                onPress={() => setMode("existing_table_existing_profile")}
+              />
             </View>
-          ) : null}
 
-          {mode === "existing_table_new_profile" ? (
-            <View style={{ gap: 10 }}>
-              <View>
-                <Text style={{ marginBottom: 6, fontWeight: "700" }}>
-                  Table existante
-                </Text>
+            {mode === "new_table_new_profile" ? (
+              <View style={{ gap: arcane.spacing.md }}>
+                <View>
+                  <FieldLabel>Nom de la table</FieldLabel>
+                  <ModalInput
+                    value={tableName}
+                    onChangeText={setTableName}
+                    placeholder="Nom de la table"
+                  />
+                </View>
 
-                <ScrollView style={{ maxHeight: 180 }}>
-                  <View style={{ gap: 8 }}>
+                <View>
+                  <FieldLabel>Nom du profil</FieldLabel>
+                  <ModalInput
+                    value={profileName}
+                    onChangeText={setProfileName}
+                    placeholder="Nom du profil"
+                  />
+                </View>
+              </View>
+            ) : null}
+
+            {mode === "existing_table_new_profile" ? (
+              <View style={{ gap: arcane.spacing.md }}>
+                <View style={{ gap: arcane.spacing.sm }}>
+                  <SectionLabel>Table existante</SectionLabel>
+
+                  <ScrollView
+                    style={{ maxHeight: 190 }}
+                    contentContainerStyle={{ gap: arcane.spacing.sm }}
+                    nestedScrollEnabled
+                  >
                     {loadingTargets ? (
-                      <Text style={{ opacity: 0.72 }}>Chargement…</Text>
+                      <View style={arcaneStyles.cardSoft}>
+                        <Text style={arcaneStyles.muted}>Chargement…</Text>
+                      </View>
                     ) : availableTargets.length === 0 ? (
-                      <Text style={{ opacity: 0.72 }}>
-                        Aucune table disponible.
-                      </Text>
+                      <View style={arcaneStyles.cardSoft}>
+                        <Text style={arcaneStyles.muted}>
+                          Aucune table disponible.
+                        </Text>
+                      </View>
                     ) : (
                       availableTargets.map((entry) => (
-                        <Pressable
+                        <SelectOption
                           key={entry.table.id}
+                          label={entry.table.name}
+                          description={`${entry.profiles.length} profil${
+                            entry.profiles.length > 1 ? "s" : ""
+                          }`}
+                          selected={selectedTableId === entry.table.id}
                           onPress={() => setSelectedTableId(entry.table.id)}
-                          style={{
-                            padding: 10,
-                            borderWidth: 1,
-                            borderRadius: 10,
-                            opacity:
-                              selectedTableId === entry.table.id ? 1 : 0.7,
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontWeight:
-                                selectedTableId === entry.table.id ? "700" : "400",
-                            }}
-                          >
-                            {entry.table.name}
-                          </Text>
-                          <Text style={{ marginTop: 2, opacity: 0.7, fontSize: 12 }}>
-                            {entry.profiles.length} profil
-                            {entry.profiles.length > 1 ? "s" : ""}
-                          </Text>
-                        </Pressable>
+                        />
                       ))
                     )}
-                  </View>
-                </ScrollView>
+                  </ScrollView>
+                </View>
+
+                <View>
+                  <FieldLabel>Nom du nouveau profil</FieldLabel>
+                  <ModalInput
+                    value={profileName}
+                    onChangeText={setProfileName}
+                    placeholder="Nom du profil"
+                  />
+                </View>
               </View>
+            ) : null}
 
-              <View>
-                <Text style={{ marginBottom: 6, fontWeight: "700" }}>
-                  Nom du nouveau profil
-                </Text>
-                <TextInput
-                  value={profileName}
-                  onChangeText={setProfileName}
-                  placeholder="Nom du profil"
-                  style={{
-                    borderWidth: 1,
-                    borderRadius: 10,
-                    paddingHorizontal: 12,
-                    paddingVertical: 10,
-                  }}
-                />
-              </View>
-            </View>
-          ) : null}
+            {mode === "existing_table_existing_profile" ? (
+              <View style={{ gap: arcane.spacing.md }}>
+                <View style={{ gap: arcane.spacing.sm }}>
+                  <SectionLabel>Table existante</SectionLabel>
 
-          {mode === "existing_table_existing_profile" ? (
-            <View style={{ gap: 10 }}>
-              <View>
-                <Text style={{ marginBottom: 6, fontWeight: "700" }}>
-                  Table existante
-                </Text>
-
-                <ScrollView style={{ maxHeight: 150 }}>
-                  <View style={{ gap: 8 }}>
+                  <ScrollView
+                    style={{ maxHeight: 160 }}
+                    contentContainerStyle={{ gap: arcane.spacing.sm }}
+                    nestedScrollEnabled
+                  >
                     {loadingTargets ? (
-                      <Text style={{ opacity: 0.72 }}>Chargement…</Text>
+                      <View style={arcaneStyles.cardSoft}>
+                        <Text style={arcaneStyles.muted}>Chargement…</Text>
+                      </View>
                     ) : availableTargets.length === 0 ? (
-                      <Text style={{ opacity: 0.72 }}>
-                        Aucune table disponible.
-                      </Text>
+                      <View style={arcaneStyles.cardSoft}>
+                        <Text style={arcaneStyles.muted}>
+                          Aucune table disponible.
+                        </Text>
+                      </View>
                     ) : (
                       availableTargets.map((entry) => (
-                        <Pressable
+                        <SelectOption
                           key={entry.table.id}
+                          label={entry.table.name}
+                          selected={selectedTableId === entry.table.id}
                           onPress={() => setSelectedTableId(entry.table.id)}
-                          style={{
-                            padding: 10,
-                            borderWidth: 1,
-                            borderRadius: 10,
-                            opacity:
-                              selectedTableId === entry.table.id ? 1 : 0.7,
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontWeight:
-                                selectedTableId === entry.table.id ? "700" : "400",
-                            }}
-                          >
-                            {entry.table.name}
-                          </Text>
-                        </Pressable>
+                        />
                       ))
                     )}
-                  </View>
-                </ScrollView>
-              </View>
+                  </ScrollView>
+                </View>
 
-              <View>
-                <Text style={{ marginBottom: 6, fontWeight: "700" }}>
-                  Profil existant
-                </Text>
+                <View style={{ gap: arcane.spacing.sm }}>
+                  <SectionLabel>Profil existant</SectionLabel>
 
-                <ScrollView style={{ maxHeight: 150 }}>
-                  <View style={{ gap: 8 }}>
+                  <ScrollView
+                    style={{ maxHeight: 160 }}
+                    contentContainerStyle={{ gap: arcane.spacing.sm }}
+                    nestedScrollEnabled
+                  >
                     {!selectedTable ? (
-                      <Text style={{ opacity: 0.72 }}>
-                        Sélectionne d’abord une table.
-                      </Text>
+                      <View style={arcaneStyles.cardSoft}>
+                        <Text style={arcaneStyles.muted}>
+                          Sélectionne d’abord une table.
+                        </Text>
+                      </View>
                     ) : selectedTable.profiles.length === 0 ? (
-                      <Text style={{ opacity: 0.72 }}>
-                        Cette table ne contient aucun profil.
-                      </Text>
+                      <View style={arcaneStyles.cardSoft}>
+                        <Text style={arcaneStyles.muted}>
+                          Cette table ne contient aucun profil.
+                        </Text>
+                      </View>
                     ) : (
                       selectedTable.profiles.map((profile) => (
-                        <Pressable
+                        <SelectOption
                           key={profile.id}
+                          label={profile.name}
+                          selected={selectedProfileId === profile.id}
                           onPress={() => setSelectedProfileId(profile.id)}
-                          style={{
-                            padding: 10,
-                            borderWidth: 1,
-                            borderRadius: 10,
-                            opacity:
-                              selectedProfileId === profile.id ? 1 : 0.7,
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontWeight:
-                                selectedProfileId === profile.id ? "700" : "400",
-                            }}
-                          >
-                            {profile.name}
-                          </Text>
-                        </Pressable>
+                        />
                       ))
                     )}
-                  </View>
-                </ScrollView>
+                  </ScrollView>
+                </View>
               </View>
-            </View>
-          ) : null}
+            ) : null}
+          </ScrollView>
 
           <View
             style={{
               flexDirection: "row",
               justifyContent: "flex-end",
-              gap: 8,
-              marginTop: 4,
+              gap: arcane.spacing.sm,
             }}
           >
-            <Pressable
-              onPress={onCancel}
-              style={{
-                paddingVertical: 10,
-                paddingHorizontal: 12,
-                borderWidth: 1,
-                borderRadius: 10,
-              }}
-            >
-              <Text>Annuler</Text>
-            </Pressable>
-
-            <Pressable
+            <ModalButton label="Annuler" onPress={onCancel} />
+            <ModalButton
+              label="Valider"
               onPress={handleConfirm}
-              style={{
-                paddingVertical: 10,
-                paddingHorizontal: 12,
-                borderWidth: 1,
-                borderRadius: 10,
-              }}
-            >
-              <Text style={{ fontWeight: "700" }}>Valider</Text>
-            </Pressable>
+              variant="accent"
+            />
           </View>
         </View>
       </View>

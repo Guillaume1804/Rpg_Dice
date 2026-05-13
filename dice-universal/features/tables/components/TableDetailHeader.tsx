@@ -1,3 +1,5 @@
+// dice-universal\features\tables\components\TableDetailHeader.tsx
+
 import { View, Text, Pressable } from "react-native";
 
 import { arcane } from "../../../theme/arcaneTheme";

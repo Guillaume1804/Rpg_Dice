@@ -6,6 +6,9 @@ import {
   type RuleBehaviorKey,
 } from "../../../core/rules/behaviorRegistry";
 
+import { arcane } from "../../../theme/arcaneTheme";
+import { arcaneStyles } from "../../../theme/arcaneStyles";
+
 type RangeRow = { min: string; max: string; label: string };
 
 type Props = {
@@ -48,12 +51,12 @@ type Props = {
   pipelineCountRangeMax: string;
 
   pipelineOutput:
-  | "sum"
-  | "successes"
-  | "count_equal"
-  | "count_range"
-  | "first_value"
-  | "values";
+    | "sum"
+    | "successes"
+    | "count_equal"
+    | "count_range"
+    | "first_value"
+    | "values";
 
   pipelineSuccessThreshold: string;
   pipelineCompare: "gte" | "lte";
@@ -61,11 +64,11 @@ type Props = {
   pipelineCritFailureFaces: string;
   pipelineComplicationFaces: string;
   pipelineComplicationRule:
-  | "none"
-  | "any"
-  | "gt_successes"
-  | "gte_successes"
-  | "zero_successes";
+    | "none"
+    | "any"
+    | "gt_successes"
+    | "gte_successes"
+    | "zero_successes";
 
   configTargetValue: string;
   configDegreeStep: string;
@@ -141,6 +144,167 @@ type Props = {
   onClose: () => void;
   onConfirm: () => void;
 };
+
+function SectionTitle({ children }: { children: string }) {
+  return (
+    <Text
+      style={{
+        color: arcane.colors.textSubtle,
+        fontSize: arcane.typography.tiny,
+        fontWeight: "900",
+        textTransform: "uppercase",
+        letterSpacing: 0.8,
+      }}
+    >
+      {children}
+    </Text>
+  );
+}
+
+function FieldLabel({ children }: { children: string }) {
+  return (
+    <Text
+      style={{
+        color: arcane.colors.textMuted,
+        fontWeight: "800",
+      }}
+    >
+      {children}
+    </Text>
+  );
+}
+
+function ConfigInput(props: {
+  label: string;
+  value: string;
+  onChangeText: (value: string) => void;
+  placeholder?: string;
+  keyboardType?:
+    | "default"
+    | "numeric"
+    | "number-pad"
+    | "numbers-and-punctuation";
+}) {
+  return (
+    <View style={{ gap: 6 }}>
+      <FieldLabel>{props.label}</FieldLabel>
+
+      <TextInput
+        value={props.value}
+        onChangeText={props.onChangeText}
+        placeholder={props.placeholder}
+        placeholderTextColor={arcane.colors.textSubtle}
+        keyboardType={props.keyboardType ?? "numbers-and-punctuation"}
+        style={{
+          color: arcane.colors.text,
+          backgroundColor: arcane.colors.surfaceAlt,
+          borderWidth: 1,
+          borderColor: arcane.colors.border,
+          borderRadius: arcane.radius.md,
+          paddingHorizontal: 12,
+          paddingVertical: 11,
+          fontSize: 16,
+        }}
+      />
+    </View>
+  );
+}
+
+function ChoiceButton({
+  label,
+  selected,
+  onPress,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        borderWidth: 1,
+        borderColor: selected ? arcane.colors.accent : arcane.colors.border,
+        borderRadius: arcane.radius.pill,
+        backgroundColor: selected
+          ? arcane.colors.accentSoft
+          : arcane.colors.surfaceAlt,
+        opacity: pressed ? 0.84 : selected ? 1 : 0.78,
+        transform: [{ scale: pressed ? 0.97 : 1 }],
+      })}
+    >
+      <Text
+        style={{
+          color: arcane.colors.text,
+          fontWeight: selected ? "900" : "700",
+        }}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function ActionButton({
+  label,
+  onPress,
+  variant = "default",
+}: {
+  label: string;
+  onPress: () => void;
+  variant?: "default" | "accent";
+}) {
+  const isAccent = variant === "accent";
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        borderWidth: 1,
+        borderColor: isAccent ? arcane.colors.accent : arcane.colors.border,
+        borderRadius: arcane.radius.pill,
+        backgroundColor: isAccent
+          ? arcane.colors.accentSoft
+          : arcane.colors.surfaceAlt,
+        opacity: pressed ? 0.84 : 1,
+        transform: [{ scale: pressed ? 0.97 : 1 }],
+      })}
+    >
+      <Text
+        style={{
+          color: arcane.colors.text,
+          fontWeight: "900",
+        }}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function ConfigSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <View
+      style={{
+        ...arcaneStyles.cardSoft,
+        gap: arcane.spacing.sm,
+      }}
+    >
+      <SectionTitle>{title}</SectionTitle>
+      {children}
+    </View>
+  );
+}
 
 export function QuickBehaviorConfigModal({
   visible,
@@ -278,7 +442,6 @@ export function QuickBehaviorConfigModal({
         return configCritFailureMin;
       case "critFailureMax":
         return configCritFailureMax;
-
       default:
         return "";
     }
@@ -339,36 +502,6 @@ export function QuickBehaviorConfigModal({
     }
   }
 
-  function PipelineInput(props: {
-    label: string;
-    value: string;
-    onChangeText: (value: string) => void;
-    placeholder?: string;
-  }) {
-    return (
-      <View style={{ gap: 6 }}>
-        <Text style={{ opacity: 0.72 }}>{props.label}</Text>
-
-        <View
-          style={{
-            borderWidth: 1,
-            borderRadius: 10,
-            paddingHorizontal: 12,
-            paddingVertical: 10,
-          }}
-        >
-          <TextInput
-            value={props.value}
-            onChangeText={props.onChangeText}
-            placeholder={props.placeholder}
-            keyboardType="numbers-and-punctuation"
-            style={{ fontSize: 16 }}
-          />
-        </View>
-      </View>
-    );
-  }
-
   return (
     <View
       style={{
@@ -377,380 +510,355 @@ export function QuickBehaviorConfigModal({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: "rgba(0,0,0,0.5)",
+        backgroundColor: "rgba(0,0,0,0.64)",
         justifyContent: "center",
-        padding: 20,
+        padding: 16,
       }}
     >
       <View
         style={{
-          backgroundColor: "white",
-          borderRadius: 14,
-          padding: 16,
-          gap: 12,
-          maxHeight: "90%",
+          ...arcaneStyles.card,
+          gap: arcane.spacing.md,
+          borderColor: arcane.colors.accent,
+          maxHeight: "92%",
         }}
       >
-        <Text style={{ fontSize: 18, fontWeight: "800" }}>
-          Configurer {pendingBehaviorLabel}
-        </Text>
+        <View style={{ gap: arcane.spacing.xs }}>
+          <Text style={arcaneStyles.sectionTitle}>
+            Configurer {pendingBehaviorLabel}
+          </Text>
+
+          <Text style={arcaneStyles.muted}>
+            Ajuste la façon dont ce jet sera interprété au moment du lancer.
+          </Text>
+        </View>
 
         {!behavior ? (
-          <Text style={{ opacity: 0.72 }}>Aucun comportement sélectionné.</Text>
+          <View style={arcaneStyles.cardSoft}>
+            <Text style={arcaneStyles.muted}>
+              Aucun comportement sélectionné.
+            </Text>
+          </View>
         ) : null}
 
-        <ScrollView contentContainerStyle={{ gap: 12 }}>
+        <ScrollView
+          contentContainerStyle={{ gap: arcane.spacing.md }}
+          showsVerticalScrollIndicator
+        >
           {pendingBehaviorKey === "custom_pipeline" &&
-            pendingConfigVariant === "keep_drop" ? (
+          pendingConfigVariant === "keep_drop" ? (
             <>
-              <Text style={{ fontWeight: "800" }}>Garder / retirer</Text>
+              <ConfigSection title="Garder / retirer">
+                <FieldLabel>Action</FieldLabel>
 
-              <Text style={{ opacity: 0.72 }}>Action</Text>
+                <View
+                  style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}
+                >
+                  <ChoiceButton
+                    label="Garder"
+                    selected={keepDropMode === "keep"}
+                    onPress={() => onChangeKeepDropMode("keep")}
+                  />
 
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                {[
-                  { key: "keep", label: "Garder" },
-                  { key: "drop", label: "Retirer" },
-                ].map((option) => {
-                  const isSelected = keepDropMode === option.key;
+                  <ChoiceButton
+                    label="Retirer"
+                    selected={keepDropMode === "drop"}
+                    onPress={() => onChangeKeepDropMode("drop")}
+                  />
+                </View>
 
-                  return (
-                    <Pressable
-                      key={option.key}
-                      onPress={() =>
-                        onChangeKeepDropMode(option.key as "keep" | "drop")
-                      }
-                      style={{
-                        paddingVertical: 10,
-                        paddingHorizontal: 12,
-                        borderWidth: 1,
-                        borderRadius: 10,
-                        opacity: isSelected ? 1 : 0.7,
-                      }}
-                    >
-                      <Text style={{ fontWeight: isSelected ? "800" : "500" }}>
-                        {option.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
+                <FieldLabel>Cible</FieldLabel>
 
-              <Text style={{ opacity: 0.72 }}>Cible</Text>
+                <View
+                  style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}
+                >
+                  <ChoiceButton
+                    label="Les meilleurs dés"
+                    selected={keepDropTarget === "highest"}
+                    onPress={() => onChangeKeepDropTarget("highest")}
+                  />
 
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                {[
-                  { key: "highest", label: "Les meilleurs dés" },
-                  { key: "lowest", label: "Les plus faibles dés" },
-                ].map((option) => {
-                  const isSelected = keepDropTarget === option.key;
+                  <ChoiceButton
+                    label="Les plus faibles dés"
+                    selected={keepDropTarget === "lowest"}
+                    onPress={() => onChangeKeepDropTarget("lowest")}
+                  />
+                </View>
 
-                  return (
-                    <Pressable
-                      key={option.key}
-                      onPress={() =>
-                        onChangeKeepDropTarget(option.key as "highest" | "lowest")
-                      }
-                      style={{
-                        paddingVertical: 10,
-                        paddingHorizontal: 12,
-                        borderWidth: 1,
-                        borderRadius: 10,
-                        opacity: isSelected ? 1 : 0.7,
-                      }}
-                    >
-                      <Text style={{ fontWeight: isSelected ? "800" : "500" }}>
-                        {option.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
+                <ConfigInput
+                  label="Nombre de dés"
+                  value={keepDropCount}
+                  onChangeText={onChangeKeepDropCount}
+                  placeholder="Ex: 1"
+                  keyboardType="number-pad"
+                />
+              </ConfigSection>
 
-              <PipelineInput
-                label="Nombre de dés"
-                value={keepDropCount}
-                onChangeText={onChangeKeepDropCount}
-                placeholder="Ex: 1"
-              />
+              <ConfigSection title="Résultat">
+                <View
+                  style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}
+                >
+                  <ChoiceButton
+                    label="Somme"
+                    selected={pipelineOutput === "sum"}
+                    onPress={() => onChangePipelineOutput("sum")}
+                  />
 
-              <Text style={{ fontWeight: "800" }}>Résultat</Text>
-
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                {[
-                  { key: "sum", label: "Somme" },
-                  { key: "values", label: "Valeurs" },
-                ].map((option) => {
-                  const isSelected = pipelineOutput === option.key;
-
-                  return (
-                    <Pressable
-                      key={option.key}
-                      onPress={() =>
-                        onChangePipelineOutput(option.key as typeof pipelineOutput)
-                      }
-                      style={{
-                        paddingVertical: 10,
-                        paddingHorizontal: 12,
-                        borderWidth: 1,
-                        borderRadius: 10,
-                        opacity: isSelected ? 1 : 0.7,
-                      }}
-                    >
-                      <Text style={{ fontWeight: isSelected ? "800" : "500" }}>
-                        {option.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
+                  <ChoiceButton
+                    label="Valeurs"
+                    selected={pipelineOutput === "values"}
+                    onPress={() => onChangePipelineOutput("values")}
+                  />
+                </View>
+              </ConfigSection>
             </>
           ) : pendingBehaviorKey === "custom_pipeline" ? (
             <>
-              <Text style={{ fontWeight: "800" }}>Relances et explosions</Text>
+              <ConfigSection title="Relances et explosions">
+                <ConfigInput
+                  label="Relancer les faces"
+                  value={pipelineRerollFaces}
+                  onChangeText={onChangePipelineRerollFaces}
+                  placeholder="Ex: 1 ou 1,2"
+                />
 
-              <PipelineInput
-                label="Relancer les faces"
-                value={pipelineRerollFaces}
-                onChangeText={onChangePipelineRerollFaces}
-                placeholder="Ex: 1"
-              />
+                <ChoiceButton
+                  label={`Relance une seule fois : ${
+                    pipelineRerollOnce ? "Oui" : "Non"
+                  }`}
+                  selected={pipelineRerollOnce}
+                  onPress={() =>
+                    onChangePipelineRerollOnce(!pipelineRerollOnce)
+                  }
+                />
 
-              <Pressable
-                onPress={() => onChangePipelineRerollOnce(!pipelineRerollOnce)}
-                style={{
-                  padding: 10,
-                  borderWidth: 1,
-                  borderRadius: 10,
-                }}
-              >
-                <Text style={{ fontWeight: "700" }}>
-                  Relance une seule fois : {pipelineRerollOnce ? "Oui" : "Non"}
-                </Text>
-              </Pressable>
+                <ConfigInput
+                  label="Nombre maximum de relances par dé"
+                  value={pipelineMaxRerolls}
+                  onChangeText={onChangePipelineMaxRerolls}
+                  placeholder="Vide = limite moteur"
+                  keyboardType="number-pad"
+                />
 
-              <PipelineInput
-                label="Nombre maximum de relances par dé"
-                value={pipelineMaxRerolls}
-                onChangeText={onChangePipelineMaxRerolls}
-                placeholder="Vide = jusqu’à 100 par dé"
-              />
+                <ConfigInput
+                  label="Explosion sur les faces"
+                  value={pipelineExplodeFaces}
+                  onChangeText={onChangePipelineExplodeFaces}
+                  placeholder="Ex: 6"
+                />
 
-              <PipelineInput
-                label="Explosion sur les faces"
-                value={pipelineExplodeFaces}
-                onChangeText={onChangePipelineExplodeFaces}
-                placeholder="Ex: 6"
-              />
+                <ConfigInput
+                  label="Nombre maximum d’explosions par dé"
+                  value={pipelineMaxExplosions}
+                  onChangeText={onChangePipelineMaxExplosions}
+                  placeholder="Vide = limite moteur"
+                  keyboardType="number-pad"
+                />
+              </ConfigSection>
 
-              <PipelineInput
-                label="Nombre maximum d’explosions par dé"
-                value={pipelineMaxExplosions}
-                onChangeText={onChangePipelineMaxExplosions}
-                placeholder="Vide = jusqu’à 100 par dé"
-              />
+              <ConfigSection title="Garder / retirer">
+                <ConfigInput
+                  label="Garder les meilleurs"
+                  value={pipelineKeepHighest}
+                  onChangeText={onChangePipelineKeepHighest}
+                  placeholder="Ex: 2"
+                  keyboardType="number-pad"
+                />
 
-              <Text style={{ fontWeight: "800" }}>Garder / retirer</Text>
+                <ConfigInput
+                  label="Garder les plus faibles"
+                  value={pipelineKeepLowest}
+                  onChangeText={onChangePipelineKeepLowest}
+                  placeholder="Ex: 2"
+                  keyboardType="number-pad"
+                />
 
-              <PipelineInput
-                label="Garder les meilleurs"
-                value={pipelineKeepHighest}
-                onChangeText={onChangePipelineKeepHighest}
-                placeholder="Ex: 2"
-              />
+                <ConfigInput
+                  label="Retirer les meilleurs"
+                  value={pipelineDropHighest}
+                  onChangeText={onChangePipelineDropHighest}
+                  placeholder="Ex: 1"
+                  keyboardType="number-pad"
+                />
 
-              <PipelineInput
-                label="Garder les plus faibles"
-                value={pipelineKeepLowest}
-                onChangeText={onChangePipelineKeepLowest}
-                placeholder="Ex: 2"
-              />
+                <ConfigInput
+                  label="Retirer les plus faibles"
+                  value={pipelineDropLowest}
+                  onChangeText={onChangePipelineDropLowest}
+                  placeholder="Ex: 1"
+                  keyboardType="number-pad"
+                />
+              </ConfigSection>
 
-              <PipelineInput
-                label="Retirer les meilleurs"
-                value={pipelineDropHighest}
-                onChangeText={onChangePipelineDropHighest}
-                placeholder="Ex: 1"
-              />
+              <ConfigSection title="Comptage">
+                <ConfigInput
+                  label="Faces de complication"
+                  value={pipelineComplicationFaces}
+                  onChangeText={onChangePipelineComplicationFaces}
+                  placeholder="Ex: 1 ou 1,2"
+                />
 
-              <PipelineInput
-                label="Retirer les plus faibles"
-                value={pipelineDropLowest}
-                onChangeText={onChangePipelineDropLowest}
-                placeholder="Ex: 1"
-              />
+                <FieldLabel>Règle de complication</FieldLabel>
 
-              <Text style={{ fontWeight: "800" }}>Comptage</Text>
+                <View
+                  style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}
+                >
+                  <ChoiceButton
+                    label="Aucune"
+                    selected={pipelineComplicationRule === "none"}
+                    onPress={() => onChangePipelineComplicationRule("none")}
+                  />
 
-              <PipelineInput
-                label="Faces de complication"
-                value={pipelineComplicationFaces}
-                onChangeText={onChangePipelineComplicationFaces}
-                placeholder="Ex: 1"
-              />
+                  <ChoiceButton
+                    label="Dès qu’il y en a"
+                    selected={pipelineComplicationRule === "any"}
+                    onPress={() => onChangePipelineComplicationRule("any")}
+                  />
 
-              <Text style={{ opacity: 0.72 }}>Règle de complication</Text>
-
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                {[
-                  { key: "none", label: "Aucune" },
-                  { key: "any", label: "Dès qu’il y en a" },
-                  { key: "gt_successes", label: "> succès" },
-                  { key: "gte_successes", label: "≥ succès" },
-                  { key: "zero_successes", label: "Si zéro succès" },
-                ].map((option) => (
-                  <Pressable
-                    key={option.key}
+                  <ChoiceButton
+                    label="> succès"
+                    selected={pipelineComplicationRule === "gt_successes"}
                     onPress={() =>
-                      onChangePipelineComplicationRule(
-                        option.key as typeof pipelineComplicationRule,
-                      )
+                      onChangePipelineComplicationRule("gt_successes")
                     }
-                    style={{
-                      paddingVertical: 10,
-                      paddingHorizontal: 12,
-                      borderWidth: 1,
-                      borderRadius: 10,
-                      opacity:
-                        pipelineComplicationRule === option.key ? 1 : 0.7,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontWeight:
-                          pipelineComplicationRule === option.key
-                            ? "800"
-                            : "500",
-                      }}
-                    >
-                      {option.label}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
+                  />
 
-              <PipelineInput
-                label="Compter les succès à partir de"
-                value={pipelineCountSuccessAtOrAbove}
-                onChangeText={onChangePipelineCountSuccessAtOrAbove}
-                placeholder="Ex: 5"
-              />
+                  <ChoiceButton
+                    label="≥ succès"
+                    selected={pipelineComplicationRule === "gte_successes"}
+                    onPress={() =>
+                      onChangePipelineComplicationRule("gte_successes")
+                    }
+                  />
 
-              <PipelineInput
-                label="Compter les faces exactes"
-                value={pipelineCountEqualFaces}
-                onChangeText={onChangePipelineCountEqualFaces}
-                placeholder="Ex: 1 ou 1,2"
-              />
-
-              <View style={{ flexDirection: "row", gap: 8 }}>
-                <View style={{ flex: 1 }}>
-                  <PipelineInput
-                    label="Plage min"
-                    value={pipelineCountRangeMin}
-                    onChangeText={onChangePipelineCountRangeMin}
-                    placeholder="Ex: 2"
+                  <ChoiceButton
+                    label="Si zéro succès"
+                    selected={pipelineComplicationRule === "zero_successes"}
+                    onPress={() =>
+                      onChangePipelineComplicationRule("zero_successes")
+                    }
                   />
                 </View>
 
-                <View style={{ flex: 1 }}>
-                  <PipelineInput
-                    label="Plage max"
-                    value={pipelineCountRangeMax}
-                    onChangeText={onChangePipelineCountRangeMax}
-                    placeholder="Ex: 5"
+                <ConfigInput
+                  label="Compter les succès à partir de"
+                  value={pipelineCountSuccessAtOrAbove}
+                  onChangeText={onChangePipelineCountSuccessAtOrAbove}
+                  placeholder="Ex: 5"
+                  keyboardType="number-pad"
+                />
+
+                <ConfigInput
+                  label="Compter les faces exactes"
+                  value={pipelineCountEqualFaces}
+                  onChangeText={onChangePipelineCountEqualFaces}
+                  placeholder="Ex: 1 ou 6,10"
+                />
+
+                <View style={{ flexDirection: "row", gap: 8 }}>
+                  <View style={{ flex: 1 }}>
+                    <ConfigInput
+                      label="Plage min"
+                      value={pipelineCountRangeMin}
+                      onChangeText={onChangePipelineCountRangeMin}
+                      placeholder="Ex: 2"
+                      keyboardType="number-pad"
+                    />
+                  </View>
+
+                  <View style={{ flex: 1 }}>
+                    <ConfigInput
+                      label="Plage max"
+                      value={pipelineCountRangeMax}
+                      onChangeText={onChangePipelineCountRangeMax}
+                      placeholder="Ex: 5"
+                      keyboardType="number-pad"
+                    />
+                  </View>
+                </View>
+              </ConfigSection>
+
+              <ConfigSection title="Sortie du pipeline">
+                <View
+                  style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}
+                >
+                  <ChoiceButton
+                    label="Somme"
+                    selected={pipelineOutput === "sum"}
+                    onPress={() => onChangePipelineOutput("sum")}
+                  />
+
+                  <ChoiceButton
+                    label="Succès"
+                    selected={pipelineOutput === "successes"}
+                    onPress={() => onChangePipelineOutput("successes")}
+                  />
+
+                  <ChoiceButton
+                    label="Faces exactes"
+                    selected={pipelineOutput === "count_equal"}
+                    onPress={() => onChangePipelineOutput("count_equal")}
+                  />
+
+                  <ChoiceButton
+                    label="Plage"
+                    selected={pipelineOutput === "count_range"}
+                    onPress={() => onChangePipelineOutput("count_range")}
+                  />
+
+                  <ChoiceButton
+                    label="Première valeur"
+                    selected={pipelineOutput === "first_value"}
+                    onPress={() => onChangePipelineOutput("first_value")}
+                  />
+
+                  <ChoiceButton
+                    label="Valeurs"
+                    selected={pipelineOutput === "values"}
+                    onPress={() => onChangePipelineOutput("values")}
                   />
                 </View>
-              </View>
+              </ConfigSection>
 
-              <Text style={{ fontWeight: "800" }}>Sortie du pipeline</Text>
+              <ConfigSection title="Succès / critiques optionnels">
+                <ConfigInput
+                  label="Seuil final"
+                  value={pipelineSuccessThreshold}
+                  onChangeText={onChangePipelineSuccessThreshold}
+                  placeholder="Ex: 10"
+                  keyboardType="number-pad"
+                />
 
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                {[
-                  { key: "sum", label: "Somme" },
-                  { key: "successes", label: "Succès" },
-                  { key: "count_equal", label: "Faces exactes" },
-                  { key: "count_range", label: "Plage" },
-                  { key: "first_value", label: "Première valeur" },
-                  { key: "values", label: "Valeurs" },
-                ].map((option) => (
-                  <Pressable
-                    key={option.key}
-                    onPress={() =>
-                      onChangePipelineOutput(
-                        option.key as typeof pipelineOutput,
-                      )
-                    }
-                    style={{
-                      paddingVertical: 10,
-                      paddingHorizontal: 12,
-                      borderWidth: 1,
-                      borderRadius: 10,
-                      opacity: pipelineOutput === option.key ? 1 : 0.7,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontWeight:
-                          pipelineOutput === option.key ? "800" : "500",
-                      }}
-                    >
-                      {option.label}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-
-              <Text style={{ fontWeight: "800" }}>
-                Succès / critiques optionnels
-              </Text>
-
-              <PipelineInput
-                label="Seuil final"
-                value={pipelineSuccessThreshold}
-                onChangeText={onChangePipelineSuccessThreshold}
-                placeholder="Ex: 10"
-              />
-
-              <View style={{ flexDirection: "row", gap: 8 }}>
-                <Pressable
-                  onPress={() => onChangePipelineCompare("gte")}
-                  style={{
-                    padding: 10,
-                    borderWidth: 1,
-                    borderRadius: 10,
-                    opacity: pipelineCompare === "gte" ? 1 : 0.7,
-                  }}
+                <View
+                  style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}
                 >
-                  <Text style={{ fontWeight: "700" }}>≥ seuil</Text>
-                </Pressable>
+                  <ChoiceButton
+                    label="≥ seuil"
+                    selected={pipelineCompare === "gte"}
+                    onPress={() => onChangePipelineCompare("gte")}
+                  />
 
-                <Pressable
-                  onPress={() => onChangePipelineCompare("lte")}
-                  style={{
-                    padding: 10,
-                    borderWidth: 1,
-                    borderRadius: 10,
-                    opacity: pipelineCompare === "lte" ? 1 : 0.7,
-                  }}
-                >
-                  <Text style={{ fontWeight: "700" }}>≤ seuil</Text>
-                </Pressable>
-              </View>
+                  <ChoiceButton
+                    label="≤ seuil"
+                    selected={pipelineCompare === "lte"}
+                    onPress={() => onChangePipelineCompare("lte")}
+                  />
+                </View>
 
-              <PipelineInput
-                label="Faces de réussite critique"
-                value={pipelineCritSuccessFaces}
-                onChangeText={onChangePipelineCritSuccessFaces}
-                placeholder="Ex: 20"
-              />
+                <ConfigInput
+                  label="Faces de réussite critique"
+                  value={pipelineCritSuccessFaces}
+                  onChangeText={onChangePipelineCritSuccessFaces}
+                  placeholder="Ex: 20"
+                />
 
-              <PipelineInput
-                label="Faces d’échec critique"
-                value={pipelineCritFailureFaces}
-                onChangeText={onChangePipelineCritFailureFaces}
-                placeholder="Ex: 1"
-              />
+                <ConfigInput
+                  label="Faces d’échec critique"
+                  value={pipelineCritFailureFaces}
+                  onChangeText={onChangePipelineCritFailureFaces}
+                  placeholder="Ex: 1"
+                />
+              </ConfigSection>
             </>
           ) : null}
 
@@ -758,155 +866,97 @@ export function QuickBehaviorConfigModal({
             behavior?.fields.map((field) => {
               if (field.type === "text" || field.type === "number") {
                 return (
-                  <View key={field.key} style={{ gap: 6 }}>
-                    <Text style={{ opacity: 0.72 }}>{field.label}</Text>
-
-                    <View
-                      style={{
-                        borderWidth: 1,
-                        borderRadius: 10,
-                        paddingHorizontal: 12,
-                        paddingVertical: 10,
-                      }}
-                    >
-                      <TextInput
-                        value={getFieldValue(field.key)}
-                        onChangeText={(value) =>
-                          setFieldValue(field.key, value)
-                        }
-                        keyboardType={
-                          field.type === "number" ? "number-pad" : "default"
-                        }
-                        placeholder={field.placeholder}
-                        style={{ fontSize: 16 }}
-                      />
-                    </View>
-                  </View>
+                  <ConfigSection key={field.key} title={field.label}>
+                    <ConfigInput
+                      label={field.label}
+                      value={getFieldValue(field.key)}
+                      onChangeText={(value) => setFieldValue(field.key, value)}
+                      keyboardType={
+                        field.type === "number" ? "number-pad" : "default"
+                      }
+                      placeholder={field.placeholder}
+                    />
+                  </ConfigSection>
                 );
               }
 
               if (field.type === "select") {
                 return (
-                  <View key={field.key} style={{ gap: 6 }}>
-                    <Text style={{ opacity: 0.72 }}>{field.label}</Text>
-
+                  <ConfigSection key={field.key} title={field.label}>
                     <View
                       style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}
                     >
-                      {field.options.map((option) => {
-                        const isSelected =
-                          getFieldValue(field.key) === option.value;
-
-                        return (
-                          <Pressable
-                            key={option.value}
-                            onPress={() =>
-                              setFieldValue(field.key, option.value)
-                            }
-                            style={{
-                              paddingVertical: 10,
-                              paddingHorizontal: 12,
-                              borderWidth: 1,
-                              borderRadius: 10,
-                              opacity: isSelected ? 1 : 0.7,
-                            }}
-                          >
-                            <Text
-                              style={{
-                                fontWeight: isSelected ? "700" : "400",
-                              }}
-                            >
-                              {option.label}
-                            </Text>
-                          </Pressable>
-                        );
-                      })}
+                      {field.options.map((option) => (
+                        <ChoiceButton
+                          key={option.value}
+                          label={option.label}
+                          selected={getFieldValue(field.key) === option.value}
+                          onPress={() => setFieldValue(field.key, option.value)}
+                        />
+                      ))}
                     </View>
-                  </View>
+                  </ConfigSection>
                 );
               }
 
               if (field.type === "ranges") {
                 return (
-                  <View key={field.key} style={{ gap: 8 }}>
-                    <Text style={{ opacity: 0.72 }}>{field.label}</Text>
-
+                  <ConfigSection key={field.key} title={field.label}>
                     {configRanges.map((row, index) => (
                       <View
                         key={`${pendingBehaviorKey}-range-${index}`}
                         style={{
-                          borderWidth: 1,
-                          borderRadius: 10,
-                          padding: 10,
-                          gap: 8,
+                          ...arcaneStyles.cardSoft,
+                          gap: arcane.spacing.sm,
                         }}
                       >
-                        <Text style={{ fontWeight: "700" }}>
+                        <Text
+                          style={{
+                            color: arcane.colors.text,
+                            fontWeight: "900",
+                          }}
+                        >
                           Plage {index + 1}
                         </Text>
 
                         <View style={{ flexDirection: "row", gap: 8 }}>
-                          <View
-                            style={{
-                              flex: 1,
-                              borderWidth: 1,
-                              borderRadius: 10,
-                              paddingHorizontal: 10,
-                              paddingVertical: 8,
-                            }}
-                          >
-                            <TextInput
+                          <View style={{ flex: 1 }}>
+                            <ConfigInput
+                              label="Min"
                               value={row.min}
                               onChangeText={(value) =>
                                 onUpdateRange(index, "min", value)
                               }
-                              keyboardType="number-pad"
                               placeholder="Min"
-                              style={{ fontSize: 16 }}
+                              keyboardType="number-pad"
                             />
                           </View>
 
-                          <View
-                            style={{
-                              flex: 1,
-                              borderWidth: 1,
-                              borderRadius: 10,
-                              paddingHorizontal: 10,
-                              paddingVertical: 8,
-                            }}
-                          >
-                            <TextInput
+                          <View style={{ flex: 1 }}>
+                            <ConfigInput
+                              label="Max"
                               value={row.max}
                               onChangeText={(value) =>
                                 onUpdateRange(index, "max", value)
                               }
-                              keyboardType="number-pad"
                               placeholder="Max"
-                              style={{ fontSize: 16 }}
+                              keyboardType="number-pad"
                             />
                           </View>
                         </View>
 
-                        <View
-                          style={{
-                            borderWidth: 1,
-                            borderRadius: 10,
-                            paddingHorizontal: 10,
-                            paddingVertical: 8,
-                          }}
-                        >
-                          <TextInput
-                            value={row.label}
-                            onChangeText={(value) =>
-                              onUpdateRange(index, "label", value)
-                            }
-                            placeholder="Label"
-                            style={{ fontSize: 16 }}
-                          />
-                        </View>
+                        <ConfigInput
+                          label="Libellé"
+                          value={row.label}
+                          onChangeText={(value) =>
+                            onUpdateRange(index, "label", value)
+                          }
+                          placeholder="Label"
+                          keyboardType="default"
+                        />
                       </View>
                     ))}
-                  </View>
+                  </ConfigSection>
                 );
               }
 
@@ -918,32 +968,11 @@ export function QuickBehaviorConfigModal({
           style={{
             flexDirection: "row",
             justifyContent: "flex-end",
-            gap: 8,
+            gap: arcane.spacing.sm,
           }}
         >
-          <Pressable
-            onPress={onClose}
-            style={{
-              paddingVertical: 10,
-              paddingHorizontal: 12,
-              borderWidth: 1,
-              borderRadius: 10,
-            }}
-          >
-            <Text>Annuler</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={onConfirm}
-            style={{
-              paddingVertical: 10,
-              paddingHorizontal: 12,
-              borderWidth: 1,
-              borderRadius: 10,
-            }}
-          >
-            <Text style={{ fontWeight: "700" }}>Valider</Text>
-          </Pressable>
+          <ActionButton label="Annuler" onPress={onClose} />
+          <ActionButton label="Valider" onPress={onConfirm} variant="accent" />
         </View>
       </View>
     </View>

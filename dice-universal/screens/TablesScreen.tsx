@@ -373,7 +373,9 @@ export default function TablesScreen() {
                   style={({ pressed }) => ({
                     ...arcaneStyles.card,
                     gap: arcane.spacing.sm,
-                    borderColor: isActive ? arcane.colors.accent : arcane.colors.border,
+                    borderColor: isActive
+                      ? arcane.colors.accent
+                      : arcane.colors.border,
                     backgroundColor: isActive
                       ? arcane.colors.accentSoft
                       : arcane.colors.backgroundElevated,
@@ -407,7 +409,9 @@ export default function TablesScreen() {
                           fontWeight: "600",
                         }}
                       >
-                        {table.is_system === 1 ? "Table système" : "Table perso"}
+                        {table.is_system === 1
+                          ? "Table système"
+                          : "Table perso"}
                       </Text>
                     </View>
 
@@ -442,11 +446,13 @@ export default function TablesScreen() {
                     }}
                   >
                     <Text style={{ color: arcane.colors.textMuted }}>
-                      {stats.profile_count} profil{stats.profile_count > 1 ? "s" : ""}
+                      {stats.profile_count} profil
+                      {stats.profile_count > 1 ? "s" : ""}
                     </Text>
 
                     <Text style={{ color: arcane.colors.textMuted }}>
-                      {stats.group_count} action{stats.group_count > 1 ? "s" : ""}
+                      {stats.group_count} action
+                      {stats.group_count > 1 ? "s" : ""}
                     </Text>
 
                     <Text style={{ color: arcane.colors.textMuted }}>
@@ -475,7 +481,9 @@ export default function TablesScreen() {
                         paddingVertical: 9,
                         paddingHorizontal: 12,
                         borderWidth: 1,
-                        borderColor: isActive ? arcane.colors.accent : arcane.colors.border,
+                        borderColor: isActive
+                          ? arcane.colors.accent
+                          : arcane.colors.border,
                         borderRadius: arcane.radius.pill,
                         backgroundColor: isActive
                           ? arcane.colors.accentSoft
@@ -560,7 +568,7 @@ export default function TablesScreen() {
           <View
             style={{
               flex: 1,
-              backgroundColor: "rgba(0,0,0,0.62)",
+              backgroundColor: "rgba(0,0,0,0.68)",
               justifyContent: "center",
               padding: arcane.spacing.md,
             }}
@@ -569,13 +577,26 @@ export default function TablesScreen() {
               style={{
                 ...arcaneStyles.card,
                 gap: arcane.spacing.md,
+                borderColor: arcane.colors.accent,
               }}
             >
               <View style={{ gap: arcane.spacing.xs }}>
                 <Text
                   style={{
+                    color: arcane.colors.textSubtle,
+                    fontSize: arcane.typography.tiny,
+                    fontWeight: "900",
+                    textTransform: "uppercase",
+                    letterSpacing: 0.8,
+                  }}
+                >
+                  Nouvelle table
+                </Text>
+
+                <Text
+                  style={{
                     color: arcane.colors.text,
-                    fontSize: 20,
+                    fontSize: 22,
                     fontWeight: "900",
                   }}
                 >
@@ -583,33 +604,49 @@ export default function TablesScreen() {
                 </Text>
 
                 <Text style={arcaneStyles.muted}>
-                  Donne un nom à ta nouvelle table personnalisée.
+                  Une table regroupe un univers, ses profils, ses actions et ses
+                  règles de lancer.
                 </Text>
               </View>
 
-              <TextInput
-                value={newTableName}
-                onChangeText={setNewTableName}
-                placeholder="Nom de la table"
-                placeholderTextColor={arcane.colors.textSubtle}
-                editable={!isCreating}
-                style={{
-                  color: arcane.colors.text,
-                  backgroundColor: arcane.colors.surfaceAlt,
-                  borderWidth: 1,
-                  borderColor: arcane.colors.border,
-                  borderRadius: arcane.radius.md,
-                  paddingHorizontal: 12,
-                  paddingVertical: 12,
-                  fontSize: 16,
-                  fontWeight: "700",
-                }}
-              />
+              <View style={{ gap: arcane.spacing.xs }}>
+                <Text
+                  style={{
+                    color: arcane.colors.text,
+                    fontWeight: "800",
+                  }}
+                >
+                  Nom de la table
+                </Text>
+
+                <TextInput
+                  value={newTableName}
+                  onChangeText={setNewTableName}
+                  placeholder="Ex: Campagne principale"
+                  placeholderTextColor={arcane.colors.textMuted}
+                  selectionColor={arcane.colors.accent}
+                  editable={!isCreating}
+                  style={{
+                    minHeight: 48,
+                    borderWidth: 1,
+                    borderColor: arcane.colors.border,
+                    borderRadius: arcane.radius.md,
+                    paddingHorizontal: 12,
+                    paddingVertical: 10,
+                    backgroundColor: arcane.colors.surfaceAlt,
+                    color: arcane.colors.text,
+                    fontSize: 16,
+                    fontWeight: "700",
+                    opacity: isCreating ? 0.6 : 1,
+                  }}
+                />
+              </View>
 
               <View
                 style={{
                   flexDirection: "row",
                   justifyContent: "flex-end",
+                  flexWrap: "wrap",
                   gap: arcane.spacing.sm,
                 }}
               >
@@ -620,14 +657,16 @@ export default function TablesScreen() {
                       setNewTableName("");
                     }
                   }}
+                  disabled={isCreating}
                   style={({ pressed }) => ({
-                    paddingVertical: 10,
+                    paddingVertical: 11,
                     paddingHorizontal: 14,
                     borderWidth: 1,
                     borderColor: arcane.colors.border,
                     borderRadius: arcane.radius.pill,
                     backgroundColor: arcane.colors.surfaceAlt,
-                    opacity: pressed ? 0.82 : 1,
+                    opacity: isCreating ? 0.5 : pressed ? 0.84 : 1,
+                    transform: [{ scale: pressed ? 0.97 : 1 }],
                   })}
                 >
                   <Text
@@ -642,20 +681,16 @@ export default function TablesScreen() {
 
                 <Pressable
                   onPress={handleCreateTable}
-                  disabled={isCreating || newTableName.trim().length === 0}
+                  disabled={isCreating}
                   style={({ pressed }) => ({
-                    paddingVertical: 10,
+                    paddingVertical: 11,
                     paddingHorizontal: 14,
                     borderWidth: 1,
                     borderColor: arcane.colors.accent,
                     borderRadius: arcane.radius.pill,
                     backgroundColor: arcane.colors.accentSoft,
-                    opacity:
-                      isCreating || newTableName.trim().length === 0
-                        ? 0.45
-                        : pressed
-                          ? 0.82
-                          : 1,
+                    opacity: isCreating ? 0.6 : pressed ? 0.84 : 1,
+                    transform: [{ scale: pressed ? 0.97 : 1 }],
                   })}
                 >
                   <Text
