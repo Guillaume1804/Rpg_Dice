@@ -1,5 +1,10 @@
+// dice-universal/features/tables/actionWizard/steps/ActionWizardStepRuleChoice.tsx
+
 import { Pressable, Text, View } from "react-native";
 import type { RuleRow } from "../../../../data/repositories/rulesRepo";
+
+import { arcane } from "../../../../theme/arcaneTheme";
+import { arcaneStyles } from "../../../../theme/arcaneStyles";
 
 type Props = {
   rules: RuleRow[];
@@ -21,6 +26,89 @@ function getRuleOriginLabel(rule: RuleRow) {
   return "Règle personnalisée globale";
 }
 
+function SectionLabel({ children }: { children: string }) {
+  return (
+    <Text
+      style={{
+        color: arcane.colors.textSubtle,
+        fontSize: arcane.typography.tiny,
+        fontWeight: "900",
+        textTransform: "uppercase",
+        letterSpacing: 0.8,
+      }}
+    >
+      {children}
+    </Text>
+  );
+}
+
+function RuleCard({
+  title,
+  subtitle,
+  footer,
+  selected,
+  onPress,
+  variant = "default",
+}: {
+  title: string;
+  subtitle: string;
+  footer: string;
+  selected: boolean;
+  onPress: () => void;
+  variant?: "default" | "accent";
+}) {
+  const isAccent = variant === "accent";
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        ...arcaneStyles.cardSoft,
+        gap: arcane.spacing.xs,
+        borderColor: selected
+          ? arcane.colors.accent
+          : isAccent
+            ? arcane.colors.accent
+            : arcane.colors.border,
+        backgroundColor: selected
+          ? arcane.colors.accentSoft
+          : arcane.colors.surfaceAlt,
+        opacity: pressed ? 0.86 : 1,
+        transform: [{ scale: pressed ? 0.99 : 1 }],
+      })}
+    >
+      <Text
+        style={{
+          color: arcane.colors.text,
+          fontSize: 16,
+          fontWeight: "900",
+        }}
+      >
+        {title}
+      </Text>
+
+      <Text
+        style={{
+          color: arcane.colors.textMuted,
+          lineHeight: 19,
+        }}
+      >
+        {subtitle}
+      </Text>
+
+      <Text
+        style={{
+          marginTop: 2,
+          color: selected ? arcane.colors.accent : arcane.colors.textSubtle,
+          fontWeight: "900",
+        }}
+      >
+        {footer}
+      </Text>
+    </Pressable>
+  );
+}
+
 export function ActionWizardStepRuleChoice({
   rules,
   selectedRuleId,
@@ -32,170 +120,123 @@ export function ActionWizardStepRuleChoice({
   const alternativeRules = rules.slice(1);
 
   return (
-    <View style={{ gap: 12 }}>
-      <Text style={{ fontSize: 18, fontWeight: "800" }}>
-        Logique de l’action
-      </Text>
+    <View style={{ gap: arcane.spacing.md }}>
+      <View style={{ gap: arcane.spacing.xs }}>
+        <Text style={arcaneStyles.sectionTitle}>Logique de l’action</Text>
 
-      <Text style={{ opacity: 0.72 }}>
-        L’application cherche d’abord si une logique existante peut être
-        réutilisée pour éviter de recréer inutilement une règle.
-      </Text>
+        <Text style={arcaneStyles.muted}>
+          L’application cherche si une règle existante peut être réutilisée. Tu
+          peux aussi générer une nouvelle règle automatiquement.
+        </Text>
+      </View>
 
       {recommendedRule ? (
         <>
-          <View style={{ gap: 8 }}>
-            <Text style={{ fontWeight: "700" }}>Suggestion recommandée</Text>
+          <View style={{ gap: arcane.spacing.sm }}>
+            <SectionLabel>Suggestion recommandée</SectionLabel>
 
-            <Pressable
+            <RuleCard
+              title={recommendedRule.name}
+              subtitle={getRuleOriginLabel(recommendedRule)}
+              footer={
+                selectedRuleId === recommendedRule.id && creationMode === "auto"
+                  ? "Sélectionnée"
+                  : "Utiliser cette logique"
+              }
+              selected={
+                selectedRuleId === recommendedRule.id && creationMode === "auto"
+              }
+              variant="accent"
               onPress={() => {
                 onSelectRule(recommendedRule.id);
                 onSelectCreationMode("auto");
               }}
-              style={{
-                borderWidth: 1,
-                borderRadius: 12,
-                padding: 12,
-                opacity:
-                  selectedRuleId === recommendedRule.id &&
-                  creationMode === "auto"
-                    ? 1
-                    : 0.9,
-              }}
-            >
-              <Text style={{ fontWeight: "800", fontSize: 16 }}>
-                {recommendedRule.name}
-              </Text>
-
-              <Text style={{ marginTop: 4, opacity: 0.72 }}>
-                {getRuleOriginLabel(recommendedRule)}
-              </Text>
-
-              <Text style={{ marginTop: 6, fontWeight: "600" }}>
-                {selectedRuleId === recommendedRule.id &&
-                creationMode === "auto"
-                  ? "Sélectionnée"
-                  : "Utiliser cette logique"}
-              </Text>
-            </Pressable>
+            />
           </View>
 
           {alternativeRules.length > 0 ? (
-            <View style={{ gap: 8 }}>
-              <Text style={{ fontWeight: "700" }}>
-                Autres logiques compatibles
-              </Text>
+            <View style={{ gap: arcane.spacing.sm }}>
+              <SectionLabel>Autres logiques compatibles</SectionLabel>
 
               {alternativeRules.map((rule) => {
                 const selected =
                   selectedRuleId === rule.id && creationMode === "auto";
 
                 return (
-                  <Pressable
+                  <RuleCard
                     key={rule.id}
+                    title={rule.name}
+                    subtitle={getRuleOriginLabel(rule)}
+                    footer={
+                      selected ? "Sélectionnée" : "Utiliser cette logique"
+                    }
+                    selected={selected}
                     onPress={() => {
                       onSelectRule(rule.id);
                       onSelectCreationMode("auto");
                     }}
-                    style={{
-                      borderWidth: 1,
-                      borderRadius: 12,
-                      padding: 12,
-                      opacity: selected ? 1 : 0.75,
-                    }}
-                  >
-                    <Text style={{ fontWeight: "800", fontSize: 16 }}>
-                      {rule.name}
-                    </Text>
-
-                    <Text style={{ marginTop: 4, opacity: 0.72 }}>
-                      {getRuleOriginLabel(rule)}
-                    </Text>
-
-                    <Text style={{ marginTop: 6, fontWeight: "600" }}>
-                      {selected ? "Sélectionnée" : "Utiliser cette logique"}
-                    </Text>
-                  </Pressable>
+                  />
                 );
               })}
             </View>
           ) : null}
         </>
       ) : (
-        <View
-          style={{
-            borderWidth: 1,
-            borderRadius: 12,
-            padding: 12,
-          }}
-        >
-          <Text style={{ fontWeight: "700" }}>
+        <View style={arcaneStyles.cardSoft}>
+          <Text
+            style={{
+              color: arcane.colors.text,
+              fontWeight: "900",
+            }}
+          >
             Aucune logique existante trouvée
           </Text>
 
-          <Text style={{ marginTop: 6, opacity: 0.72 }}>
+          <Text
+            style={[
+              arcaneStyles.muted,
+              {
+                marginTop: arcane.spacing.xs,
+              },
+            ]}
+          >
             Cette action ne correspond à aucune règle déjà enregistrée pour ce
             type de dé et ce comportement.
           </Text>
         </View>
       )}
 
-      <View style={{ gap: 8 }}>
-        <Text style={{ fontWeight: "700" }}>Créer une nouvelle règle</Text>
+      <View style={{ gap: arcane.spacing.sm }}>
+        <SectionLabel>Créer une nouvelle règle</SectionLabel>
 
-        <Pressable
+        <RuleCard
+          title="Création automatique"
+          subtitle="Une règle sera générée automatiquement à partir de ta configuration."
+          footer={
+            selectedRuleId === null && creationMode === "auto"
+              ? "Sélectionnée"
+              : "Utiliser ce mode"
+          }
+          selected={selectedRuleId === null && creationMode === "auto"}
+          variant="accent"
           onPress={() => {
             onSelectRule(null);
             onSelectCreationMode("auto");
           }}
-          style={{
-            borderWidth: 1,
-            borderRadius: 12,
-            padding: 12,
-            opacity:
-              selectedRuleId === null && creationMode === "auto" ? 1 : 0.85,
-          }}
-        >
-          <Text style={{ fontWeight: "800", fontSize: 16 }}>
-            Création automatique (recommandé)
-          </Text>
+        />
 
-          <Text style={{ marginTop: 4, opacity: 0.72 }}>
-            Une règle sera générée automatiquement à partir de ta configuration.
-          </Text>
-
-          <Text style={{ marginTop: 6, fontWeight: "600" }}>
-            {selectedRuleId === null && creationMode === "auto"
-              ? "Sélectionnée"
-              : "Utiliser ce mode"}
-          </Text>
-        </Pressable>
-
-        <Pressable
+        <RuleCard
+          title="Créer une règle personnalisée"
+          subtitle="Ouvre l’éditeur complet pour concevoir une règle sur mesure."
+          footer={
+            creationMode === "advanced" ? "Sélectionnée" : "Utiliser ce mode"
+          }
+          selected={creationMode === "advanced"}
           onPress={() => {
             onSelectRule(null);
             onSelectCreationMode("advanced");
           }}
-          style={{
-            borderWidth: 1,
-            borderRadius: 12,
-            padding: 12,
-            marginTop: 6,
-            opacity: creationMode === "advanced" ? 1 : 0.85,
-          }}
-        >
-          <Text style={{ fontWeight: "800", fontSize: 16 }}>
-            Créer une règle personnalisée (avancé)
-          </Text>
-
-          <Text style={{ marginTop: 4, opacity: 0.72 }}>
-            Ouvre l’éditeur complet pour concevoir une règle sur mesure.
-          </Text>
-
-          <Text style={{ marginTop: 6, fontWeight: "600" }}>
-            {creationMode === "advanced" ? "Sélectionnée" : "Utiliser ce mode"}
-          </Text>
-        </Pressable>
+        />
       </View>
     </View>
   );

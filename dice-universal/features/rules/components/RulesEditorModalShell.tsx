@@ -1,5 +1,10 @@
+// dice-universal/features/rules/components/RulesEditorModalShell.tsx
+
 import { Modal, View } from "react-native";
 import type { ReactNode } from "react";
+
+import { arcane } from "../../../theme/arcaneTheme";
+import { arcaneStyles } from "../../../theme/arcaneStyles";
 
 type Props = {
   visible: boolean;
@@ -7,11 +12,7 @@ type Props = {
   children: ReactNode;
 };
 
-export function RulesEditorModalShell({
-  visible,
-  onClose,
-  children,
-}: Props) {
+export function RulesEditorModalShell({ visible, onClose, children }: Props) {
   return (
     <Modal
       visible={visible}
@@ -22,18 +23,17 @@ export function RulesEditorModalShell({
       <View
         style={{
           flex: 1,
-          backgroundColor: "rgba(0,0,0,0.5)",
+          backgroundColor: "rgba(0,0,0,0.68)",
           justifyContent: "center",
-          padding: 16,
+          padding: arcane.spacing.md,
         }}
       >
         <View
           style={{
-            backgroundColor: "white",
-            borderRadius: 12,
-            padding: 16,
-            borderWidth: 1,
+            ...arcaneStyles.card,
             maxHeight: "90%",
+            gap: arcane.spacing.md,
+            borderColor: arcane.colors.accent,
           }}
         >
           {children}

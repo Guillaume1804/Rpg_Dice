@@ -1,4 +1,4 @@
-// dice-universal\features\tables\actionWizard\CreateActionWizardModal.tsx
+// dice-universal/features/tables/actionWizard/CreateActionWizardModal.tsx
 
 import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 import type { RuleRow } from "../../../data/repositories/rulesRepo";
@@ -13,6 +13,9 @@ import { ActionWizardStepDice } from "./steps/ActionWizardStepDice";
 import { ActionWizardStepRuleChoice } from "./steps/ActionWizardStepRuleChoice";
 import { ActionWizardStepBehavior } from "./steps/ActionWizardStepBehavior";
 import { ActionWizardStepSummary } from "./steps/ActionWizardStepSummary";
+
+import { arcane } from "../../../theme/arcaneTheme";
+import { arcaneStyles } from "../../../theme/arcaneStyles";
 
 type Props = {
   visible: boolean;
@@ -74,6 +77,45 @@ function getStepTitle(step: ActionWizardStep) {
   return "Résumé";
 }
 
+function WizardButton({
+  label,
+  onPress,
+  variant = "default",
+}: {
+  label: string;
+  onPress: () => void;
+  variant?: "default" | "accent";
+}) {
+  const isAccent = variant === "accent";
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        borderWidth: 1,
+        borderColor: isAccent ? arcane.colors.accent : arcane.colors.border,
+        borderRadius: arcane.radius.pill,
+        backgroundColor: isAccent
+          ? arcane.colors.accentSoft
+          : arcane.colors.surfaceAlt,
+        opacity: pressed ? 0.84 : 1,
+        transform: [{ scale: pressed ? 0.97 : 1 }],
+      })}
+    >
+      <Text
+        style={{
+          color: arcane.colors.text,
+          fontWeight: "900",
+        }}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
 export function CreateActionWizardModal({
   visible,
   step,
@@ -112,10 +154,10 @@ export function CreateActionWizardModal({
       <View
         style={{
           flex: 1,
-          backgroundColor: "rgba(0,0,0,0.5)",
+          backgroundColor: "rgba(0,0,0,0.68)",
           justifyContent: "center",
           alignItems: "center",
-          padding: 16,
+          padding: arcane.spacing.md,
         }}
       >
         <View
@@ -123,53 +165,86 @@ export function CreateActionWizardModal({
             width: "100%",
             maxWidth: 720,
             maxHeight: "92%",
-            backgroundColor: "white",
-            borderRadius: 16,
+            backgroundColor: arcane.colors.surface,
+            borderRadius: 22,
             borderWidth: 1,
+            borderColor: arcane.colors.accent,
             overflow: "hidden",
+            ...arcane.shadow.card,
           }}
         >
           <View
             style={{
-              paddingHorizontal: 16,
-              paddingTop: 16,
-              paddingBottom: 12,
+              paddingHorizontal: arcane.spacing.md,
+              paddingTop: arcane.spacing.md,
+              paddingBottom: arcane.spacing.sm,
               borderBottomWidth: 1,
-              gap: 8,
+              borderBottomColor: arcane.colors.border,
+              gap: arcane.spacing.sm,
+              backgroundColor: arcane.colors.backgroundElevated,
             }}
           >
-            <Text style={{ fontSize: 20, fontWeight: "800" }}>
+            <Text
+              style={{
+                color: arcane.colors.textSubtle,
+                fontSize: arcane.typography.tiny,
+                fontWeight: "900",
+                textTransform: "uppercase",
+                letterSpacing: 0.8,
+              }}
+            >
+              Assistant d’action
+            </Text>
+
+            <Text
+              style={{
+                color: arcane.colors.text,
+                fontSize: 22,
+                fontWeight: "900",
+                letterSpacing: -0.3,
+              }}
+            >
               Créer une action
             </Text>
 
-            <Text style={{ opacity: 0.72 }}>
+            <Text style={arcaneStyles.muted}>
               Étape {stepIndex + 1} / {totalSteps} — {getStepTitle(step)}
             </Text>
 
             <View style={{ flexDirection: "row", gap: 6 }}>
-              {Array.from({ length: totalSteps }).map((_, index) => (
-                <View
-                  key={index}
-                  style={{
-                    flex: 1,
-                    height: 6,
-                    borderRadius: 999,
-                    borderWidth: 1,
-                    opacity: index <= stepIndex ? 1 : 0.25,
-                  }}
-                />
-              ))}
+              {Array.from({ length: totalSteps }).map((_, index) => {
+                const isDoneOrCurrent = index <= stepIndex;
+
+                return (
+                  <View
+                    key={index}
+                    style={{
+                      flex: 1,
+                      height: 7,
+                      borderRadius: arcane.radius.pill,
+                      borderWidth: 1,
+                      borderColor: isDoneOrCurrent
+                        ? arcane.colors.accent
+                        : arcane.colors.border,
+                      backgroundColor: isDoneOrCurrent
+                        ? arcane.colors.accentSoft
+                        : arcane.colors.surfaceAlt,
+                      opacity: isDoneOrCurrent ? 1 : 0.55,
+                    }}
+                  />
+                );
+              })}
             </View>
           </View>
 
           <ScrollView
             style={{ flexGrow: 0 }}
             contentContainerStyle={{
-              padding: 16,
-              gap: 12,
+              padding: arcane.spacing.md,
+              gap: arcane.spacing.md,
             }}
             keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={true}
+            showsVerticalScrollIndicator
           >
             {step === "name" ? (
               <ActionWizardStepName
@@ -224,12 +299,19 @@ export function CreateActionWizardModal({
             {error ? (
               <View
                 style={{
-                  padding: 12,
-                  borderWidth: 1,
-                  borderRadius: 12,
+                  ...arcaneStyles.cardSoft,
+                  borderColor: arcane.colors.failure,
+                  backgroundColor: arcane.colors.failureSoft,
                 }}
               >
-                <Text>{error}</Text>
+                <Text
+                  style={{
+                    color: arcane.colors.text,
+                    fontWeight: "800",
+                  }}
+                >
+                  {error}
+                </Text>
               </View>
             ) : null}
           </ScrollView>
@@ -239,42 +321,32 @@ export function CreateActionWizardModal({
               flexDirection: "row",
               justifyContent: "space-between",
               alignItems: "center",
-              gap: 8,
-              paddingHorizontal: 16,
-              paddingTop: 12,
-              paddingBottom: 16,
+              flexWrap: "wrap",
+              gap: arcane.spacing.sm,
+              paddingHorizontal: arcane.spacing.md,
+              paddingTop: arcane.spacing.sm,
+              paddingBottom: arcane.spacing.md,
               borderTopWidth: 1,
+              borderTopColor: arcane.colors.border,
+              backgroundColor: arcane.colors.backgroundElevated,
             }}
           >
-            <Pressable
-              onPress={onClose}
+            <WizardButton label="Annuler" onPress={onClose} />
+
+            <View
               style={{
-                paddingVertical: 10,
-                paddingHorizontal: 14,
-                borderWidth: 1,
-                borderRadius: 10,
+                flexDirection: "row",
+                flexWrap: "wrap",
+                gap: arcane.spacing.sm,
               }}
             >
-              <Text>Annuler</Text>
-            </Pressable>
-
-            <View style={{ flexDirection: "row", gap: 8 }}>
               {!isFirstStep ? (
-                <Pressable
-                  onPress={onBack}
-                  style={{
-                    paddingVertical: 10,
-                    paddingHorizontal: 14,
-                    borderWidth: 1,
-                    borderRadius: 10,
-                  }}
-                >
-                  <Text>Retour</Text>
-                </Pressable>
+                <WizardButton label="Retour" onPress={onBack} />
               ) : null}
 
               {!isLastStep ? (
-                <Pressable
+                <WizardButton
+                  label="Suivant"
                   onPress={() => {
                     if (
                       step === "rule_choice" &&
@@ -286,27 +358,14 @@ export function CreateActionWizardModal({
 
                     onNext();
                   }}
-                  style={{
-                    paddingVertical: 10,
-                    paddingHorizontal: 14,
-                    borderWidth: 1,
-                    borderRadius: 10,
-                  }}
-                >
-                  <Text style={{ fontWeight: "700" }}>Suivant</Text>
-                </Pressable>
+                  variant="accent"
+                />
               ) : (
-                <Pressable
+                <WizardButton
+                  label="Créer"
                   onPress={onSubmit}
-                  style={{
-                    paddingVertical: 10,
-                    paddingHorizontal: 14,
-                    borderWidth: 1,
-                    borderRadius: 10,
-                  }}
-                >
-                  <Text style={{ fontWeight: "700" }}>Créer</Text>
-                </Pressable>
+                  variant="accent"
+                />
               )}
             </View>
           </View>

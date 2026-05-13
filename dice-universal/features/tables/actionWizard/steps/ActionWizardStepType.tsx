@@ -1,9 +1,14 @@
+// dice-universal/features/tables/actionWizard/steps/ActionWizardStepType.tsx
+
 import { Pressable, Text, View } from "react-native";
 import {
   RULE_BEHAVIORS,
   type RuleBehaviorKey,
 } from "../../../../core/rules/behaviorRegistry";
 import type { ActionBehaviorVariant } from "../types";
+
+import { arcane } from "../../../../theme/arcaneTheme";
+import { arcaneStyles } from "../../../../theme/arcaneStyles";
 
 type ActionBehaviorOption = {
   optionId: string;
@@ -55,41 +60,92 @@ function getVisibleActionBehaviorOptions(): ActionBehaviorOption[] {
   return [...visibleBehaviors, keepDropOption];
 }
 
+function BehaviorCard({
+  label,
+  description,
+  selected,
+  onPress,
+}: {
+  label: string;
+  description: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        ...arcaneStyles.cardSoft,
+        gap: arcane.spacing.xs,
+        borderColor: selected ? arcane.colors.accent : arcane.colors.border,
+        backgroundColor: selected
+          ? arcane.colors.accentSoft
+          : arcane.colors.surfaceAlt,
+        opacity: pressed ? 0.86 : 1,
+        transform: [{ scale: pressed ? 0.99 : 1 }],
+      })}
+    >
+      <Text
+        style={{
+          color: arcane.colors.text,
+          fontSize: 16,
+          fontWeight: selected ? "900" : "800",
+        }}
+      >
+        {label}
+      </Text>
+
+      <Text
+        style={{
+          color: arcane.colors.textMuted,
+          lineHeight: 19,
+        }}
+      >
+        {description}
+      </Text>
+
+      {selected ? (
+        <Text
+          style={{
+            color: arcane.colors.accent,
+            fontWeight: "900",
+            marginTop: 2,
+          }}
+        >
+          Sélectionné
+        </Text>
+      ) : null}
+    </Pressable>
+  );
+}
+
 export function ActionWizardStepType({ value, variant, onSelect }: Props) {
   const options = getVisibleActionBehaviorOptions();
 
   return (
-    <View style={{ gap: 12 }}>
-      <Text style={{ fontSize: 18, fontWeight: "800" }}>Type d’action</Text>
+    <View style={{ gap: arcane.spacing.md }}>
+      <View style={{ gap: arcane.spacing.xs }}>
+        <Text style={arcaneStyles.sectionTitle}>Type d’action</Text>
 
-      <Text style={{ opacity: 0.72 }}>
-        Choisis la manière principale dont cette action doit lire son jet.
-      </Text>
+        <Text style={arcaneStyles.muted}>
+          Choisis la manière principale dont cette action doit interpréter le
+          résultat du jet.
+        </Text>
+      </View>
 
-      <View style={{ gap: 10 }}>
+      <View style={{ gap: arcane.spacing.sm }}>
         {options.map((option) => {
           const selected =
             value === option.behaviorKey && variant === option.variant;
 
           return (
-            <Pressable
+            <BehaviorCard
               key={option.optionId}
+              label={option.label}
+              description={option.description}
+              selected={selected}
               onPress={() => onSelect(option.behaviorKey, option.variant)}
-              style={{
-                borderWidth: 1,
-                borderRadius: 12,
-                padding: 12,
-                opacity: selected ? 1 : 0.8,
-              }}
-            >
-              <Text style={{ fontWeight: "800", fontSize: 16 }}>
-                {option.label}
-              </Text>
-
-              <Text style={{ marginTop: 4, opacity: 0.72 }}>
-                {option.description}
-              </Text>
-            </Pressable>
+            />
           );
         })}
       </View>

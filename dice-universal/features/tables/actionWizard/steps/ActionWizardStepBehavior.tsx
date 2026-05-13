@@ -4,6 +4,9 @@ import type { ReactNode } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 import type { ActionWizardDraft } from "../types";
 
+import { arcane } from "../../../../theme/arcaneTheme";
+import { arcaneStyles } from "../../../../theme/arcaneStyles";
+
 type Props = {
   draft: ActionWizardDraft;
   onUpdateDraft: <K extends keyof ActionWizardDraft>(
@@ -20,7 +23,16 @@ type Props = {
 };
 
 function FieldLabel({ children }: { children: ReactNode }) {
-  return <Text style={{ fontWeight: "700" }}>{children}</Text>;
+  return (
+    <Text
+      style={{
+        color: arcane.colors.textMuted,
+        fontWeight: "800",
+      }}
+    >
+      {children}
+    </Text>
+  );
 }
 
 function BoxInput(props: {
@@ -34,15 +46,116 @@ function BoxInput(props: {
       value={props.value}
       onChangeText={props.onChangeText}
       placeholder={props.placeholder}
+      placeholderTextColor={arcane.colors.textSubtle}
       keyboardType={props.keyboardType ?? "default"}
+      selectionColor={arcane.colors.accent}
       style={{
+        minHeight: 48,
         borderWidth: 1,
-        borderRadius: 12,
+        borderColor: arcane.colors.border,
+        borderRadius: arcane.radius.md,
         paddingHorizontal: 12,
-        paddingVertical: 12,
+        paddingVertical: 11,
+        backgroundColor: arcane.colors.surfaceAlt,
+        color: arcane.colors.text,
         fontSize: 16,
+        fontWeight: "700",
       }}
     />
+  );
+}
+
+function SectionCard({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <View
+      style={{
+        ...arcaneStyles.cardSoft,
+        gap: arcane.spacing.sm,
+      }}
+    >
+      <Text
+        style={{
+          color: arcane.colors.text,
+          fontSize: 16,
+          fontWeight: "900",
+        }}
+      >
+        {title}
+      </Text>
+
+      {description ? (
+        <Text
+          style={{
+            color: arcane.colors.textMuted,
+            lineHeight: 19,
+          }}
+        >
+          {description}
+        </Text>
+      ) : null}
+
+      {children}
+    </View>
+  );
+}
+
+function ChoiceButton({
+  label,
+  selected,
+  onPress,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        borderWidth: 1,
+        borderColor: selected ? arcane.colors.accent : arcane.colors.border,
+        borderRadius: arcane.radius.pill,
+        backgroundColor: selected
+          ? arcane.colors.accentSoft
+          : arcane.colors.surfaceAlt,
+        opacity: pressed ? 0.84 : selected ? 1 : 0.78,
+        transform: [{ scale: pressed ? 0.97 : 1 }],
+      })}
+    >
+      <Text
+        style={{
+          color: arcane.colors.text,
+          fontWeight: selected ? "900" : "800",
+        }}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function InputGroup({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <View style={{ gap: arcane.spacing.sm }}>
+      <FieldLabel>{label}</FieldLabel>
+      {children}
+    </View>
   );
 }
 
@@ -54,193 +167,149 @@ export function ActionWizardStepBehavior({
   onRemoveRangeRow,
 }: Props) {
   return (
-    <View style={{ gap: 12 }}>
-      <Text style={{ fontSize: 18, fontWeight: "800" }}>
-        Comportement de l’action
-      </Text>
+    <View style={{ gap: arcane.spacing.md }}>
+      <View style={{ gap: arcane.spacing.xs }}>
+        <Text style={arcaneStyles.sectionTitle}>Comportement de l’action</Text>
 
-      <Text style={{ opacity: 0.72 }}>
-        Configure la manière d’interpréter le résultat du jet.
-      </Text>
+        <Text style={arcaneStyles.muted}>
+          Configure la manière d’interpréter le résultat du jet.
+        </Text>
+      </View>
 
       {(draft.behaviorType === "single_check" ||
         draft.behaviorType === "highest_of_pool" ||
         draft.behaviorType === "lowest_of_pool") && (
-          <>
-            <FieldLabel>Comparaison</FieldLabel>
-
+        <SectionCard
+          title="Test contre un seuil"
+          description="Définis comment le résultat doit être comparé à une difficulté, avec des faces critiques optionnelles."
+        >
+          <InputGroup label="Comparaison">
             <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-              <Pressable
+              <ChoiceButton
+                label="Seuil haut (≥)"
+                selected={draft.compare === "gte"}
                 onPress={() => onUpdateDraft("compare", "gte")}
-                style={{
-                  paddingVertical: 10,
-                  paddingHorizontal: 14,
-                  borderWidth: 1,
-                  borderRadius: 10,
-                  opacity: draft.compare === "gte" ? 1 : 0.7,
-                }}
-              >
-                <Text style={{ fontWeight: "700" }}>Seuil haut (≥)</Text>
-              </Pressable>
+              />
 
-              <Pressable
+              <ChoiceButton
+                label="Seuil bas (≤)"
+                selected={draft.compare === "lte"}
                 onPress={() => onUpdateDraft("compare", "lte")}
-                style={{
-                  paddingVertical: 10,
-                  paddingHorizontal: 14,
-                  borderWidth: 1,
-                  borderRadius: 10,
-                  opacity: draft.compare === "lte" ? 1 : 0.7,
-                }}
-              >
-                <Text style={{ fontWeight: "700" }}>Seuil bas (≤)</Text>
-              </Pressable>
-            </View>
-
-            <View style={{ gap: 8 }}>
-              <FieldLabel>Seuil de réussite</FieldLabel>
-              <BoxInput
-                value={draft.successThreshold}
-                onChangeText={(value) => onUpdateDraft("successThreshold", value)}
-                placeholder="Ex: 10"
-                keyboardType="numeric"
               />
             </View>
+          </InputGroup>
 
-            <View style={{ gap: 8 }}>
-              <FieldLabel>Faces de réussite critique</FieldLabel>
-              <BoxInput
-                value={draft.critSuccessFaces}
-                onChangeText={(value) => onUpdateDraft("critSuccessFaces", value)}
-                placeholder="Ex: 20"
-              />
-            </View>
+          <InputGroup label="Seuil de réussite">
+            <BoxInput
+              value={draft.successThreshold}
+              onChangeText={(value) => onUpdateDraft("successThreshold", value)}
+              placeholder="Ex: 10"
+              keyboardType="numeric"
+            />
+          </InputGroup>
 
-            <View style={{ gap: 8 }}>
-              <FieldLabel>Faces d’échec critique</FieldLabel>
-              <BoxInput
-                value={draft.critFailureFaces}
-                onChangeText={(value) => onUpdateDraft("critFailureFaces", value)}
-                placeholder="Ex: 1"
-              />
-            </View>
-          </>
-        )}
+          <InputGroup label="Faces de réussite critique">
+            <BoxInput
+              value={draft.critSuccessFaces}
+              onChangeText={(value) => onUpdateDraft("critSuccessFaces", value)}
+              placeholder="Ex: 20"
+            />
+          </InputGroup>
+
+          <InputGroup label="Faces d’échec critique">
+            <BoxInput
+              value={draft.critFailureFaces}
+              onChangeText={(value) => onUpdateDraft("critFailureFaces", value)}
+              placeholder="Ex: 1"
+            />
+          </InputGroup>
+        </SectionCard>
+      )}
 
       {draft.behaviorType === "threshold_degrees" && (
-        <>
-          <FieldLabel>Comparaison</FieldLabel>
+        <SectionCard
+          title="Seuil avec degrés"
+          description="Configure une résolution avec valeur cible, degrés de réussite ou d’échec, et bornes critiques."
+        >
+          <InputGroup label="Comparaison">
+            <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+              <ChoiceButton
+                label="Réussir en dessous (≤)"
+                selected={draft.compare === "lte"}
+                onPress={() => onUpdateDraft("compare", "lte")}
+              />
 
-          <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-            <Pressable
-              onPress={() => onUpdateDraft("compare", "lte")}
-              style={{
-                paddingVertical: 10,
-                paddingHorizontal: 14,
-                borderWidth: 1,
-                borderRadius: 10,
-                opacity: draft.compare === "lte" ? 1 : 0.7,
-              }}
-            >
-              <Text style={{ fontWeight: "700" }}>Réussir en dessous (≤)</Text>
-            </Pressable>
+              <ChoiceButton
+                label="Réussir au-dessus (≥)"
+                selected={draft.compare === "gte"}
+                onPress={() => onUpdateDraft("compare", "gte")}
+              />
+            </View>
+          </InputGroup>
 
-            <Pressable
-              onPress={() => onUpdateDraft("compare", "gte")}
-              style={{
-                paddingVertical: 10,
-                paddingHorizontal: 14,
-                borderWidth: 1,
-                borderRadius: 10,
-                opacity: draft.compare === "gte" ? 1 : 0.7,
-              }}
-            >
-              <Text style={{ fontWeight: "700" }}>Réussir au-dessus (≥)</Text>
-            </Pressable>
-          </View>
-
-          <View style={{ gap: 8 }}>
-            <FieldLabel>Seuil / valeur cible</FieldLabel>
+          <InputGroup label="Seuil / valeur cible">
             <BoxInput
               value={draft.targetValue}
               onChangeText={(value) => onUpdateDraft("targetValue", value)}
               placeholder="Ex: 65"
               keyboardType="numeric"
             />
-          </View>
+          </InputGroup>
 
-          <View style={{ gap: 8 }}>
-            <FieldLabel>Taille d’un degré</FieldLabel>
+          <InputGroup label="Taille d’un degré">
             <BoxInput
               value={draft.degreeStep}
               onChangeText={(value) => onUpdateDraft("degreeStep", value)}
               placeholder="Ex: 10"
               keyboardType="numeric"
             />
-          </View>
+          </InputGroup>
 
-          <View style={{ gap: 8 }}>
-            <FieldLabel>Réussite critique — minimum</FieldLabel>
+          <InputGroup label="Réussite critique — minimum">
             <BoxInput
               value={draft.critSuccessMin}
               onChangeText={(value) => onUpdateDraft("critSuccessMin", value)}
               placeholder="Ex: 1"
               keyboardType="numeric"
             />
-          </View>
+          </InputGroup>
 
-          <View style={{ gap: 8 }}>
-            <FieldLabel>Réussite critique — maximum</FieldLabel>
+          <InputGroup label="Réussite critique — maximum">
             <BoxInput
               value={draft.critSuccessMax}
               onChangeText={(value) => onUpdateDraft("critSuccessMax", value)}
               placeholder="Ex: 5"
               keyboardType="numeric"
             />
-          </View>
+          </InputGroup>
 
-          <View style={{ gap: 8 }}>
-            <FieldLabel>Échec critique — minimum</FieldLabel>
+          <InputGroup label="Échec critique — minimum">
             <BoxInput
               value={draft.critFailureMin}
               onChangeText={(value) => onUpdateDraft("critFailureMin", value)}
               placeholder="Ex: 95"
               keyboardType="numeric"
             />
-          </View>
+          </InputGroup>
 
-          <View style={{ gap: 8 }}>
-            <FieldLabel>Échec critique — maximum</FieldLabel>
+          <InputGroup label="Échec critique — maximum">
             <BoxInput
               value={draft.critFailureMax}
               onChangeText={(value) => onUpdateDraft("critFailureMax", value)}
               placeholder="Ex: 100"
               keyboardType="numeric"
             />
-          </View>
-        </>
+          </InputGroup>
+        </SectionCard>
       )}
 
       {draft.behaviorType === "custom_pipeline" &&
         draft.behaviorVariant === "keep_drop" && (
-          <>
-            <View
-              style={{
-                borderWidth: 1,
-                borderRadius: 12,
-                padding: 12,
-                gap: 8,
-              }}
-            >
-              <Text style={{ fontWeight: "800" }}>Garder / Retirer des dés</Text>
-              <Text style={{ opacity: 0.72 }}>
-                Choisis une seule logique principale : garder ou retirer les meilleurs
-                ou les plus faibles dés.
-              </Text>
-            </View>
-
-            <View style={{ gap: 8 }}>
-              <FieldLabel>Garder les meilleurs dés</FieldLabel>
+          <SectionCard
+            title="Garder / retirer des dés"
+            description="Choisis une seule logique principale : garder ou retirer les meilleurs ou les plus faibles dés, puis décide du format du résultat final."
+          >
+            <InputGroup label="Garder les meilleurs dés">
               <BoxInput
                 value={draft.pipelineKeepHighest}
                 onChangeText={(value) => {
@@ -254,10 +323,9 @@ export function ActionWizardStepBehavior({
                 placeholder="Ex: 2"
                 keyboardType="numeric"
               />
-            </View>
+            </InputGroup>
 
-            <View style={{ gap: 8 }}>
-              <FieldLabel>Garder les plus faibles dés</FieldLabel>
+            <InputGroup label="Garder les plus faibles dés">
               <BoxInput
                 value={draft.pipelineKeepLowest}
                 onChangeText={(value) => {
@@ -271,10 +339,9 @@ export function ActionWizardStepBehavior({
                 placeholder="Ex: 2"
                 keyboardType="numeric"
               />
-            </View>
+            </InputGroup>
 
-            <View style={{ gap: 8 }}>
-              <FieldLabel>Retirer les meilleurs dés</FieldLabel>
+            <InputGroup label="Retirer les meilleurs dés">
               <BoxInput
                 value={draft.pipelineDropHighest}
                 onChangeText={(value) => {
@@ -288,10 +355,9 @@ export function ActionWizardStepBehavior({
                 placeholder="Ex: 1"
                 keyboardType="numeric"
               />
-            </View>
+            </InputGroup>
 
-            <View style={{ gap: 8 }}>
-              <FieldLabel>Retirer les plus faibles dés</FieldLabel>
+            <InputGroup label="Retirer les plus faibles dés">
               <BoxInput
                 value={draft.pipelineDropLowest}
                 onChangeText={(value) => {
@@ -305,98 +371,64 @@ export function ActionWizardStepBehavior({
                 placeholder="Ex: 1"
                 keyboardType="numeric"
               />
-            </View>
+            </InputGroup>
 
-            <View style={{ gap: 8 }}>
-              <FieldLabel>Résultat final</FieldLabel>
-
+            <InputGroup label="Résultat final">
               <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-                <Pressable
+                <ChoiceButton
+                  label="Somme"
+                  selected={draft.pipelineOutput === "sum"}
                   onPress={() => onUpdateDraft("pipelineOutput", "sum")}
-                  style={{
-                    paddingVertical: 10,
-                    paddingHorizontal: 14,
-                    borderWidth: 1,
-                    borderRadius: 10,
-                    opacity: draft.pipelineOutput === "sum" ? 1 : 0.7,
-                  }}
-                >
-                  <Text style={{ fontWeight: "700" }}>Somme</Text>
-                </Pressable>
+                />
 
-                <Pressable
+                <ChoiceButton
+                  label="Valeurs"
+                  selected={draft.pipelineOutput === "values"}
                   onPress={() => onUpdateDraft("pipelineOutput", "values")}
-                  style={{
-                    paddingVertical: 10,
-                    paddingHorizontal: 14,
-                    borderWidth: 1,
-                    borderRadius: 10,
-                    opacity: draft.pipelineOutput === "values" ? 1 : 0.7,
-                  }}
-                >
-                  <Text style={{ fontWeight: "700" }}>Valeurs</Text>
-                </Pressable>
+                />
               </View>
-            </View>
-          </>
+            </InputGroup>
+          </SectionCard>
         )}
 
       {draft.behaviorType === "custom_pipeline" &&
         draft.behaviorVariant === "default" && (
           <>
-            <View
-              style={{
-                borderWidth: 1,
-                borderRadius: 12,
-                padding: 12,
-                gap: 8,
-              }}
-            >
-              <Text style={{ fontWeight: "800" }}>Pipeline personnalisé</Text>
-              <Text style={{ opacity: 0.72 }}>
-                Combine plusieurs opérations pour créer une règle avancée.
-              </Text>
-            </View>
+            <SectionCard
+              title="Pipeline personnalisé"
+              description="Combine plusieurs opérations pour créer une règle avancée : relances, explosions, dés gardés, comptage, seuils et critiques."
+            />
 
-            <View style={{ gap: 8 }}>
-              <FieldLabel>Relancer les faces</FieldLabel>
-              <BoxInput
-                value={draft.pipelineRerollFaces}
-                onChangeText={(value) =>
-                  onUpdateDraft("pipelineRerollFaces", value)
-                }
-                placeholder="Ex: 1 ou 1,2"
-              />
+            <SectionCard title="Relances">
+              <InputGroup label="Relancer les faces">
+                <BoxInput
+                  value={draft.pipelineRerollFaces}
+                  onChangeText={(value) =>
+                    onUpdateDraft("pipelineRerollFaces", value)
+                  }
+                  placeholder="Ex: 1 ou 1,2"
+                />
+              </InputGroup>
 
-              <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-                <Pressable
-                  onPress={() => onUpdateDraft("pipelineRerollOnce", true)}
-                  style={{
-                    paddingVertical: 10,
-                    paddingHorizontal: 14,
-                    borderWidth: 1,
-                    borderRadius: 10,
-                    opacity: draft.pipelineRerollOnce ? 1 : 0.7,
-                  }}
+              <InputGroup label="Mode de relance">
+                <View
+                  style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}
                 >
-                  <Text style={{ fontWeight: "700" }}>Une seule fois</Text>
-                </Pressable>
+                  <ChoiceButton
+                    label="Une seule fois"
+                    selected={draft.pipelineRerollOnce}
+                    onPress={() => onUpdateDraft("pipelineRerollOnce", true)}
+                  />
 
-                <Pressable
-                  onPress={() => onUpdateDraft("pipelineRerollOnce", false)}
-                  style={{
-                    paddingVertical: 10,
-                    paddingHorizontal: 14,
-                    borderWidth: 1,
-                    borderRadius: 10,
-                    opacity: !draft.pipelineRerollOnce ? 1 : 0.7,
-                  }}
-                >
-                  <Text style={{ fontWeight: "700" }}>Tant que possible</Text>
-                </Pressable>
-              </View>
-              <View style={{ gap: 8 }}>
-                <FieldLabel>Nombre max de relances par dé</FieldLabel>
+                  <ChoiceButton
+                    label="Tant que possible"
+                    selected={!draft.pipelineRerollOnce}
+                    onPress={() => onUpdateDraft("pipelineRerollOnce", false)}
+                  />
+                </View>
+              </InputGroup>
+
+              <InputGroup label="Nombre max de relances par dé">
                 <BoxInput
                   value={draft.pipelineMaxRerollsPerDie}
                   onChangeText={(value) =>
@@ -406,139 +438,152 @@ export function ActionWizardStepBehavior({
                   keyboardType="numeric"
                 />
 
-                <Text style={{ opacity: 0.72 }}>
+                <Text style={arcaneStyles.muted}>
                   Laisse vide pour ne pas fixer de limite précise. La limite
                   s’applique à chaque dé individuellement.
                 </Text>
+              </InputGroup>
+            </SectionCard>
+
+            <SectionCard
+              title="Explosions"
+              description="Ajoute des dés supplémentaires lorsqu’une face ciblée ressort. Utile pour les systèmes explosifs ou les jets héroïques."
+            >
+              <InputGroup label="Explosion sur les faces">
+                <BoxInput
+                  value={draft.pipelineExplodeFaces}
+                  onChangeText={(value) =>
+                    onUpdateDraft("pipelineExplodeFaces", value)
+                  }
+                  placeholder="Ex: 6 ou 10"
+                />
+              </InputGroup>
+
+              <InputGroup label="Nombre max d’explosions par dé">
+                <BoxInput
+                  value={draft.pipelineMaxExplosionsPerDie}
+                  onChangeText={(value) =>
+                    onUpdateDraft("pipelineMaxExplosionsPerDie", value)
+                  }
+                  placeholder="Optionnel, ex: 3"
+                  keyboardType="numeric"
+                />
+
+                <Text style={arcaneStyles.muted}>
+                  Laisse vide pour permettre les explosions tant que la face
+                  ciblée ressort. La limite s’applique à chaque dé
+                  individuellement.
+                </Text>
+              </InputGroup>
+            </SectionCard>
+
+            <SectionCard
+              title="Garder / retirer"
+              description="Contrôle quels dés sont conservés ou exclus avant de calculer le résultat final."
+            >
+              <InputGroup label="Garder les meilleurs dés">
+                <BoxInput
+                  value={draft.pipelineKeepHighest}
+                  onChangeText={(value) =>
+                    onUpdateDraft("pipelineKeepHighest", value)
+                  }
+                  placeholder="Ex: 2"
+                  keyboardType="numeric"
+                />
+              </InputGroup>
+
+              <InputGroup label="Garder les plus faibles dés">
+                <BoxInput
+                  value={draft.pipelineKeepLowest}
+                  onChangeText={(value) =>
+                    onUpdateDraft("pipelineKeepLowest", value)
+                  }
+                  placeholder="Ex: 2"
+                  keyboardType="numeric"
+                />
+              </InputGroup>
+
+              <InputGroup label="Retirer les meilleurs dés">
+                <BoxInput
+                  value={draft.pipelineDropHighest}
+                  onChangeText={(value) =>
+                    onUpdateDraft("pipelineDropHighest", value)
+                  }
+                  placeholder="Ex: 1"
+                  keyboardType="numeric"
+                />
+              </InputGroup>
+
+              <InputGroup label="Retirer les plus faibles dés">
+                <BoxInput
+                  value={draft.pipelineDropLowest}
+                  onChangeText={(value) =>
+                    onUpdateDraft("pipelineDropLowest", value)
+                  }
+                  placeholder="Ex: 1"
+                  keyboardType="numeric"
+                />
+              </InputGroup>
+            </SectionCard>
+
+            <SectionCard
+              title="Comptage"
+              description="Transforme le jet en nombre de succès, de faces exactes ou de résultats dans une plage."
+            >
+              <InputGroup label="Compter les succès à partir de">
+                <BoxInput
+                  value={draft.pipelineCountSuccessAtOrAbove}
+                  onChangeText={(value) =>
+                    onUpdateDraft("pipelineCountSuccessAtOrAbove", value)
+                  }
+                  placeholder="Ex: 5"
+                  keyboardType="numeric"
+                />
+              </InputGroup>
+
+              <InputGroup label="Compter les faces exactes">
+                <BoxInput
+                  value={draft.pipelineCountEqualFaces}
+                  onChangeText={(value) =>
+                    onUpdateDraft("pipelineCountEqualFaces", value)
+                  }
+                  placeholder="Ex: 1 ou 6,10"
+                />
+              </InputGroup>
+
+              <View style={{ flexDirection: "row", gap: arcane.spacing.sm }}>
+                <View style={{ flex: 1 }}>
+                  <InputGroup label="Plage min">
+                    <BoxInput
+                      value={draft.pipelineCountRangeMin}
+                      onChangeText={(value) =>
+                        onUpdateDraft("pipelineCountRangeMin", value)
+                      }
+                      placeholder="Ex: 1"
+                      keyboardType="numeric"
+                    />
+                  </InputGroup>
+                </View>
+
+                <View style={{ flex: 1 }}>
+                  <InputGroup label="Plage max">
+                    <BoxInput
+                      value={draft.pipelineCountRangeMax}
+                      onChangeText={(value) =>
+                        onUpdateDraft("pipelineCountRangeMax", value)
+                      }
+                      placeholder="Ex: 3"
+                      keyboardType="numeric"
+                    />
+                  </InputGroup>
+                </View>
               </View>
-            </View>
+            </SectionCard>
 
-            <View style={{ gap: 8 }}>
-              <FieldLabel>Explosion sur les faces</FieldLabel>
-              <BoxInput
-                value={draft.pipelineExplodeFaces}
-                onChangeText={(value) =>
-                  onUpdateDraft("pipelineExplodeFaces", value)
-                }
-                placeholder="Ex: 6 ou 10"
-              />
-            </View>
-
-            <View style={{ gap: 8 }}>
-              <FieldLabel>Nombre max d’explosions par dé</FieldLabel>
-              <BoxInput
-                value={draft.pipelineMaxExplosionsPerDie}
-                onChangeText={(value) =>
-                  onUpdateDraft("pipelineMaxExplosionsPerDie", value)
-                }
-                placeholder="Optionnel, ex: 3"
-                keyboardType="numeric"
-              />
-
-              <Text style={{ opacity: 0.72 }}>
-                Laisse vide pour permettre les explosions tant que la face ciblée
-                ressort. La limite s’applique à chaque dé individuellement.
-              </Text>
-            </View>
-
-            <View style={{ gap: 8 }}>
-              <FieldLabel>Garder les meilleurs dés</FieldLabel>
-              <BoxInput
-                value={draft.pipelineKeepHighest}
-                onChangeText={(value) =>
-                  onUpdateDraft("pipelineKeepHighest", value)
-                }
-                placeholder="Ex: 2"
-                keyboardType="numeric"
-              />
-            </View>
-
-            <View style={{ gap: 8 }}>
-              <FieldLabel>Garder les plus faibles dés</FieldLabel>
-              <BoxInput
-                value={draft.pipelineKeepLowest}
-                onChangeText={(value) =>
-                  onUpdateDraft("pipelineKeepLowest", value)
-                }
-                placeholder="Ex: 2"
-                keyboardType="numeric"
-              />
-            </View>
-
-            <View style={{ gap: 8 }}>
-              <FieldLabel>Retirer les meilleurs dés</FieldLabel>
-              <BoxInput
-                value={draft.pipelineDropHighest}
-                onChangeText={(value) =>
-                  onUpdateDraft("pipelineDropHighest", value)
-                }
-                placeholder="Ex: 1"
-                keyboardType="numeric"
-              />
-            </View>
-
-            <View style={{ gap: 8 }}>
-              <FieldLabel>Retirer les plus faibles dés</FieldLabel>
-              <BoxInput
-                value={draft.pipelineDropLowest}
-                onChangeText={(value) =>
-                  onUpdateDraft("pipelineDropLowest", value)
-                }
-                placeholder="Ex: 1"
-                keyboardType="numeric"
-              />
-            </View>
-
-            <View style={{ gap: 8 }}>
-              <FieldLabel>Compter les succès à partir de</FieldLabel>
-              <BoxInput
-                value={draft.pipelineCountSuccessAtOrAbove}
-                onChangeText={(value) =>
-                  onUpdateDraft("pipelineCountSuccessAtOrAbove", value)
-                }
-                placeholder="Ex: 5"
-                keyboardType="numeric"
-              />
-            </View>
-
-            <View style={{ gap: 8 }}>
-              <FieldLabel>Compter les faces exactes</FieldLabel>
-              <BoxInput
-                value={draft.pipelineCountEqualFaces}
-                onChangeText={(value) =>
-                  onUpdateDraft("pipelineCountEqualFaces", value)
-                }
-                placeholder="Ex: 1 ou 6,10"
-              />
-            </View>
-
-            <View style={{ gap: 8 }}>
-              <FieldLabel>Compter une plage — minimum</FieldLabel>
-              <BoxInput
-                value={draft.pipelineCountRangeMin}
-                onChangeText={(value) =>
-                  onUpdateDraft("pipelineCountRangeMin", value)
-                }
-                placeholder="Ex: 1"
-                keyboardType="numeric"
-              />
-            </View>
-
-            <View style={{ gap: 8 }}>
-              <FieldLabel>Compter une plage — maximum</FieldLabel>
-              <BoxInput
-                value={draft.pipelineCountRangeMax}
-                onChangeText={(value) =>
-                  onUpdateDraft("pipelineCountRangeMax", value)
-                }
-                placeholder="Ex: 3"
-                keyboardType="numeric"
-              />
-            </View>
-
-            <View style={{ gap: 8 }}>
-              <FieldLabel>Sortie finale</FieldLabel>
-
+            <SectionCard
+              title="Sortie finale"
+              description="Choisis ce que l’action doit renvoyer après toutes les opérations du pipeline."
+            >
               <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
                 {[
                   { key: "sum", label: "Somme" },
@@ -548,398 +593,396 @@ export function ActionWizardStepBehavior({
                   { key: "count_range", label: "Plage" },
                   { key: "first_value", label: "Première valeur" },
                 ].map((option) => (
-                  <Pressable
+                  <ChoiceButton
                     key={option.key}
+                    label={option.label}
+                    selected={draft.pipelineOutput === option.key}
                     onPress={() =>
                       onUpdateDraft(
                         "pipelineOutput",
                         option.key as ActionWizardDraft["pipelineOutput"],
                       )
                     }
-                    style={{
-                      paddingVertical: 10,
-                      paddingHorizontal: 14,
-                      borderWidth: 1,
-                      borderRadius: 10,
-                      opacity: draft.pipelineOutput === option.key ? 1 : 0.7,
-                    }}
-                  >
-                    <Text style={{ fontWeight: "700" }}>{option.label}</Text>
-                  </Pressable>
+                  />
                 ))}
               </View>
-            </View>
+            </SectionCard>
 
-            <View style={{ gap: 8 }}>
-              <FieldLabel>Comparer la sortie finale à un seuil</FieldLabel>
-              <BoxInput
-                value={draft.pipelineSuccessThreshold}
-                onChangeText={(value) =>
-                  onUpdateDraft("pipelineSuccessThreshold", value)
-                }
-                placeholder="Optionnel, ex: 10"
-                keyboardType="numeric"
-              />
-
-              <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-                <Pressable
-                  onPress={() => onUpdateDraft("pipelineCompare", "gte")}
-                  style={{
-                    paddingVertical: 10,
-                    paddingHorizontal: 14,
-                    borderWidth: 1,
-                    borderRadius: 10,
-                    opacity: draft.pipelineCompare === "gte" ? 1 : 0.7,
-                  }}
-                >
-                  <Text style={{ fontWeight: "700" }}>≥ seuil</Text>
-                </Pressable>
-
-                <Pressable
-                  onPress={() => onUpdateDraft("pipelineCompare", "lte")}
-                  style={{
-                    paddingVertical: 10,
-                    paddingHorizontal: 14,
-                    borderWidth: 1,
-                    borderRadius: 10,
-                    opacity: draft.pipelineCompare === "lte" ? 1 : 0.7,
-                  }}
-                >
-                  <Text style={{ fontWeight: "700" }}>≤ seuil</Text>
-                </Pressable>
-              </View>
-            </View>
-
-            <View style={{ gap: 8 }}>
-              <FieldLabel>Faces de réussite critique</FieldLabel>
-              <BoxInput
-                value={draft.pipelineCritSuccessFaces}
-                onChangeText={(value) =>
-                  onUpdateDraft("pipelineCritSuccessFaces", value)
-                }
-                placeholder="Optionnel, ex: 6"
-              />
-            </View>
-
-            <View style={{ gap: 8 }}>
-              <FieldLabel>Faces d’échec critique</FieldLabel>
-              <BoxInput
-                value={draft.pipelineCritFailureFaces}
-                onChangeText={(value) =>
-                  onUpdateDraft("pipelineCritFailureFaces", value)
-                }
-                placeholder="Optionnel, ex: 1"
-              />
-            </View>
-
-            <View style={{ gap: 8 }}>
-              <FieldLabel>Faces de complication</FieldLabel>
-              <BoxInput
-                value={draft.pipelineComplicationFaces}
-                onChangeText={(value) =>
-                  onUpdateDraft("pipelineComplicationFaces", value)
-                }
-                placeholder="Optionnel, ex: 1 ou 1,2"
-              />
-            </View>
-
-            <View style={{ gap: 8 }}>
-              <FieldLabel>Règle de complication</FieldLabel>
-
-              {[
-                {
-                  key: "none",
-                  label: "Aucune complication",
-                },
-                {
-                  key: "any",
-                  label: "Complication si au moins une face ciblée apparaît",
-                },
-                {
-                  key: "gt_successes",
-                  label: "Complication si complications > succès",
-                },
-                {
-                  key: "gte_successes",
-                  label: "Complication si complications ≥ succès",
-                },
-                {
-                  key: "zero_successes",
-                  label: "Complication si aucune réussite",
-                },
-              ].map((option) => (
-                <Pressable
-                  key={option.key}
-                  onPress={() =>
-                    onUpdateDraft(
-                      "pipelineComplicationRule",
-                      option.key as ActionWizardDraft["pipelineComplicationRule"],
-                    )
+            <SectionCard
+              title="Seuil final"
+              description="Optionnel : compare la sortie finale à une difficulté pour afficher une réussite ou un échec."
+            >
+              <InputGroup label="Comparer la sortie finale à un seuil">
+                <BoxInput
+                  value={draft.pipelineSuccessThreshold}
+                  onChangeText={(value) =>
+                    onUpdateDraft("pipelineSuccessThreshold", value)
                   }
-                  style={{
-                    padding: 10,
-                    borderWidth: 1,
-                    borderRadius: 10,
-                    opacity:
-                      draft.pipelineComplicationRule === option.key ? 1 : 0.7,
-                  }}
+                  placeholder="Optionnel, ex: 10"
+                  keyboardType="numeric"
+                />
+              </InputGroup>
+
+              <InputGroup label="Comparaison">
+                <View
+                  style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}
                 >
-                  <Text style={{ fontWeight: "700" }}>{option.label}</Text>
-                </Pressable>
-              ))}
-            </View>
+                  <ChoiceButton
+                    label="≥ seuil"
+                    selected={draft.pipelineCompare === "gte"}
+                    onPress={() => onUpdateDraft("pipelineCompare", "gte")}
+                  />
+
+                  <ChoiceButton
+                    label="≤ seuil"
+                    selected={draft.pipelineCompare === "lte"}
+                    onPress={() => onUpdateDraft("pipelineCompare", "lte")}
+                  />
+                </View>
+              </InputGroup>
+            </SectionCard>
+
+            <SectionCard
+              title="Critiques et complications"
+              description="Optionnel : ajoute des résultats spéciaux pour signaler les réussites critiques, échecs critiques ou complications."
+            >
+              <InputGroup label="Faces de réussite critique">
+                <BoxInput
+                  value={draft.pipelineCritSuccessFaces}
+                  onChangeText={(value) =>
+                    onUpdateDraft("pipelineCritSuccessFaces", value)
+                  }
+                  placeholder="Optionnel, ex: 6"
+                />
+              </InputGroup>
+
+              <InputGroup label="Faces d’échec critique">
+                <BoxInput
+                  value={draft.pipelineCritFailureFaces}
+                  onChangeText={(value) =>
+                    onUpdateDraft("pipelineCritFailureFaces", value)
+                  }
+                  placeholder="Optionnel, ex: 1"
+                />
+              </InputGroup>
+
+              <InputGroup label="Faces de complication">
+                <BoxInput
+                  value={draft.pipelineComplicationFaces}
+                  onChangeText={(value) =>
+                    onUpdateDraft("pipelineComplicationFaces", value)
+                  }
+                  placeholder="Optionnel, ex: 1 ou 1,2"
+                />
+              </InputGroup>
+
+              <InputGroup label="Règle de complication">
+                <View style={{ gap: arcane.spacing.sm }}>
+                  {[
+                    {
+                      key: "none",
+                      label: "Aucune complication",
+                    },
+                    {
+                      key: "any",
+                      label: "Si au moins une face ciblée apparaît",
+                    },
+                    {
+                      key: "gt_successes",
+                      label: "Si complications > succès",
+                    },
+                    {
+                      key: "gte_successes",
+                      label: "Si complications ≥ succès",
+                    },
+                    {
+                      key: "zero_successes",
+                      label: "Si aucune réussite",
+                    },
+                  ].map((option) => (
+                    <ChoiceButton
+                      key={option.key}
+                      label={option.label}
+                      selected={draft.pipelineComplicationRule === option.key}
+                      onPress={() =>
+                        onUpdateDraft(
+                          "pipelineComplicationRule",
+                          option.key as ActionWizardDraft["pipelineComplicationRule"],
+                        )
+                      }
+                    />
+                  ))}
+                </View>
+              </InputGroup>
+            </SectionCard>
           </>
         )}
 
       {draft.behaviorType === "success_pool" && (
-        <>
-          <View style={{ gap: 8 }}>
-            <FieldLabel>Réussite à partir de</FieldLabel>
+        <SectionCard
+          title="Pool de succès"
+          description="Compte les réussites dans un groupe de dés et ajoute éventuellement une logique de complication."
+        >
+          <InputGroup label="Réussite à partir de">
             <BoxInput
               value={draft.successAtOrAbove}
               onChangeText={(value) => onUpdateDraft("successAtOrAbove", value)}
               placeholder="Ex: 5"
               keyboardType="numeric"
             />
-          </View>
+          </InputGroup>
 
-          <View style={{ gap: 8 }}>
-            <FieldLabel>Faces d’échec spécial</FieldLabel>
+          <InputGroup label="Faces d’échec spécial">
             <BoxInput
               value={draft.failFaces}
               onChangeText={(value) => onUpdateDraft("failFaces", value)}
               placeholder="Ex: 1"
             />
-          </View>
+          </InputGroup>
 
-          <View style={{ gap: 8 }}>
-            <FieldLabel>Règle de complication</FieldLabel>
-
-            {[
-              {
-                key: "ones_gt_successes",
-                label: "Complication si échecs spéciaux > réussites",
-              },
-              {
-                key: "ones_gte_successes",
-                label: "Complication si échecs spéciaux ≥ réussites",
-              },
-              {
-                key: "none",
-                label: "Aucune complication",
-              },
-            ].map((option) => (
-              <Pressable
-                key={option.key}
-                onPress={() =>
-                  onUpdateDraft(
-                    "glitchRule",
-                    option.key as ActionWizardDraft["glitchRule"],
-                  )
-                }
-                style={{
-                  padding: 10,
-                  borderWidth: 1,
-                  borderRadius: 10,
-                  opacity: draft.glitchRule === option.key ? 1 : 0.7,
-                }}
-              >
-                <Text>{option.label}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </>
+          <InputGroup label="Règle de complication">
+            <View style={{ gap: arcane.spacing.sm }}>
+              {[
+                {
+                  key: "ones_gt_successes",
+                  label: "Si échecs spéciaux > réussites",
+                },
+                {
+                  key: "ones_gte_successes",
+                  label: "Si échecs spéciaux ≥ réussites",
+                },
+                {
+                  key: "none",
+                  label: "Aucune complication",
+                },
+              ].map((option) => (
+                <ChoiceButton
+                  key={option.key}
+                  label={option.label}
+                  selected={draft.glitchRule === option.key}
+                  onPress={() =>
+                    onUpdateDraft(
+                      "glitchRule",
+                      option.key as ActionWizardDraft["glitchRule"],
+                    )
+                  }
+                />
+              ))}
+            </View>
+          </InputGroup>
+        </SectionCard>
       )}
 
       {draft.behaviorType === "sum_total" && (
-        <View
-          style={{
-            borderWidth: 1,
-            borderRadius: 12,
-            padding: 12,
-            gap: 6,
-          }}
-        >
-          <Text style={{ fontWeight: "700" }}>Somme totale</Text>
-          <Text style={{ opacity: 0.72 }}>
-            Tous les dés lancés seront additionnés pour produire un total
-            simple.
-          </Text>
-        </View>
+        <SectionCard
+          title="Somme totale"
+          description="Tous les dés lancés seront additionnés pour produire un total simple."
+        />
       )}
 
       {(draft.behaviorType === "keep_highest_n" ||
         draft.behaviorType === "keep_lowest_n") && (
-          <>
-            <View style={{ gap: 8 }}>
-              <FieldLabel>
-                {draft.behaviorType === "keep_highest_n"
-                  ? "Nombre de meilleurs dés à garder"
-                  : "Nombre de pires dés à garder"}
-              </FieldLabel>
+        <SectionCard
+          title={
+            draft.behaviorType === "keep_highest_n"
+              ? "Garder les meilleurs dés"
+              : "Garder les plus faibles dés"
+          }
+          description="Choisis combien de dés conserver avant de produire le résultat final."
+        >
+          <InputGroup
+            label={
+              draft.behaviorType === "keep_highest_n"
+                ? "Nombre de meilleurs dés à garder"
+                : "Nombre de plus faibles dés à garder"
+            }
+          >
+            <BoxInput
+              value={draft.keepCount}
+              onChangeText={(value) => onUpdateDraft("keepCount", value)}
+              placeholder="Ex: 3"
+              keyboardType="numeric"
+            />
+          </InputGroup>
 
-              <BoxInput
-                value={draft.keepCount}
-                onChangeText={(value) => onUpdateDraft("keepCount", value)}
-                placeholder="Ex: 3"
-                keyboardType="numeric"
+          <InputGroup label="Mode de résultat">
+            <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+              <ChoiceButton
+                label="Somme des dés gardés"
+                selected={draft.resultMode === "sum"}
+                onPress={() => onUpdateDraft("resultMode", "sum")}
+              />
+
+              <ChoiceButton
+                label="Liste des dés gardés"
+                selected={draft.resultMode === "values"}
+                onPress={() => onUpdateDraft("resultMode", "values")}
               />
             </View>
-
-            <View style={{ gap: 8 }}>
-              <FieldLabel>Mode de résultat</FieldLabel>
-
-              <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-                <Pressable
-                  onPress={() => onUpdateDraft("resultMode", "sum")}
-                  style={{
-                    paddingVertical: 10,
-                    paddingHorizontal: 14,
-                    borderWidth: 1,
-                    borderRadius: 10,
-                    opacity: draft.resultMode === "sum" ? 1 : 0.7,
-                  }}
-                >
-                  <Text style={{ fontWeight: "700" }}>Somme des dés gardés</Text>
-                </Pressable>
-
-                <Pressable
-                  onPress={() => onUpdateDraft("resultMode", "values")}
-                  style={{
-                    paddingVertical: 10,
-                    paddingHorizontal: 14,
-                    borderWidth: 1,
-                    borderRadius: 10,
-                    opacity: draft.resultMode === "values" ? 1 : 0.7,
-                  }}
-                >
-                  <Text style={{ fontWeight: "700" }}>Liste des dés gardés</Text>
-                </Pressable>
-              </View>
-            </View>
-          </>
-        )}
+          </InputGroup>
+        </SectionCard>
+      )}
 
       {(draft.behaviorType === "drop_highest_n" ||
         draft.behaviorType === "drop_lowest_n") && (
-          <>
-            <View style={{ gap: 8 }}>
-              <FieldLabel>
-                {draft.behaviorType === "drop_highest_n"
-                  ? "Nombre de meilleurs dés à retirer"
-                  : "Nombre de pires dés à retirer"}
-              </FieldLabel>
+        <SectionCard
+          title={
+            draft.behaviorType === "drop_highest_n"
+              ? "Retirer les meilleurs dés"
+              : "Retirer les plus faibles dés"
+          }
+          description="Choisis combien de dés exclure avant de produire le résultat final."
+        >
+          <InputGroup
+            label={
+              draft.behaviorType === "drop_highest_n"
+                ? "Nombre de meilleurs dés à retirer"
+                : "Nombre de plus faibles dés à retirer"
+            }
+          >
+            <BoxInput
+              value={draft.dropCount}
+              onChangeText={(value) => onUpdateDraft("dropCount", value)}
+              placeholder="Ex: 1"
+              keyboardType="numeric"
+            />
+          </InputGroup>
 
-              <BoxInput
-                value={draft.dropCount}
-                onChangeText={(value) => onUpdateDraft("dropCount", value)}
-                placeholder="Ex: 1"
-                keyboardType="numeric"
+          <InputGroup label="Mode de résultat">
+            <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+              <ChoiceButton
+                label="Somme restante"
+                selected={draft.resultMode === "sum"}
+                onPress={() => onUpdateDraft("resultMode", "sum")}
+              />
+
+              <ChoiceButton
+                label="Liste restante"
+                selected={draft.resultMode === "values"}
+                onPress={() => onUpdateDraft("resultMode", "values")}
               />
             </View>
-
-            <View style={{ gap: 8 }}>
-              <FieldLabel>Mode de résultat</FieldLabel>
-
-              <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-                <Pressable
-                  onPress={() => onUpdateDraft("resultMode", "sum")}
-                  style={{
-                    paddingVertical: 10,
-                    paddingHorizontal: 14,
-                    borderWidth: 1,
-                    borderRadius: 10,
-                    opacity: draft.resultMode === "sum" ? 1 : 0.7,
-                  }}
-                >
-                  <Text style={{ fontWeight: "700" }}>Somme restante</Text>
-                </Pressable>
-
-                <Pressable
-                  onPress={() => onUpdateDraft("resultMode", "values")}
-                  style={{
-                    paddingVertical: 10,
-                    paddingHorizontal: 14,
-                    borderWidth: 1,
-                    borderRadius: 10,
-                    opacity: draft.resultMode === "values" ? 1 : 0.7,
-                  }}
-                >
-                  <Text style={{ fontWeight: "700" }}>Liste restante</Text>
-                </Pressable>
-              </View>
-            </View>
-          </>
-        )}
+          </InputGroup>
+        </SectionCard>
+      )}
 
       {(draft.behaviorType === "banded_sum" ||
         draft.behaviorType === "table_lookup") && (
-          <>
-            <FieldLabel>
-              {draft.behaviorType === "banded_sum" ? "Paliers" : "Intervalles"}
-            </FieldLabel>
-
-            {draft.ranges.map((row, index) => (
-              <View
-                key={index}
+        <SectionCard
+          title={
+            draft.behaviorType === "banded_sum" ? "Paliers" : "Intervalles"
+          }
+          description={
+            draft.behaviorType === "banded_sum"
+              ? "Définis des plages de total et le libellé associé à chaque palier."
+              : "Définis des plages de résultat pour transformer une valeur en libellé."
+          }
+        >
+          {draft.ranges.map((row, index) => (
+            <View
+              key={index}
+              style={{
+                ...arcaneStyles.cardSoft,
+                gap: arcane.spacing.sm,
+              }}
+            >
+              <Text
                 style={{
-                  borderWidth: 1,
-                  borderRadius: 12,
-                  padding: 10,
-                  gap: 8,
+                  color: arcane.colors.text,
+                  fontWeight: "900",
                 }}
               >
-                <BoxInput
-                  value={row.min}
-                  onChangeText={(value) => onUpdateRangeRow(index, "min", value)}
-                  placeholder="Min"
-                  keyboardType="numeric"
-                />
+                Ligne {index + 1}
+              </Text>
 
-                <BoxInput
-                  value={row.max}
-                  onChangeText={(value) => onUpdateRangeRow(index, "max", value)}
-                  placeholder="Max"
-                  keyboardType="numeric"
-                />
+              <View style={{ flexDirection: "row", gap: arcane.spacing.sm }}>
+                <View style={{ flex: 1 }}>
+                  <InputGroup label="Min">
+                    <BoxInput
+                      value={row.min}
+                      onChangeText={(value) =>
+                        onUpdateRangeRow(index, "min", value)
+                      }
+                      placeholder="Min"
+                      keyboardType="numeric"
+                    />
+                  </InputGroup>
+                </View>
 
+                <View style={{ flex: 1 }}>
+                  <InputGroup label="Max">
+                    <BoxInput
+                      value={row.max}
+                      onChangeText={(value) =>
+                        onUpdateRangeRow(index, "max", value)
+                      }
+                      placeholder="Max"
+                      keyboardType="numeric"
+                    />
+                  </InputGroup>
+                </View>
+              </View>
+
+              <InputGroup label="Libellé">
                 <BoxInput
                   value={row.label}
                   onChangeText={(value) =>
                     onUpdateRangeRow(index, "label", value)
                   }
-                  placeholder="Label"
+                  placeholder="Ex: Réussite partielle"
                 />
+              </InputGroup>
 
-                <Pressable
-                  onPress={() => onRemoveRangeRow(index)}
+              <Pressable
+                onPress={() => onRemoveRangeRow(index)}
+                style={({ pressed }) => ({
+                  alignSelf: "flex-start",
+                  paddingVertical: 10,
+                  paddingHorizontal: 12,
+                  borderWidth: 1,
+                  borderColor: arcane.colors.failure,
+                  borderRadius: arcane.radius.pill,
+                  backgroundColor: arcane.colors.failureSoft,
+                  opacity: pressed ? 0.84 : 1,
+                })}
+              >
+                <Text
                   style={{
-                    paddingVertical: 10,
-                    paddingHorizontal: 12,
-                    borderWidth: 1,
-                    borderRadius: 10,
-                    alignSelf: "flex-start",
+                    color: arcane.colors.text,
+                    fontWeight: "900",
                   }}
                 >
-                  <Text>Supprimer cette ligne</Text>
-                </Pressable>
-              </View>
-            ))}
+                  Supprimer cette ligne
+                </Text>
+              </Pressable>
+            </View>
+          ))}
 
-            <Pressable
-              onPress={onAddRangeRow}
+          <Pressable
+            onPress={onAddRangeRow}
+            style={({ pressed }) => ({
+              alignSelf: "flex-start",
+              paddingVertical: 10,
+              paddingHorizontal: 14,
+              borderWidth: 1,
+              borderColor: arcane.colors.accent,
+              borderRadius: arcane.radius.pill,
+              backgroundColor: arcane.colors.accentSoft,
+              opacity: pressed ? 0.84 : 1,
+              transform: [{ scale: pressed ? 0.97 : 1 }],
+            })}
+          >
+            <Text
               style={{
-                paddingVertical: 10,
-                paddingHorizontal: 12,
-                borderWidth: 1,
-                borderRadius: 10,
-                alignSelf: "flex-start",
+                color: arcane.colors.text,
+                fontWeight: "900",
               }}
             >
-              <Text style={{ fontWeight: "700" }}>Ajouter une ligne</Text>
-            </Pressable>
-          </>
-        )}
+              Ajouter une ligne
+            </Text>
+          </Pressable>
+        </SectionCard>
+      )}
     </View>
   );
 }
