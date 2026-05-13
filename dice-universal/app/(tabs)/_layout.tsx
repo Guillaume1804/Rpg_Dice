@@ -1,3 +1,5 @@
+// dice-universal/app/(tabs)/_layout.tsx
+
 import { Tabs } from "expo-router";
 
 export default function TabsLayout() {
@@ -37,6 +39,14 @@ export default function TabsLayout() {
         options={{
           title: "Règles",
           tabBarLabel: "Règles",
+        }}
+      />
+
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: "Paramètres",
+          tabBarLabel: "Paramètres",
         }}
       />
     </Tabs>
