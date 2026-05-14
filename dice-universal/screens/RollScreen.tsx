@@ -11,7 +11,7 @@ import { QuickRollSection } from "../features/roll/components/QuickRollSection";
 
 import { useArcaneLayout } from "../theme/useArcaneLayout";
 import { useArcaneTheme } from "../theme/ArcaneThemeProvider";
-
+import { createRollScreenTheme } from "../theme/rollScreenTheme";
 
 import { SessionBar } from "../features/roll/components/SessionBar";
 import { PreparedRollCard } from "../features/roll/components/PreparedRollCard";
@@ -48,9 +48,7 @@ import {
 function findStandardQuickGroup(groups: DraftGroupSummary[]) {
   return (
     groups.find(
-      (group) =>
-        group.name === "Jet libre" &&
-        group.dice.length > 0,
+      (group) => group.name === "Jet libre" && group.dice.length > 0,
     ) ?? null
   );
 }
@@ -66,27 +64,30 @@ function findDraftGroupById(
 
 type PreparedRoll =
   | {
-    source: "free";
-  }
+      source: "free";
+    }
   | {
-    source: "action";
-    profileId: string;
-    groupId: string;
-    label: string;
-  };
+      source: "action";
+      profileId: string;
+      groupId: string;
+      label: string;
+    };
 
 export default function RollScreen() {
   const layout = useArcaneLayout();
   const { theme, styles } = useArcaneTheme();
+  const rollTheme = useMemo(() => createRollScreenTheme(theme), [theme]);
 
   const [preparedRoll, setPreparedRoll] = useState<PreparedRoll | null>(null);
-  const [latestResult, setLatestResult] = useState<GroupRollResult | null>(null);
+  const [latestResult, setLatestResult] = useState<GroupRollResult | null>(
+    null,
+  );
   const [showPreparedEditSheet, setShowPreparedEditSheet] = useState(false);
 
   const db = useDb();
   const { activeTableId, setActiveTableId, clearActiveTableId } =
     useActiveTable();
-  const [, setResults] = useState<GroupRollResult[]>([]); 
+  const [, setResults] = useState<GroupRollResult[]>([]);
   const [showSaveOptions, setShowSaveOptions] = useState(false);
   const [showNameModal, setShowNameModal] = useState(false);
   const [newTableName, setNewTableName] = useState("");
@@ -234,15 +235,13 @@ export default function RollScreen() {
     replaceDraftDieWithQtySplit,
   });
 
-  const { rollSavedGroup } = useRollExecution(
-    {
-      db,
-      table,
-      profiles,
-      rulesMap,
-      setResults,
-    },
-  );
+  const { rollSavedGroup } = useRollExecution({
+    db,
+    table,
+    profiles,
+    rulesMap,
+    setResults,
+  });
 
   const {
     replaceCurrentTable,
@@ -360,9 +359,9 @@ export default function RollScreen() {
 
   async function handleSaveDraftTarget(params: {
     mode:
-    | "new_table_new_profile"
-    | "existing_table_new_profile"
-    | "existing_table_existing_profile";
+      | "new_table_new_profile"
+      | "existing_table_new_profile"
+      | "existing_table_existing_profile";
     tableName?: string;
     profileName?: string;
     tableId?: string;
@@ -423,10 +422,13 @@ export default function RollScreen() {
       actionName: quickBehaviorConfig.pendingBehaviorLabel,
     });
 
-    const createdGroupId = addQuickPresetDie(quickDieBehaviorPicker.editingDieSides, {
-      scope: quickBehaviorConfig.pendingBehaviorScope,
-      rule: tempRule,
-    });
+    const createdGroupId = addQuickPresetDie(
+      quickDieBehaviorPicker.editingDieSides,
+      {
+        scope: quickBehaviorConfig.pendingBehaviorScope,
+        rule: tempRule,
+      },
+    );
 
     setSelectedDraftGroupId(createdGroupId);
     setPreparedRoll({ source: "free" });
@@ -621,7 +623,7 @@ export default function RollScreen() {
   const preparedCardName =
     preparedRoll?.source === "free"
       ? hasPreparedQuickRoll
-        ? preparedQuickGroup?.name ?? "Jet libre"
+        ? (preparedQuickGroup?.name ?? "Jet libre")
         : null
       : preparedRoll?.source === "action"
         ? preparedRoll.label
@@ -696,18 +698,18 @@ export default function RollScreen() {
           }}
         />
 
-        {hasActiveTable ? (
-          <View style={{ marginTop: 12 }}>
-            <ActionRail
-              profileName={activeProfile?.name ?? null}
-              actions={actionRailItems}
-              selectedActionId={
-                preparedRoll?.source === "action" ? preparedRoll.groupId : null
-              }
-              onPrepareAction={handlePrepareSavedAction}
-            />
-          </View>
-        ) : null}
+        <View style={{ marginTop: 12 }}>
+          <ResultPanel result={latestResult} />
+        </View>
+
+        <View style={{ marginTop: theme.spacing.md }}>
+          <FreeDicePad
+            dice={STANDARD_DICE}
+            countsBySides={freeDiceCountsBySides}
+            onPressDie={handleAddQuickStandardDie}
+            onLongPressDie={quickDieBehaviorPicker.open}
+          />
+        </View>
 
         <View style={{ marginTop: 12 }}>
           <PreparedRollCard
@@ -728,18 +730,18 @@ export default function RollScreen() {
           />
         </View>
 
-        <View style={{ marginTop: 12 }}>
-          <ResultPanel result={latestResult} />
-        </View>
-
-        <View style={{ marginTop: theme.spacing.md }}>
-          <FreeDicePad
-            dice={STANDARD_DICE}
-            countsBySides={freeDiceCountsBySides}
-            onPressDie={handleAddQuickStandardDie}
-            onLongPressDie={quickDieBehaviorPicker.open}
-          />
-        </View>
+        {hasActiveTable ? (
+          <View style={{ marginTop: 12 }}>
+            <ActionRail
+              profileName={activeProfile?.name ?? null}
+              actions={actionRailItems}
+              selectedActionId={
+                preparedRoll?.source === "action" ? preparedRoll.groupId : null
+              }
+              onPrepareAction={handlePrepareSavedAction}
+            />
+          </View>
+        ) : null}
 
         {showAdvanced ? (
           <QuickRollSection
@@ -825,9 +827,7 @@ export default function RollScreen() {
           width: 56,
           height: 56,
           borderWidth: 1,
-          borderColor: showAdvanced
-            ? theme.colors.arcane
-            : theme.colors.border,
+          borderColor: showAdvanced ? theme.colors.arcane : theme.colors.border,
           borderRadius: theme.radius.pill,
           alignItems: "center",
           justifyContent: "center",
