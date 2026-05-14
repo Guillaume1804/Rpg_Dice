@@ -669,16 +669,50 @@ export default function RollScreen() {
   }
 
   return (
-    <View style={styles.screen}>
+    <View
+      style={{
+        ...styles.screen,
+        backgroundColor: rollTheme.cockpit.background,
+      }}
+    >
+      <View
+        pointerEvents="none"
+        style={{
+          position: "absolute",
+          top: -90,
+          right: -90,
+          width: 230,
+          height: 230,
+          borderRadius: 999,
+          backgroundColor: rollTheme.cockpit.magicGlow,
+          opacity: 0.16,
+        }}
+      />
+
+      <View
+        pointerEvents="none"
+        style={{
+          position: "absolute",
+          left: -110,
+          bottom: 90,
+          width: 260,
+          height: 260,
+          borderRadius: 999,
+          backgroundColor: rollTheme.cockpit.glow,
+          opacity: 0.11,
+        }}
+      />
+
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{
-          paddingTop: layout.insets.top + theme.spacing.md,
+          paddingTop: layout.insets.top + theme.spacing.sm,
           paddingHorizontal: layout.horizontalPadding,
           paddingBottom: layout.scrollBottomPadding,
           alignSelf: "center",
           width: "100%",
-          maxWidth: layout.maxContentWidth,
+          maxWidth: rollTheme.layout.maxCockpitWidth,
+          gap: theme.spacing.sm,
         }}
         showsVerticalScrollIndicator={false}
       >
@@ -698,49 +732,41 @@ export default function RollScreen() {
           }}
         />
 
-        <View style={{ marginTop: 12 }}>
-          <ResultPanel result={latestResult} />
-        </View>
+        <ResultPanel result={latestResult} />
 
-        <View style={{ marginTop: theme.spacing.md }}>
-          <FreeDicePad
-            dice={STANDARD_DICE}
-            countsBySides={freeDiceCountsBySides}
-            onPressDie={handleAddQuickStandardDie}
-            onLongPressDie={quickDieBehaviorPicker.open}
-          />
-        </View>
+        <FreeDicePad
+          dice={STANDARD_DICE}
+          countsBySides={freeDiceCountsBySides}
+          onPressDie={handleAddQuickStandardDie}
+          onLongPressDie={quickDieBehaviorPicker.open}
+        />
 
-        <View style={{ marginTop: 12 }}>
-          <PreparedRollCard
-            name={preparedCardName}
-            detail={preparedCardDetail}
-            isEmpty={!hasPreparedRoll}
-            onEdit={
-              preparedRoll?.source === "free" && hasPreparedRoll
-                ? handleOpenPreparedEdit
-                : undefined
-            }
-            onClear={hasPreparedRoll ? handleClearPreparedRoll : undefined}
-            onSave={
-              preparedRoll?.source === "free" && hasPreparedRoll
-                ? handleOpenSaveDraftModal
-                : undefined
-            }
-          />
-        </View>
+        <PreparedRollCard
+          name={preparedCardName}
+          detail={preparedCardDetail}
+          isEmpty={!hasPreparedRoll}
+          onEdit={
+            preparedRoll?.source === "free" && hasPreparedRoll
+              ? handleOpenPreparedEdit
+              : undefined
+          }
+          onClear={hasPreparedRoll ? handleClearPreparedRoll : undefined}
+          onSave={
+            preparedRoll?.source === "free" && hasPreparedRoll
+              ? handleOpenSaveDraftModal
+              : undefined
+          }
+        />
 
         {hasActiveTable ? (
-          <View style={{ marginTop: 12 }}>
-            <ActionRail
-              profileName={activeProfile?.name ?? null}
-              actions={actionRailItems}
-              selectedActionId={
-                preparedRoll?.source === "action" ? preparedRoll.groupId : null
-              }
-              onPrepareAction={handlePrepareSavedAction}
-            />
-          </View>
+          <ActionRail
+            profileName={activeProfile?.name ?? null}
+            actions={actionRailItems}
+            selectedActionId={
+              preparedRoll?.source === "action" ? preparedRoll.groupId : null
+            }
+            onPrepareAction={handlePrepareSavedAction}
+          />
         ) : null}
 
         {showAdvanced ? (
