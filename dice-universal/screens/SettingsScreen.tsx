@@ -1,13 +1,12 @@
-import { useState } from "react";
-import { Pressable, ScrollView, Switch, Text, View } from "react-native";
+// dice-universal/screens/SettingsScreen.tsx
 
-import { useDb } from "../data/db/DbProvider";
-import { deleteAllRollEvents } from "../data/repositories/rollEventsRepo";
-import { useAppSettings } from "../features/settings/useAppSettings";
+import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { arcane } from "../theme/arcaneTheme";
 import { arcaneStyles } from "../theme/arcaneStyles";
 import { useArcaneLayout } from "../theme/useArcaneLayout";
+import { useArcaneTheme } from "../theme/ArcaneThemeProvider";
+import type { ArcaneThemeKey } from "../theme/arcaneTheme";
 
 function SectionLabel({ children }: { children: string }) {
   return (
@@ -29,45 +28,42 @@ function SettingsCard({
   title,
   description,
   value,
-  children,
 }: {
   title: string;
   description: string;
   value?: string;
-  children?: React.ReactNode;
 }) {
   return (
     <View
       style={{
         ...arcaneStyles.cardSoft,
-        gap: arcane.spacing.sm,
+        gap: arcane.spacing.xs,
       }}
     >
-      <View style={{ gap: arcane.spacing.xs }}>
-        <Text
-          style={{
-            color: arcane.colors.text,
-            fontSize: 16,
-            fontWeight: "900",
-          }}
-        >
-          {title}
-        </Text>
+      <Text
+        style={{
+          color: arcane.colors.text,
+          fontSize: 16,
+          fontWeight: "900",
+        }}
+      >
+        {title}
+      </Text>
 
-        <Text
-          style={{
-            color: arcane.colors.textMuted,
-            lineHeight: 19,
-          }}
-        >
-          {description}
-        </Text>
-      </View>
+      <Text
+        style={{
+          color: arcane.colors.textMuted,
+          lineHeight: 19,
+        }}
+      >
+        {description}
+      </Text>
 
       {value ? (
         <View
           style={{
             alignSelf: "flex-start",
+            marginTop: arcane.spacing.xs,
             paddingVertical: 5,
             paddingHorizontal: 9,
             borderWidth: 1,
@@ -87,151 +83,134 @@ function SettingsCard({
           </Text>
         </View>
       ) : null}
-
-      {children}
     </View>
   );
 }
 
-function ToggleRow({
+function ThemeChoiceCard({
   title,
   description,
-  value,
-  onValueChange,
-  disabled = false,
+  selected,
+  onPress,
 }: {
   title: string;
   description: string;
-  value: boolean;
-  onValueChange: (value: boolean) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <View
-      style={{
-        ...arcaneStyles.cardSoft,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: arcane.spacing.md,
-      }}
-    >
-      <View style={{ flex: 1, gap: 4 }}>
-        <Text
-          style={{
-            color: arcane.colors.text,
-            fontWeight: "900",
-          }}
-        >
-          {title}
-        </Text>
-
-        <Text
-          style={{
-            color: arcane.colors.textMuted,
-            lineHeight: 19,
-          }}
-        >
-          {description}
-        </Text>
-      </View>
-
-      <Switch
-        value={value}
-        onValueChange={onValueChange}
-        disabled={disabled}
-        thumbColor={value ? arcane.colors.accent : arcane.colors.textSubtle}
-        trackColor={{
-          false: arcane.colors.surfaceAlt,
-          true: arcane.colors.accentSoft,
-        }}
-      />
-    </View>
-  );
-}
-
-function PillButton({
-  label,
-  onPress,
-  variant = "default",
-  disabled = false,
-}: {
-  label: string;
+  selected: boolean;
   onPress: () => void;
-  variant?: "default" | "accent" | "danger";
-  disabled?: boolean;
 }) {
-  const borderColor =
-    variant === "accent"
-      ? arcane.colors.accent
-      : variant === "danger"
-        ? arcane.colors.failure
-        : arcane.colors.border;
-
-  const backgroundColor =
-    variant === "accent"
-      ? arcane.colors.accentSoft
-      : variant === "danger"
-        ? arcane.colors.failureSoft
-        : arcane.colors.surfaceAlt;
-
   return (
     <Pressable
       onPress={onPress}
-      disabled={disabled}
       style={({ pressed }) => ({
-        alignSelf: "flex-start",
-        paddingVertical: 10,
-        paddingHorizontal: 14,
-        borderWidth: 1,
-        borderColor,
-        borderRadius: arcane.radius.pill,
-        backgroundColor,
-        opacity: disabled ? 0.48 : pressed ? 0.84 : 1,
-        transform: [{ scale: pressed && !disabled ? 0.97 : 1 }],
+        ...arcaneStyles.cardSoft,
+        gap: arcane.spacing.xs,
+        borderColor: selected ? arcane.colors.accent : arcane.colors.borderSoft,
+        backgroundColor: selected
+          ? arcane.colors.accentSoft
+          : arcane.colors.surfaceAlt,
+        opacity: pressed ? 0.86 : 1,
+        transform: [{ scale: pressed ? 0.99 : 1 }],
       })}
     >
-      <Text
+      <View
         style={{
-          color: arcane.colors.text,
-          fontWeight: "900",
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: arcane.spacing.sm,
         }}
       >
-        {label}
-      </Text>
+        <View style={{ flex: 1, gap: 4 }}>
+          <Text
+            style={{
+              color: arcane.colors.text,
+              fontSize: 16,
+              fontWeight: selected ? "900" : "800",
+            }}
+          >
+            {title}
+          </Text>
+
+          <Text
+            style={{
+              color: arcane.colors.textMuted,
+              lineHeight: 19,
+            }}
+          >
+            {description}
+          </Text>
+        </View>
+
+        {selected ? (
+          <View
+            style={{
+              paddingVertical: 5,
+              paddingHorizontal: 9,
+              borderWidth: 1,
+              borderColor: arcane.colors.accent,
+              borderRadius: arcane.radius.pill,
+              backgroundColor: arcane.colors.accentSoft,
+            }}
+          >
+            <Text
+              style={{
+                color: arcane.colors.text,
+                fontSize: 12,
+                fontWeight: "900",
+              }}
+            >
+              Actif
+            </Text>
+          </View>
+        ) : null}
+      </View>
     </Pressable>
   );
 }
 
+function ColorPreviewRow() {
+  const colors = [
+    arcane.colors.accent,
+    arcane.colors.arcane,
+    arcane.colors.success,
+    arcane.colors.warning,
+    arcane.colors.failure,
+  ];
+
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: arcane.spacing.sm,
+        marginTop: arcane.spacing.xs,
+      }}
+    >
+      {colors.map((color) => (
+        <View
+          key={color}
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: arcane.radius.pill,
+            borderWidth: 1,
+            borderColor: arcane.colors.border,
+            backgroundColor: color,
+          }}
+        />
+      ))}
+    </View>
+  );
+}
+
 export default function SettingsScreen() {
-  const db = useDb();
   const layout = useArcaneLayout();
+  const { themeKey, availableThemes, setThemeKey } = useArcaneTheme();
 
-  const { settings, loading, error, setSetting, resetSettings } =
-    useAppSettings({ db });
+  const currentTheme = availableThemes[themeKey];
 
-  const [isClearingHistory, setIsClearingHistory] = useState(false);
-  const [dataMessage, setDataMessage] = useState<string | null>(null);
-
-  async function handleClearHistory() {
-    try {
-      setDataMessage(null);
-      setIsClearingHistory(true);
-
-      await deleteAllRollEvents(db);
-
-      setDataMessage("Historique vidé.");
-    } catch (e: any) {
-      setDataMessage(e?.message ?? "Impossible de vider l’historique.");
-    } finally {
-      setIsClearingHistory(false);
-    }
-  }
-
-  async function handleResetSettings() {
-    setDataMessage(null);
-    await resetSettings();
-    setDataMessage("Préférences réinitialisées.");
+  async function handleSelectTheme(nextThemeKey: ArcaneThemeKey) {
+    await setThemeKey(nextThemeKey);
   }
 
   return (
@@ -261,47 +240,10 @@ export default function SettingsScreen() {
           </Text>
 
           <Text style={arcaneStyles.muted}>
-            Ajuste l’expérience de Dice Universal et gère les données locales.
+            Ajuste l’expérience visuelle et prépare les options de confort de
+            l’application.
           </Text>
         </View>
-
-        {error ? (
-          <View
-            style={{
-              ...arcaneStyles.cardSoft,
-              borderColor: arcane.colors.failure,
-              backgroundColor: arcane.colors.failureSoft,
-            }}
-          >
-            <Text
-              style={{
-                color: arcane.colors.text,
-                fontWeight: "800",
-              }}
-            >
-              {error}
-            </Text>
-          </View>
-        ) : null}
-
-        {dataMessage ? (
-          <View
-            style={{
-              ...arcaneStyles.cardSoft,
-              borderColor: arcane.colors.accent,
-              backgroundColor: arcane.colors.accentSoft,
-            }}
-          >
-            <Text
-              style={{
-                color: arcane.colors.text,
-                fontWeight: "800",
-              }}
-            >
-              {dataMessage}
-            </Text>
-          </View>
-        ) : null}
 
         <ScrollView
           contentContainerStyle={{
@@ -311,77 +253,81 @@ export default function SettingsScreen() {
           showsVerticalScrollIndicator
         >
           <View style={{ gap: arcane.spacing.sm }}>
-            <SectionLabel>Expérience</SectionLabel>
+            <SectionLabel>Apparence</SectionLabel>
 
             <SettingsCard
               title="Thème visuel"
-              description="L’application utilise actuellement le thème Arcane Console."
-              value="Arcane Console"
+              description="Choisis l’ambiance générale de l’application. Le choix est sauvegardé localement."
+              value={currentTheme.label}
             />
 
-            <ToggleRow
+            <View style={{ gap: arcane.spacing.sm }}>
+              {Object.values(availableThemes).map((theme) => (
+                <ThemeChoiceCard
+                  key={theme.key}
+                  title={theme.label}
+                  description={theme.description}
+                  selected={theme.key === themeKey}
+                  onPress={() => {
+                    void handleSelectTheme(theme.key);
+                  }}
+                />
+              ))}
+            </View>
+
+            <View
+              style={{
+                ...arcaneStyles.cardSoft,
+                gap: arcane.spacing.xs,
+              }}
+            >
+              <Text
+                style={{
+                  color: arcane.colors.text,
+                  fontSize: 16,
+                  fontWeight: "900",
+                }}
+              >
+                Aperçu des couleurs
+              </Text>
+
+              <Text style={arcaneStyles.muted}>
+                Ces couleurs servent aux accents, réussites, avertissements et
+                échecs.
+              </Text>
+
+              <ColorPreviewRow />
+            </View>
+          </View>
+
+          <View style={{ gap: arcane.spacing.sm }}>
+            <SectionLabel>Confort</SectionLabel>
+
+            <SettingsCard
               title="Animations"
-              description="Préférence sauvegardée pour activer ou réduire les animations de l’interface."
-              value={settings.animationsEnabled}
-              disabled={loading}
-              onValueChange={(value) =>
-                void setSetting("animationsEnabled", value)
-              }
+              description="Prévu pour les révélations de résultat, les effets critiques et les transitions plus ludiques."
+              value="À venir"
             />
 
-            <ToggleRow
+            <SettingsCard
               title="Vibrations"
-              description="Préférence sauvegardée pour les retours haptiques pendant les lancers."
-              value={settings.hapticsEnabled}
-              disabled={loading}
-              onValueChange={(value) =>
-                void setSetting("hapticsEnabled", value)
-              }
+              description="Prévu pour renforcer les lancers, les réussites critiques et les complications."
+              value="À venir"
             />
 
-            <ToggleRow
+            <SettingsCard
               title="Sons"
-              description="Préférence sauvegardée pour les futurs sons de dés et de résultats."
-              value={settings.soundsEnabled}
-              disabled={loading}
-              onValueChange={(value) => void setSetting("soundsEnabled", value)}
+              description="Prévu pour ajouter une sensation plus proche d’un jeu mobile, avec option de désactivation."
+              value="À venir"
             />
           </View>
 
           <View style={{ gap: arcane.spacing.sm }}>
-            <SectionLabel>Données locales</SectionLabel>
+            <SectionLabel>Préférences</SectionLabel>
 
             <SettingsCard
-              title="Historique des jets"
-              description="Supprime tous les jets enregistrés localement dans l’historique."
-              value="Action locale"
-            >
-              <PillButton
-                label={
-                  isClearingHistory ? "Suppression..." : "Vider l’historique"
-                }
-                onPress={handleClearHistory}
-                variant="danger"
-                disabled={isClearingHistory}
-              />
-            </SettingsCard>
-
-            <SettingsCard
-              title="Préférences"
-              description="Réinitialise les préférences d’expérience à leurs valeurs par défaut."
-              value="Réinitialisation"
-            >
-              <PillButton
-                label="Réinitialiser les préférences"
-                onPress={handleResetSettings}
-                variant="accent"
-                disabled={loading}
-              />
-            </SettingsCard>
-
-            <SettingsCard
-              title="Tables, profils et règles"
-              description="Les données de jeu sont stockées localement dans la base SQLite de l’application."
+              title="Données locales"
+              description="Les tables, profils, règles et historiques sont actuellement stockés localement sur l’appareil."
               value="SQLite local"
             />
           </View>

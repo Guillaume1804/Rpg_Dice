@@ -2,80 +2,97 @@
 
 import { arcane } from "./arcaneTheme";
 
-function createArcaneStyles() {
-  return {
-    screen: {
+/**
+ * Important :
+ * React Native peut freezer les objets de style en mode dev.
+ * Donc on ne doit jamais muter arcaneStyles.screen/card/etc. après rendu.
+ *
+ * Ces getters retournent un nouvel objet à chaque accès, ce qui permet
+ * au thème runtime de changer les valeurs de `arcane.colors` sans casser RN.
+ */
+export const arcaneStyles = {
+  get screen() {
+    return {
       flex: 1,
       backgroundColor: arcane.colors.background,
-    },
+    };
+  },
 
-    card: {
+  get card() {
+    return {
       backgroundColor: arcane.colors.surface,
       borderColor: arcane.colors.border,
       borderWidth: 1,
       borderRadius: arcane.radius.lg,
       padding: arcane.spacing.lg,
       ...arcane.shadow.card,
-    },
+    };
+  },
 
-    cardSoft: {
+  get cardSoft() {
+    return {
       backgroundColor: arcane.colors.surfaceAlt,
       borderColor: arcane.colors.borderSoft,
       borderWidth: 1,
       borderRadius: arcane.radius.lg,
       padding: arcane.spacing.md,
-    },
+    };
+  },
 
-    title: {
+  get title() {
+    return {
       color: arcane.colors.text,
       fontSize: arcane.typography.title,
       fontWeight: "900" as const,
-    },
+    };
+  },
 
-    sectionTitle: {
+  get sectionTitle() {
+    return {
       color: arcane.colors.text,
       fontSize: arcane.typography.sectionTitle,
       fontWeight: "900" as const,
-    },
+    };
+  },
 
-    body: {
+  get body() {
+    return {
       color: arcane.colors.text,
       fontSize: arcane.typography.body,
-    },
+    };
+  },
 
-    muted: {
+  get muted() {
+    return {
       color: arcane.colors.textMuted,
       fontSize: arcane.typography.body,
-    },
+    };
+  },
 
-    subtle: {
+  get subtle() {
+    return {
       color: arcane.colors.textSubtle,
       fontSize: arcane.typography.small,
-    },
+    };
+  },
 
-    pill: {
+  get pill() {
+    return {
       borderRadius: arcane.radius.pill,
       borderWidth: 1,
       borderColor: arcane.colors.border,
       paddingVertical: 8,
       paddingHorizontal: 12,
       backgroundColor: arcane.colors.surfaceAlt,
-    },
-  };
-}
+    };
+  },
+} as const;
 
-export const arcaneStyles = createArcaneStyles();
-
-export function refreshArcaneStyles() {
-  const nextStyles = createArcaneStyles();
-
-  Object.assign(arcaneStyles.screen, nextStyles.screen);
-  Object.assign(arcaneStyles.card, nextStyles.card);
-  Object.assign(arcaneStyles.cardSoft, nextStyles.cardSoft);
-  Object.assign(arcaneStyles.title, nextStyles.title);
-  Object.assign(arcaneStyles.sectionTitle, nextStyles.sectionTitle);
-  Object.assign(arcaneStyles.body, nextStyles.body);
-  Object.assign(arcaneStyles.muted, nextStyles.muted);
-  Object.assign(arcaneStyles.subtle, nextStyles.subtle);
-  Object.assign(arcaneStyles.pill, nextStyles.pill);
+/**
+ * Conservé pour compatibilité avec ArcaneThemeProvider.
+ * Avant, cette fonction mutait arcaneStyles, ce qui provoquait l'erreur RN.
+ * Maintenant elle ne fait volontairement rien.
+ */
+export function refreshArcaneStyles(..._args: unknown[]): void {
+  // no-op volontaire
 }
