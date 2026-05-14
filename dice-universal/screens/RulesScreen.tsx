@@ -15,9 +15,8 @@ import { CreateRuleWizardModal } from "../features/rules/ruleWizard/CreateRuleWi
 import { useRuleWizard } from "../features/rules/ruleWizard/useRuleWizard";
 import { useRuleWizardPreview } from "../features/rules/ruleWizard/useRuleWizardPreview";
 
-import { arcane } from "../theme/arcaneTheme";
-import { arcaneStyles } from "../theme/arcaneStyles";
 import { useArcaneLayout } from "../theme/useArcaneLayout";
+import { useArcaneTheme } from "../theme/ArcaneThemeProvider";
 
 function ActionButton({
   title,
@@ -30,6 +29,8 @@ function ActionButton({
   onPress: () => void;
   variant?: "default" | "accent";
 }) {
+  const { theme } = useArcaneTheme();
+
   const isAccent = variant === "accent";
 
   return (
@@ -38,20 +39,20 @@ function ActionButton({
       style={({ pressed }) => ({
         flex: 1,
         minWidth: 150,
-        padding: arcane.spacing.md,
+        padding: theme.spacing.md,
         borderWidth: 1,
-        borderColor: isAccent ? arcane.colors.accent : arcane.colors.border,
-        borderRadius: arcane.radius.lg,
+        borderColor: isAccent ? theme.colors.accent : theme.colors.border,
+        borderRadius: theme.radius.lg,
         backgroundColor: isAccent
-          ? arcane.colors.accentSoft
-          : arcane.colors.surfaceAlt,
+          ? theme.colors.accentSoft
+          : theme.colors.surfaceAlt,
         opacity: pressed ? 0.84 : 1,
         transform: [{ scale: pressed ? 0.98 : 1 }],
       })}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontWeight: "900",
         }}
       >
@@ -61,7 +62,7 @@ function ActionButton({
       <Text
         style={{
           marginTop: 4,
-          color: arcane.colors.textMuted,
+          color: theme.colors.textMuted,
           lineHeight: 19,
         }}
       >
@@ -74,6 +75,7 @@ function ActionButton({
 export default function RulesScreen() {
   const db = useDb();
   const layout = useArcaneLayout();
+  const { theme, styles } = useArcaneTheme();
 
   const { notifyDataChanged } = useDataRefresh();
 
@@ -146,22 +148,22 @@ export default function RulesScreen() {
     return (
       <View
         style={[
-          arcaneStyles.screen,
+          styles.screen,
           {
-            paddingTop: layout.insets.top + arcane.spacing.lg,
+            paddingTop: layout.insets.top + theme.spacing.lg,
             paddingHorizontal: layout.horizontalPadding,
             justifyContent: "center",
           },
         ]}
       >
-        <View style={arcaneStyles.card}>
-          <Text style={arcaneStyles.sectionTitle}>Erreur</Text>
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Erreur</Text>
 
           <Text
             style={[
-              arcaneStyles.muted,
+              styles.muted,
               {
-                marginTop: arcane.spacing.sm,
+                marginTop: theme.spacing.sm,
               },
             ]}
           >
@@ -173,23 +175,23 @@ export default function RulesScreen() {
   }
 
   return (
-    <View style={arcaneStyles.screen}>
+    <View style={styles.screen}>
       <View
         style={{
           flex: 1,
-          paddingTop: layout.insets.top + arcane.spacing.md,
+          paddingTop: layout.insets.top + theme.spacing.md,
           paddingHorizontal: layout.horizontalPadding,
-          paddingBottom: layout.insets.bottom + arcane.spacing.md,
+          paddingBottom: layout.insets.bottom + theme.spacing.md,
           alignSelf: "center",
           width: "100%",
           maxWidth: layout.maxContentWidth,
-          gap: arcane.spacing.md,
+          gap: theme.spacing.md,
         }}
       >
-        <View style={{ gap: arcane.spacing.xs }}>
+        <View style={{ gap: theme.spacing.xs }}>
           <Text
             style={{
-              color: arcane.colors.text,
+              color: theme.colors.text,
               fontSize: 28,
               fontWeight: "900",
               letterSpacing: -0.4,
@@ -198,7 +200,7 @@ export default function RulesScreen() {
             Règles
           </Text>
 
-          <Text style={arcaneStyles.muted}>
+          <Text style={styles.muted}>
             Crée, consulte et organise les comportements de résolution utilisés
             par tes tables, profils et actions.
           </Text>
@@ -208,7 +210,7 @@ export default function RulesScreen() {
           style={{
             flexDirection: "row",
             flexWrap: "wrap",
-            gap: arcane.spacing.sm,
+            gap: theme.spacing.sm,
           }}
         >
           <ActionButton

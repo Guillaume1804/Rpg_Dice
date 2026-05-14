@@ -15,29 +15,29 @@ import { useDb } from "../data/db/DbProvider";
 import {
   applyArcaneTheme,
   ARCANE_THEMES,
+  createArcaneTheme,
   DEFAULT_ARCANE_THEME_KEY,
   isArcaneThemeKey,
+  type ArcaneTheme,
   type ArcaneThemeKey,
 } from "./arcaneTheme";
-import { refreshArcaneStyles } from "./arcaneStyles";
+import { createArcaneStyles } from "./arcaneStyles";
 
 const THEME_META_KEY = "ui.theme";
 
 type ArcaneThemeContextValue = {
   themeKey: ArcaneThemeKey;
+  theme: ArcaneTheme;
+  styles: ReturnType<typeof createArcaneStyles>;
   availableThemes: typeof ARCANE_THEMES;
   setThemeKey: (themeKey: ArcaneThemeKey) => Promise<void>;
 };
 
 const ArcaneThemeContext = createContext<ArcaneThemeContextValue | null>(null);
 
-function applyThemeRuntime(themeKey: ArcaneThemeKey) {
-  applyArcaneTheme(themeKey);
-  refreshArcaneStyles();
-}
-
 export function ArcaneThemeProvider({ children }: { children: ReactNode }) {
   const db = useDb();
+
   const [themeKey, setThemeKeyState] = useState<ArcaneThemeKey>(
     DEFAULT_ARCANE_THEME_KEY,
   );
@@ -48,18 +48,18 @@ export function ArcaneThemeProvider({ children }: { children: ReactNode }) {
     void (async () => {
       try {
         const savedTheme = await getMeta(db, THEME_META_KEY);
-        const nextTheme =
+        const nextThemeKey =
           savedTheme && isArcaneThemeKey(savedTheme)
             ? savedTheme
             : DEFAULT_ARCANE_THEME_KEY;
 
-        applyThemeRuntime(nextTheme);
+        applyArcaneTheme(nextThemeKey);
 
         if (mounted) {
-          setThemeKeyState(nextTheme);
+          setThemeKeyState(nextThemeKey);
         }
       } catch {
-        applyThemeRuntime(DEFAULT_ARCANE_THEME_KEY);
+        applyArcaneTheme(DEFAULT_ARCANE_THEME_KEY);
 
         if (mounted) {
           setThemeKeyState(DEFAULT_ARCANE_THEME_KEY);
@@ -72,9 +72,12 @@ export function ArcaneThemeProvider({ children }: { children: ReactNode }) {
     };
   }, [db]);
 
+  const theme = useMemo(() => createArcaneTheme(themeKey), [themeKey]);
+  const styles = useMemo(() => createArcaneStyles(theme), [theme]);
+
   const setThemeKey = useCallback(
     async (nextThemeKey: ArcaneThemeKey) => {
-      applyThemeRuntime(nextThemeKey);
+      applyArcaneTheme(nextThemeKey);
       setThemeKeyState(nextThemeKey);
       await setMeta(db, THEME_META_KEY, nextThemeKey);
     },
@@ -84,10 +87,12 @@ export function ArcaneThemeProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       themeKey,
+      theme,
+      styles,
       availableThemes: ARCANE_THEMES,
       setThemeKey,
     }),
-    [themeKey, setThemeKey],
+    [themeKey, theme, styles, setThemeKey],
   );
 
   return (

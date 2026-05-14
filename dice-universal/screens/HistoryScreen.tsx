@@ -1,4 +1,4 @@
-// dice-universal\screens\HistoryScreen.tsx
+// dice-universal/screens/HistoryScreen.tsx
 
 import { useCallback, useEffect, useState } from "react";
 import { FlatList, Pressable, Text, View } from "react-native";
@@ -11,9 +11,8 @@ import {
   type RollEventRow,
 } from "../data/repositories/rollEventsRepo";
 
-import { arcane } from "../theme/arcaneTheme";
-import { arcaneStyles } from "../theme/arcaneStyles";
 import { useArcaneLayout } from "../theme/useArcaneLayout";
+import { useArcaneTheme } from "../theme/ArcaneThemeProvider";
 
 type Summary = {
   title?: string;
@@ -71,6 +70,7 @@ function PillButton({
   variant?: "default" | "danger";
   disabled?: boolean;
 }) {
+  const { theme } = useArcaneTheme();
   const isDanger = variant === "danger";
 
   return (
@@ -81,18 +81,18 @@ function PillButton({
         paddingVertical: 10,
         paddingHorizontal: 14,
         borderWidth: 1,
-        borderColor: isDanger ? arcane.colors.failure : arcane.colors.border,
-        borderRadius: arcane.radius.pill,
+        borderColor: isDanger ? theme.colors.failure : theme.colors.border,
+        borderRadius: theme.radius.pill,
         backgroundColor: isDanger
-          ? arcane.colors.failureSoft
-          : arcane.colors.surfaceAlt,
+          ? theme.colors.failureSoft
+          : theme.colors.surfaceAlt,
         opacity: disabled ? 0.45 : pressed ? 0.84 : 1,
         transform: [{ scale: pressed && !disabled ? 0.97 : 1 }],
       })}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontWeight: "900",
         }}
       >
@@ -103,20 +103,22 @@ function PillButton({
 }
 
 function HistoryCard({ item }: { item: RollEventRow }) {
+  const { theme, styles } = useArcaneTheme();
+
   const summary = parseSummary(item.summary_json);
   const lines = summary.lines ?? [];
 
   return (
     <View
       style={{
-        ...arcaneStyles.cardSoft,
-        gap: arcane.spacing.sm,
+        ...styles.cardSoft,
+        gap: theme.spacing.sm,
       }}
     >
-      <View style={{ gap: arcane.spacing.xs }}>
+      <View style={{ gap: theme.spacing.xs }}>
         <Text
           style={{
-            color: arcane.colors.text,
+            color: theme.colors.text,
             fontSize: 17,
             fontWeight: "900",
           }}
@@ -126,7 +128,7 @@ function HistoryCard({ item }: { item: RollEventRow }) {
 
         <Text
           style={{
-            color: arcane.colors.textSubtle,
+            color: theme.colors.textSubtle,
             fontWeight: "800",
           }}
         >
@@ -141,14 +143,14 @@ function HistoryCard({ item }: { item: RollEventRow }) {
             paddingVertical: 5,
             paddingHorizontal: 9,
             borderWidth: 1,
-            borderColor: arcane.colors.border,
-            borderRadius: arcane.radius.pill,
-            backgroundColor: arcane.colors.surfaceAlt,
+            borderColor: theme.colors.border,
+            borderRadius: theme.radius.pill,
+            backgroundColor: theme.colors.surfaceAlt,
           }}
         >
           <Text
             style={{
-              color: arcane.colors.textMuted,
+              color: theme.colors.textMuted,
               fontSize: 12,
               fontWeight: "900",
             }}
@@ -164,7 +166,7 @@ function HistoryCard({ item }: { item: RollEventRow }) {
             <Text
               key={`${item.id}-line-${index}`}
               style={{
-                color: arcane.colors.textMuted,
+                color: theme.colors.textMuted,
                 lineHeight: 20,
                 fontWeight: "700",
               }}
@@ -174,7 +176,7 @@ function HistoryCard({ item }: { item: RollEventRow }) {
           ))}
         </View>
       ) : (
-        <Text style={arcaneStyles.muted}>
+        <Text style={styles.muted}>
           Aucun détail lisible enregistré pour ce jet.
         </Text>
       )}
@@ -183,24 +185,26 @@ function HistoryCard({ item }: { item: RollEventRow }) {
 }
 
 function EmptyHistoryCard() {
+  const { theme, styles } = useArcaneTheme();
+
   return (
     <View
       style={{
-        ...arcaneStyles.cardSoft,
-        gap: arcane.spacing.xs,
-        marginTop: arcane.spacing.sm,
+        ...styles.cardSoft,
+        gap: theme.spacing.xs,
+        marginTop: theme.spacing.sm,
       }}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontWeight: "900",
         }}
       >
         Aucun jet enregistré
       </Text>
 
-      <Text style={arcaneStyles.muted}>
+      <Text style={styles.muted}>
         Lance un jet depuis l’écran Jet : il apparaîtra ici automatiquement.
       </Text>
     </View>
@@ -210,6 +214,7 @@ function EmptyHistoryCard() {
 export default function HistoryScreen() {
   const db = useDb();
   const layout = useArcaneLayout();
+  const { theme, styles } = useArcaneTheme();
 
   const [rows, setRows] = useState<RollEventRow[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -261,22 +266,22 @@ export default function HistoryScreen() {
     return (
       <View
         style={[
-          arcaneStyles.screen,
+          styles.screen,
           {
-            paddingTop: layout.insets.top + arcane.spacing.lg,
+            paddingTop: layout.insets.top + theme.spacing.lg,
             paddingHorizontal: layout.horizontalPadding,
             justifyContent: "center",
           },
         ]}
       >
-        <View style={arcaneStyles.card}>
-          <Text style={arcaneStyles.sectionTitle}>Erreur</Text>
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Erreur</Text>
 
           <Text
             style={[
-              arcaneStyles.muted,
+              styles.muted,
               {
-                marginTop: arcane.spacing.sm,
+                marginTop: theme.spacing.sm,
               },
             ]}
           >
@@ -288,17 +293,17 @@ export default function HistoryScreen() {
   }
 
   return (
-    <View style={arcaneStyles.screen}>
+    <View style={styles.screen}>
       <View
         style={{
           flex: 1,
-          paddingTop: layout.insets.top + arcane.spacing.md,
+          paddingTop: layout.insets.top + theme.spacing.md,
           paddingHorizontal: layout.horizontalPadding,
-          paddingBottom: layout.insets.bottom + arcane.spacing.md,
+          paddingBottom: layout.insets.bottom + theme.spacing.md,
           alignSelf: "center",
           width: "100%",
           maxWidth: layout.maxContentWidth,
-          gap: arcane.spacing.md,
+          gap: theme.spacing.md,
         }}
       >
         <View
@@ -306,13 +311,13 @@ export default function HistoryScreen() {
             flexDirection: "row",
             justifyContent: "space-between",
             alignItems: "flex-start",
-            gap: arcane.spacing.md,
+            gap: theme.spacing.md,
           }}
         >
-          <View style={{ flex: 1, gap: arcane.spacing.xs }}>
+          <View style={{ flex: 1, gap: theme.spacing.xs }}>
             <Text
               style={{
-                color: arcane.colors.text,
+                color: theme.colors.text,
                 fontSize: 28,
                 fontWeight: "900",
                 letterSpacing: -0.4,
@@ -321,7 +326,7 @@ export default function HistoryScreen() {
               Historique
             </Text>
 
-            <Text style={arcaneStyles.muted}>
+            <Text style={styles.muted}>
               Consulte les derniers jets lancés pendant tes sessions.
             </Text>
           </View>
@@ -338,8 +343,8 @@ export default function HistoryScreen() {
           data={rows}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{
-            gap: arcane.spacing.sm,
-            paddingBottom: arcane.spacing.xl,
+            gap: theme.spacing.sm,
+            paddingBottom: theme.spacing.xl,
           }}
           renderItem={({ item }) => <HistoryCard item={item} />}
           ListEmptyComponent={<EmptyHistoryCard />}

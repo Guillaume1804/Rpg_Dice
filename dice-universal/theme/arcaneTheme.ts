@@ -2,7 +2,7 @@
 
 export type ArcaneThemeKey = "arcane_dark" | "arcane_light" | "arcane_purple";
 
-type ArcaneColors = {
+export type ArcaneColors = {
   background: string;
   backgroundElevated: string;
 
@@ -36,7 +36,7 @@ type ArcaneColors = {
   black: string;
 };
 
-type ArcaneThemeDefinition = {
+export type ArcaneThemeDefinition = {
   key: ArcaneThemeKey;
   label: string;
   description: string;
@@ -164,9 +164,15 @@ export const ARCANE_THEMES: Record<ArcaneThemeKey, ArcaneThemeDefinition> = {
 
 export const DEFAULT_ARCANE_THEME_KEY: ArcaneThemeKey = "arcane_dark";
 
-function createArcaneBase() {
+export function createArcaneTheme(themeKey: ArcaneThemeKey) {
+  const selectedTheme = ARCANE_THEMES[themeKey];
+
   return {
-    colors: { ...ARCANE_THEMES[DEFAULT_ARCANE_THEME_KEY].colors },
+    key: selectedTheme.key,
+    label: selectedTheme.label,
+    description: selectedTheme.description,
+
+    colors: { ...selectedTheme.colors },
 
     radius: {
       sm: 10,
@@ -209,17 +215,23 @@ function createArcaneBase() {
         elevation: 7,
       },
     },
-  };
+  } as const;
 }
 
-export const arcane = createArcaneBase();
+export type ArcaneTheme = ReturnType<typeof createArcaneTheme>;
+
+/**
+ * Compatibilité ancienne.
+ * Les nouveaux écrans doivent utiliser useArcaneTheme().
+ */
+export const arcane = createArcaneTheme(DEFAULT_ARCANE_THEME_KEY);
 
 export function isArcaneThemeKey(value: string): value is ArcaneThemeKey {
   return value in ARCANE_THEMES;
 }
 
 export function applyArcaneTheme(themeKey: ArcaneThemeKey) {
-  const nextTheme = ARCANE_THEMES[themeKey];
+  const nextTheme = createArcaneTheme(themeKey);
 
   Object.assign(arcane.colors, nextTheme.colors);
 }

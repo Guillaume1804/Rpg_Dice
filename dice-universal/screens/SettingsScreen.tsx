@@ -2,18 +2,25 @@
 
 import { Pressable, ScrollView, Text, View } from "react-native";
 
-import { arcane } from "../theme/arcaneTheme";
-import { arcaneStyles } from "../theme/arcaneStyles";
+import type { ArcaneTheme, ArcaneThemeKey } from "../theme/arcaneTheme";
+import type { createArcaneStyles } from "../theme/arcaneStyles";
 import { useArcaneLayout } from "../theme/useArcaneLayout";
-import { useArcaneTheme } from "../theme/ArcaneThemeProvider";
-import type { ArcaneThemeKey } from "../theme/arcaneTheme";
+import { useArcaneTheme } from "../theme/useArcaneTheme";
 
-function SectionLabel({ children }: { children: string }) {
+type ArcaneStyles = ReturnType<typeof createArcaneStyles>;
+
+function SectionLabel({
+  children,
+  theme,
+}: {
+  children: string;
+  theme: ArcaneTheme;
+}) {
   return (
     <Text
       style={{
-        color: arcane.colors.textSubtle,
-        fontSize: arcane.typography.tiny,
+        color: theme.colors.textSubtle,
+        fontSize: theme.typography.tiny,
         fontWeight: "900",
         textTransform: "uppercase",
         letterSpacing: 0.8,
@@ -28,21 +35,25 @@ function SettingsCard({
   title,
   description,
   value,
+  theme,
+  styles,
 }: {
   title: string;
   description: string;
   value?: string;
+  theme: ArcaneTheme;
+  styles: ArcaneStyles;
 }) {
   return (
     <View
       style={{
-        ...arcaneStyles.cardSoft,
-        gap: arcane.spacing.xs,
+        ...styles.cardSoft,
+        gap: theme.spacing.xs,
       }}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontSize: 16,
           fontWeight: "900",
         }}
@@ -52,7 +63,7 @@ function SettingsCard({
 
       <Text
         style={{
-          color: arcane.colors.textMuted,
+          color: theme.colors.textMuted,
           lineHeight: 19,
         }}
       >
@@ -63,18 +74,18 @@ function SettingsCard({
         <View
           style={{
             alignSelf: "flex-start",
-            marginTop: arcane.spacing.xs,
+            marginTop: theme.spacing.xs,
             paddingVertical: 5,
             paddingHorizontal: 9,
             borderWidth: 1,
-            borderColor: arcane.colors.border,
-            borderRadius: arcane.radius.pill,
-            backgroundColor: arcane.colors.surfaceAlt,
+            borderColor: theme.colors.border,
+            borderRadius: theme.radius.pill,
+            backgroundColor: theme.colors.surfaceAlt,
           }}
         >
           <Text
             style={{
-              color: arcane.colors.textMuted,
+              color: theme.colors.textMuted,
               fontSize: 12,
               fontWeight: "900",
             }}
@@ -92,22 +103,26 @@ function ThemeChoiceCard({
   description,
   selected,
   onPress,
+  theme,
+  styles,
 }: {
   title: string;
   description: string;
   selected: boolean;
   onPress: () => void;
+  theme: ArcaneTheme;
+  styles: ArcaneStyles;
 }) {
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        ...arcaneStyles.cardSoft,
-        gap: arcane.spacing.xs,
-        borderColor: selected ? arcane.colors.accent : arcane.colors.borderSoft,
+        ...styles.cardSoft,
+        gap: theme.spacing.xs,
+        borderColor: selected ? theme.colors.accent : theme.colors.borderSoft,
         backgroundColor: selected
-          ? arcane.colors.accentSoft
-          : arcane.colors.surfaceAlt,
+          ? theme.colors.accentSoft
+          : theme.colors.surfaceAlt,
         opacity: pressed ? 0.86 : 1,
         transform: [{ scale: pressed ? 0.99 : 1 }],
       })}
@@ -117,13 +132,13 @@ function ThemeChoiceCard({
           flexDirection: "row",
           justifyContent: "space-between",
           alignItems: "flex-start",
-          gap: arcane.spacing.sm,
+          gap: theme.spacing.sm,
         }}
       >
         <View style={{ flex: 1, gap: 4 }}>
           <Text
             style={{
-              color: arcane.colors.text,
+              color: theme.colors.text,
               fontSize: 16,
               fontWeight: selected ? "900" : "800",
             }}
@@ -133,7 +148,7 @@ function ThemeChoiceCard({
 
           <Text
             style={{
-              color: arcane.colors.textMuted,
+              color: theme.colors.textMuted,
               lineHeight: 19,
             }}
           >
@@ -147,14 +162,14 @@ function ThemeChoiceCard({
               paddingVertical: 5,
               paddingHorizontal: 9,
               borderWidth: 1,
-              borderColor: arcane.colors.accent,
-              borderRadius: arcane.radius.pill,
-              backgroundColor: arcane.colors.accentSoft,
+              borderColor: theme.colors.accent,
+              borderRadius: theme.radius.pill,
+              backgroundColor: theme.colors.accentSoft,
             }}
           >
             <Text
               style={{
-                color: arcane.colors.text,
+                color: theme.colors.text,
                 fontSize: 12,
                 fontWeight: "900",
               }}
@@ -168,13 +183,13 @@ function ThemeChoiceCard({
   );
 }
 
-function ColorPreviewRow() {
+function ColorPreviewRow({ theme }: { theme: ArcaneTheme }) {
   const colors = [
-    arcane.colors.accent,
-    arcane.colors.arcane,
-    arcane.colors.success,
-    arcane.colors.warning,
-    arcane.colors.failure,
+    theme.colors.accent,
+    theme.colors.arcane,
+    theme.colors.success,
+    theme.colors.warning,
+    theme.colors.failure,
   ];
 
   return (
@@ -182,8 +197,8 @@ function ColorPreviewRow() {
       style={{
         flexDirection: "row",
         flexWrap: "wrap",
-        gap: arcane.spacing.sm,
-        marginTop: arcane.spacing.xs,
+        gap: theme.spacing.sm,
+        marginTop: theme.spacing.xs,
       }}
     >
       {colors.map((color) => (
@@ -192,9 +207,9 @@ function ColorPreviewRow() {
           style={{
             width: 28,
             height: 28,
-            borderRadius: arcane.radius.pill,
+            borderRadius: theme.radius.pill,
             borderWidth: 1,
-            borderColor: arcane.colors.border,
+            borderColor: theme.colors.border,
             backgroundColor: color,
           }}
         />
@@ -205,7 +220,8 @@ function ColorPreviewRow() {
 
 export default function SettingsScreen() {
   const layout = useArcaneLayout();
-  const { themeKey, availableThemes, setThemeKey } = useArcaneTheme();
+  const { theme, styles, themeKey, availableThemes, setThemeKey } =
+    useArcaneTheme();
 
   const currentTheme = availableThemes[themeKey];
 
@@ -214,23 +230,23 @@ export default function SettingsScreen() {
   }
 
   return (
-    <View style={arcaneStyles.screen}>
+    <View style={styles.screen}>
       <View
         style={{
           flex: 1,
-          paddingTop: layout.insets.top + arcane.spacing.md,
+          paddingTop: layout.insets.top + theme.spacing.md,
           paddingHorizontal: layout.horizontalPadding,
-          paddingBottom: layout.insets.bottom + arcane.spacing.md,
+          paddingBottom: layout.insets.bottom + theme.spacing.md,
           alignSelf: "center",
           width: "100%",
           maxWidth: layout.maxContentWidth,
-          gap: arcane.spacing.md,
+          gap: theme.spacing.md,
         }}
       >
-        <View style={{ gap: arcane.spacing.xs }}>
+        <View style={{ gap: theme.spacing.xs }}>
           <Text
             style={{
-              color: arcane.colors.text,
+              color: theme.colors.text,
               fontSize: 28,
               fontWeight: "900",
               letterSpacing: -0.4,
@@ -239,7 +255,7 @@ export default function SettingsScreen() {
             Paramètres
           </Text>
 
-          <Text style={arcaneStyles.muted}>
+          <Text style={styles.muted}>
             Ajuste l’expérience visuelle et prépare les options de confort de
             l’application.
           </Text>
@@ -247,29 +263,33 @@ export default function SettingsScreen() {
 
         <ScrollView
           contentContainerStyle={{
-            gap: arcane.spacing.md,
-            paddingBottom: arcane.spacing.xl,
+            gap: theme.spacing.md,
+            paddingBottom: theme.spacing.xl,
           }}
           showsVerticalScrollIndicator
         >
-          <View style={{ gap: arcane.spacing.sm }}>
-            <SectionLabel>Apparence</SectionLabel>
+          <View style={{ gap: theme.spacing.sm }}>
+            <SectionLabel theme={theme}>Apparence</SectionLabel>
 
             <SettingsCard
               title="Thème visuel"
               description="Choisis l’ambiance générale de l’application. Le choix est sauvegardé localement."
               value={currentTheme.label}
+              theme={theme}
+              styles={styles}
             />
 
-            <View style={{ gap: arcane.spacing.sm }}>
-              {Object.values(availableThemes).map((theme) => (
+            <View style={{ gap: theme.spacing.sm }}>
+              {Object.values(availableThemes).map((themeOption) => (
                 <ThemeChoiceCard
-                  key={theme.key}
-                  title={theme.label}
-                  description={theme.description}
-                  selected={theme.key === themeKey}
+                  key={themeOption.key}
+                  title={themeOption.label}
+                  description={themeOption.description}
+                  selected={themeOption.key === themeKey}
+                  theme={theme}
+                  styles={styles}
                   onPress={() => {
-                    void handleSelectTheme(theme.key);
+                    void handleSelectTheme(themeOption.key);
                   }}
                 />
               ))}
@@ -277,13 +297,13 @@ export default function SettingsScreen() {
 
             <View
               style={{
-                ...arcaneStyles.cardSoft,
-                gap: arcane.spacing.xs,
+                ...styles.cardSoft,
+                gap: theme.spacing.xs,
               }}
             >
               <Text
                 style={{
-                  color: arcane.colors.text,
+                  color: theme.colors.text,
                   fontSize: 16,
                   fontWeight: "900",
                 }}
@@ -291,54 +311,64 @@ export default function SettingsScreen() {
                 Aperçu des couleurs
               </Text>
 
-              <Text style={arcaneStyles.muted}>
+              <Text style={styles.muted}>
                 Ces couleurs servent aux accents, réussites, avertissements et
                 échecs.
               </Text>
 
-              <ColorPreviewRow />
+              <ColorPreviewRow theme={theme} />
             </View>
           </View>
 
-          <View style={{ gap: arcane.spacing.sm }}>
-            <SectionLabel>Confort</SectionLabel>
+          <View style={{ gap: theme.spacing.sm }}>
+            <SectionLabel theme={theme}>Confort</SectionLabel>
 
             <SettingsCard
               title="Animations"
               description="Prévu pour les révélations de résultat, les effets critiques et les transitions plus ludiques."
               value="À venir"
+              theme={theme}
+              styles={styles}
             />
 
             <SettingsCard
               title="Vibrations"
               description="Prévu pour renforcer les lancers, les réussites critiques et les complications."
               value="À venir"
+              theme={theme}
+              styles={styles}
             />
 
             <SettingsCard
               title="Sons"
               description="Prévu pour ajouter une sensation plus proche d’un jeu mobile, avec option de désactivation."
               value="À venir"
+              theme={theme}
+              styles={styles}
             />
           </View>
 
-          <View style={{ gap: arcane.spacing.sm }}>
-            <SectionLabel>Préférences</SectionLabel>
+          <View style={{ gap: theme.spacing.sm }}>
+            <SectionLabel theme={theme}>Préférences</SectionLabel>
 
             <SettingsCard
               title="Données locales"
               description="Les tables, profils, règles et historiques sont actuellement stockés localement sur l’appareil."
               value="SQLite local"
+              theme={theme}
+              styles={styles}
             />
           </View>
 
-          <View style={{ gap: arcane.spacing.sm }}>
-            <SectionLabel>Version</SectionLabel>
+          <View style={{ gap: theme.spacing.sm }}>
+            <SectionLabel theme={theme}>Version</SectionLabel>
 
             <SettingsCard
               title="Dice Universal"
               description="Application de lancer de dés universelle pour jeu de rôle, en cours de stabilisation vers une V1 propre."
               value="Pré-V1"
+              theme={theme}
+              styles={styles}
             />
           </View>
         </ScrollView>

@@ -1,98 +1,75 @@
 // dice-universal/theme/arcaneStyles.ts
 
-import { arcane } from "./arcaneTheme";
+import { arcane, type ArcaneTheme } from "./arcaneTheme";
 
-/**
- * Important :
- * React Native peut freezer les objets de style en mode dev.
- * Donc on ne doit jamais muter arcaneStyles.screen/card/etc. après rendu.
- *
- * Ces getters retournent un nouvel objet à chaque accès, ce qui permet
- * au thème runtime de changer les valeurs de `arcane.colors` sans casser RN.
- */
-export const arcaneStyles = {
-  get screen() {
-    return {
+export function createArcaneStyles(theme: ArcaneTheme) {
+  return {
+    screen: {
       flex: 1,
-      backgroundColor: arcane.colors.background,
-    };
-  },
+      backgroundColor: theme.colors.background,
+    },
 
-  get card() {
-    return {
-      backgroundColor: arcane.colors.surface,
-      borderColor: arcane.colors.border,
+    card: {
+      backgroundColor: theme.colors.surface,
+      borderColor: theme.colors.border,
       borderWidth: 1,
-      borderRadius: arcane.radius.lg,
-      padding: arcane.spacing.lg,
-      ...arcane.shadow.card,
-    };
-  },
+      borderRadius: theme.radius.lg,
+      padding: theme.spacing.lg,
+      ...theme.shadow.card,
+    },
 
-  get cardSoft() {
-    return {
-      backgroundColor: arcane.colors.surfaceAlt,
-      borderColor: arcane.colors.borderSoft,
+    cardSoft: {
+      backgroundColor: theme.colors.surfaceAlt,
+      borderColor: theme.colors.borderSoft,
       borderWidth: 1,
-      borderRadius: arcane.radius.lg,
-      padding: arcane.spacing.md,
-    };
-  },
+      borderRadius: theme.radius.lg,
+      padding: theme.spacing.md,
+    },
 
-  get title() {
-    return {
-      color: arcane.colors.text,
-      fontSize: arcane.typography.title,
+    title: {
+      color: theme.colors.text,
+      fontSize: theme.typography.title,
       fontWeight: "900" as const,
-    };
-  },
+    },
 
-  get sectionTitle() {
-    return {
-      color: arcane.colors.text,
-      fontSize: arcane.typography.sectionTitle,
+    sectionTitle: {
+      color: theme.colors.text,
+      fontSize: theme.typography.sectionTitle,
       fontWeight: "900" as const,
-    };
-  },
+    },
 
-  get body() {
-    return {
-      color: arcane.colors.text,
-      fontSize: arcane.typography.body,
-    };
-  },
+    body: {
+      color: theme.colors.text,
+      fontSize: theme.typography.body,
+    },
 
-  get muted() {
-    return {
-      color: arcane.colors.textMuted,
-      fontSize: arcane.typography.body,
-    };
-  },
+    muted: {
+      color: theme.colors.textMuted,
+      fontSize: theme.typography.body,
+    },
 
-  get subtle() {
-    return {
-      color: arcane.colors.textSubtle,
-      fontSize: arcane.typography.small,
-    };
-  },
+    subtle: {
+      color: theme.colors.textSubtle,
+      fontSize: theme.typography.small,
+    },
 
-  get pill() {
-    return {
-      borderRadius: arcane.radius.pill,
+    pill: {
+      borderRadius: theme.radius.pill,
       borderWidth: 1,
-      borderColor: arcane.colors.border,
+      borderColor: theme.colors.border,
       paddingVertical: 8,
       paddingHorizontal: 12,
-      backgroundColor: arcane.colors.surfaceAlt,
-    };
-  },
-} as const;
+      backgroundColor: theme.colors.surfaceAlt,
+    },
+  } as const;
+}
 
 /**
- * Conservé pour compatibilité avec ArcaneThemeProvider.
- * Avant, cette fonction mutait arcaneStyles, ce qui provoquait l'erreur RN.
- * Maintenant elle ne fait volontairement rien.
+ * Compatibilité ancienne.
+ * Les nouveaux écrans doivent utiliser les styles fournis par useArcaneTheme().
  */
+export const arcaneStyles = createArcaneStyles(arcane);
+
 export function refreshArcaneStyles(..._args: unknown[]): void {
   // no-op volontaire
 }

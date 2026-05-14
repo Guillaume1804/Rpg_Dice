@@ -12,8 +12,7 @@ import type { RuleRow, RuleScope } from "../../../data/repositories/rulesRepo";
 import { RULE_FAMILIES } from "../config/ruleFamilies";
 import type { RuleFormState } from "../helpers/ruleForm";
 
-import { arcane } from "../../../theme/arcaneTheme";
-import { arcaneStyles } from "../../../theme/arcaneStyles";
+import { useArcaneTheme } from "../../../theme/ArcaneThemeProvider";
 
 type Props = {
   visible: boolean;
@@ -65,10 +64,11 @@ function getScopeLabel(scope: RuleScope) {
 }
 
 function FieldLabel({ children }: { children: string }) {
+  const { theme } = useArcaneTheme();
   return (
     <Text
       style={{
-        color: arcane.colors.textMuted,
+        color: theme.colors.textMuted,
         fontWeight: "800",
       }}
     >
@@ -78,11 +78,13 @@ function FieldLabel({ children }: { children: string }) {
 }
 
 function SectionLabel({ children }: { children: string }) {
+  const { theme } = useArcaneTheme();
+
   return (
     <Text
       style={{
-        color: arcane.colors.textSubtle,
-        fontSize: arcane.typography.tiny,
+        color: theme.colors.textSubtle,
+        fontSize: theme.typography.tiny,
         fontWeight: "900",
         textTransform: "uppercase",
         letterSpacing: 0.8,
@@ -106,24 +108,25 @@ function BoxInput({
   keyboardType?: "default" | "numeric" | "numbers-and-punctuation";
   editable?: boolean;
 }) {
+  const { theme } = useArcaneTheme();
   return (
     <TextInput
       value={value}
       onChangeText={onChangeText}
       placeholder={placeholder}
-      placeholderTextColor={arcane.colors.textSubtle}
-      selectionColor={arcane.colors.accent}
+      placeholderTextColor={theme.colors.textSubtle}
+      selectionColor={theme.colors.accent}
       keyboardType={keyboardType}
       editable={editable}
       style={{
         minHeight: 48,
         borderWidth: 1,
-        borderColor: arcane.colors.border,
-        borderRadius: arcane.radius.md,
+        borderColor: theme.colors.border,
+        borderRadius: theme.radius.md,
         paddingHorizontal: 12,
         paddingVertical: 11,
-        backgroundColor: arcane.colors.surfaceAlt,
-        color: arcane.colors.text,
+        backgroundColor: theme.colors.surfaceAlt,
+        color: theme.colors.text,
         fontSize: 16,
         fontWeight: "700",
         opacity: editable ? 1 : 0.62,
@@ -144,24 +147,25 @@ function ChoiceCard({
   disabled?: boolean;
   onPress?: () => void;
 }) {
+  const { theme, styles } = useArcaneTheme();
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled || !onPress}
       style={({ pressed }) => ({
-        ...arcaneStyles.cardSoft,
-        gap: arcane.spacing.xs,
-        borderColor: selected ? arcane.colors.accent : arcane.colors.border,
+        ...styles.cardSoft,
+        gap: theme.spacing.xs,
+        borderColor: selected ? theme.colors.accent : theme.colors.border,
         backgroundColor: selected
-          ? arcane.colors.accentSoft
-          : arcane.colors.surfaceAlt,
+          ? theme.colors.accentSoft
+          : theme.colors.surfaceAlt,
         opacity: disabled ? 0.62 : pressed ? 0.86 : 1,
         transform: [{ scale: pressed ? 0.99 : 1 }],
       })}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontSize: 15,
           fontWeight: selected ? "900" : "800",
         }}
@@ -172,7 +176,7 @@ function ChoiceCard({
       {description ? (
         <Text
           style={{
-            color: arcane.colors.textMuted,
+            color: theme.colors.textMuted,
             lineHeight: 19,
           }}
         >
@@ -194,19 +198,20 @@ function PillButton({
   variant?: "default" | "accent" | "danger";
   disabled?: boolean;
 }) {
+  const { theme } = useArcaneTheme();
   const borderColor =
     variant === "accent"
-      ? arcane.colors.accent
+      ? theme.colors.accent
       : variant === "danger"
-        ? arcane.colors.failure
-        : arcane.colors.border;
+        ? theme.colors.failure
+        : theme.colors.border;
 
   const backgroundColor =
     variant === "accent"
-      ? arcane.colors.accentSoft
+      ? theme.colors.accentSoft
       : variant === "danger"
-        ? arcane.colors.failureSoft
-        : arcane.colors.surfaceAlt;
+        ? theme.colors.failureSoft
+        : theme.colors.surfaceAlt;
 
   return (
     <Pressable
@@ -217,7 +222,7 @@ function PillButton({
         paddingHorizontal: 14,
         borderWidth: 1,
         borderColor,
-        borderRadius: arcane.radius.pill,
+        borderRadius: theme.radius.pill,
         backgroundColor,
         opacity: disabled ? 0.48 : pressed ? 0.84 : 1,
         transform: [{ scale: pressed && !disabled ? 0.97 : 1 }],
@@ -225,7 +230,7 @@ function PillButton({
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontWeight: "900",
         }}
       >
@@ -244,16 +249,17 @@ function SectionCard({
   description?: string;
   children: React.ReactNode;
 }) {
+  const { theme, styles } = useArcaneTheme();
   return (
     <View
       style={{
-        ...arcaneStyles.cardSoft,
-        gap: arcane.spacing.sm,
+        ...styles.cardSoft,
+        gap: theme.spacing.sm,
       }}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontSize: 16,
           fontWeight: "900",
         }}
@@ -264,7 +270,7 @@ function SectionCard({
       {description ? (
         <Text
           style={{
-            color: arcane.colors.textMuted,
+            color: theme.colors.textMuted,
             lineHeight: 19,
           }}
         >
@@ -299,6 +305,7 @@ export function HumanRuleEditorModal({
   onClose,
   onSave,
 }: Props) {
+  const { theme, styles } = useArcaneTheme();
   const lockedScope = getForcedScopeForFamily(form.family);
   const displayedScope = lockedScope ?? form.scope;
 
@@ -318,21 +325,21 @@ export function HumanRuleEditorModal({
           flex: 1,
           backgroundColor: "rgba(0,0,0,0.68)",
           justifyContent: "center",
-          padding: arcane.spacing.md,
+          padding: theme.spacing.md,
         }}
       >
         <View
           style={{
-            ...arcaneStyles.card,
+            ...styles.card,
             maxHeight: "92%",
-            gap: arcane.spacing.md,
-            borderColor: arcane.colors.accent,
+            gap: theme.spacing.md,
+            borderColor: theme.colors.accent,
           }}
         >
-          <View style={{ gap: arcane.spacing.xs }}>
+          <View style={{ gap: theme.spacing.xs }}>
             <SectionLabel>Éditeur avancé</SectionLabel>
 
-            <Text style={arcaneStyles.sectionTitle}>
+            <Text style={styles.sectionTitle}>
               {isReadOnlySystemRule
                 ? "Consulter une règle système"
                 : editingRule
@@ -340,7 +347,7 @@ export function HumanRuleEditorModal({
                   : "Créer une règle"}
             </Text>
 
-            <Text style={arcaneStyles.muted}>
+            <Text style={styles.muted}>
               {isReadOnlySystemRule
                 ? "Cette règle système est protégée. Tu peux la consulter et la tester, mais pas la modifier."
                 : "Configure précisément une règle de lancer, ses dés compatibles, sa portée et sa prévisualisation."}
@@ -350,21 +357,21 @@ export function HumanRuleEditorModal({
           {isReadOnlySystemRule ? (
             <View
               style={{
-                ...arcaneStyles.cardSoft,
-                borderColor: arcane.colors.warning,
-                backgroundColor: arcane.colors.warningSoft,
+                ...styles.cardSoft,
+                borderColor: theme.colors.warning,
+                backgroundColor: theme.colors.warningSoft,
               }}
             >
               <Text
                 style={{
-                  color: arcane.colors.text,
+                  color: theme.colors.text,
                   fontWeight: "900",
                 }}
               >
                 Règle protégée
               </Text>
 
-              <Text style={arcaneStyles.muted}>
+              <Text style={styles.muted}>
                 Les règles système servent de modèles de base. Pour créer ta
                 propre variante, utilise la création guidée ou l’éditeur avancé.
               </Text>
@@ -373,8 +380,8 @@ export function HumanRuleEditorModal({
 
           <ScrollView
             contentContainerStyle={{
-              gap: arcane.spacing.md,
-              paddingBottom: arcane.spacing.sm,
+              gap: theme.spacing.md,
+              paddingBottom: theme.spacing.sm,
             }}
             showsVerticalScrollIndicator
             keyboardShouldPersistTaps="handled"
@@ -431,7 +438,7 @@ export function HumanRuleEditorModal({
                   disabled
                 />
               ) : (
-                <View style={{ gap: arcane.spacing.sm }}>
+                <View style={{ gap: theme.spacing.sm }}>
                   {(["entry", "group", "both"] as RuleScope[]).map((scope) => (
                     <ChoiceCard
                       key={scope}
@@ -453,7 +460,7 @@ export function HumanRuleEditorModal({
                 <View
                   style={{
                     flexDirection: "row",
-                    gap: arcane.spacing.sm,
+                    gap: theme.spacing.sm,
                     flexWrap: "wrap",
                   }}
                 >
@@ -568,13 +575,13 @@ export function HumanRuleEditorModal({
                   <View
                     key={index}
                     style={{
-                      ...arcaneStyles.cardSoft,
-                      gap: arcane.spacing.sm,
+                      ...styles.cardSoft,
+                      gap: theme.spacing.sm,
                     }}
                   >
                     <Text
                       style={{
-                        color: arcane.colors.text,
+                        color: theme.colors.text,
                         fontWeight: "900",
                       }}
                     >
@@ -661,7 +668,7 @@ export function HumanRuleEditorModal({
               <View
                 style={{
                   flexDirection: "row",
-                  gap: arcane.spacing.sm,
+                  gap: theme.spacing.sm,
                   flexWrap: "wrap",
                 }}
               >
@@ -687,14 +694,14 @@ export function HumanRuleEditorModal({
               {formError ? (
                 <View
                   style={{
-                    ...arcaneStyles.cardSoft,
-                    borderColor: arcane.colors.failure,
-                    backgroundColor: arcane.colors.failureSoft,
+                    ...styles.cardSoft,
+                    borderColor: theme.colors.failure,
+                    backgroundColor: theme.colors.failureSoft,
                   }}
                 >
                   <Text
                     style={{
-                      color: arcane.colors.text,
+                      color: theme.colors.text,
                       fontWeight: "800",
                     }}
                   >
@@ -706,14 +713,14 @@ export function HumanRuleEditorModal({
               {previewResult ? (
                 <View
                   style={{
-                    ...arcaneStyles.cardSoft,
-                    backgroundColor: arcane.colors.surfaceAlt,
+                    ...styles.cardSoft,
+                    backgroundColor: theme.colors.surfaceAlt,
                   }}
                 >
                   <Text
                     selectable
                     style={{
-                      color: arcane.colors.text,
+                      color: theme.colors.text,
                       fontFamily: "monospace",
                       lineHeight: 20,
                     }}
@@ -730,7 +737,7 @@ export function HumanRuleEditorModal({
               flexDirection: "row",
               justifyContent: "flex-end",
               flexWrap: "wrap",
-              gap: arcane.spacing.sm,
+              gap: theme.spacing.sm,
             }}
           >
             <PillButton

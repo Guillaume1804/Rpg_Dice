@@ -13,8 +13,7 @@ import type { RuleWizardDraft, RuleWizardScope, RuleWizardStep } from "./types";
 
 import { RULE_BEHAVIORS } from "../../../core/rules/behaviorRegistry";
 
-import { arcane } from "../../../theme/arcaneTheme";
-import { arcaneStyles } from "../../../theme/arcaneStyles";
+import { useArcaneTheme } from "../../../theme/ArcaneThemeProvider";
 
 type Props = {
   visible: boolean;
@@ -167,6 +166,7 @@ function WizardPillButton({
   onPress: () => void;
   variant?: "default" | "accent";
 }) {
+  const { theme } = useArcaneTheme();
   const isAccent = variant === "accent";
 
   return (
@@ -176,18 +176,18 @@ function WizardPillButton({
         paddingVertical: 10,
         paddingHorizontal: 14,
         borderWidth: 1,
-        borderColor: isAccent ? arcane.colors.accent : arcane.colors.border,
-        borderRadius: arcane.radius.pill,
+        borderColor: isAccent ? theme.colors.accent : theme.colors.border,
+        borderRadius: theme.radius.pill,
         backgroundColor: isAccent
-          ? arcane.colors.accentSoft
-          : arcane.colors.surfaceAlt,
+          ? theme.colors.accentSoft
+          : theme.colors.surfaceAlt,
         opacity: pressed ? 0.84 : 1,
         transform: [{ scale: pressed ? 0.97 : 1 }],
       })}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontWeight: "900",
         }}
       >
@@ -198,17 +198,18 @@ function WizardPillButton({
 }
 
 function WizardStepDot({ active }: { active: boolean }) {
+  const { theme } = useArcaneTheme();
   return (
     <View
       style={{
         flex: 1,
         height: 6,
         borderWidth: 1,
-        borderColor: active ? arcane.colors.accent : arcane.colors.border,
-        borderRadius: arcane.radius.pill,
+        borderColor: active ? theme.colors.accent : theme.colors.border,
+        borderRadius: theme.radius.pill,
         backgroundColor: active
-          ? arcane.colors.accentSoft
-          : arcane.colors.surfaceAlt,
+          ? theme.colors.accentSoft
+          : theme.colors.surfaceAlt,
         opacity: active ? 1 : 0.55,
       }}
     />
@@ -216,10 +217,11 @@ function WizardStepDot({ active }: { active: boolean }) {
 }
 
 function WizardFieldLabel({ children }: { children: string }) {
+  const { theme } = useArcaneTheme();
   return (
     <Text
       style={{
-        color: arcane.colors.textMuted,
+        color: theme.colors.textMuted,
         fontWeight: "800",
       }}
     >
@@ -241,24 +243,25 @@ function WizardInput({
   keyboardType?: KeyboardTypeOptions;
   editable?: boolean;
 }) {
+  const { theme } = useArcaneTheme();
   return (
     <TextInput
       value={value}
       onChangeText={onChangeText}
       placeholder={placeholder}
-      placeholderTextColor={arcane.colors.textSubtle}
-      selectionColor={arcane.colors.accent}
+      placeholderTextColor={theme.colors.textSubtle}
+      selectionColor={theme.colors.accent}
       keyboardType={keyboardType}
       editable={editable}
       style={{
         minHeight: 48,
         borderWidth: 1,
-        borderColor: arcane.colors.border,
-        borderRadius: arcane.radius.md,
+        borderColor: theme.colors.border,
+        borderRadius: theme.radius.md,
         paddingHorizontal: 12,
         paddingVertical: 11,
-        backgroundColor: arcane.colors.surfaceAlt,
-        color: arcane.colors.text,
+        backgroundColor: theme.colors.surfaceAlt,
+        color: theme.colors.text,
         fontSize: 16,
         fontWeight: "700",
         opacity: editable ? 1 : 0.62,
@@ -276,16 +279,17 @@ function WizardSection({
   description?: string;
   children: React.ReactNode;
 }) {
+  const { theme, styles } = useArcaneTheme();
   return (
     <View
       style={{
-        ...arcaneStyles.cardSoft,
-        gap: arcane.spacing.sm,
+        ...styles.cardSoft,
+        gap: theme.spacing.sm,
       }}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontSize: 16,
           fontWeight: "900",
         }}
@@ -296,7 +300,7 @@ function WizardSection({
       {description ? (
         <Text
           style={{
-            color: arcane.colors.textMuted,
+            color: theme.colors.textMuted,
             lineHeight: 19,
           }}
         >
@@ -320,23 +324,24 @@ function WizardChoiceCard({
   selected: boolean;
   onPress: () => void;
 }) {
+  const { theme, styles } = useArcaneTheme();
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        ...arcaneStyles.cardSoft,
-        gap: arcane.spacing.xs,
-        borderColor: selected ? arcane.colors.accent : arcane.colors.border,
+        ...styles.cardSoft,
+        gap: theme.spacing.xs,
+        borderColor: selected ? theme.colors.accent : theme.colors.border,
         backgroundColor: selected
-          ? arcane.colors.accentSoft
-          : arcane.colors.surfaceAlt,
+          ? theme.colors.accentSoft
+          : theme.colors.surfaceAlt,
         opacity: pressed ? 0.86 : 1,
         transform: [{ scale: pressed ? 0.99 : 1 }],
       })}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontSize: 15,
           fontWeight: selected ? "900" : "800",
         }}
@@ -347,7 +352,7 @@ function WizardChoiceCard({
       {description ? (
         <Text
           style={{
-            color: arcane.colors.textMuted,
+            color: theme.colors.textMuted,
             lineHeight: 19,
           }}
         >
@@ -358,7 +363,7 @@ function WizardChoiceCard({
       {selected ? (
         <Text
           style={{
-            color: arcane.colors.accent,
+            color: theme.colors.accent,
             fontWeight: "900",
             marginTop: 2,
           }}
@@ -381,16 +386,17 @@ function BehaviorChoiceCard({
   selected: boolean;
   onPress: () => void;
 }) {
+  const { theme, styles } = useArcaneTheme();
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        ...arcaneStyles.cardSoft,
-        gap: arcane.spacing.xs,
-        borderColor: selected ? arcane.colors.accent : arcane.colors.border,
+        ...styles.cardSoft,
+        gap: theme.spacing.xs,
+        borderColor: selected ? theme.colors.accent : theme.colors.border,
         backgroundColor: selected
-          ? arcane.colors.accentSoft
-          : arcane.colors.surfaceAlt,
+          ? theme.colors.accentSoft
+          : theme.colors.surfaceAlt,
         opacity: pressed ? 0.86 : 1,
         transform: [{ scale: pressed ? 0.99 : 1 }],
       })}
@@ -400,13 +406,13 @@ function BehaviorChoiceCard({
           flexDirection: "row",
           justifyContent: "space-between",
           alignItems: "flex-start",
-          gap: arcane.spacing.sm,
+          gap: theme.spacing.sm,
         }}
       >
         <View style={{ flex: 1, gap: 4 }}>
           <Text
             style={{
-              color: arcane.colors.text,
+              color: theme.colors.text,
               fontSize: 16,
               fontWeight: selected ? "900" : "800",
             }}
@@ -416,7 +422,7 @@ function BehaviorChoiceCard({
 
           <Text
             style={{
-              color: arcane.colors.textMuted,
+              color: theme.colors.textMuted,
               lineHeight: 19,
             }}
           >
@@ -430,14 +436,14 @@ function BehaviorChoiceCard({
               paddingVertical: 5,
               paddingHorizontal: 9,
               borderWidth: 1,
-              borderColor: arcane.colors.accent,
-              borderRadius: arcane.radius.pill,
-              backgroundColor: arcane.colors.accentSoft,
+              borderColor: theme.colors.accent,
+              borderRadius: theme.radius.pill,
+              backgroundColor: theme.colors.accentSoft,
             }}
           >
             <Text
               style={{
-                color: arcane.colors.text,
+                color: theme.colors.text,
                 fontSize: 12,
                 fontWeight: "900",
               }}
@@ -458,8 +464,9 @@ function WizardInputGroup({
   label: string;
   children: React.ReactNode;
 }) {
+  const { theme } = useArcaneTheme();
   return (
-    <View style={{ gap: arcane.spacing.sm }}>
+    <View style={{ gap: theme.spacing.sm }}>
       <WizardFieldLabel>{label}</WizardFieldLabel>
       {children}
     </View>
@@ -475,6 +482,7 @@ function WizardChoicePill({
   selected: boolean;
   onPress: () => void;
 }) {
+  const { theme } = useArcaneTheme();
   return (
     <Pressable
       onPress={onPress}
@@ -482,18 +490,18 @@ function WizardChoicePill({
         paddingVertical: 10,
         paddingHorizontal: 14,
         borderWidth: 1,
-        borderColor: selected ? arcane.colors.accent : arcane.colors.border,
-        borderRadius: arcane.radius.pill,
+        borderColor: selected ? theme.colors.accent : theme.colors.border,
+        borderRadius: theme.radius.pill,
         backgroundColor: selected
-          ? arcane.colors.accentSoft
-          : arcane.colors.surfaceAlt,
+          ? theme.colors.accentSoft
+          : theme.colors.surfaceAlt,
         opacity: pressed ? 0.84 : selected ? 1 : 0.78,
         transform: [{ scale: pressed ? 0.97 : 1 }],
       })}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontWeight: selected ? "900" : "800",
         }}
       >
@@ -518,23 +526,24 @@ function WizardRangeCard({
   ) => void;
   onRemoveRangeRow: (index: number) => void;
 }) {
+  const { theme, styles } = useArcaneTheme();
   return (
     <View
       style={{
-        ...arcaneStyles.cardSoft,
-        gap: arcane.spacing.sm,
+        ...styles.cardSoft,
+        gap: theme.spacing.sm,
       }}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontWeight: "900",
         }}
       >
         Plage {index + 1}
       </Text>
 
-      <View style={{ flexDirection: "row", gap: arcane.spacing.sm }}>
+      <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
         <View style={{ flex: 1 }}>
           <WizardInputGroup label="Min">
             <WizardInput
@@ -573,15 +582,15 @@ function WizardRangeCard({
           paddingVertical: 10,
           paddingHorizontal: 12,
           borderWidth: 1,
-          borderColor: arcane.colors.failure,
-          borderRadius: arcane.radius.pill,
-          backgroundColor: arcane.colors.failureSoft,
+          borderColor: theme.colors.failure,
+          borderRadius: theme.radius.pill,
+          backgroundColor: theme.colors.failureSoft,
           opacity: pressed ? 0.84 : 1,
         })}
       >
         <Text
           style={{
-            color: arcane.colors.text,
+            color: theme.colors.text,
             fontWeight: "900",
           }}
         >
@@ -620,6 +629,7 @@ export function CreateRuleWizardModal({
   onChangePreviewModifierText,
   onChangePreviewSignText,
 }: Props) {
+  const { theme, styles } = useArcaneTheme();
   if (!visible) return null;
 
   const isLastStep = stepIndex === totalSteps - 1;
@@ -660,22 +670,22 @@ export function CreateRuleWizardModal({
         bottom: 0,
         backgroundColor: "rgba(0,0,0,0.68)",
         justifyContent: "center",
-        padding: arcane.spacing.md,
+        padding: theme.spacing.md,
       }}
     >
       <View
         style={{
-          ...arcaneStyles.card,
-          gap: arcane.spacing.md,
+          ...styles.card,
+          gap: theme.spacing.md,
           maxHeight: "92%",
-          borderColor: arcane.colors.accent,
+          borderColor: theme.colors.accent,
         }}
       >
-        <View style={{ gap: arcane.spacing.xs }}>
+        <View style={{ gap: theme.spacing.xs }}>
           <Text
             style={{
-              color: arcane.colors.textSubtle,
-              fontSize: arcane.typography.tiny,
+              color: theme.colors.textSubtle,
+              fontSize: theme.typography.tiny,
               fontWeight: "900",
               textTransform: "uppercase",
               letterSpacing: 0.8,
@@ -684,9 +694,9 @@ export function CreateRuleWizardModal({
             Création guidée
           </Text>
 
-          <Text style={arcaneStyles.sectionTitle}>Créer une règle</Text>
+          <Text style={styles.sectionTitle}>Créer une règle</Text>
 
-          <Text style={arcaneStyles.muted}>
+          <Text style={styles.muted}>
             Étape {stepIndex + 1}/{totalSteps}
           </Text>
 
@@ -694,7 +704,7 @@ export function CreateRuleWizardModal({
             style={{
               flexDirection: "row",
               gap: 6,
-              marginTop: arcane.spacing.xs,
+              marginTop: theme.spacing.xs,
             }}
           >
             {Array.from({ length: totalSteps }).map((_, index) => (
@@ -706,14 +716,14 @@ export function CreateRuleWizardModal({
         {error ? (
           <View
             style={{
-              ...arcaneStyles.cardSoft,
-              borderColor: arcane.colors.failure,
-              backgroundColor: arcane.colors.failureSoft,
+              ...styles.cardSoft,
+              borderColor: theme.colors.failure,
+              backgroundColor: theme.colors.failureSoft,
             }}
           >
             <Text
               style={{
-                color: arcane.colors.text,
+                color: theme.colors.text,
                 fontWeight: "800",
               }}
             >
@@ -724,8 +734,8 @@ export function CreateRuleWizardModal({
 
         <ScrollView
           contentContainerStyle={{
-            gap: arcane.spacing.md,
-            paddingBottom: arcane.spacing.sm,
+            gap: theme.spacing.md,
+            paddingBottom: theme.spacing.sm,
           }}
           showsVerticalScrollIndicator
           keyboardShouldPersistTaps="handled"
@@ -779,7 +789,7 @@ export function CreateRuleWizardModal({
               />
 
               {selectedBehavior?.supportedSides ? (
-                <Text style={arcaneStyles.muted}>
+                <Text style={styles.muted}>
                   Déterminé automatiquement par le comportement sélectionné.
                 </Text>
               ) : null}
@@ -811,7 +821,7 @@ export function CreateRuleWizardModal({
                         title="Pipeline personnalisé"
                         description="Combine plusieurs opérations : relances, explosions, dés gardés, comptage, seuils, critiques et complications."
                       >
-                        <Text style={arcaneStyles.muted}>
+                        <Text style={styles.muted}>
                           Les champs laissés vides sont ignorés. Cela permet de
                           composer une règle avancée sans devoir tout
                           renseigner.
@@ -973,7 +983,7 @@ export function CreateRuleWizardModal({
                         <View
                           style={{
                             flexDirection: "row",
-                            gap: arcane.spacing.sm,
+                            gap: theme.spacing.sm,
                           }}
                         >
                           <View style={{ flex: 1 }}>
@@ -1081,7 +1091,7 @@ export function CreateRuleWizardModal({
                         </WizardInputGroup>
 
                         <WizardInputGroup label="Règle de complication">
-                          <View style={{ gap: arcane.spacing.sm }}>
+                          <View style={{ gap: theme.spacing.sm }}>
                             {[
                               { key: "none", label: "Aucune complication" },
                               {
@@ -1233,7 +1243,7 @@ export function CreateRuleWizardModal({
                               key={field.key}
                               label={field.label}
                             >
-                              <View style={{ gap: arcane.spacing.sm }}>
+                              <View style={{ gap: theme.spacing.sm }}>
                                 {draft.ranges.map((row, index) => (
                                   <WizardRangeCard
                                     key={`range-${index}`}
@@ -1268,25 +1278,25 @@ export function CreateRuleWizardModal({
               title="Résumé"
               description="Vérifie les informations avant de créer la règle."
             >
-              <View style={{ gap: arcane.spacing.sm }}>
-                <Text style={{ color: arcane.colors.text, fontWeight: "900" }}>
+              <View style={{ gap: theme.spacing.sm }}>
+                <Text style={{ color: theme.colors.text, fontWeight: "900" }}>
                   Nom : {draft.name || "—"}
                 </Text>
 
                 <Text
-                  style={{ color: arcane.colors.textMuted, fontWeight: "700" }}
+                  style={{ color: theme.colors.textMuted, fontWeight: "700" }}
                 >
                   Portée : {draft.scope}
                 </Text>
 
                 <Text
-                  style={{ color: arcane.colors.textMuted, fontWeight: "700" }}
+                  style={{ color: theme.colors.textMuted, fontWeight: "700" }}
                 >
                   Dés : {draft.supportedSidesText || "—"}
                 </Text>
 
                 <Text
-                  style={{ color: arcane.colors.textMuted, fontWeight: "700" }}
+                  style={{ color: theme.colors.textMuted, fontWeight: "700" }}
                 >
                   Comportement : {draft.behaviorKey ?? "—"}
                 </Text>
@@ -1323,7 +1333,7 @@ export function CreateRuleWizardModal({
 
             <WizardFieldLabel>Signe</WizardFieldLabel>
 
-            <View style={{ flexDirection: "row", gap: arcane.spacing.sm }}>
+            <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
               <WizardPillButton
                 label="Positif"
                 onPress={() => onChangePreviewSignText("1")}
@@ -1339,14 +1349,14 @@ export function CreateRuleWizardModal({
 
             <View
               style={{
-                ...arcaneStyles.cardSoft,
-                backgroundColor: arcane.colors.surfaceAlt,
+                ...styles.cardSoft,
+                backgroundColor: theme.colors.surfaceAlt,
               }}
             >
               <Text
                 style={{
-                  color: arcane.colors.textSubtle,
-                  fontSize: arcane.typography.tiny,
+                  color: theme.colors.textSubtle,
+                  fontSize: theme.typography.tiny,
                   fontWeight: "900",
                   textTransform: "uppercase",
                   letterSpacing: 0.8,
@@ -1357,8 +1367,8 @@ export function CreateRuleWizardModal({
 
               <Text
                 style={{
-                  color: arcane.colors.text,
-                  marginTop: arcane.spacing.xs,
+                  color: theme.colors.text,
+                  marginTop: theme.spacing.xs,
                   lineHeight: 20,
                   fontWeight: "700",
                 }}
@@ -1375,7 +1385,7 @@ export function CreateRuleWizardModal({
             justifyContent: "space-between",
             alignItems: "center",
             flexWrap: "wrap",
-            gap: arcane.spacing.sm,
+            gap: theme.spacing.sm,
           }}
         >
           <WizardPillButton label="Annuler" onPress={onClose} />
@@ -1384,7 +1394,7 @@ export function CreateRuleWizardModal({
             style={{
               flexDirection: "row",
               flexWrap: "wrap",
-              gap: arcane.spacing.sm,
+              gap: theme.spacing.sm,
             }}
           >
             {stepIndex > 0 ? (

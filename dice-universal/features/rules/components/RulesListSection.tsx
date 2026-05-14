@@ -3,8 +3,8 @@
 import { View, Text, Pressable, ScrollView } from "react-native";
 import type { RuleRow } from "../../../data/repositories/rulesRepo";
 
-import { arcane } from "../../../theme/arcaneTheme";
-import { arcaneStyles } from "../../../theme/arcaneStyles";
+import { useArcaneTheme } from "../../../theme/ArcaneThemeProvider";
+
 
 type Props = {
   systemRules: RuleRow[];
@@ -44,6 +44,8 @@ function getRuleKindLabel(kind: string) {
   }
 }
 
+
+
 function getScopeLabel(scope: RuleRow["scope"]) {
   if (scope === "entry") return "Entrée";
   if (scope === "group") return "Groupe";
@@ -51,11 +53,12 @@ function getScopeLabel(scope: RuleRow["scope"]) {
 }
 
 function SectionLabel({ children }: { children: string }) {
+  const { theme } = useArcaneTheme();
   return (
     <Text
       style={{
-        color: arcane.colors.textSubtle,
-        fontSize: arcane.typography.tiny,
+        color: theme.colors.textSubtle,
+        fontSize: theme.typography.tiny,
         fontWeight: "900",
         textTransform: "uppercase",
         letterSpacing: 0.8,
@@ -75,19 +78,21 @@ function PillButton({
   onPress: () => void;
   variant?: "default" | "accent" | "danger";
 }) {
+  const { theme } = useArcaneTheme();
+
   const borderColor =
     variant === "accent"
-      ? arcane.colors.accent
+      ? theme.colors.accent
       : variant === "danger"
-        ? arcane.colors.failure
-        : arcane.colors.border;
+        ? theme.colors.failure
+        : theme.colors.border;
 
   const backgroundColor =
     variant === "accent"
-      ? arcane.colors.accentSoft
+      ? theme.colors.accentSoft
       : variant === "danger"
-        ? arcane.colors.failureSoft
-        : arcane.colors.surfaceAlt;
+        ? theme.colors.failureSoft
+        : theme.colors.surfaceAlt;
 
   return (
     <Pressable
@@ -97,7 +102,7 @@ function PillButton({
         paddingHorizontal: 12,
         borderWidth: 1,
         borderColor,
-        borderRadius: arcane.radius.pill,
+        borderRadius: theme.radius.pill,
         backgroundColor,
         opacity: pressed ? 0.84 : 1,
         transform: [{ scale: pressed ? 0.97 : 1 }],
@@ -105,7 +110,7 @@ function PillButton({
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontWeight: "900",
         }}
       >
@@ -122,21 +127,23 @@ function RuleBadge({
   label: string;
   variant?: "default" | "system" | "custom" | "pipeline";
 }) {
+  const { theme } = useArcaneTheme();
+  
   const borderColor =
     variant === "system"
-      ? arcane.colors.border
+      ? theme.colors.border
       : variant === "custom"
-        ? arcane.colors.accent
+        ? theme.colors.accent
         : variant === "pipeline"
-          ? arcane.colors.warning
-          : arcane.colors.border;
+          ? theme.colors.warning
+          : theme.colors.border;
 
   const backgroundColor =
     variant === "custom"
-      ? arcane.colors.accentSoft
+      ? theme.colors.accentSoft
       : variant === "pipeline"
-        ? arcane.colors.warningSoft
-        : arcane.colors.surfaceAlt;
+        ? theme.colors.warningSoft
+        : theme.colors.surfaceAlt;
 
   return (
     <View
@@ -145,13 +152,13 @@ function RuleBadge({
         paddingHorizontal: 9,
         borderWidth: 1,
         borderColor,
-        borderRadius: arcane.radius.pill,
+        borderRadius: theme.radius.pill,
         backgroundColor,
       }}
     >
       <Text
         style={{
-          color: arcane.colors.textMuted,
+          color: theme.colors.textMuted,
           fontSize: 12,
           fontWeight: "900",
         }}
@@ -176,11 +183,13 @@ function RuleCard({
   const isSystem = origin === "system";
   const isPipeline = rule.kind === "pipeline";
 
+  const { theme, styles } = useArcaneTheme();
+
   return (
     <View
       style={{
-        ...arcaneStyles.cardSoft,
-        gap: arcane.spacing.sm,
+        ...styles.cardSoft,
+        gap: theme.spacing.sm,
       }}
     >
       <View
@@ -188,13 +197,13 @@ function RuleCard({
           flexDirection: "row",
           justifyContent: "space-between",
           alignItems: "flex-start",
-          gap: arcane.spacing.sm,
+          gap: theme.spacing.sm,
         }}
       >
         <View style={{ flex: 1, gap: 4 }}>
           <Text
             style={{
-              color: arcane.colors.text,
+              color: theme.colors.text,
               fontSize: 17,
               fontWeight: "900",
             }}
@@ -204,7 +213,7 @@ function RuleCard({
 
           <Text
             style={{
-              color: arcane.colors.textMuted,
+              color: theme.colors.textMuted,
               fontWeight: "700",
             }}
           >
@@ -251,8 +260,8 @@ function RuleCard({
         style={{
           flexDirection: "row",
           flexWrap: "wrap",
-          gap: arcane.spacing.sm,
-          marginTop: arcane.spacing.xs,
+          gap: theme.spacing.sm,
+          marginTop: theme.spacing.xs,
         }}
       >
         <PillButton
@@ -276,23 +285,24 @@ function RuleCard({
 }
 
 function EmptyCard({ text }: { text: string }) {
+  const { theme, styles } = useArcaneTheme();
   return (
     <View
       style={{
-        ...arcaneStyles.cardSoft,
-        gap: arcane.spacing.xs,
+        ...styles.cardSoft,
+        gap: theme.spacing.xs,
       }}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontWeight: "900",
         }}
       >
         Rien à afficher
       </Text>
 
-      <Text style={arcaneStyles.muted}>{text}</Text>
+      <Text style={styles.muted}>{text}</Text>
     </View>
   );
 }
@@ -303,15 +313,18 @@ export function RulesListSection({
   onEditRule,
   onDeleteRule,
 }: Props) {
+
+  const { theme } = useArcaneTheme();
+
   return (
     <ScrollView
       contentContainerStyle={{
-        gap: arcane.spacing.md,
-        paddingBottom: arcane.spacing.xl,
+        gap: theme.spacing.md,
+        paddingBottom: theme.spacing.xl,
       }}
       showsVerticalScrollIndicator
     >
-      <View style={{ gap: arcane.spacing.sm }}>
+      <View style={{ gap: theme.spacing.sm }}>
         <SectionLabel>Règles système</SectionLabel>
 
         {systemRules.length === 0 ? (
@@ -328,7 +341,7 @@ export function RulesListSection({
         )}
       </View>
 
-      <View style={{ gap: arcane.spacing.sm }}>
+      <View style={{ gap: theme.spacing.sm }}>
         <SectionLabel>Règles personnalisées</SectionLabel>
 
         {customRules.length === 0 ? (
