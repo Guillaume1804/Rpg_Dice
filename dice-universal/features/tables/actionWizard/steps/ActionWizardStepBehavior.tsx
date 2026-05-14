@@ -4,8 +4,7 @@ import type { ReactNode } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 import type { ActionWizardDraft } from "../types";
 
-import { arcane } from "../../../../theme/arcaneTheme";
-import { arcaneStyles } from "../../../../theme/arcaneStyles";
+import { useArcaneTheme } from "../../../../theme/ArcaneThemeProvider";
 
 type Props = {
   draft: ActionWizardDraft;
@@ -23,10 +22,11 @@ type Props = {
 };
 
 function FieldLabel({ children }: { children: ReactNode }) {
+  const { theme } = useArcaneTheme();
   return (
     <Text
       style={{
-        color: arcane.colors.textMuted,
+        color: theme.colors.textMuted,
         fontWeight: "800",
       }}
     >
@@ -41,23 +41,24 @@ function BoxInput(props: {
   placeholder: string;
   keyboardType?: "default" | "numeric";
 }) {
+  const { theme } = useArcaneTheme();
   return (
     <TextInput
       value={props.value}
       onChangeText={props.onChangeText}
       placeholder={props.placeholder}
-      placeholderTextColor={arcane.colors.textSubtle}
+      placeholderTextColor={theme.colors.textSubtle}
       keyboardType={props.keyboardType ?? "default"}
-      selectionColor={arcane.colors.accent}
+      selectionColor={theme.colors.accent}
       style={{
         minHeight: 48,
         borderWidth: 1,
-        borderColor: arcane.colors.border,
-        borderRadius: arcane.radius.md,
+        borderColor: theme.colors.border,
+        borderRadius: theme.radius.md,
         paddingHorizontal: 12,
         paddingVertical: 11,
-        backgroundColor: arcane.colors.surfaceAlt,
-        color: arcane.colors.text,
+        backgroundColor: theme.colors.surfaceAlt,
+        color: theme.colors.text,
         fontSize: 16,
         fontWeight: "700",
       }}
@@ -74,16 +75,17 @@ function SectionCard({
   description?: string;
   children?: ReactNode;
 }) {
+  const { theme, styles } = useArcaneTheme();
   return (
     <View
       style={{
-        ...arcaneStyles.cardSoft,
-        gap: arcane.spacing.sm,
+        ...styles.cardSoft,
+        gap: theme.spacing.sm,
       }}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontSize: 16,
           fontWeight: "900",
         }}
@@ -94,7 +96,7 @@ function SectionCard({
       {description ? (
         <Text
           style={{
-            color: arcane.colors.textMuted,
+            color: theme.colors.textMuted,
             lineHeight: 19,
           }}
         >
@@ -116,6 +118,7 @@ function ChoiceButton({
   selected: boolean;
   onPress: () => void;
 }) {
+  const { theme } = useArcaneTheme();
   return (
     <Pressable
       onPress={onPress}
@@ -123,18 +126,18 @@ function ChoiceButton({
         paddingVertical: 10,
         paddingHorizontal: 14,
         borderWidth: 1,
-        borderColor: selected ? arcane.colors.accent : arcane.colors.border,
-        borderRadius: arcane.radius.pill,
+        borderColor: selected ? theme.colors.accent : theme.colors.border,
+        borderRadius: theme.radius.pill,
         backgroundColor: selected
-          ? arcane.colors.accentSoft
-          : arcane.colors.surfaceAlt,
+          ? theme.colors.accentSoft
+          : theme.colors.surfaceAlt,
         opacity: pressed ? 0.84 : selected ? 1 : 0.78,
         transform: [{ scale: pressed ? 0.97 : 1 }],
       })}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontWeight: selected ? "900" : "800",
         }}
       >
@@ -151,8 +154,9 @@ function InputGroup({
   label: string;
   children: ReactNode;
 }) {
+  const { theme } = useArcaneTheme();
   return (
-    <View style={{ gap: arcane.spacing.sm }}>
+    <View style={{ gap: theme.spacing.sm }}>
       <FieldLabel>{label}</FieldLabel>
       {children}
     </View>
@@ -166,12 +170,14 @@ export function ActionWizardStepBehavior({
   onAddRangeRow,
   onRemoveRangeRow,
 }: Props) {
+  const { theme, styles } = useArcaneTheme();
+  
   return (
-    <View style={{ gap: arcane.spacing.md }}>
-      <View style={{ gap: arcane.spacing.xs }}>
-        <Text style={arcaneStyles.sectionTitle}>Comportement de l’action</Text>
+    <View style={{ gap: theme.spacing.md }}>
+      <View style={{ gap: theme.spacing.xs }}>
+        <Text style={styles.sectionTitle}>Comportement de l’action</Text>
 
-        <Text style={arcaneStyles.muted}>
+        <Text style={styles.muted}>
           Configure la manière d’interpréter le résultat du jet.
         </Text>
       </View>
@@ -438,7 +444,7 @@ export function ActionWizardStepBehavior({
                   keyboardType="numeric"
                 />
 
-                <Text style={arcaneStyles.muted}>
+                <Text style={styles.muted}>
                   Laisse vide pour ne pas fixer de limite précise. La limite
                   s’applique à chaque dé individuellement.
                 </Text>
@@ -469,7 +475,7 @@ export function ActionWizardStepBehavior({
                   keyboardType="numeric"
                 />
 
-                <Text style={arcaneStyles.muted}>
+                <Text style={styles.muted}>
                   Laisse vide pour permettre les explosions tant que la face
                   ciblée ressort. La limite s’applique à chaque dé
                   individuellement.
@@ -551,7 +557,7 @@ export function ActionWizardStepBehavior({
                 />
               </InputGroup>
 
-              <View style={{ flexDirection: "row", gap: arcane.spacing.sm }}>
+              <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
                 <View style={{ flex: 1 }}>
                   <InputGroup label="Plage min">
                     <BoxInput
@@ -677,7 +683,7 @@ export function ActionWizardStepBehavior({
               </InputGroup>
 
               <InputGroup label="Règle de complication">
-                <View style={{ gap: arcane.spacing.sm }}>
+                <View style={{ gap: theme.spacing.sm }}>
                   {[
                     {
                       key: "none",
@@ -741,7 +747,7 @@ export function ActionWizardStepBehavior({
           </InputGroup>
 
           <InputGroup label="Règle de complication">
-            <View style={{ gap: arcane.spacing.sm }}>
+            <View style={{ gap: theme.spacing.sm }}>
               {[
                 {
                   key: "ones_gt_successes",
@@ -882,20 +888,20 @@ export function ActionWizardStepBehavior({
             <View
               key={index}
               style={{
-                ...arcaneStyles.cardSoft,
-                gap: arcane.spacing.sm,
+                ...styles.cardSoft,
+                gap: theme.spacing.sm,
               }}
             >
               <Text
                 style={{
-                  color: arcane.colors.text,
+                  color: theme.colors.text,
                   fontWeight: "900",
                 }}
               >
                 Ligne {index + 1}
               </Text>
 
-              <View style={{ flexDirection: "row", gap: arcane.spacing.sm }}>
+              <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
                 <View style={{ flex: 1 }}>
                   <InputGroup label="Min">
                     <BoxInput
@@ -940,15 +946,15 @@ export function ActionWizardStepBehavior({
                   paddingVertical: 10,
                   paddingHorizontal: 12,
                   borderWidth: 1,
-                  borderColor: arcane.colors.failure,
-                  borderRadius: arcane.radius.pill,
-                  backgroundColor: arcane.colors.failureSoft,
+                  borderColor: theme.colors.failure,
+                  borderRadius: theme.radius.pill,
+                  backgroundColor: theme.colors.failureSoft,
                   opacity: pressed ? 0.84 : 1,
                 })}
               >
                 <Text
                   style={{
-                    color: arcane.colors.text,
+                    color: theme.colors.text,
                     fontWeight: "900",
                   }}
                 >
@@ -965,16 +971,16 @@ export function ActionWizardStepBehavior({
               paddingVertical: 10,
               paddingHorizontal: 14,
               borderWidth: 1,
-              borderColor: arcane.colors.accent,
-              borderRadius: arcane.radius.pill,
-              backgroundColor: arcane.colors.accentSoft,
+              borderColor: theme.colors.accent,
+              borderRadius: theme.radius.pill,
+              backgroundColor: theme.colors.accentSoft,
               opacity: pressed ? 0.84 : 1,
               transform: [{ scale: pressed ? 0.97 : 1 }],
             })}
           >
             <Text
               style={{
-                color: arcane.colors.text,
+                color: theme.colors.text,
                 fontWeight: "900",
               }}
             >

@@ -2,8 +2,7 @@
 
 import { View, Text, Pressable } from "react-native";
 
-import { arcane } from "../../../theme/arcaneTheme";
-import { arcaneStyles } from "../../../theme/arcaneStyles";
+import { useArcaneTheme } from "../../../theme/ArcaneThemeProvider";
 
 type TableDetailHeaderProps = {
   tableName: string;
@@ -21,6 +20,7 @@ function HeaderButton({
   onPress: () => void;
   variant?: "default" | "accent";
 }) {
+  const { theme } = useArcaneTheme();
   return (
     <Pressable
       onPress={onPress}
@@ -29,19 +29,19 @@ function HeaderButton({
         paddingHorizontal: 12,
         borderWidth: 1,
         borderColor:
-          variant === "accent" ? arcane.colors.accent : arcane.colors.border,
-        borderRadius: arcane.radius.pill,
+          variant === "accent" ? theme.colors.accent : theme.colors.border,
+        borderRadius: theme.radius.pill,
         backgroundColor:
           variant === "accent"
-            ? arcane.colors.accentSoft
-            : arcane.colors.surfaceAlt,
+            ? theme.colors.accentSoft
+            : theme.colors.surfaceAlt,
         opacity: pressed ? 0.84 : 1,
         transform: [{ scale: pressed ? 0.97 : 1 }],
       })}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontWeight: "900",
         }}
       >
@@ -57,18 +57,19 @@ export function TableDetailHeader({
   onRenameTable,
   onCreateProfile,
 }: TableDetailHeaderProps) {
+  const { theme, styles } = useArcaneTheme();
   return (
     <View
       style={{
-        ...arcaneStyles.card,
-        gap: arcane.spacing.md,
+        ...styles.card,
+        gap: theme.spacing.md,
       }}
     >
-      <View style={{ gap: arcane.spacing.xs }}>
+      <View style={{ gap: theme.spacing.xs }}>
         <Text
           style={{
-            color: arcane.colors.textSubtle,
-            fontSize: arcane.typography.tiny,
+            color: theme.colors.textSubtle,
+            fontSize: theme.typography.tiny,
             fontWeight: "900",
             textTransform: "uppercase",
             letterSpacing: 0.8,
@@ -79,7 +80,7 @@ export function TableDetailHeader({
 
         <Text
           style={{
-            color: arcane.colors.text,
+            color: theme.colors.text,
             fontSize: 26,
             fontWeight: "900",
             letterSpacing: -0.3,
@@ -89,11 +90,11 @@ export function TableDetailHeader({
         </Text>
 
         {isSystem ? (
-          <Text style={arcaneStyles.muted}>
+          <Text style={styles.muted}>
             Table système : modification interdite.
           </Text>
         ) : (
-          <Text style={arcaneStyles.muted}>
+          <Text style={styles.muted}>
             Gère les profils, actions et entrées de dés de cette table.
           </Text>
         )}
@@ -104,7 +105,7 @@ export function TableDetailHeader({
           style={{
             flexDirection: "row",
             flexWrap: "wrap",
-            gap: arcane.spacing.sm,
+            gap: theme.spacing.sm,
           }}
         >
           <HeaderButton label="Renommer la table" onPress={onRenameTable} />

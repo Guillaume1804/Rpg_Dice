@@ -31,9 +31,8 @@ import { useHumanRuleEditor } from "../../features/rules/hooks/useHumanRuleEdito
 import { HumanRuleEditorModal } from "../../features/rules/components/HumanRuleEditorModal";
 import { useRulesData } from "../../features/rules/hooks/useRulesData";
 
-import { arcane } from "../../theme/arcaneTheme";
 import { useArcaneLayout } from "../../theme/useArcaneLayout";
-import { arcaneStyles } from "../../theme/arcaneStyles";
+import { useArcaneTheme } from "../../theme/ArcaneThemeProvider";
 
 function getFirstValidWizardDieSides(dice: { sides: number | null }[]) {
   const firstValidDie = dice.find((die) => die.sides != null && die.sides > 0);
@@ -44,6 +43,7 @@ function getFirstValidWizardDieSides(dice: { sides: number | null }[]) {
 export default function TableDetailScreen() {
   const db = useDb();
   const layout = useArcaneLayout();
+  const { theme, styles } = useArcaneTheme();
 
   const { saveRule } = useRulesData({ db });
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -329,18 +329,18 @@ export default function TableDetailScreen() {
     return (
       <View
         style={[
-          arcaneStyles.screen,
+          styles.screen,
           {
-            paddingTop: layout.insets.top + arcane.spacing.lg,
+            paddingTop: layout.insets.top + theme.spacing.lg,
             paddingHorizontal: layout.horizontalPadding,
             justifyContent: "center",
           },
         ]}
       >
-        <View style={arcaneStyles.card}>
-          <Text style={arcaneStyles.sectionTitle}>Erreur</Text>
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Erreur</Text>
 
-          <Text style={[arcaneStyles.muted, { marginTop: arcane.spacing.sm }]}>
+          <Text style={[styles.muted, { marginTop: theme.spacing.sm }]}>
             {error}
           </Text>
         </View>
@@ -352,27 +352,27 @@ export default function TableDetailScreen() {
     return (
       <View
         style={[
-          arcaneStyles.screen,
+          styles.screen,
           {
-            paddingTop: layout.insets.top + arcane.spacing.lg,
+            paddingTop: layout.insets.top + theme.spacing.lg,
             paddingHorizontal: layout.horizontalPadding,
             justifyContent: "center",
           },
         ]}
       >
-        <View style={arcaneStyles.card}>
-          <Text style={arcaneStyles.sectionTitle}>Table introuvable</Text>
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Table introuvable</Text>
 
-          <Text style={[arcaneStyles.muted, { marginTop: arcane.spacing.sm }]}>
+          <Text style={[styles.muted, { marginTop: theme.spacing.sm }]}>
             Cette table n’existe plus ou n’a pas pu être chargée.
           </Text>
 
           <Text
             style={[
-              arcaneStyles.muted,
+              styles.muted,
               {
-                marginTop: arcane.spacing.sm,
-                fontSize: arcane.typography.tiny,
+                marginTop: theme.spacing.sm,
+                fontSize: theme.typography.tiny,
               },
             ]}
           >
@@ -411,17 +411,17 @@ export default function TableDetailScreen() {
   const actionWizardError = wizardSubmitError ?? wizardError;
 
   return (
-    <View style={arcaneStyles.screen}>
+    <View style={styles.screen}>
       <View
         style={{
           flex: 1,
-          paddingTop: layout.insets.top + arcane.spacing.md,
+          paddingTop: layout.insets.top + theme.spacing.md,
           paddingHorizontal: layout.horizontalPadding,
-          paddingBottom: layout.insets.bottom + arcane.spacing.md,
+          paddingBottom: layout.insets.bottom + theme.spacing.md,
           alignSelf: "center",
           width: "100%",
           maxWidth: layout.maxContentWidth,
-          gap: arcane.spacing.md,
+          gap: theme.spacing.md,
         }}
       >
         {!isProfileDetailView ? (
@@ -435,7 +435,7 @@ export default function TableDetailScreen() {
 
         <ScrollView
           contentContainerStyle={{
-            paddingBottom: layout.insets.bottom + arcane.spacing.xl,
+            paddingBottom: layout.insets.bottom + theme.spacing.xl,
           }}
           showsVerticalScrollIndicator={false}
         >

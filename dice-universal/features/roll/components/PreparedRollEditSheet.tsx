@@ -2,8 +2,7 @@
 
 import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 
-import { arcane } from "../../../theme/arcaneTheme";
-import { arcaneStyles } from "../../../theme/arcaneStyles";
+import { useArcaneTheme } from "../../../theme/ArcaneThemeProvider";
 
 export type PreparedRollEditDie = {
   sides: number;
@@ -45,19 +44,20 @@ function PillButton({
   onPress: () => void;
   variant?: "default" | "danger" | "accent";
 }) {
+  const { theme } = useArcaneTheme();
   const borderColor =
     variant === "danger"
-      ? arcane.colors.failure
+      ? theme.colors.failure
       : variant === "accent"
-        ? arcane.colors.accent
-        : arcane.colors.border;
+        ? theme.colors.accent
+        : theme.colors.border;
 
   const backgroundColor =
     variant === "danger"
-      ? arcane.colors.failureSoft
+      ? theme.colors.failureSoft
       : variant === "accent"
-        ? arcane.colors.accentSoft
-        : arcane.colors.surfaceAlt;
+        ? theme.colors.accentSoft
+        : theme.colors.surfaceAlt;
 
   return (
     <Pressable
@@ -67,7 +67,7 @@ function PillButton({
         paddingHorizontal: 12,
         borderWidth: 1,
         borderColor,
-        borderRadius: arcane.radius.pill,
+        borderRadius: theme.radius.pill,
         backgroundColor,
         opacity: pressed ? 0.84 : 1,
         transform: [{ scale: pressed ? 0.97 : 1 }],
@@ -75,7 +75,7 @@ function PillButton({
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontWeight: "900",
         }}
       >
@@ -92,6 +92,7 @@ function RoundButton({
   label: string;
   onPress: () => void;
 }) {
+  const { theme } = useArcaneTheme();
   return (
     <Pressable
       onPress={onPress}
@@ -99,18 +100,18 @@ function RoundButton({
         width: 42,
         height: 42,
         borderWidth: 1,
-        borderColor: arcane.colors.border,
-        borderRadius: arcane.radius.pill,
+        borderColor: theme.colors.border,
+        borderRadius: theme.radius.pill,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: arcane.colors.surfaceAlt,
+        backgroundColor: theme.colors.surfaceAlt,
         opacity: pressed ? 0.84 : 1,
         transform: [{ scale: pressed ? 0.94 : 1 }],
       })}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontSize: 20,
           fontWeight: "900",
         }}
@@ -130,6 +131,7 @@ export function PreparedRollEditSheet({
   onEditDie,
   onRemoveDie,
 }: PreparedRollEditSheetProps) {
+  const { theme, styles } = useArcaneTheme();
   return (
     <Modal
       visible={visible}
@@ -147,14 +149,14 @@ export function PreparedRollEditSheet({
         <View
           style={{
             maxHeight: "84%",
-            backgroundColor: arcane.colors.surface,
+            backgroundColor: theme.colors.surface,
             borderTopLeftRadius: 28,
             borderTopRightRadius: 28,
             borderWidth: 1,
-            borderColor: arcane.colors.border,
-            padding: arcane.spacing.md,
-            gap: arcane.spacing.md,
-            ...arcane.shadow.card,
+            borderColor: theme.colors.border,
+            padding: theme.spacing.md,
+            gap: theme.spacing.md,
+            ...theme.shadow.card,
           }}
         >
           <View
@@ -162,13 +164,13 @@ export function PreparedRollEditSheet({
               flexDirection: "row",
               justifyContent: "space-between",
               alignItems: "center",
-              gap: arcane.spacing.md,
+              gap: theme.spacing.md,
             }}
           >
-            <View style={{ flex: 1, gap: arcane.spacing.xs }}>
-              <Text style={arcaneStyles.sectionTitle}>{title}</Text>
+            <View style={{ flex: 1, gap: theme.spacing.xs }}>
+              <Text style={styles.sectionTitle}>{title}</Text>
 
-              <Text style={arcaneStyles.muted}>
+              <Text style={styles.muted}>
                 Ajuste une ligne de dés sans reconstruire tout le jet.
               </Text>
             </View>
@@ -179,17 +181,17 @@ export function PreparedRollEditSheet({
                 width: 42,
                 height: 42,
                 borderWidth: 1,
-                borderColor: arcane.colors.border,
-                borderRadius: arcane.radius.pill,
+                borderColor: theme.colors.border,
+                borderRadius: theme.radius.pill,
                 alignItems: "center",
                 justifyContent: "center",
-                backgroundColor: arcane.colors.surfaceAlt,
+                backgroundColor: theme.colors.surfaceAlt,
                 opacity: pressed ? 0.84 : 1,
               })}
             >
               <Text
                 style={{
-                  color: arcane.colors.text,
+                  color: theme.colors.text,
                   fontSize: 20,
                   fontWeight: "900",
                 }}
@@ -200,27 +202,25 @@ export function PreparedRollEditSheet({
           </View>
 
           {dice.length === 0 ? (
-            <View style={arcaneStyles.cardSoft}>
+            <View style={styles.cardSoft}>
               <Text
                 style={{
-                  color: arcane.colors.text,
+                  color: theme.colors.text,
                   fontWeight: "900",
                 }}
               >
                 Aucun dé à modifier
               </Text>
 
-              <Text
-                style={[arcaneStyles.muted, { marginTop: arcane.spacing.xs }]}
-              >
+              <Text style={[styles.muted, { marginTop: theme.spacing.xs }]}>
                 Ajoute d’abord un dé libre depuis l’écran Jet.
               </Text>
             </View>
           ) : (
             <ScrollView
               contentContainerStyle={{
-                gap: arcane.spacing.sm,
-                paddingBottom: arcane.spacing.md,
+                gap: theme.spacing.sm,
+                paddingBottom: theme.spacing.md,
               }}
               showsVerticalScrollIndicator={false}
             >
@@ -228,14 +228,14 @@ export function PreparedRollEditSheet({
                 <View
                   key={`prepared-die-${index}-${die.sides}`}
                   style={{
-                    ...arcaneStyles.cardSoft,
-                    gap: arcane.spacing.sm,
+                    ...styles.cardSoft,
+                    gap: theme.spacing.sm,
                   }}
                 >
-                  <View style={{ gap: arcane.spacing.xs }}>
+                  <View style={{ gap: theme.spacing.xs }}>
                     <Text
                       style={{
-                        color: arcane.colors.text,
+                        color: theme.colors.text,
                         fontSize: 18,
                         fontWeight: "900",
                       }}
@@ -245,7 +245,7 @@ export function PreparedRollEditSheet({
 
                     <Text
                       style={{
-                        color: arcane.colors.textMuted,
+                        color: theme.colors.textMuted,
                         lineHeight: 19,
                       }}
                     >
@@ -257,7 +257,7 @@ export function PreparedRollEditSheet({
                     style={{
                       flexDirection: "row",
                       flexWrap: "wrap",
-                      gap: arcane.spacing.sm,
+                      gap: theme.spacing.sm,
                       alignItems: "center",
                     }}
                   >

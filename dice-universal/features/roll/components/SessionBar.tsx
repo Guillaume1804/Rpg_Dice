@@ -1,7 +1,7 @@
 import { Pressable, Text, View } from "react-native";
 
-import { arcane } from "../../../theme/arcaneTheme";
-import { arcaneStyles } from "../../../theme/arcaneStyles";
+import { useArcaneTheme } from "../../../theme/ArcaneThemeProvider";
+
 
 type SessionBarProps = {
     tableName: string | null;
@@ -20,6 +20,7 @@ export function SessionBar({
     onPressProfile,
     onClearTable,
 }: SessionBarProps) {
+    const { theme, styles } = useArcaneTheme();
     const displayTableName = tableName ?? "Mode libre";
     const displayProfileName = activeProfileName ?? "Aucun profil";
 
@@ -28,28 +29,28 @@ export function SessionBar({
     return (
         <View
             style={{
-                ...arcaneStyles.card,
-                gap: arcane.spacing.md,
+                ...styles.card,
+                gap: theme.spacing.md,
             }}
         >
             <View
                 style={{
                     flexDirection: "row",
-                    gap: arcane.spacing.sm,
+                    gap: theme.spacing.sm,
                     alignItems: "stretch",
                 }}
             >
                 <View
                     style={{
                         flex: 1,
-                        ...arcaneStyles.cardSoft,
-                        gap: arcane.spacing.xs,
+                        ...styles.cardSoft,
+                        gap: theme.spacing.xs,
                     }}
                 >
                     <Text
                         style={{
-                            color: arcane.colors.textSubtle,
-                            fontSize: arcane.typography.tiny,
+                            color: theme.colors.textSubtle,
+                            fontSize: theme.typography.tiny,
                             fontWeight: "800",
                             textTransform: "uppercase",
                             letterSpacing: 0.8,
@@ -61,7 +62,7 @@ export function SessionBar({
                     <Text
                         numberOfLines={1}
                         style={{
-                            color: arcane.colors.text,
+                            color: theme.colors.text,
                             fontSize: 18,
                             fontWeight: "900",
                         }}
@@ -75,16 +76,16 @@ export function SessionBar({
                     disabled={!canCycleProfile}
                     style={({ pressed }) => ({
                         flex: 1,
-                        ...arcaneStyles.cardSoft,
-                        gap: arcane.spacing.xs,
+                        ...styles.cardSoft,
+                        gap: theme.spacing.xs,
                         opacity: !hasActiveTable ? 0.68 : pressed ? 0.86 : 1,
                         transform: [{ scale: pressed && canCycleProfile ? 0.98 : 1 }],
                     })}
                 >
                     <Text
                         style={{
-                            color: arcane.colors.textSubtle,
-                            fontSize: arcane.typography.tiny,
+                            color: theme.colors.textSubtle,
+                            fontSize: theme.typography.tiny,
                             fontWeight: "800",
                             textTransform: "uppercase",
                             letterSpacing: 0.8,
@@ -96,7 +97,7 @@ export function SessionBar({
                     <Text
                         numberOfLines={1}
                         style={{
-                            color: arcane.colors.text,
+                            color: theme.colors.text,
                             fontSize: 18,
                             fontWeight: "900",
                         }}
@@ -115,17 +116,17 @@ export function SessionBar({
                         paddingVertical: 8,
                         paddingHorizontal: 12,
                         borderWidth: 1,
-                        borderColor: arcane.colors.border,
-                        borderRadius: arcane.radius.pill,
+                        borderColor: theme.colors.border,
+                        borderRadius: theme.radius.pill,
                         backgroundColor: pressed
-                            ? arcane.colors.surfaceSoft
-                            : arcane.colors.surfaceAlt,
+                            ? theme.colors.surfaceSoft
+                            : theme.colors.surfaceAlt,
                         opacity: pressed ? 0.86 : 1,
                     })}
                 >
                     <Text
                         style={{
-                            color: arcane.colors.textMuted,
+                            color: theme.colors.textMuted,
                             fontWeight: "800",
                         }}
                     >
@@ -135,7 +136,7 @@ export function SessionBar({
             ) : (
                 <Text
                     style={{
-                        color: arcane.colors.textMuted,
+                        color: theme.colors.textMuted,
                         lineHeight: 20,
                     }}
                 >

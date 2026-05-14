@@ -9,9 +9,9 @@ import { useDataRefresh } from "../data/state/DataRefreshProvider";
 import { RollModals } from "../features/roll/components/RollModals";
 import { QuickRollSection } from "../features/roll/components/QuickRollSection";
 
-import { arcane } from "../theme/arcaneTheme";
 import { useArcaneLayout } from "../theme/useArcaneLayout";
-import { arcaneStyles } from "../theme/arcaneStyles";
+import { useArcaneTheme } from "../theme/ArcaneThemeProvider";
+
 
 import { SessionBar } from "../features/roll/components/SessionBar";
 import { PreparedRollCard } from "../features/roll/components/PreparedRollCard";
@@ -43,7 +43,6 @@ import {
   getRuleSummaryFromRuleId,
   getRuleSummaryFromTempRule,
   type DraftGroupSummary,
-  type RuleNameMap,
 } from "../features/roll/helpers/rollDisplaySummary";
 
 function findStandardQuickGroup(groups: DraftGroupSummary[]) {
@@ -78,6 +77,7 @@ type PreparedRoll =
 
 export default function RollScreen() {
   const layout = useArcaneLayout();
+  const { theme, styles } = useArcaneTheme();
 
   const [preparedRoll, setPreparedRoll] = useState<PreparedRoll | null>(null);
   const [latestResult, setLatestResult] = useState<GroupRollResult | null>(null);
@@ -650,16 +650,16 @@ export default function RollScreen() {
     return (
       <View
         style={[
-          arcaneStyles.screen,
+          styles.screen,
           {
-            paddingTop: layout.insets.top + arcane.spacing.lg,
+            paddingTop: layout.insets.top + theme.spacing.lg,
             paddingHorizontal: layout.horizontalPadding,
             justifyContent: "center",
           },
         ]}
       >
-        <Text style={arcaneStyles.sectionTitle}>Erreur</Text>
-        <Text style={[arcaneStyles.muted, { marginTop: arcane.spacing.sm }]}>
+        <Text style={styles.sectionTitle}>Erreur</Text>
+        <Text style={[styles.muted, { marginTop: theme.spacing.sm }]}>
           {error}
         </Text>
       </View>
@@ -667,11 +667,11 @@ export default function RollScreen() {
   }
 
   return (
-    <View style={arcaneStyles.screen}>
+    <View style={styles.screen}>
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{
-          paddingTop: layout.insets.top + arcane.spacing.md,
+          paddingTop: layout.insets.top + theme.spacing.md,
           paddingHorizontal: layout.horizontalPadding,
           paddingBottom: layout.scrollBottomPadding,
           alignSelf: "center",
@@ -732,7 +732,7 @@ export default function RollScreen() {
           <ResultPanel result={latestResult} />
         </View>
 
-        <View style={{ marginTop: arcane.spacing.md }}>
+        <View style={{ marginTop: theme.spacing.md }}>
           <FreeDicePad
             dice={STANDARD_DICE}
             countsBySides={freeDiceCountsBySides}
@@ -826,17 +826,17 @@ export default function RollScreen() {
           height: 56,
           borderWidth: 1,
           borderColor: showAdvanced
-            ? arcane.colors.arcane
-            : arcane.colors.border,
-          borderRadius: arcane.radius.pill,
+            ? theme.colors.arcane
+            : theme.colors.border,
+          borderRadius: theme.radius.pill,
           alignItems: "center",
           justifyContent: "center",
           backgroundColor: showAdvanced
-            ? arcane.colors.arcane
-            : arcane.colors.surfaceAlt,
+            ? theme.colors.arcane
+            : theme.colors.surfaceAlt,
           opacity: pressed ? 0.82 : 1,
           transform: [{ scale: pressed ? 0.96 : 1 }],
-          ...arcane.shadow.button,
+          ...theme.shadow.button,
         })}
       >
         <Text
@@ -844,7 +844,7 @@ export default function RollScreen() {
             fontSize: 28,
             fontWeight: "900",
             lineHeight: 30,
-            color: showAdvanced ? arcane.colors.white : arcane.colors.text,
+            color: showAdvanced ? theme.colors.white : theme.colors.text,
           }}
         >
           +

@@ -1,6 +1,5 @@
 import { Pressable, Text, View } from "react-native";
-import { arcane } from "../../../theme/arcaneTheme";
-import { arcaneStyles } from "../../../theme/arcaneStyles";
+import { useArcaneTheme } from "../../../theme/ArcaneThemeProvider";
 
 type FreeDicePadProps = {
     title?: string;
@@ -30,12 +29,13 @@ export function FreeDicePad({
     onPressDie,
     onLongPressDie,
 }: FreeDicePadProps) {
+    const { theme, styles } = useArcaneTheme();
     return (
-        <View style={[arcaneStyles.card, { gap: arcane.spacing.md }]}>
-            <View style={{ gap: arcane.spacing.xs }}>
-                <Text style={arcaneStyles.sectionTitle}>{title}</Text>
+        <View style={[styles.card, { gap: theme.spacing.md }]}>
+            <View style={{ gap: theme.spacing.xs }}>
+                <Text style={styles.sectionTitle}>{title}</Text>
 
-                <Text style={[arcaneStyles.subtle, { lineHeight: 18 }]}>
+                <Text style={[styles.subtle, { lineHeight: 18 }]}>
                     {subtitle}
                 </Text>
             </View>
@@ -44,7 +44,7 @@ export function FreeDicePad({
                 style={{
                     flexDirection: "row",
                     flexWrap: "wrap",
-                    gap: arcane.spacing.sm,
+                    gap: theme.spacing.sm,
                 }}
             >
                 {dice.map((sides) => {
@@ -60,24 +60,24 @@ export function FreeDicePad({
                             style={({ pressed }) => ({
                                 width: 76,
                                 minHeight: 86,
-                                borderRadius: arcane.radius.lg,
+                                borderRadius: theme.radius.lg,
                                 borderWidth: 1,
                                 borderColor: isActive
-                                    ? arcane.colors.accent
-                                    : arcane.colors.border,
+                                    ? theme.colors.accent
+                                    : theme.colors.border,
                                 backgroundColor: isActive
-                                    ? arcane.colors.accentSoft
-                                    : arcane.colors.surfaceAlt,
+                                    ? theme.colors.accentSoft
+                                    : theme.colors.surfaceAlt,
                                 alignItems: "center",
                                 justifyContent: "center",
-                                gap: arcane.spacing.xs,
+                                gap: theme.spacing.xs,
                                 opacity: pressed ? 0.82 : 1,
                                 transform: [{ scale: pressed ? 0.96 : 1 }],
                             })}
                         >
                             <Text
                                 style={{
-                                    color: isActive ? arcane.colors.accent : arcane.colors.text,
+                                    color: isActive ? theme.colors.accent : theme.colors.text,
                                     fontSize: 26,
                                     fontWeight: "900",
                                     lineHeight: 30,
@@ -88,7 +88,7 @@ export function FreeDicePad({
 
                             <Text
                                 style={{
-                                    color: arcane.colors.text,
+                                    color: theme.colors.text,
                                     fontSize: 16,
                                     fontWeight: "900",
                                 }}
@@ -104,8 +104,8 @@ export function FreeDicePad({
                                         right: 8,
                                         minWidth: 24,
                                         height: 24,
-                                        borderRadius: arcane.radius.pill,
-                                        backgroundColor: arcane.colors.accent,
+                                        borderRadius: theme.radius.pill,
+                                        backgroundColor: theme.colors.accent,
                                         alignItems: "center",
                                         justifyContent: "center",
                                         paddingHorizontal: 6,
@@ -113,7 +113,7 @@ export function FreeDicePad({
                                 >
                                     <Text
                                         style={{
-                                            color: arcane.colors.background,
+                                            color: theme.colors.background,
                                             fontSize: 12,
                                             fontWeight: "900",
                                         }}
@@ -127,7 +127,7 @@ export function FreeDicePad({
                 })}
             </View>
 
-            <Text style={[arcaneStyles.subtle, { lineHeight: 18 }]}>
+            <Text style={[styles.subtle, { lineHeight: 18 }]}>
                 Le jet préparé se met à jour automatiquement au-dessus.
             </Text>
         </View>

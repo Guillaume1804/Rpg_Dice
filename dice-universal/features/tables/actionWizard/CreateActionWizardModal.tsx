@@ -14,8 +14,7 @@ import { ActionWizardStepRuleChoice } from "./steps/ActionWizardStepRuleChoice";
 import { ActionWizardStepBehavior } from "./steps/ActionWizardStepBehavior";
 import { ActionWizardStepSummary } from "./steps/ActionWizardStepSummary";
 
-import { arcane } from "../../../theme/arcaneTheme";
-import { arcaneStyles } from "../../../theme/arcaneStyles";
+import { useArcaneTheme } from "../../../theme/ArcaneThemeProvider";
 
 type Props = {
   visible: boolean;
@@ -86,6 +85,8 @@ function WizardButton({
   onPress: () => void;
   variant?: "default" | "accent";
 }) {
+  const { theme } = useArcaneTheme();
+
   const isAccent = variant === "accent";
 
   return (
@@ -95,18 +96,18 @@ function WizardButton({
         paddingVertical: 10,
         paddingHorizontal: 14,
         borderWidth: 1,
-        borderColor: isAccent ? arcane.colors.accent : arcane.colors.border,
-        borderRadius: arcane.radius.pill,
+        borderColor: isAccent ? theme.colors.accent : theme.colors.border,
+        borderRadius: theme.radius.pill,
         backgroundColor: isAccent
-          ? arcane.colors.accentSoft
-          : arcane.colors.surfaceAlt,
+          ? theme.colors.accentSoft
+          : theme.colors.surfaceAlt,
         opacity: pressed ? 0.84 : 1,
         transform: [{ scale: pressed ? 0.97 : 1 }],
       })}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontWeight: "900",
         }}
       >
@@ -141,6 +142,8 @@ export function CreateActionWizardModal({
   onSelectCreationMode,
   onOpenAdvancedRuleEditor,
 }: Props) {
+  const { theme, styles } = useArcaneTheme();
+  
   const isFirstStep = stepIndex <= 0;
   const isLastStep = step === "summary";
 
@@ -157,7 +160,7 @@ export function CreateActionWizardModal({
           backgroundColor: "rgba(0,0,0,0.68)",
           justifyContent: "center",
           alignItems: "center",
-          padding: arcane.spacing.md,
+          padding: theme.spacing.md,
         }}
       >
         <View
@@ -165,29 +168,29 @@ export function CreateActionWizardModal({
             width: "100%",
             maxWidth: 720,
             maxHeight: "92%",
-            backgroundColor: arcane.colors.surface,
+            backgroundColor: theme.colors.surface,
             borderRadius: 22,
             borderWidth: 1,
-            borderColor: arcane.colors.accent,
+            borderColor: theme.colors.accent,
             overflow: "hidden",
-            ...arcane.shadow.card,
+            ...theme.shadow.card,
           }}
         >
           <View
             style={{
-              paddingHorizontal: arcane.spacing.md,
-              paddingTop: arcane.spacing.md,
-              paddingBottom: arcane.spacing.sm,
+              paddingHorizontal: theme.spacing.md,
+              paddingTop: theme.spacing.md,
+              paddingBottom: theme.spacing.sm,
               borderBottomWidth: 1,
-              borderBottomColor: arcane.colors.border,
-              gap: arcane.spacing.sm,
-              backgroundColor: arcane.colors.backgroundElevated,
+              borderBottomColor: theme.colors.border,
+              gap: theme.spacing.sm,
+              backgroundColor: theme.colors.backgroundElevated,
             }}
           >
             <Text
               style={{
-                color: arcane.colors.textSubtle,
-                fontSize: arcane.typography.tiny,
+                color: theme.colors.textSubtle,
+                fontSize: theme.typography.tiny,
                 fontWeight: "900",
                 textTransform: "uppercase",
                 letterSpacing: 0.8,
@@ -198,7 +201,7 @@ export function CreateActionWizardModal({
 
             <Text
               style={{
-                color: arcane.colors.text,
+                color: theme.colors.text,
                 fontSize: 22,
                 fontWeight: "900",
                 letterSpacing: -0.3,
@@ -207,7 +210,7 @@ export function CreateActionWizardModal({
               Créer une action
             </Text>
 
-            <Text style={arcaneStyles.muted}>
+            <Text style={styles.muted}>
               Étape {stepIndex + 1} / {totalSteps} — {getStepTitle(step)}
             </Text>
 
@@ -221,14 +224,14 @@ export function CreateActionWizardModal({
                     style={{
                       flex: 1,
                       height: 7,
-                      borderRadius: arcane.radius.pill,
+                      borderRadius: theme.radius.pill,
                       borderWidth: 1,
                       borderColor: isDoneOrCurrent
-                        ? arcane.colors.accent
-                        : arcane.colors.border,
+                        ? theme.colors.accent
+                        : theme.colors.border,
                       backgroundColor: isDoneOrCurrent
-                        ? arcane.colors.accentSoft
-                        : arcane.colors.surfaceAlt,
+                        ? theme.colors.accentSoft
+                        : theme.colors.surfaceAlt,
                       opacity: isDoneOrCurrent ? 1 : 0.55,
                     }}
                   />
@@ -240,8 +243,8 @@ export function CreateActionWizardModal({
           <ScrollView
             style={{ flexGrow: 0 }}
             contentContainerStyle={{
-              padding: arcane.spacing.md,
-              gap: arcane.spacing.md,
+              padding: theme.spacing.md,
+              gap: theme.spacing.md,
             }}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator
@@ -299,14 +302,14 @@ export function CreateActionWizardModal({
             {error ? (
               <View
                 style={{
-                  ...arcaneStyles.cardSoft,
-                  borderColor: arcane.colors.failure,
-                  backgroundColor: arcane.colors.failureSoft,
+                  ...styles.cardSoft,
+                  borderColor: theme.colors.failure,
+                  backgroundColor: theme.colors.failureSoft,
                 }}
               >
                 <Text
                   style={{
-                    color: arcane.colors.text,
+                    color: theme.colors.text,
                     fontWeight: "800",
                   }}
                 >
@@ -322,13 +325,13 @@ export function CreateActionWizardModal({
               justifyContent: "space-between",
               alignItems: "center",
               flexWrap: "wrap",
-              gap: arcane.spacing.sm,
-              paddingHorizontal: arcane.spacing.md,
-              paddingTop: arcane.spacing.sm,
-              paddingBottom: arcane.spacing.md,
+              gap: theme.spacing.sm,
+              paddingHorizontal: theme.spacing.md,
+              paddingTop: theme.spacing.sm,
+              paddingBottom: theme.spacing.md,
               borderTopWidth: 1,
-              borderTopColor: arcane.colors.border,
-              backgroundColor: arcane.colors.backgroundElevated,
+              borderTopColor: theme.colors.border,
+              backgroundColor: theme.colors.backgroundElevated,
             }}
           >
             <WizardButton label="Annuler" onPress={onClose} />
@@ -337,7 +340,7 @@ export function CreateActionWizardModal({
               style={{
                 flexDirection: "row",
                 flexWrap: "wrap",
-                gap: arcane.spacing.sm,
+                gap: theme.spacing.sm,
               }}
             >
               {!isFirstStep ? (

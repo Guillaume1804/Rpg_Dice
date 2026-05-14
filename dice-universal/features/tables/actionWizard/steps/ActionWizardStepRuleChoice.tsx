@@ -3,8 +3,7 @@
 import { Pressable, Text, View } from "react-native";
 import type { RuleRow } from "../../../../data/repositories/rulesRepo";
 
-import { arcane } from "../../../../theme/arcaneTheme";
-import { arcaneStyles } from "../../../../theme/arcaneStyles";
+import { useArcaneTheme } from "../../../../theme/ArcaneThemeProvider";
 
 type Props = {
   rules: RuleRow[];
@@ -27,11 +26,13 @@ function getRuleOriginLabel(rule: RuleRow) {
 }
 
 function SectionLabel({ children }: { children: string }) {
+  const { theme } = useArcaneTheme();
+
   return (
     <Text
       style={{
-        color: arcane.colors.textSubtle,
-        fontSize: arcane.typography.tiny,
+        color: theme.colors.textSubtle,
+        fontSize: theme.typography.tiny,
         fontWeight: "900",
         textTransform: "uppercase",
         letterSpacing: 0.8,
@@ -57,29 +58,30 @@ function RuleCard({
   onPress: () => void;
   variant?: "default" | "accent";
 }) {
+  const { theme, styles } = useArcaneTheme();
   const isAccent = variant === "accent";
 
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        ...arcaneStyles.cardSoft,
-        gap: arcane.spacing.xs,
+        ...styles.cardSoft,
+        gap: theme.spacing.xs,
         borderColor: selected
-          ? arcane.colors.accent
+          ? theme.colors.accent
           : isAccent
-            ? arcane.colors.accent
-            : arcane.colors.border,
+            ? theme.colors.accent
+            : theme.colors.border,
         backgroundColor: selected
-          ? arcane.colors.accentSoft
-          : arcane.colors.surfaceAlt,
+          ? theme.colors.accentSoft
+          : theme.colors.surfaceAlt,
         opacity: pressed ? 0.86 : 1,
         transform: [{ scale: pressed ? 0.99 : 1 }],
       })}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontSize: 16,
           fontWeight: "900",
         }}
@@ -89,7 +91,7 @@ function RuleCard({
 
       <Text
         style={{
-          color: arcane.colors.textMuted,
+          color: theme.colors.textMuted,
           lineHeight: 19,
         }}
       >
@@ -99,7 +101,7 @@ function RuleCard({
       <Text
         style={{
           marginTop: 2,
-          color: selected ? arcane.colors.accent : arcane.colors.textSubtle,
+          color: selected ? theme.colors.accent : theme.colors.textSubtle,
           fontWeight: "900",
         }}
       >
@@ -116,15 +118,16 @@ export function ActionWizardStepRuleChoice({
   onSelectRule,
   onSelectCreationMode,
 }: Props) {
+  const { theme, styles } = useArcaneTheme();
   const recommendedRule = rules.length > 0 ? rules[0] : null;
   const alternativeRules = rules.slice(1);
 
   return (
-    <View style={{ gap: arcane.spacing.md }}>
-      <View style={{ gap: arcane.spacing.xs }}>
-        <Text style={arcaneStyles.sectionTitle}>Logique de l’action</Text>
+    <View style={{ gap: theme.spacing.md }}>
+      <View style={{ gap: theme.spacing.xs }}>
+        <Text style={styles.sectionTitle}>Logique de l’action</Text>
 
-        <Text style={arcaneStyles.muted}>
+        <Text style={styles.muted}>
           L’application cherche si une règle existante peut être réutilisée. Tu
           peux aussi générer une nouvelle règle automatiquement.
         </Text>
@@ -132,7 +135,7 @@ export function ActionWizardStepRuleChoice({
 
       {recommendedRule ? (
         <>
-          <View style={{ gap: arcane.spacing.sm }}>
+          <View style={{ gap: theme.spacing.sm }}>
             <SectionLabel>Suggestion recommandée</SectionLabel>
 
             <RuleCard
@@ -155,7 +158,7 @@ export function ActionWizardStepRuleChoice({
           </View>
 
           {alternativeRules.length > 0 ? (
-            <View style={{ gap: arcane.spacing.sm }}>
+            <View style={{ gap: theme.spacing.sm }}>
               <SectionLabel>Autres logiques compatibles</SectionLabel>
 
               {alternativeRules.map((rule) => {
@@ -182,10 +185,10 @@ export function ActionWizardStepRuleChoice({
           ) : null}
         </>
       ) : (
-        <View style={arcaneStyles.cardSoft}>
+        <View style={styles.cardSoft}>
           <Text
             style={{
-              color: arcane.colors.text,
+              color: theme.colors.text,
               fontWeight: "900",
             }}
           >
@@ -194,9 +197,9 @@ export function ActionWizardStepRuleChoice({
 
           <Text
             style={[
-              arcaneStyles.muted,
+              styles.muted,
               {
-                marginTop: arcane.spacing.xs,
+                marginTop: theme.spacing.xs,
               },
             ]}
           >
@@ -206,7 +209,7 @@ export function ActionWizardStepRuleChoice({
         </View>
       )}
 
-      <View style={{ gap: arcane.spacing.sm }}>
+      <View style={{ gap: theme.spacing.sm }}>
         <SectionLabel>Créer une nouvelle règle</SectionLabel>
 
         <RuleCard

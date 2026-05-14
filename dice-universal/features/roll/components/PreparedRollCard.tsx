@@ -1,7 +1,6 @@
 import { Pressable, Text, View } from "react-native";
 
-import { arcane } from "../../../theme/arcaneTheme";
-import { arcaneStyles } from "../../../theme/arcaneStyles";
+import { useArcaneTheme } from "../../../theme/ArcaneThemeProvider";
 
 type PreparedRollCardProps = {
     title?: string;
@@ -22,19 +21,20 @@ function PreparedActionButton({
     onPress: () => void;
     variant?: "default" | "accent" | "danger";
 }) {
+    const { theme } = useArcaneTheme();
     const backgroundColor =
         variant === "accent"
-            ? arcane.colors.accentSoft
+            ? theme.colors.accentSoft
             : variant === "danger"
-                ? arcane.colors.failureSoft
-                : arcane.colors.surfaceAlt;
+                ? theme.colors.failureSoft
+                : theme.colors.surfaceAlt;
 
     const borderColor =
         variant === "accent"
-            ? arcane.colors.accent
+            ? theme.colors.accent
             : variant === "danger"
-                ? arcane.colors.failure
-                : arcane.colors.border;
+                ? theme.colors.failure
+                : theme.colors.border;
 
     return (
         <Pressable
@@ -44,15 +44,15 @@ function PreparedActionButton({
                 paddingHorizontal: 12,
                 borderWidth: 1,
                 borderColor,
-                borderRadius: arcane.radius.pill,
-                backgroundColor: pressed ? arcane.colors.surfaceSoft : backgroundColor,
+                borderRadius: theme.radius.pill,
+                backgroundColor: pressed ? theme.colors.surfaceSoft : backgroundColor,
                 opacity: pressed ? 0.86 : 1,
                 transform: [{ scale: pressed ? 0.97 : 1 }],
             })}
         >
             <Text
                 style={{
-                    color: arcane.colors.text,
+                    color: theme.colors.text,
                     fontWeight: "900",
                 }}
             >
@@ -71,18 +71,20 @@ export function PreparedRollCard({
     onClear,
     onSave,
 }: PreparedRollCardProps) {
+    const { theme, styles } = useArcaneTheme();
+    
     return (
         <View
             style={{
-                ...arcaneStyles.card,
-                gap: arcane.spacing.md,
+                ...styles.card,
+                gap: theme.spacing.md,
             }}
         >
-            <View style={{ gap: arcane.spacing.xs }}>
+            <View style={{ gap: theme.spacing.xs }}>
                 <Text
                     style={{
-                        color: arcane.colors.textSubtle,
-                        fontSize: arcane.typography.tiny,
+                        color: theme.colors.textSubtle,
+                        fontSize: theme.typography.tiny,
                         fontWeight: "900",
                         textTransform: "uppercase",
                         letterSpacing: 0.8,
@@ -95,7 +97,7 @@ export function PreparedRollCard({
                     <>
                         <Text
                             style={{
-                                color: arcane.colors.text,
+                                color: theme.colors.text,
                                 fontSize: 20,
                                 fontWeight: "900",
                             }}
@@ -105,7 +107,7 @@ export function PreparedRollCard({
 
                         <Text
                             style={{
-                                color: arcane.colors.textMuted,
+                                color: theme.colors.textMuted,
                                 lineHeight: 20,
                             }}
                         >
@@ -116,7 +118,7 @@ export function PreparedRollCard({
                     <>
                         <Text
                             style={{
-                                color: arcane.colors.text,
+                                color: theme.colors.text,
                                 fontSize: 22,
                                 fontWeight: "900",
                             }}
@@ -127,7 +129,7 @@ export function PreparedRollCard({
                         {detail ? (
                             <Text
                                 style={{
-                                    color: arcane.colors.textMuted,
+                                    color: theme.colors.textMuted,
                                     fontSize: 15,
                                     lineHeight: 21,
                                 }}
@@ -144,7 +146,7 @@ export function PreparedRollCard({
                     style={{
                         flexDirection: "row",
                         flexWrap: "wrap",
-                        gap: arcane.spacing.sm,
+                        gap: theme.spacing.sm,
                     }}
                 >
                     {onEdit ? (

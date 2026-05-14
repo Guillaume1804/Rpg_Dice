@@ -2,8 +2,7 @@
 
 import { View, Text, Pressable, TextInput } from "react-native";
 
-import { arcane } from "../../../theme/arcaneTheme";
-import { arcaneStyles } from "../../../theme/arcaneStyles";
+import { useArcaneTheme } from "../../../theme/ArcaneThemeProvider";
 
 type Props = {
   visible: boolean;
@@ -16,10 +15,11 @@ type Props = {
 };
 
 function FieldLabel({ children }: { children: string }) {
+  const { theme } = useArcaneTheme();
   return (
     <Text
       style={{
-        color: arcane.colors.textMuted,
+        color: theme.colors.textMuted,
         fontWeight: "800",
       }}
     >
@@ -39,19 +39,21 @@ function ModalInput({
   placeholder: string;
   keyboardType: "number-pad" | "numbers-and-punctuation";
 }) {
+  const { theme } = useArcaneTheme();
+
   return (
     <TextInput
       value={value}
       onChangeText={onChangeText}
       keyboardType={keyboardType}
       placeholder={placeholder}
-      placeholderTextColor={arcane.colors.textSubtle}
+      placeholderTextColor={theme.colors.textSubtle}
       style={{
-        color: arcane.colors.text,
-        backgroundColor: arcane.colors.surfaceAlt,
+        color: theme.colors.text,
+        backgroundColor: theme.colors.surfaceAlt,
         borderWidth: 1,
-        borderColor: arcane.colors.border,
-        borderRadius: arcane.radius.md,
+        borderColor: theme.colors.border,
+        borderRadius: theme.radius.md,
         paddingHorizontal: 12,
         paddingVertical: 11,
         fontSize: 16,
@@ -69,6 +71,8 @@ function ModalButton({
   onPress: () => void;
   variant?: "default" | "accent";
 }) {
+  const { theme } = useArcaneTheme();
+
   const isAccent = variant === "accent";
 
   return (
@@ -78,18 +82,18 @@ function ModalButton({
         paddingVertical: 10,
         paddingHorizontal: 14,
         borderWidth: 1,
-        borderColor: isAccent ? arcane.colors.accent : arcane.colors.border,
-        borderRadius: arcane.radius.pill,
+        borderColor: isAccent ? theme.colors.accent : theme.colors.border,
+        borderRadius: theme.radius.pill,
         backgroundColor: isAccent
-          ? arcane.colors.accentSoft
-          : arcane.colors.surfaceAlt,
+          ? theme.colors.accentSoft
+          : theme.colors.surfaceAlt,
         opacity: pressed ? 0.84 : 1,
         transform: [{ scale: pressed ? 0.97 : 1 }],
       })}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontWeight: "900",
         }}
       >
@@ -108,6 +112,8 @@ export function QuickQtyModal({
   onClose,
   onSave,
 }: Props) {
+  const { theme, styles } = useArcaneTheme();
+
   if (!visible) return null;
 
   return (
@@ -125,20 +131,20 @@ export function QuickQtyModal({
     >
       <View
         style={{
-          ...arcaneStyles.card,
-          gap: arcane.spacing.md,
-          borderColor: arcane.colors.accent,
+          ...styles.card,
+          gap: theme.spacing.md,
+          borderColor: theme.colors.accent,
         }}
       >
-        <View style={{ gap: arcane.spacing.xs }}>
-          <Text style={arcaneStyles.sectionTitle}>Modifier l’entrée</Text>
+        <View style={{ gap: theme.spacing.xs }}>
+          <Text style={styles.sectionTitle}>Modifier l’entrée</Text>
 
-          <Text style={arcaneStyles.muted}>
+          <Text style={styles.muted}>
             Ajuste la quantité de dés et le modificateur appliqué à cette ligne.
           </Text>
         </View>
 
-        <View style={{ gap: arcane.spacing.sm }}>
+        <View style={{ gap: theme.spacing.sm }}>
           <FieldLabel>Quantité</FieldLabel>
           <ModalInput
             value={qtyValue}
@@ -148,7 +154,7 @@ export function QuickQtyModal({
           />
         </View>
 
-        <View style={{ gap: arcane.spacing.sm }}>
+        <View style={{ gap: theme.spacing.sm }}>
           <FieldLabel>Modificateur</FieldLabel>
           <ModalInput
             value={modifierValue}
@@ -162,7 +168,7 @@ export function QuickQtyModal({
           style={{
             flexDirection: "row",
             justifyContent: "flex-end",
-            gap: arcane.spacing.sm,
+            gap: theme.spacing.sm,
           }}
         >
           <ModalButton label="Annuler" onPress={onClose} />

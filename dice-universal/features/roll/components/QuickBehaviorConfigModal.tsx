@@ -6,8 +6,7 @@ import {
   type RuleBehaviorKey,
 } from "../../../core/rules/behaviorRegistry";
 
-import { arcane } from "../../../theme/arcaneTheme";
-import { arcaneStyles } from "../../../theme/arcaneStyles";
+import { useArcaneTheme } from "../../../theme/ArcaneThemeProvider";
 
 type RangeRow = { min: string; max: string; label: string };
 
@@ -146,11 +145,12 @@ type Props = {
 };
 
 function SectionTitle({ children }: { children: string }) {
+    const { theme } = useArcaneTheme();
   return (
     <Text
       style={{
-        color: arcane.colors.textSubtle,
-        fontSize: arcane.typography.tiny,
+        color: theme.colors.textSubtle,
+        fontSize: theme.typography.tiny,
         fontWeight: "900",
         textTransform: "uppercase",
         letterSpacing: 0.8,
@@ -162,10 +162,11 @@ function SectionTitle({ children }: { children: string }) {
 }
 
 function FieldLabel({ children }: { children: string }) {
+    const { theme } = useArcaneTheme();
   return (
     <Text
       style={{
-        color: arcane.colors.textMuted,
+        color: theme.colors.textMuted,
         fontWeight: "800",
       }}
     >
@@ -185,6 +186,7 @@ function ConfigInput(props: {
     | "number-pad"
     | "numbers-and-punctuation";
 }) {
+    const { theme } = useArcaneTheme();
   return (
     <View style={{ gap: 6 }}>
       <FieldLabel>{props.label}</FieldLabel>
@@ -193,14 +195,14 @@ function ConfigInput(props: {
         value={props.value}
         onChangeText={props.onChangeText}
         placeholder={props.placeholder}
-        placeholderTextColor={arcane.colors.textSubtle}
+        placeholderTextColor={theme.colors.textSubtle}
         keyboardType={props.keyboardType ?? "numbers-and-punctuation"}
         style={{
-          color: arcane.colors.text,
-          backgroundColor: arcane.colors.surfaceAlt,
+          color: theme.colors.text,
+          backgroundColor: theme.colors.surfaceAlt,
           borderWidth: 1,
-          borderColor: arcane.colors.border,
-          borderRadius: arcane.radius.md,
+          borderColor: theme.colors.border,
+          borderRadius: theme.radius.md,
           paddingHorizontal: 12,
           paddingVertical: 11,
           fontSize: 16,
@@ -219,6 +221,7 @@ function ChoiceButton({
   selected: boolean;
   onPress: () => void;
 }) {
+    const { theme } = useArcaneTheme();
   return (
     <Pressable
       onPress={onPress}
@@ -226,18 +229,18 @@ function ChoiceButton({
         paddingVertical: 10,
         paddingHorizontal: 12,
         borderWidth: 1,
-        borderColor: selected ? arcane.colors.accent : arcane.colors.border,
-        borderRadius: arcane.radius.pill,
+        borderColor: selected ? theme.colors.accent : theme.colors.border,
+        borderRadius: theme.radius.pill,
         backgroundColor: selected
-          ? arcane.colors.accentSoft
-          : arcane.colors.surfaceAlt,
+          ? theme.colors.accentSoft
+          : theme.colors.surfaceAlt,
         opacity: pressed ? 0.84 : selected ? 1 : 0.78,
         transform: [{ scale: pressed ? 0.97 : 1 }],
       })}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontWeight: selected ? "900" : "700",
         }}
       >
@@ -257,6 +260,7 @@ function ActionButton({
   variant?: "default" | "accent";
 }) {
   const isAccent = variant === "accent";
+  const { theme } = useArcaneTheme();
 
   return (
     <Pressable
@@ -265,18 +269,18 @@ function ActionButton({
         paddingVertical: 10,
         paddingHorizontal: 14,
         borderWidth: 1,
-        borderColor: isAccent ? arcane.colors.accent : arcane.colors.border,
-        borderRadius: arcane.radius.pill,
+        borderColor: isAccent ? theme.colors.accent : theme.colors.border,
+        borderRadius: theme.radius.pill,
         backgroundColor: isAccent
-          ? arcane.colors.accentSoft
-          : arcane.colors.surfaceAlt,
+          ? theme.colors.accentSoft
+          : theme.colors.surfaceAlt,
         opacity: pressed ? 0.84 : 1,
         transform: [{ scale: pressed ? 0.97 : 1 }],
       })}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontWeight: "900",
         }}
       >
@@ -293,11 +297,12 @@ function ConfigSection({
   title: string;
   children: React.ReactNode;
 }) {
+  const { theme, styles } = useArcaneTheme();
   return (
     <View
       style={{
-        ...arcaneStyles.cardSoft,
-        gap: arcane.spacing.sm,
+        ...styles.cardSoft,
+        gap: theme.spacing.sm,
       }}
     >
       <SectionTitle>{title}</SectionTitle>
@@ -402,6 +407,8 @@ export function QuickBehaviorConfigModal({
   onClose,
   onConfirm,
 }: Props) {
+  const { theme, styles } = useArcaneTheme();
+  
   if (!visible) return null;
 
   const behavior = pendingBehaviorKey
@@ -517,32 +524,32 @@ export function QuickBehaviorConfigModal({
     >
       <View
         style={{
-          ...arcaneStyles.card,
-          gap: arcane.spacing.md,
-          borderColor: arcane.colors.accent,
+          ...styles.card,
+          gap: theme.spacing.md,
+          borderColor: theme.colors.accent,
           maxHeight: "92%",
         }}
       >
-        <View style={{ gap: arcane.spacing.xs }}>
-          <Text style={arcaneStyles.sectionTitle}>
+        <View style={{ gap: theme.spacing.xs }}>
+          <Text style={styles.sectionTitle}>
             Configurer {pendingBehaviorLabel}
           </Text>
 
-          <Text style={arcaneStyles.muted}>
+          <Text style={styles.muted}>
             Ajuste la façon dont ce jet sera interprété au moment du lancer.
           </Text>
         </View>
 
         {!behavior ? (
-          <View style={arcaneStyles.cardSoft}>
-            <Text style={arcaneStyles.muted}>
+          <View style={styles.cardSoft}>
+            <Text style={styles.muted}>
               Aucun comportement sélectionné.
             </Text>
           </View>
         ) : null}
 
         <ScrollView
-          contentContainerStyle={{ gap: arcane.spacing.md }}
+          contentContainerStyle={{ gap: theme.spacing.md }}
           showsVerticalScrollIndicator
         >
           {pendingBehaviorKey === "custom_pipeline" &&
@@ -906,13 +913,13 @@ export function QuickBehaviorConfigModal({
                       <View
                         key={`${pendingBehaviorKey}-range-${index}`}
                         style={{
-                          ...arcaneStyles.cardSoft,
-                          gap: arcane.spacing.sm,
+                          ...styles.cardSoft,
+                          gap: theme.spacing.sm,
                         }}
                       >
                         <Text
                           style={{
-                            color: arcane.colors.text,
+                            color: theme.colors.text,
                             fontWeight: "900",
                           }}
                         >
@@ -968,7 +975,7 @@ export function QuickBehaviorConfigModal({
           style={{
             flexDirection: "row",
             justifyContent: "flex-end",
-            gap: arcane.spacing.sm,
+            gap: theme.spacing.sm,
           }}
         >
           <ActionButton label="Annuler" onPress={onClose} />

@@ -7,8 +7,7 @@ import {
 } from "../../../../core/rules/behaviorRegistry";
 import type { ActionBehaviorVariant } from "../types";
 
-import { arcane } from "../../../../theme/arcaneTheme";
-import { arcaneStyles } from "../../../../theme/arcaneStyles";
+import { useArcaneTheme } from "../../../../theme/ArcaneThemeProvider";
 
 type ActionBehaviorOption = {
   optionId: string;
@@ -71,23 +70,24 @@ function BehaviorCard({
   selected: boolean;
   onPress: () => void;
 }) {
+  const { theme, styles } = useArcaneTheme();
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        ...arcaneStyles.cardSoft,
-        gap: arcane.spacing.xs,
-        borderColor: selected ? arcane.colors.accent : arcane.colors.border,
+        ...styles.cardSoft,
+        gap: theme.spacing.xs,
+        borderColor: selected ? theme.colors.accent : theme.colors.border,
         backgroundColor: selected
-          ? arcane.colors.accentSoft
-          : arcane.colors.surfaceAlt,
+          ? theme.colors.accentSoft
+          : theme.colors.surfaceAlt,
         opacity: pressed ? 0.86 : 1,
         transform: [{ scale: pressed ? 0.99 : 1 }],
       })}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontSize: 16,
           fontWeight: selected ? "900" : "800",
         }}
@@ -97,7 +97,7 @@ function BehaviorCard({
 
       <Text
         style={{
-          color: arcane.colors.textMuted,
+          color: theme.colors.textMuted,
           lineHeight: 19,
         }}
       >
@@ -107,7 +107,7 @@ function BehaviorCard({
       {selected ? (
         <Text
           style={{
-            color: arcane.colors.accent,
+            color: theme.colors.accent,
             fontWeight: "900",
             marginTop: 2,
           }}
@@ -120,20 +120,21 @@ function BehaviorCard({
 }
 
 export function ActionWizardStepType({ value, variant, onSelect }: Props) {
+  const { theme, styles } = useArcaneTheme();
   const options = getVisibleActionBehaviorOptions();
 
   return (
-    <View style={{ gap: arcane.spacing.md }}>
-      <View style={{ gap: arcane.spacing.xs }}>
-        <Text style={arcaneStyles.sectionTitle}>Type d’action</Text>
+    <View style={{ gap: theme.spacing.md }}>
+      <View style={{ gap: theme.spacing.xs }}>
+        <Text style={styles.sectionTitle}>Type d’action</Text>
 
-        <Text style={arcaneStyles.muted}>
+        <Text style={styles.muted}>
           Choisis la manière principale dont cette action doit interpréter le
           résultat du jet.
         </Text>
       </View>
 
-      <View style={{ gap: arcane.spacing.sm }}>
+      <View style={{ gap: theme.spacing.sm }}>
         {options.map((option) => {
           const selected =
             value === option.behaviorKey && variant === option.variant;

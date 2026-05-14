@@ -7,8 +7,7 @@ import type { RuleRow } from "../../../data/repositories/rulesRepo";
 import { getRuleNameFromId } from "../helpers";
 import { RollResultCard } from "./RollResultCard";
 
-import { arcane } from "../../../theme/arcaneTheme";
-import { arcaneStyles } from "../../../theme/arcaneStyles";
+import { useArcaneTheme } from "../../../theme/ArcaneThemeProvider";
 
 type DraftDie = {
   sides: number;
@@ -115,25 +114,30 @@ function getEntryResultForIndex(result: GroupRollResult | null, index: number) {
 }
 
 function getEntryLabel(entryResult: GroupRollResult["entries"][number]) {
-  return `${entryResult.qty}d${entryResult.sides}${entryResult.modifier
-    ? ` ${entryResult.modifier > 0 ? "+" : ""}${entryResult.modifier}`
-    : ""
-    }`;
+  return `${entryResult.qty}d${entryResult.sides}${
+    entryResult.modifier
+      ? ` ${entryResult.modifier > 0 ? "+" : ""}${entryResult.modifier}`
+      : ""
+  }`;
 }
 
-function renderFallbackEntryResult(
-  entryResult: GroupRollResult["entries"][number],
-) {
+function FallbackEntryResultCard({
+  entryResult,
+}: {
+  entryResult: GroupRollResult["entries"][number];
+}) {
+  const { theme, styles } = useArcaneTheme();
+
   return (
     <View
       style={{
-        ...arcaneStyles.cardSoft,
-        gap: arcane.spacing.sm,
+        ...styles.cardSoft,
+        gap: theme.spacing.sm,
       }}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontWeight: "900",
         }}
       >
@@ -142,7 +146,7 @@ function renderFallbackEntryResult(
 
       <Text
         style={{
-          color: arcane.colors.textMuted,
+          color: theme.colors.textMuted,
         }}
       >
         Valeurs : {entryResult.natural_values.join(" + ")}
@@ -150,7 +154,7 @@ function renderFallbackEntryResult(
 
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontSize: 18,
           fontWeight: "900",
         }}
@@ -195,6 +199,8 @@ export function QuickRollSection({
   onCreateNewTable,
   availableRules,
 }: QuickRollSectionProps) {
+  const { theme, styles } = useArcaneTheme();
+
   const selectedGroup = useMemo(() => {
     if (draftGroups.length === 0) return null;
 
@@ -229,8 +235,8 @@ export function QuickRollSection({
         {!hideDicePicker ? (
           <View
             style={{
-              ...arcaneStyles.card,
-              gap: arcane.spacing.md,
+              ...styles.card,
+              gap: theme.spacing.md,
             }}
           >
             <View
@@ -241,7 +247,7 @@ export function QuickRollSection({
                 gap: 8,
               }}
             >
-              <Text style={arcaneStyles.sectionTitle}>{title}</Text>
+              <Text style={styles.sectionTitle}>{title}</Text>
             </View>
 
             <View
@@ -263,19 +269,19 @@ export function QuickRollSection({
                     paddingVertical: 14,
                     paddingHorizontal: 14,
                     borderWidth: 1,
-                    borderColor: arcane.colors.border,
-                    borderRadius: arcane.radius.md,
+                    borderColor: theme.colors.border,
+                    borderRadius: theme.radius.md,
                     alignItems: "center",
                     justifyContent: "center",
                     backgroundColor: pressed
-                      ? arcane.colors.surfaceSoft
-                      : arcane.colors.surfaceAlt,
+                      ? theme.colors.surfaceSoft
+                      : theme.colors.surfaceAlt,
                     transform: [{ scale: pressed ? 0.96 : 1 }],
                   })}
                 >
                   <Text
                     style={{
-                      color: arcane.colors.text,
+                      color: theme.colors.text,
                       fontWeight: "900",
                       fontSize: 16,
                     }}
@@ -288,7 +294,9 @@ export function QuickRollSection({
           </View>
         ) : null}
 
-        {!hideStandardQuickGroup && standardQuickGroup && !hideInternalRollControls ? (
+        {!hideStandardQuickGroup &&
+        standardQuickGroup &&
+        !hideInternalRollControls ? (
           <View
             style={{
               padding: 14,
@@ -399,7 +407,9 @@ export function QuickRollSection({
                               title={getEntryLabel(entryResult)}
                             />
                           ) : (
-                            renderFallbackEntryResult(entryResult)
+                            <FallbackEntryResultCard
+                              entryResult={entryResult}
+                            />
                           )}
                         </View>
                       ) : null}
@@ -543,8 +553,8 @@ export function QuickRollSection({
                     </View>
 
                     {!hideInternalRollControls &&
-                      groupResult?.group_eval_result &&
-                      index === 0 ? (
+                    groupResult?.group_eval_result &&
+                    index === 0 ? (
                       <View style={{ paddingTop: 6, borderTopWidth: 1 }}>
                         <RollResultCard
                           result={groupResult.group_eval_result}
@@ -559,7 +569,7 @@ export function QuickRollSection({
                             title={getEntryLabel(entryResult)}
                           />
                         ) : (
-                          renderFallbackEntryResult(entryResult)
+                          <FallbackEntryResultCard entryResult={entryResult} />
                         )}
                       </View>
                     ) : null}
@@ -606,13 +616,11 @@ export function QuickRollSection({
         {showAdvanced ? (
           <View
             style={{
-              ...arcaneStyles.card,
-              gap: arcane.spacing.md,
+              ...styles.card,
+              gap: theme.spacing.md,
             }}
           >
-            <Text style={arcaneStyles.sectionTitle}>
-              Action temporaire
-            </Text>
+            <Text style={styles.sectionTitle}>Action temporaire</Text>
 
             <View
               style={{
@@ -627,17 +635,17 @@ export function QuickRollSection({
                   paddingVertical: 10,
                   paddingHorizontal: 12,
                   borderWidth: 1,
-                  borderColor: arcane.colors.accent,
-                  borderRadius: arcane.radius.pill,
+                  borderColor: theme.colors.accent,
+                  borderRadius: theme.radius.pill,
                   backgroundColor: pressed
-                    ? arcane.colors.surfaceSoft
-                    : arcane.colors.accentSoft,
+                    ? theme.colors.surfaceSoft
+                    : theme.colors.accentSoft,
                   opacity: pressed ? 0.86 : 1,
                 })}
               >
                 <Text
                   style={{
-                    color: arcane.colors.text,
+                    color: theme.colors.text,
                     fontWeight: "900",
                   }}
                 >
@@ -647,7 +655,7 @@ export function QuickRollSection({
             </View>
 
             {draftGroups.length === 0 ? (
-              <Text style={arcaneStyles.muted}>
+              <Text style={styles.muted}>
                 Aucune action temporaire pour le moment.
               </Text>
             ) : (
@@ -868,7 +876,7 @@ export function QuickRollSection({
           gap: 10,
         }}
       >
-        <Text style={arcaneStyles.sectionTitle}>{title}</Text>
+        <Text style={styles.sectionTitle}>{title}</Text>
 
         <View
           style={{
@@ -889,19 +897,19 @@ export function QuickRollSection({
                 paddingVertical: 14,
                 paddingHorizontal: 14,
                 borderWidth: 1,
-                borderColor: arcane.colors.border,
-                borderRadius: arcane.radius.md,
+                borderColor: theme.colors.border,
+                borderRadius: theme.radius.md,
                 alignItems: "center",
                 justifyContent: "center",
                 backgroundColor: pressed
-                  ? arcane.colors.surfaceSoft
-                  : arcane.colors.surfaceAlt,
+                  ? theme.colors.surfaceSoft
+                  : theme.colors.surfaceAlt,
                 transform: [{ scale: pressed ? 0.96 : 1 }],
               })}
             >
               <Text
                 style={{
-                  color: arcane.colors.text,
+                  color: theme.colors.text,
                   fontWeight: "900",
                   fontSize: 16,
                 }}

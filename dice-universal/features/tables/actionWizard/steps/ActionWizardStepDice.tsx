@@ -3,8 +3,7 @@
 import { Pressable, Text, TextInput, View } from "react-native";
 import type { ActionDieDraft } from "../types";
 
-import { arcane } from "../../../../theme/arcaneTheme";
-import { arcaneStyles } from "../../../../theme/arcaneStyles";
+import { useArcaneTheme } from "../../../../theme/ArcaneThemeProvider";
 
 type Props = {
   dice: ActionDieDraft[];
@@ -55,10 +54,11 @@ function getSafeDice(dice: ActionDieDraft[], fallbackDie?: ActionDieDraft) {
 }
 
 function FieldLabel({ children }: { children: string }) {
+  const { theme } = useArcaneTheme();
   return (
     <Text
       style={{
-        color: arcane.colors.textMuted,
+        color: theme.colors.textMuted,
         fontWeight: "800",
       }}
     >
@@ -78,23 +78,24 @@ function BoxInput({
   placeholder: string;
   keyboardType?: "numeric" | "numbers-and-punctuation";
 }) {
+  const { theme } = useArcaneTheme();
   return (
     <TextInput
       value={value}
       onChangeText={onChangeText}
       placeholder={placeholder}
-      placeholderTextColor={arcane.colors.textSubtle}
-      selectionColor={arcane.colors.accent}
+      placeholderTextColor={theme.colors.textSubtle}
+      selectionColor={theme.colors.accent}
       keyboardType={keyboardType}
       style={{
         minHeight: 48,
         borderWidth: 1,
-        borderColor: arcane.colors.border,
-        borderRadius: arcane.radius.md,
+        borderColor: theme.colors.border,
+        borderRadius: theme.radius.md,
         paddingHorizontal: 12,
         paddingVertical: 11,
-        backgroundColor: arcane.colors.surfaceAlt,
-        color: arcane.colors.text,
+        backgroundColor: theme.colors.surfaceAlt,
+        color: theme.colors.text,
         fontSize: 16,
         fontWeight: "700",
       }}
@@ -111,6 +112,7 @@ function ChoiceButton({
   selected: boolean;
   onPress: () => void;
 }) {
+  const { theme } = useArcaneTheme();
   return (
     <Pressable
       onPress={onPress}
@@ -120,20 +122,20 @@ function ChoiceButton({
         paddingVertical: 10,
         paddingHorizontal: 14,
         borderWidth: 1,
-        borderColor: selected ? arcane.colors.accent : arcane.colors.border,
-        borderRadius: arcane.radius.pill,
+        borderColor: selected ? theme.colors.accent : theme.colors.border,
+        borderRadius: theme.radius.pill,
         alignItems: "center",
         justifyContent: "center",
         backgroundColor: selected
-          ? arcane.colors.accentSoft
-          : arcane.colors.surfaceAlt,
+          ? theme.colors.accentSoft
+          : theme.colors.surfaceAlt,
         opacity: pressed ? 0.84 : selected ? 1 : 0.78,
         transform: [{ scale: pressed ? 0.96 : 1 }],
       })}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontWeight: selected ? "900" : "800",
         }}
       >
@@ -152,6 +154,7 @@ function StandardDieButton({
   selected: boolean;
   onPress: () => void;
 }) {
+  const { theme } = useArcaneTheme();
   return (
     <Pressable
       onPress={onPress}
@@ -160,19 +163,19 @@ function StandardDieButton({
         paddingVertical: 12,
         paddingHorizontal: 14,
         borderWidth: 1,
-        borderColor: selected ? arcane.colors.accent : arcane.colors.border,
-        borderRadius: arcane.radius.lg,
+        borderColor: selected ? theme.colors.accent : theme.colors.border,
+        borderRadius: theme.radius.lg,
         alignItems: "center",
         backgroundColor: selected
-          ? arcane.colors.accentSoft
-          : arcane.colors.surfaceAlt,
+          ? theme.colors.accentSoft
+          : theme.colors.surfaceAlt,
         opacity: pressed ? 0.84 : selected ? 1 : 0.82,
         transform: [{ scale: pressed ? 0.96 : 1 }],
       })}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontWeight: "900",
         }}
       >
@@ -191,19 +194,21 @@ function PillButton({
   onPress: () => void;
   variant?: "default" | "danger" | "accent";
 }) {
+  const { theme } = useArcaneTheme();
+
   const borderColor =
     variant === "danger"
-      ? arcane.colors.failure
+      ? theme.colors.failure
       : variant === "accent"
-        ? arcane.colors.accent
-        : arcane.colors.border;
+        ? theme.colors.accent
+        : theme.colors.border;
 
   const backgroundColor =
     variant === "danger"
-      ? arcane.colors.failureSoft
+      ? theme.colors.failureSoft
       : variant === "accent"
-        ? arcane.colors.accentSoft
-        : arcane.colors.surfaceAlt;
+        ? theme.colors.accentSoft
+        : theme.colors.surfaceAlt;
 
   return (
     <Pressable
@@ -213,7 +218,7 @@ function PillButton({
         paddingHorizontal: 14,
         borderWidth: 1,
         borderColor,
-        borderRadius: arcane.radius.pill,
+        borderRadius: theme.radius.pill,
         backgroundColor,
         opacity: pressed ? 0.84 : 1,
         transform: [{ scale: pressed ? 0.97 : 1 }],
@@ -221,7 +226,7 @@ function PillButton({
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontWeight: "900",
         }}
       >
@@ -247,6 +252,8 @@ export function ActionWizardStepDice({
 }: Props) {
   const safeDice = getSafeDice(dice, fallbackDie);
 
+  const { theme, styles } = useArcaneTheme();
+
   function updateDie<K extends keyof ActionDieDraft>(
     index: number,
     key: K,
@@ -261,11 +268,11 @@ export function ActionWizardStepDice({
   }
 
   return (
-    <View style={{ gap: arcane.spacing.md }}>
-      <View style={{ gap: arcane.spacing.xs }}>
-        <Text style={arcaneStyles.sectionTitle}>Dés utilisés</Text>
+    <View style={{ gap: theme.spacing.md }}>
+      <View style={{ gap: theme.spacing.xs }}>
+        <Text style={styles.sectionTitle}>Dés utilisés</Text>
 
-        <Text style={arcaneStyles.muted}>
+        <Text style={styles.muted}>
           Configure une ou plusieurs lignes de dés pour cette action.
         </Text>
       </View>
@@ -274,8 +281,8 @@ export function ActionWizardStepDice({
         <View
           key={`action-die-${index}`}
           style={{
-            ...arcaneStyles.cardSoft,
-            gap: arcane.spacing.md,
+            ...styles.cardSoft,
+            gap: theme.spacing.md,
           }}
         >
           <View
@@ -283,13 +290,13 @@ export function ActionWizardStepDice({
               flexDirection: "row",
               justifyContent: "space-between",
               alignItems: "flex-start",
-              gap: arcane.spacing.sm,
+              gap: theme.spacing.sm,
             }}
           >
-            <View style={{ flex: 1, gap: arcane.spacing.xs }}>
+            <View style={{ flex: 1, gap: theme.spacing.xs }}>
               <Text
                 style={{
-                  color: arcane.colors.text,
+                  color: theme.colors.text,
                   fontSize: 17,
                   fontWeight: "900",
                 }}
@@ -299,7 +306,7 @@ export function ActionWizardStepDice({
 
               <Text
                 style={{
-                  color: arcane.colors.textMuted,
+                  color: theme.colors.textMuted,
                   fontWeight: "700",
                 }}
               >
@@ -316,7 +323,7 @@ export function ActionWizardStepDice({
             ) : null}
           </View>
 
-          <View style={{ gap: arcane.spacing.sm }}>
+          <View style={{ gap: theme.spacing.sm }}>
             <FieldLabel>Dés standards</FieldLabel>
 
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
@@ -331,7 +338,7 @@ export function ActionWizardStepDice({
             </View>
           </View>
 
-          <View style={{ gap: arcane.spacing.sm }}>
+          <View style={{ gap: theme.spacing.sm }}>
             <FieldLabel>Faces du dé</FieldLabel>
 
             <BoxInput
@@ -344,7 +351,7 @@ export function ActionWizardStepDice({
             />
           </View>
 
-          <View style={{ gap: arcane.spacing.sm }}>
+          <View style={{ gap: theme.spacing.sm }}>
             <FieldLabel>Quantité</FieldLabel>
 
             <BoxInput
@@ -357,7 +364,7 @@ export function ActionWizardStepDice({
             />
           </View>
 
-          <View style={{ gap: arcane.spacing.sm }}>
+          <View style={{ gap: theme.spacing.sm }}>
             <FieldLabel>Modificateur</FieldLabel>
 
             <BoxInput
@@ -370,10 +377,10 @@ export function ActionWizardStepDice({
             />
           </View>
 
-          <View style={{ gap: arcane.spacing.sm }}>
+          <View style={{ gap: theme.spacing.sm }}>
             <FieldLabel>Signe</FieldLabel>
 
-            <View style={{ flexDirection: "row", gap: arcane.spacing.sm }}>
+            <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
               <ChoiceButton
                 label="+"
                 selected={die.sign === 1}

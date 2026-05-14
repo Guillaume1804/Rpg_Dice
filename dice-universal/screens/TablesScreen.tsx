@@ -20,9 +20,9 @@ import {
   createTable,
 } from "../data/repositories/tablesRepo";
 
-import { arcane } from "../theme/arcaneTheme";
 import { useArcaneLayout } from "../theme/useArcaneLayout";
-import { arcaneStyles } from "../theme/arcaneStyles";
+
+import { useArcaneTheme } from "../theme/useArcaneTheme";
 
 type TableListItem = {
   table: TableRow;
@@ -31,6 +31,7 @@ type TableListItem = {
 
 export default function TablesScreen() {
   const layout = useArcaneLayout();
+  const { theme, styles } = useArcaneTheme();
 
   const db = useDb();
   const router = useRouter();
@@ -136,35 +137,35 @@ export default function TablesScreen() {
     return (
       <View
         style={[
-          arcaneStyles.screen,
+          styles.screen,
           {
-            paddingTop: layout.insets.top + arcane.spacing.lg,
+            paddingTop: layout.insets.top + theme.spacing.lg,
             paddingHorizontal: layout.horizontalPadding,
             justifyContent: "center",
           },
         ]}
       >
-        <View style={arcaneStyles.card}>
-          <Text style={arcaneStyles.sectionTitle}>Erreur</Text>
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Erreur</Text>
 
-          <Text style={[arcaneStyles.muted, { marginTop: arcane.spacing.sm }]}>
+          <Text style={[styles.muted, { marginTop: theme.spacing.sm }]}>
             {error}
           </Text>
 
           <Pressable
             onPress={() => setError(null)}
             style={{
-              marginTop: arcane.spacing.md,
+              marginTop: theme.spacing.md,
               paddingVertical: 10,
               paddingHorizontal: 12,
               borderWidth: 1,
-              borderColor: arcane.colors.border,
-              borderRadius: arcane.radius.md,
+              borderColor: theme.colors.border,
+              borderRadius: theme.radius.md,
               alignSelf: "flex-start",
-              backgroundColor: arcane.colors.surfaceAlt,
+              backgroundColor: theme.colors.surfaceAlt,
             }}
           >
-            <Text style={{ color: arcane.colors.text, fontWeight: "800" }}>
+            <Text style={{ color: theme.colors.text, fontWeight: "800" }}>
               Fermer
             </Text>
           </Pressable>
@@ -174,22 +175,22 @@ export default function TablesScreen() {
   }
 
   return (
-    <View style={arcaneStyles.screen}>
+    <View style={styles.screen}>
       <View
         style={{
           flex: 1,
-          paddingTop: layout.insets.top + arcane.spacing.md,
+          paddingTop: layout.insets.top + theme.spacing.md,
           paddingHorizontal: layout.horizontalPadding,
-          paddingBottom: layout.insets.bottom + arcane.spacing.md,
+          paddingBottom: layout.insets.bottom + theme.spacing.md,
           alignSelf: "center",
           width: "100%",
           maxWidth: layout.maxContentWidth,
         }}
       >
-        <View style={{ gap: arcane.spacing.xs }}>
+        <View style={{ gap: theme.spacing.xs }}>
           <Text
             style={{
-              color: arcane.colors.text,
+              color: theme.colors.text,
               fontSize: 28,
               fontWeight: "900",
               letterSpacing: -0.4,
@@ -198,22 +199,22 @@ export default function TablesScreen() {
             Tables
           </Text>
 
-          <Text style={arcaneStyles.muted}>
+          <Text style={styles.muted}>
             Organise tes univers, profils et actions sauvegardées.
           </Text>
         </View>
 
         <View
           style={{
-            ...arcaneStyles.card,
-            marginTop: arcane.spacing.md,
-            gap: arcane.spacing.sm,
+            ...styles.card,
+            marginTop: theme.spacing.md,
+            gap: theme.spacing.sm,
           }}
         >
           <Text
             style={{
-              color: arcane.colors.textSubtle,
-              fontSize: arcane.typography.tiny,
+              color: theme.colors.textSubtle,
+              fontSize: theme.typography.tiny,
               fontWeight: "900",
               textTransform: "uppercase",
               letterSpacing: 0.8,
@@ -226,7 +227,7 @@ export default function TablesScreen() {
             <>
               <Text
                 style={{
-                  color: arcane.colors.text,
+                  color: theme.colors.text,
                   fontSize: 20,
                   fontWeight: "900",
                 }}
@@ -234,7 +235,7 @@ export default function TablesScreen() {
                 {activeTable.table.name}
               </Text>
 
-              <Text style={arcaneStyles.muted}>
+              <Text style={styles.muted}>
                 Cette table alimente l’écran Jet avec ses profils et actions.
               </Text>
 
@@ -243,17 +244,17 @@ export default function TablesScreen() {
                   await clearActiveTableId();
                 }}
                 style={{
-                  marginTop: arcane.spacing.xs,
+                  marginTop: theme.spacing.xs,
                   paddingVertical: 10,
                   paddingHorizontal: 12,
                   borderWidth: 1,
-                  borderColor: arcane.colors.border,
-                  borderRadius: arcane.radius.md,
+                  borderColor: theme.colors.border,
+                  borderRadius: theme.radius.md,
                   alignSelf: "flex-start",
-                  backgroundColor: arcane.colors.surfaceAlt,
+                  backgroundColor: theme.colors.surfaceAlt,
                 }}
               >
-                <Text style={{ color: arcane.colors.text, fontWeight: "800" }}>
+                <Text style={{ color: theme.colors.text, fontWeight: "800" }}>
                   Retirer la table active
                 </Text>
               </Pressable>
@@ -262,7 +263,7 @@ export default function TablesScreen() {
             <>
               <Text
                 style={{
-                  color: arcane.colors.text,
+                  color: theme.colors.text,
                   fontSize: 20,
                   fontWeight: "900",
                 }}
@@ -270,7 +271,7 @@ export default function TablesScreen() {
                 Aucune table active
               </Text>
 
-              <Text style={arcaneStyles.muted}>
+              <Text style={styles.muted}>
                 Active une table pour afficher ses actions dans l’écran Jet.
               </Text>
             </>
@@ -280,27 +281,27 @@ export default function TablesScreen() {
         <View
           style={{
             flexDirection: "row",
-            gap: arcane.spacing.sm,
-            marginTop: arcane.spacing.md,
+            gap: theme.spacing.sm,
+            marginTop: theme.spacing.md,
           }}
         >
           <Pressable
             onPress={() => setShowCreateModal(true)}
             style={({ pressed }) => ({
               flex: 1,
-              padding: arcane.spacing.md,
+              padding: theme.spacing.md,
               borderWidth: 1,
-              borderColor: arcane.colors.accent,
-              borderRadius: arcane.radius.lg,
-              backgroundColor: arcane.colors.accentSoft,
+              borderColor: theme.colors.accent,
+              borderRadius: theme.radius.lg,
+              backgroundColor: theme.colors.accentSoft,
               opacity: pressed ? 0.84 : 1,
               transform: [{ scale: pressed ? 0.98 : 1 }],
             })}
           >
-            <Text style={{ color: arcane.colors.text, fontWeight: "900" }}>
+            <Text style={{ color: theme.colors.text, fontWeight: "900" }}>
               Créer une table
             </Text>
-            <Text style={{ marginTop: 4, color: arcane.colors.textMuted }}>
+            <Text style={{ marginTop: 4, color: theme.colors.textMuted }}>
               Nouvelle table perso.
             </Text>
           </Pressable>
@@ -309,19 +310,19 @@ export default function TablesScreen() {
             onPress={() => router.push("/rules" as any)}
             style={({ pressed }) => ({
               flex: 1,
-              padding: arcane.spacing.md,
+              padding: theme.spacing.md,
               borderWidth: 1,
-              borderColor: arcane.colors.border,
-              borderRadius: arcane.radius.lg,
-              backgroundColor: arcane.colors.surfaceAlt,
+              borderColor: theme.colors.border,
+              borderRadius: theme.radius.lg,
+              backgroundColor: theme.colors.surfaceAlt,
               opacity: pressed ? 0.84 : 1,
               transform: [{ scale: pressed ? 0.98 : 1 }],
             })}
           >
-            <Text style={{ color: arcane.colors.text, fontWeight: "900" }}>
+            <Text style={{ color: theme.colors.text, fontWeight: "900" }}>
               Règles
             </Text>
-            <Text style={{ marginTop: 4, color: arcane.colors.textMuted }}>
+            <Text style={{ marginTop: 4, color: theme.colors.textMuted }}>
               Atelier avancé.
             </Text>
           </Pressable>
@@ -330,14 +331,14 @@ export default function TablesScreen() {
         {tables.length === 0 ? (
           <View
             style={{
-              ...arcaneStyles.card,
-              marginTop: arcane.spacing.md,
-              gap: arcane.spacing.sm,
+              ...styles.card,
+              marginTop: theme.spacing.md,
+              gap: theme.spacing.sm,
             }}
           >
             <Text
               style={{
-                color: arcane.colors.text,
+                color: theme.colors.text,
                 fontSize: 18,
                 fontWeight: "900",
               }}
@@ -345,7 +346,7 @@ export default function TablesScreen() {
               Aucune table disponible
             </Text>
 
-            <Text style={arcaneStyles.muted}>
+            <Text style={styles.muted}>
               Crée ta première table personnalisée.
             </Text>
           </View>
@@ -371,14 +372,14 @@ export default function TablesScreen() {
                     router.push(`/tables/${table.id}` as any);
                   }}
                   style={({ pressed }) => ({
-                    ...arcaneStyles.card,
-                    gap: arcane.spacing.sm,
+                    ...styles.card,
+                    gap: theme.spacing.sm,
                     borderColor: isActive
-                      ? arcane.colors.accent
-                      : arcane.colors.border,
+                      ? theme.colors.accent
+                      : theme.colors.border,
                     backgroundColor: isActive
-                      ? arcane.colors.accentSoft
-                      : arcane.colors.backgroundElevated,
+                      ? theme.colors.accentSoft
+                      : theme.colors.backgroundElevated,
                     opacity: pressed ? 0.88 : 1,
                     transform: [{ scale: pressed ? 0.99 : 1 }],
                   })}
@@ -388,13 +389,13 @@ export default function TablesScreen() {
                       flexDirection: "row",
                       justifyContent: "space-between",
                       alignItems: "flex-start",
-                      gap: arcane.spacing.sm,
+                      gap: theme.spacing.sm,
                     }}
                   >
                     <View style={{ flex: 1 }}>
                       <Text
                         style={{
-                          color: arcane.colors.text,
+                          color: theme.colors.text,
                           fontSize: 18,
                           fontWeight: "900",
                         }}
@@ -405,7 +406,7 @@ export default function TablesScreen() {
                       <Text
                         style={{
                           marginTop: 4,
-                          color: arcane.colors.textMuted,
+                          color: theme.colors.textMuted,
                           fontWeight: "600",
                         }}
                       >
@@ -421,14 +422,14 @@ export default function TablesScreen() {
                           paddingVertical: 5,
                           paddingHorizontal: 10,
                           borderWidth: 1,
-                          borderColor: arcane.colors.accent,
-                          borderRadius: arcane.radius.pill,
-                          backgroundColor: arcane.colors.accentSoft,
+                          borderColor: theme.colors.accent,
+                          borderRadius: theme.radius.pill,
+                          backgroundColor: theme.colors.accentSoft,
                         }}
                       >
                         <Text
                           style={{
-                            color: arcane.colors.text,
+                            color: theme.colors.text,
                             fontWeight: "900",
                           }}
                         >
@@ -442,25 +443,25 @@ export default function TablesScreen() {
                     style={{
                       flexDirection: "row",
                       flexWrap: "wrap",
-                      gap: arcane.spacing.sm,
+                      gap: theme.spacing.sm,
                     }}
                   >
-                    <Text style={{ color: arcane.colors.textMuted }}>
+                    <Text style={{ color: theme.colors.textMuted }}>
                       {stats.profile_count} profil
                       {stats.profile_count > 1 ? "s" : ""}
                     </Text>
 
-                    <Text style={{ color: arcane.colors.textMuted }}>
+                    <Text style={{ color: theme.colors.textMuted }}>
                       {stats.group_count} action
                       {stats.group_count > 1 ? "s" : ""}
                     </Text>
 
-                    <Text style={{ color: arcane.colors.textMuted }}>
+                    <Text style={{ color: theme.colors.textMuted }}>
                       {stats.die_count} entrée{stats.die_count > 1 ? "s" : ""}
                     </Text>
                   </View>
 
-                  <Text style={{ color: arcane.colors.textSubtle }}>
+                  <Text style={{ color: theme.colors.textSubtle }}>
                     Appuyer pour gérer les profils et actions
                   </Text>
 
@@ -468,8 +469,8 @@ export default function TablesScreen() {
                     style={{
                       flexDirection: "row",
                       flexWrap: "wrap",
-                      gap: arcane.spacing.sm,
-                      marginTop: arcane.spacing.xs,
+                      gap: theme.spacing.sm,
+                      marginTop: theme.spacing.xs,
                     }}
                   >
                     <Pressable
@@ -482,18 +483,18 @@ export default function TablesScreen() {
                         paddingHorizontal: 12,
                         borderWidth: 1,
                         borderColor: isActive
-                          ? arcane.colors.accent
-                          : arcane.colors.border,
-                        borderRadius: arcane.radius.pill,
+                          ? theme.colors.accent
+                          : theme.colors.border,
+                        borderRadius: theme.radius.pill,
                         backgroundColor: isActive
-                          ? arcane.colors.accentSoft
-                          : arcane.colors.surfaceAlt,
+                          ? theme.colors.accentSoft
+                          : theme.colors.surfaceAlt,
                         opacity: isActive ? 0.65 : pressed ? 0.82 : 1,
                       })}
                     >
                       <Text
                         style={{
-                          color: arcane.colors.text,
+                          color: theme.colors.text,
                           fontWeight: "900",
                         }}
                       >
@@ -509,15 +510,15 @@ export default function TablesScreen() {
                         paddingVertical: 9,
                         paddingHorizontal: 12,
                         borderWidth: 1,
-                        borderColor: arcane.colors.border,
-                        borderRadius: arcane.radius.pill,
-                        backgroundColor: arcane.colors.surfaceAlt,
+                        borderColor: theme.colors.border,
+                        borderRadius: theme.radius.pill,
+                        backgroundColor: theme.colors.surfaceAlt,
                         opacity: pressed ? 0.82 : 1,
                       })}
                     >
                       <Text
                         style={{
-                          color: arcane.colors.text,
+                          color: theme.colors.text,
                           fontWeight: "900",
                         }}
                       >
@@ -532,15 +533,15 @@ export default function TablesScreen() {
                           paddingVertical: 9,
                           paddingHorizontal: 12,
                           borderWidth: 1,
-                          borderColor: arcane.colors.failure,
-                          borderRadius: arcane.radius.pill,
-                          backgroundColor: arcane.colors.failureSoft,
+                          borderColor: theme.colors.failure,
+                          borderRadius: theme.radius.pill,
+                          backgroundColor: theme.colors.failureSoft,
                           opacity: pressed ? 0.82 : 1,
                         })}
                       >
                         <Text
                           style={{
-                            color: arcane.colors.text,
+                            color: theme.colors.text,
                             fontWeight: "900",
                           }}
                         >
@@ -570,21 +571,21 @@ export default function TablesScreen() {
               flex: 1,
               backgroundColor: "rgba(0,0,0,0.68)",
               justifyContent: "center",
-              padding: arcane.spacing.md,
+              padding: theme.spacing.md,
             }}
           >
             <View
               style={{
-                ...arcaneStyles.card,
-                gap: arcane.spacing.md,
-                borderColor: arcane.colors.accent,
+                ...styles.card,
+                gap: theme.spacing.md,
+                borderColor: theme.colors.accent,
               }}
             >
-              <View style={{ gap: arcane.spacing.xs }}>
+              <View style={{ gap: theme.spacing.xs }}>
                 <Text
                   style={{
-                    color: arcane.colors.textSubtle,
-                    fontSize: arcane.typography.tiny,
+                    color: theme.colors.textSubtle,
+                    fontSize: theme.typography.tiny,
                     fontWeight: "900",
                     textTransform: "uppercase",
                     letterSpacing: 0.8,
@@ -595,7 +596,7 @@ export default function TablesScreen() {
 
                 <Text
                   style={{
-                    color: arcane.colors.text,
+                    color: theme.colors.text,
                     fontSize: 22,
                     fontWeight: "900",
                   }}
@@ -603,16 +604,16 @@ export default function TablesScreen() {
                   Créer une table
                 </Text>
 
-                <Text style={arcaneStyles.muted}>
+                <Text style={styles.muted}>
                   Une table regroupe un univers, ses profils, ses actions et ses
                   règles de lancer.
                 </Text>
               </View>
 
-              <View style={{ gap: arcane.spacing.xs }}>
+              <View style={{ gap: theme.spacing.xs }}>
                 <Text
                   style={{
-                    color: arcane.colors.text,
+                    color: theme.colors.text,
                     fontWeight: "800",
                   }}
                 >
@@ -623,18 +624,18 @@ export default function TablesScreen() {
                   value={newTableName}
                   onChangeText={setNewTableName}
                   placeholder="Ex: Campagne principale"
-                  placeholderTextColor={arcane.colors.textMuted}
-                  selectionColor={arcane.colors.accent}
+                  placeholderTextColor={theme.colors.textMuted}
+                  selectionColor={theme.colors.accent}
                   editable={!isCreating}
                   style={{
                     minHeight: 48,
                     borderWidth: 1,
-                    borderColor: arcane.colors.border,
-                    borderRadius: arcane.radius.md,
+                    borderColor: theme.colors.border,
+                    borderRadius: theme.radius.md,
                     paddingHorizontal: 12,
                     paddingVertical: 10,
-                    backgroundColor: arcane.colors.surfaceAlt,
-                    color: arcane.colors.text,
+                    backgroundColor: theme.colors.surfaceAlt,
+                    color: theme.colors.text,
                     fontSize: 16,
                     fontWeight: "700",
                     opacity: isCreating ? 0.6 : 1,
@@ -647,7 +648,7 @@ export default function TablesScreen() {
                   flexDirection: "row",
                   justifyContent: "flex-end",
                   flexWrap: "wrap",
-                  gap: arcane.spacing.sm,
+                  gap: theme.spacing.sm,
                 }}
               >
                 <Pressable
@@ -662,16 +663,16 @@ export default function TablesScreen() {
                     paddingVertical: 11,
                     paddingHorizontal: 14,
                     borderWidth: 1,
-                    borderColor: arcane.colors.border,
-                    borderRadius: arcane.radius.pill,
-                    backgroundColor: arcane.colors.surfaceAlt,
+                    borderColor: theme.colors.border,
+                    borderRadius: theme.radius.pill,
+                    backgroundColor: theme.colors.surfaceAlt,
                     opacity: isCreating ? 0.5 : pressed ? 0.84 : 1,
                     transform: [{ scale: pressed ? 0.97 : 1 }],
                   })}
                 >
                   <Text
                     style={{
-                      color: arcane.colors.text,
+                      color: theme.colors.text,
                       fontWeight: "900",
                     }}
                   >
@@ -686,16 +687,16 @@ export default function TablesScreen() {
                     paddingVertical: 11,
                     paddingHorizontal: 14,
                     borderWidth: 1,
-                    borderColor: arcane.colors.accent,
-                    borderRadius: arcane.radius.pill,
-                    backgroundColor: arcane.colors.accentSoft,
+                    borderColor: theme.colors.accent,
+                    borderRadius: theme.radius.pill,
+                    backgroundColor: theme.colors.accentSoft,
                     opacity: isCreating ? 0.6 : pressed ? 0.84 : 1,
                     transform: [{ scale: pressed ? 0.97 : 1 }],
                   })}
                 >
                   <Text
                     style={{
-                      color: arcane.colors.text,
+                      color: theme.colors.text,
                       fontWeight: "900",
                     }}
                   >

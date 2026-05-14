@@ -2,8 +2,8 @@ import { Text, View } from "react-native";
 import type { GroupRollResult } from "../../../core/roll/roll";
 import { RollResultCard } from "./RollResultCard";
 
-import { arcane } from "../../../theme/arcaneTheme";
-import { arcaneStyles } from "../../../theme/arcaneStyles";
+import { useArcaneTheme } from "../../../theme/ArcaneThemeProvider";
+
 
 type ResultPanelProps = {
     result: GroupRollResult | null;
@@ -99,25 +99,26 @@ function getResultHeadline(result: GroupRollResult) {
 }
 
 export function ResultPanel({ result }: ResultPanelProps) {
+    const { theme, styles } = useArcaneTheme();
 
     const headline = result ? getResultHeadline(result) : null;
 
     return (
         <View
             style={{
-                ...arcaneStyles.card,
-                borderColor: result ? arcane.colors.accent : arcane.colors.border,
+                ...styles.card,
+                borderColor: result ? theme.colors.accent : theme.colors.border,
                 backgroundColor: result
-                    ? arcane.colors.backgroundElevated
-                    : arcane.colors.surface,
-                gap: arcane.spacing.md,
+                    ? theme.colors.backgroundElevated
+                    : theme.colors.surface,
+                gap: theme.spacing.md,
             }}
         >
-            <View style={{ gap: arcane.spacing.xs }}>
+            <View style={{ gap: theme.spacing.xs }}>
                 <Text
                     style={{
-                        color: arcane.colors.textSubtle,
-                        fontSize: arcane.typography.tiny,
+                        color: theme.colors.textSubtle,
+                        fontSize: theme.typography.tiny,
                         fontWeight: "900",
                         textTransform: "uppercase",
                         letterSpacing: 0.8,
@@ -130,7 +131,7 @@ export function ResultPanel({ result }: ResultPanelProps) {
                     <>
                         <Text
                             style={{
-                                color: arcane.colors.text,
+                                color: theme.colors.text,
                                 fontSize: 20,
                                 fontWeight: "900",
                             }}
@@ -140,7 +141,7 @@ export function ResultPanel({ result }: ResultPanelProps) {
 
                         <Text
                             style={{
-                                color: arcane.colors.textMuted,
+                                color: theme.colors.textMuted,
                                 lineHeight: 20,
                             }}
                         >
@@ -151,7 +152,7 @@ export function ResultPanel({ result }: ResultPanelProps) {
                     <>
                         <Text
                             style={{
-                                color: arcane.colors.text,
+                                color: theme.colors.text,
                                 fontSize: 22,
                                 fontWeight: "900",
                             }}
@@ -161,18 +162,18 @@ export function ResultPanel({ result }: ResultPanelProps) {
 
                         <View
                             style={{
-                                marginTop: arcane.spacing.xs,
-                                padding: arcane.spacing.md,
+                                marginTop: theme.spacing.xs,
+                                padding: theme.spacing.md,
                                 borderWidth: 1,
-                                borderColor: arcane.colors.accent,
-                                borderRadius: arcane.radius.lg,
-                                backgroundColor: arcane.colors.accentSoft,
-                                gap: arcane.spacing.xs,
+                                borderColor: theme.colors.accent,
+                                borderRadius: theme.radius.lg,
+                                backgroundColor: theme.colors.accentSoft,
+                                gap: theme.spacing.xs,
                             }}
                         >
                             <Text
                                 style={{
-                                    color: arcane.colors.text,
+                                    color: theme.colors.text,
                                     fontSize: 24,
                                     fontWeight: "900",
                                 }}
@@ -182,7 +183,7 @@ export function ResultPanel({ result }: ResultPanelProps) {
 
                             <Text
                                 style={{
-                                    color: arcane.colors.textMuted,
+                                    color: theme.colors.textMuted,
                                     fontWeight: "700",
                                 }}
                             >
@@ -194,7 +195,7 @@ export function ResultPanel({ result }: ResultPanelProps) {
             </View>
 
             {result ? (
-                <View style={{ gap: arcane.spacing.sm }}>
+                <View style={{ gap: theme.spacing.sm }}>
                     {result.group_eval_result ? (
                         <RollResultCard
                             result={result.group_eval_result}
@@ -206,8 +207,8 @@ export function ResultPanel({ result }: ResultPanelProps) {
                         <View
                             key={entry.entryId}
                             style={{
-                                ...arcaneStyles.cardSoft,
-                                gap: arcane.spacing.sm,
+                                ...styles.cardSoft,
+                                gap: theme.spacing.sm,
                             }}
                         >
                             {entry.eval_result ? (
@@ -219,7 +220,7 @@ export function ResultPanel({ result }: ResultPanelProps) {
                                 <>
                                     <Text
                                         style={{
-                                            color: arcane.colors.text,
+                                            color: theme.colors.text,
                                             fontWeight: "900",
                                         }}
                                     >
@@ -228,7 +229,7 @@ export function ResultPanel({ result }: ResultPanelProps) {
 
                                     <Text
                                         style={{
-                                            color: arcane.colors.textMuted,
+                                            color: theme.colors.textMuted,
                                         }}
                                     >
                                         Valeurs : {formatValues(entry.natural_values)}
@@ -236,7 +237,7 @@ export function ResultPanel({ result }: ResultPanelProps) {
 
                                     <Text
                                         style={{
-                                            color: arcane.colors.text,
+                                            color: theme.colors.text,
                                             fontSize: 18,
                                             fontWeight: "900",
                                         }}
@@ -251,14 +252,14 @@ export function ResultPanel({ result }: ResultPanelProps) {
                     {!result.group_eval_result && result.entries.length > 1 ? (
                         <View
                             style={{
-                                paddingTop: arcane.spacing.sm,
+                                paddingTop: theme.spacing.sm,
                                 borderTopWidth: 1,
-                                borderTopColor: arcane.colors.border,
+                                borderTopColor: theme.colors.border,
                             }}
                         >
                             <Text
                                 style={{
-                                    color: arcane.colors.accent,
+                                    color: theme.colors.accent,
                                     fontSize: 24,
                                     fontWeight: "900",
                                 }}

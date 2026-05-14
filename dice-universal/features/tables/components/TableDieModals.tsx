@@ -17,8 +17,7 @@ import type {
 import type { RuleRow } from "../../../data/repositories/rulesRepo";
 import { getCompatibleRulesForContext } from "../../rules/helpers/ruleCompatibility";
 
-import { arcane } from "../../../theme/arcaneTheme";
-import { arcaneStyles } from "../../../theme/arcaneStyles";
+import { useArcaneTheme } from "../../../theme/ArcaneThemeProvider";
 
 type Props = {
   showCreateDieModal: boolean;
@@ -62,6 +61,8 @@ function ModalButton({
   onPress: () => void;
   variant?: "default" | "accent";
 }) {
+  const { theme } = useArcaneTheme();
+
   const isAccent = variant === "accent";
 
   return (
@@ -71,18 +72,18 @@ function ModalButton({
         paddingVertical: 11,
         paddingHorizontal: 14,
         borderWidth: 1,
-        borderColor: isAccent ? arcane.colors.accent : arcane.colors.border,
-        borderRadius: arcane.radius.pill,
+        borderColor: isAccent ? theme.colors.accent : theme.colors.border,
+        borderRadius: theme.radius.pill,
         backgroundColor: isAccent
-          ? arcane.colors.accentSoft
-          : arcane.colors.surfaceAlt,
+          ? theme.colors.accentSoft
+          : theme.colors.surfaceAlt,
         opacity: pressed ? 0.84 : 1,
         transform: [{ scale: pressed ? 0.97 : 1 }],
       })}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontWeight: "900",
         }}
       >
@@ -93,10 +94,11 @@ function ModalButton({
 }
 
 function FieldLabel({ children }: { children: string }) {
+  const { theme } = useArcaneTheme();
   return (
     <Text
       style={{
-        color: arcane.colors.text,
+        color: theme.colors.text,
         fontWeight: "800",
       }}
     >
@@ -116,23 +118,24 @@ function BoxInput({
   placeholder: string;
   keyboardType?: "default" | "numeric";
 }) {
+  const { theme } = useArcaneTheme();
   return (
     <TextInput
       value={value}
       onChangeText={onChangeText}
       placeholder={placeholder}
-      placeholderTextColor={arcane.colors.textMuted}
-      selectionColor={arcane.colors.accent}
+      placeholderTextColor={theme.colors.textMuted}
+      selectionColor={theme.colors.accent}
       keyboardType={keyboardType}
       style={{
         minHeight: 48,
         borderWidth: 1,
-        borderColor: arcane.colors.border,
-        borderRadius: arcane.radius.md,
+        borderColor: theme.colors.border,
+        borderRadius: theme.radius.md,
         paddingHorizontal: 12,
         paddingVertical: 10,
-        backgroundColor: arcane.colors.surfaceAlt,
-        color: arcane.colors.text,
+        backgroundColor: theme.colors.surfaceAlt,
+        color: theme.colors.text,
         fontSize: 16,
         fontWeight: "700",
       }}
@@ -147,8 +150,9 @@ function SignPicker({
   value: "1" | "-1";
   onChange: (value: "1" | "-1") => void;
 }) {
+  const { theme } = useArcaneTheme();
   return (
-    <View style={{ flexDirection: "row", gap: arcane.spacing.sm }}>
+    <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
       {[
         { value: "1" as const, label: "+" },
         { value: "-1" as const, label: "−" },
@@ -166,18 +170,18 @@ function SignPicker({
               justifyContent: "center",
               borderWidth: 1,
               borderColor: selected
-                ? arcane.colors.accent
-                : arcane.colors.border,
-              borderRadius: arcane.radius.pill,
+                ? theme.colors.accent
+                : theme.colors.border,
+              borderRadius: theme.radius.pill,
               backgroundColor: selected
-                ? arcane.colors.accentSoft
-                : arcane.colors.surfaceAlt,
+                ? theme.colors.accentSoft
+                : theme.colors.surfaceAlt,
               opacity: pressed ? 0.84 : selected ? 1 : 0.72,
             })}
           >
             <Text
               style={{
-                color: arcane.colors.text,
+                color: theme.colors.text,
                 fontSize: 18,
                 fontWeight: "900",
               }}
@@ -202,23 +206,24 @@ function RuleOption({
   selected: boolean;
   onPress: () => void;
 }) {
+  const { theme } = useArcaneTheme();
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        padding: arcane.spacing.sm,
+        padding: theme.spacing.sm,
         borderWidth: 1,
-        borderColor: selected ? arcane.colors.accent : arcane.colors.border,
-        borderRadius: arcane.radius.md,
+        borderColor: selected ? theme.colors.accent : theme.colors.border,
+        borderRadius: theme.radius.md,
         backgroundColor: selected
-          ? arcane.colors.accentSoft
-          : arcane.colors.surfaceAlt,
+          ? theme.colors.accentSoft
+          : theme.colors.surfaceAlt,
         opacity: pressed ? 0.84 : selected ? 1 : 0.82,
       })}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontWeight: selected ? "900" : "800",
         }}
       >
@@ -229,7 +234,7 @@ function RuleOption({
         <Text
           style={{
             marginTop: 3,
-            color: arcane.colors.textMuted,
+            color: theme.colors.textMuted,
             fontSize: 12,
             fontWeight: "600",
           }}
@@ -252,11 +257,12 @@ function RulesPicker({
   legacyRules: RuleRow[];
   onSelectRuleId: (value: string | null) => void;
 }) {
+  const { theme, styles } = useArcaneTheme();
   return (
-    <View style={{ gap: arcane.spacing.sm }}>
+    <View style={{ gap: theme.spacing.sm }}>
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontWeight: "900",
           fontSize: 16,
         }}
@@ -273,20 +279,20 @@ function RulesPicker({
 
       <Text
         style={{
-          color: arcane.colors.textSubtle,
-          fontSize: arcane.typography.tiny,
+          color: theme.colors.textSubtle,
+          fontSize: theme.typography.tiny,
           fontWeight: "900",
           textTransform: "uppercase",
           letterSpacing: 0.8,
-          marginTop: arcane.spacing.xs,
+          marginTop: theme.spacing.xs,
         }}
       >
         Règles compatibles
       </Text>
 
       {modernRules.length === 0 && legacyRules.length === 0 ? (
-        <View style={arcaneStyles.cardSoft}>
-          <Text style={arcaneStyles.muted}>
+        <View style={styles.cardSoft}>
+          <Text style={styles.muted}>
             Aucune règle compatible avec ce type de dé.
           </Text>
         </View>
@@ -303,11 +309,11 @@ function RulesPicker({
       ))}
 
       {legacyRules.length > 0 ? (
-        <View style={{ gap: arcane.spacing.sm, marginTop: arcane.spacing.xs }}>
+        <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.xs }}>
           <Text
             style={{
-              color: arcane.colors.textSubtle,
-              fontSize: arcane.typography.tiny,
+              color: theme.colors.textSubtle,
+              fontSize: theme.typography.tiny,
               fontWeight: "900",
               textTransform: "uppercase",
               letterSpacing: 0.8,
@@ -370,27 +376,28 @@ function DieModalShell({
   onSubmit: () => void | Promise<void>;
   submitLabel: string;
 }) {
+  const { theme, styles } = useArcaneTheme();
   return (
     <View
       style={{
         flex: 1,
         backgroundColor: "rgba(0,0,0,0.68)",
         justifyContent: "center",
-        padding: arcane.spacing.md,
+        padding: theme.spacing.md,
       }}
     >
       <View
         style={{
-          ...arcaneStyles.card,
+          ...styles.card,
           maxHeight: "90%",
-          gap: arcane.spacing.md,
+          gap: theme.spacing.md,
         }}
       >
-        <View style={{ gap: arcane.spacing.xs }}>
+        <View style={{ gap: theme.spacing.xs }}>
           <Text
             style={{
-              color: arcane.colors.textSubtle,
-              fontSize: arcane.typography.tiny,
+              color: theme.colors.textSubtle,
+              fontSize: theme.typography.tiny,
               fontWeight: "900",
               textTransform: "uppercase",
               letterSpacing: 0.8,
@@ -401,7 +408,7 @@ function DieModalShell({
 
           <Text
             style={{
-              color: arcane.colors.text,
+              color: theme.colors.text,
               fontSize: 22,
               fontWeight: "900",
             }}
@@ -409,12 +416,12 @@ function DieModalShell({
             {title}
           </Text>
 
-          <Text style={arcaneStyles.muted}>{subtitle}</Text>
+          <Text style={styles.muted}>{subtitle}</Text>
 
           {actionName ? (
             <Text
               style={{
-                color: arcane.colors.accent,
+                color: theme.colors.accent,
                 fontWeight: "800",
               }}
             >
@@ -425,12 +432,12 @@ function DieModalShell({
 
         <ScrollView
           contentContainerStyle={{
-            gap: arcane.spacing.md,
-            paddingBottom: arcane.spacing.sm,
+            gap: theme.spacing.md,
+            paddingBottom: theme.spacing.sm,
           }}
           showsVerticalScrollIndicator={false}
         >
-          <View style={{ gap: arcane.spacing.xs }}>
+          <View style={{ gap: theme.spacing.xs }}>
             <FieldLabel>Faces du dé</FieldLabel>
             <BoxInput
               value={sides}
@@ -440,7 +447,7 @@ function DieModalShell({
             />
           </View>
 
-          <View style={{ gap: arcane.spacing.xs }}>
+          <View style={{ gap: theme.spacing.xs }}>
             <FieldLabel>Quantité</FieldLabel>
             <BoxInput
               value={qty}
@@ -450,7 +457,7 @@ function DieModalShell({
             />
           </View>
 
-          <View style={{ gap: arcane.spacing.xs }}>
+          <View style={{ gap: theme.spacing.xs }}>
             <FieldLabel>Modificateur</FieldLabel>
             <BoxInput
               value={modifier}
@@ -460,7 +467,7 @@ function DieModalShell({
             />
           </View>
 
-          <View style={{ gap: arcane.spacing.xs }}>
+          <View style={{ gap: theme.spacing.xs }}>
             <FieldLabel>Signe</FieldLabel>
             <SignPicker value={sign} onChange={onChangeSign} />
           </View>
@@ -478,7 +485,7 @@ function DieModalShell({
             flexDirection: "row",
             justifyContent: "flex-end",
             flexWrap: "wrap",
-            gap: arcane.spacing.sm,
+            gap: theme.spacing.sm,
           }}
         >
           <ModalButton label="Annuler" onPress={onClose} />

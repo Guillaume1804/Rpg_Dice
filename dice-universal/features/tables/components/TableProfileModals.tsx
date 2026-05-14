@@ -2,8 +2,7 @@
 
 import { Modal, Pressable, Text, TextInput, View } from "react-native";
 
-import { arcane } from "../../../theme/arcaneTheme";
-import { arcaneStyles } from "../../../theme/arcaneStyles";
+import { useArcaneTheme } from "../../../theme/ArcaneThemeProvider";
 
 type Props = {
   showCreateProfileModal: boolean;
@@ -28,6 +27,8 @@ function ModalButton({
   onPress: () => void;
   variant?: "default" | "accent";
 }) {
+  const { theme } = useArcaneTheme();
+
   const isAccent = variant === "accent";
 
   return (
@@ -37,18 +38,18 @@ function ModalButton({
         paddingVertical: 11,
         paddingHorizontal: 14,
         borderWidth: 1,
-        borderColor: isAccent ? arcane.colors.accent : arcane.colors.border,
-        borderRadius: arcane.radius.pill,
+        borderColor: isAccent ? theme.colors.accent : theme.colors.border,
+        borderRadius: theme.radius.pill,
         backgroundColor: isAccent
-          ? arcane.colors.accentSoft
-          : arcane.colors.surfaceAlt,
+          ? theme.colors.accentSoft
+          : theme.colors.surfaceAlt,
         opacity: pressed ? 0.84 : 1,
         transform: [{ scale: pressed ? 0.97 : 1 }],
       })}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontWeight: "900",
         }}
       >
@@ -79,26 +80,28 @@ function ProfileModalShell({
   onSubmit: () => void | Promise<void>;
   submitLabel: string;
 }) {
+  const { theme, styles } = useArcaneTheme();
+  
   return (
     <View
       style={{
         flex: 1,
         backgroundColor: "rgba(0,0,0,0.68)",
         justifyContent: "center",
-        padding: arcane.spacing.md,
+        padding: theme.spacing.md,
       }}
     >
       <View
         style={{
-          ...arcaneStyles.card,
-          gap: arcane.spacing.md,
+          ...styles.card,
+          gap: theme.spacing.md,
         }}
       >
-        <View style={{ gap: arcane.spacing.xs }}>
+        <View style={{ gap: theme.spacing.xs }}>
           <Text
             style={{
-              color: arcane.colors.textSubtle,
-              fontSize: arcane.typography.tiny,
+              color: theme.colors.textSubtle,
+              fontSize: theme.typography.tiny,
               fontWeight: "900",
               textTransform: "uppercase",
               letterSpacing: 0.8,
@@ -109,7 +112,7 @@ function ProfileModalShell({
 
           <Text
             style={{
-              color: arcane.colors.text,
+              color: theme.colors.text,
               fontSize: 22,
               fontWeight: "900",
             }}
@@ -117,13 +120,13 @@ function ProfileModalShell({
             {title}
           </Text>
 
-          <Text style={arcaneStyles.muted}>{description}</Text>
+          <Text style={styles.muted}>{description}</Text>
         </View>
 
-        <View style={{ gap: arcane.spacing.xs }}>
+        <View style={{ gap: theme.spacing.xs }}>
           <Text
             style={{
-              color: arcane.colors.text,
+              color: theme.colors.text,
               fontWeight: "800",
             }}
           >
@@ -134,17 +137,17 @@ function ProfileModalShell({
             value={inputValue}
             onChangeText={onChangeInput}
             placeholder={inputPlaceholder}
-            placeholderTextColor={arcane.colors.textMuted}
-            selectionColor={arcane.colors.accent}
+            placeholderTextColor={theme.colors.textMuted}
+            selectionColor={theme.colors.accent}
             style={{
               minHeight: 48,
               borderWidth: 1,
-              borderColor: arcane.colors.border,
-              borderRadius: arcane.radius.md,
+              borderColor: theme.colors.border,
+              borderRadius: theme.radius.md,
               paddingHorizontal: 12,
               paddingVertical: 10,
-              backgroundColor: arcane.colors.surfaceAlt,
-              color: arcane.colors.text,
+              backgroundColor: theme.colors.surfaceAlt,
+              color: theme.colors.text,
               fontSize: 16,
               fontWeight: "700",
             }}
@@ -156,7 +159,7 @@ function ProfileModalShell({
             flexDirection: "row",
             justifyContent: "flex-end",
             flexWrap: "wrap",
-            gap: arcane.spacing.sm,
+            gap: theme.spacing.sm,
           }}
         >
           <ModalButton label="Annuler" onPress={onClose} />

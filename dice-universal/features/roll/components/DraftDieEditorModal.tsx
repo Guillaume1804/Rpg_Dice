@@ -10,8 +10,7 @@ import {
 } from "react-native";
 import type { RuleRow } from "../../../data/repositories/rulesRepo";
 
-import { arcane } from "../../../theme/arcaneTheme";
-import { arcaneStyles } from "../../../theme/arcaneStyles";
+import { useArcaneTheme } from "../../../theme/ArcaneThemeProvider";
 
 type Props = {
   visible: boolean;
@@ -33,10 +32,11 @@ type Props = {
 };
 
 function FieldLabel({ children }: { children: string }) {
+  const { theme } = useArcaneTheme();
   return (
     <Text
       style={{
-        color: arcane.colors.textMuted,
+        color: theme.colors.textMuted,
         fontWeight: "800",
       }}
     >
@@ -56,19 +56,20 @@ function ModalInput({
   placeholder: string;
   keyboardType?: "numeric" | "numbers-and-punctuation";
 }) {
+  const { theme } = useArcaneTheme();
   return (
     <TextInput
       value={value}
       onChangeText={onChangeText}
       placeholder={placeholder}
-      placeholderTextColor={arcane.colors.textSubtle}
+      placeholderTextColor={theme.colors.textSubtle}
       keyboardType={keyboardType}
       style={{
-        color: arcane.colors.text,
-        backgroundColor: arcane.colors.surfaceAlt,
+        color: theme.colors.text,
+        backgroundColor: theme.colors.surfaceAlt,
         borderWidth: 1,
-        borderColor: arcane.colors.border,
-        borderRadius: arcane.radius.md,
+        borderColor: theme.colors.border,
+        borderRadius: theme.radius.md,
         paddingHorizontal: 12,
         paddingVertical: 11,
         fontSize: 16,
@@ -86,6 +87,7 @@ function ChoiceButton({
   selected: boolean;
   onPress: () => void;
 }) {
+  const { theme } = useArcaneTheme();
   return (
     <Pressable
       onPress={onPress}
@@ -93,18 +95,18 @@ function ChoiceButton({
         paddingVertical: 10,
         paddingHorizontal: 14,
         borderWidth: 1,
-        borderColor: selected ? arcane.colors.accent : arcane.colors.border,
-        borderRadius: arcane.radius.pill,
+        borderColor: selected ? theme.colors.accent : theme.colors.border,
+        borderRadius: theme.radius.pill,
         backgroundColor: selected
-          ? arcane.colors.accentSoft
-          : arcane.colors.surfaceAlt,
+          ? theme.colors.accentSoft
+          : theme.colors.surfaceAlt,
         opacity: pressed ? 0.84 : 1,
         transform: [{ scale: pressed ? 0.97 : 1 }],
       })}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontWeight: selected ? "900" : "800",
         }}
       >
@@ -125,23 +127,24 @@ function RuleOption({
   selected: boolean;
   onPress: () => void;
 }) {
+  const { theme, styles } = useArcaneTheme();
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        ...arcaneStyles.cardSoft,
-        gap: arcane.spacing.xs,
-        borderColor: selected ? arcane.colors.accent : arcane.colors.border,
+        ...styles.cardSoft,
+        gap: theme.spacing.xs,
+        borderColor: selected ? theme.colors.accent : theme.colors.border,
         backgroundColor: selected
-          ? arcane.colors.accentSoft
-          : arcane.colors.surfaceAlt,
+          ? theme.colors.accentSoft
+          : theme.colors.surfaceAlt,
         opacity: pressed ? 0.86 : 1,
         transform: [{ scale: pressed ? 0.99 : 1 }],
       })}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontWeight: selected ? "900" : "800",
         }}
       >
@@ -151,7 +154,7 @@ function RuleOption({
       {description ? (
         <Text
           style={{
-            color: arcane.colors.textMuted,
+            color: theme.colors.textMuted,
             fontSize: 12,
           }}
         >
@@ -171,6 +174,7 @@ function ModalButton({
   onPress: () => void;
   variant?: "default" | "accent";
 }) {
+  const { theme } = useArcaneTheme();
   const isAccent = variant === "accent";
 
   return (
@@ -180,18 +184,18 @@ function ModalButton({
         paddingVertical: 10,
         paddingHorizontal: 14,
         borderWidth: 1,
-        borderColor: isAccent ? arcane.colors.accent : arcane.colors.border,
-        borderRadius: arcane.radius.pill,
+        borderColor: isAccent ? theme.colors.accent : theme.colors.border,
+        borderRadius: theme.radius.pill,
         backgroundColor: isAccent
-          ? arcane.colors.accentSoft
-          : arcane.colors.surfaceAlt,
+          ? theme.colors.accentSoft
+          : theme.colors.surfaceAlt,
         opacity: pressed ? 0.84 : 1,
         transform: [{ scale: pressed ? 0.97 : 1 }],
       })}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontWeight: "900",
         }}
       >
@@ -219,6 +223,7 @@ export function DraftDieEditorModal({
   onCancel,
   onSave,
 }: Props) {
+  const { theme, styles } = useArcaneTheme();
   return (
     <Modal
       visible={visible}
@@ -236,21 +241,21 @@ export function DraftDieEditorModal({
       >
         <View
           style={{
-            ...arcaneStyles.card,
-            gap: arcane.spacing.md,
-            borderColor: arcane.colors.accent,
+            ...styles.card,
+            gap: theme.spacing.md,
+            borderColor: theme.colors.accent,
             maxHeight: "90%",
           }}
         >
-          <View style={{ gap: arcane.spacing.xs }}>
-            <Text style={arcaneStyles.sectionTitle}>Configurer l’entrée</Text>
+          <View style={{ gap: theme.spacing.xs }}>
+            <Text style={styles.sectionTitle}>Configurer l’entrée</Text>
 
             {entryLabel ? (
-              <Text style={arcaneStyles.muted}>
+              <Text style={styles.muted}>
                 Entrée actuelle : {entryLabel}
               </Text>
             ) : (
-              <Text style={arcaneStyles.muted}>
+              <Text style={styles.muted}>
                 Ajuste le dé, son modificateur et sa règle.
               </Text>
             )}
@@ -258,13 +263,13 @@ export function DraftDieEditorModal({
 
           <ScrollView
             style={{ maxHeight: 520 }}
-            contentContainerStyle={{ gap: arcane.spacing.md }}
+            contentContainerStyle={{ gap: theme.spacing.md }}
             showsVerticalScrollIndicator
           >
-            <View style={{ gap: arcane.spacing.sm }}>
+            <View style={{ gap: theme.spacing.sm }}>
               <FieldLabel>Signe</FieldLabel>
 
-              <View style={{ flexDirection: "row", gap: arcane.spacing.sm }}>
+              <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
                 <ChoiceButton
                   label="+"
                   selected={draftEditSign === "1"}
@@ -279,7 +284,7 @@ export function DraftDieEditorModal({
               </View>
             </View>
 
-            <View style={{ gap: arcane.spacing.sm }}>
+            <View style={{ gap: theme.spacing.sm }}>
               <FieldLabel>Faces</FieldLabel>
               <ModalInput
                 value={draftEditSides}
@@ -288,7 +293,7 @@ export function DraftDieEditorModal({
               />
             </View>
 
-            <View style={{ gap: arcane.spacing.sm }}>
+            <View style={{ gap: theme.spacing.sm }}>
               <FieldLabel>Quantité</FieldLabel>
               <ModalInput
                 value={draftEditQty}
@@ -297,7 +302,7 @@ export function DraftDieEditorModal({
               />
             </View>
 
-            <View style={{ gap: arcane.spacing.sm }}>
+            <View style={{ gap: theme.spacing.sm }}>
               <FieldLabel>Modificateur</FieldLabel>
               <ModalInput
                 value={draftEditModifier}
@@ -307,11 +312,11 @@ export function DraftDieEditorModal({
               />
             </View>
 
-            <View style={{ gap: arcane.spacing.sm }}>
+            <View style={{ gap: theme.spacing.sm }}>
               <Text
                 style={{
-                  color: arcane.colors.textSubtle,
-                  fontSize: arcane.typography.tiny,
+                  color: theme.colors.textSubtle,
+                  fontSize: theme.typography.tiny,
                   fontWeight: "900",
                   textTransform: "uppercase",
                   letterSpacing: 0.8,
@@ -342,14 +347,14 @@ export function DraftDieEditorModal({
               {legacyRules.length > 0 ? (
                 <View
                   style={{
-                    gap: arcane.spacing.sm,
-                    marginTop: arcane.spacing.sm,
+                    gap: theme.spacing.sm,
+                    marginTop: theme.spacing.sm,
                   }}
                 >
                   <Text
                     style={{
-                      color: arcane.colors.textSubtle,
-                      fontSize: arcane.typography.tiny,
+                      color: theme.colors.textSubtle,
+                      fontSize: theme.typography.tiny,
                       fontWeight: "900",
                       textTransform: "uppercase",
                       letterSpacing: 0.8,
@@ -376,7 +381,7 @@ export function DraftDieEditorModal({
             style={{
               flexDirection: "row",
               justifyContent: "flex-end",
-              gap: arcane.spacing.sm,
+              gap: theme.spacing.sm,
             }}
           >
             <ModalButton label="Annuler" onPress={onCancel} />

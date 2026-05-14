@@ -2,8 +2,7 @@
 
 import { Text, TextInput, View } from "react-native";
 
-import { arcane } from "../../../../theme/arcaneTheme";
-import { arcaneStyles } from "../../../../theme/arcaneStyles";
+import { useArcaneTheme } from "../../../../theme/ArcaneThemeProvider";
 
 type Props = {
   value: string;
@@ -11,21 +10,23 @@ type Props = {
 };
 
 export function ActionWizardStepName({ value, onChangeValue }: Props) {
-  return (
-    <View style={{ gap: arcane.spacing.md }}>
-      <View style={{ gap: arcane.spacing.xs }}>
-        <Text style={arcaneStyles.sectionTitle}>Nom de l’action</Text>
+  const { theme, styles } = useArcaneTheme();
 
-        <Text style={arcaneStyles.muted}>
+  return (
+    <View style={{ gap: theme.spacing.md }}>
+      <View style={{ gap: theme.spacing.xs }}>
+        <Text style={styles.sectionTitle}>Nom de l’action</Text>
+
+        <Text style={styles.muted}>
           Donne un nom clair à cette action. Il apparaîtra ensuite dans le
           profil et dans l’écran Jet.
         </Text>
       </View>
 
-      <View style={{ gap: arcane.spacing.xs }}>
+      <View style={{ gap: theme.spacing.xs }}>
         <Text
           style={{
-            color: arcane.colors.text,
+            color: theme.colors.text,
             fontWeight: "800",
           }}
         >
@@ -36,17 +37,17 @@ export function ActionWizardStepName({ value, onChangeValue }: Props) {
           value={value}
           onChangeText={onChangeValue}
           placeholder="Ex: Attaque, Esquive, Dégâts..."
-          placeholderTextColor={arcane.colors.textSubtle}
-          selectionColor={arcane.colors.accent}
+          placeholderTextColor={theme.colors.textSubtle}
+          selectionColor={theme.colors.accent}
           style={{
             minHeight: 48,
             borderWidth: 1,
-            borderColor: arcane.colors.border,
-            borderRadius: arcane.radius.md,
+            borderColor: theme.colors.border,
+            borderRadius: theme.radius.md,
             paddingHorizontal: 12,
             paddingVertical: 11,
-            backgroundColor: arcane.colors.surfaceAlt,
-            color: arcane.colors.text,
+            backgroundColor: theme.colors.surfaceAlt,
+            color: theme.colors.text,
             fontSize: 16,
             fontWeight: "700",
           }}

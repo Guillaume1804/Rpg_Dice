@@ -3,8 +3,7 @@
 import { Text, View } from "react-native";
 import { renderRollResult } from "../renderers/rollResultRenderer";
 
-import { arcane } from "../../../theme/arcaneTheme";
-import { arcaneStyles } from "../../../theme/arcaneStyles";
+import { useArcaneTheme } from "../../../theme/ArcaneThemeProvider";
 
 type Props = {
   result: any | null;
@@ -13,6 +12,8 @@ type Props = {
 
 type Tone = "neutral" | "success" | "failure" | "warning";
 
+type ThemeColors = ReturnType<typeof useArcaneTheme>["theme"]["colors"];
+
 function getToneIcon(tone?: Tone) {
   if (tone === "success") return "✅";
   if (tone === "failure") return "❌";
@@ -20,58 +21,59 @@ function getToneIcon(tone?: Tone) {
   return "🎲";
 }
 
-function getToneColors(tone?: Tone) {
+function getToneColors(tone: Tone | undefined, colors: ThemeColors) {
   if (tone === "success") {
     return {
-      border: arcane.colors.success,
-      background: arcane.colors.successSoft,
-      text: arcane.colors.success,
+      border: colors.success,
+      background: colors.successSoft,
+      text: colors.success,
     };
   }
 
   if (tone === "failure") {
     return {
-      border: arcane.colors.failure,
-      background: arcane.colors.failureSoft,
-      text: arcane.colors.failure,
+      border: colors.failure,
+      background: colors.failureSoft,
+      text: colors.failure,
     };
   }
 
   if (tone === "warning") {
     return {
-      border: arcane.colors.warning,
-      background: arcane.colors.warningSoft,
-      text: arcane.colors.warning,
+      border: colors.warning,
+      background: colors.warningSoft,
+      text: colors.warning,
     };
   }
 
   return {
-    border: arcane.colors.border,
-    background: arcane.colors.surfaceAlt,
-    text: arcane.colors.text,
+    border: colors.border,
+    background: colors.surfaceAlt,
+    text: colors.text,
   };
 }
 
 export function RollResultCard({ result, title }: Props) {
+  const { theme, styles } = useArcaneTheme();
   const rendered = renderRollResult(result);
 
   if (!rendered) return null;
 
-  const toneColors = getToneColors(rendered.tone);
+  const toneColors = getToneColors(rendered.tone, theme.colors);
 
   return (
     <View
       style={{
-        ...arcaneStyles.cardSoft,
+        ...styles.cardSoft,
         borderColor: toneColors.border,
         backgroundColor: toneColors.background,
-        gap: arcane.spacing.sm,
+        gap: theme.spacing.sm,
       }}
     >
       <Text
         style={{
-          color: arcane.colors.textMuted,
-          fontSize: arcane.typography.small,
+          color: theme.colors.textMuted,
+          fontSize: theme.typography.small,
           fontWeight: "900",
         }}
       >
@@ -98,8 +100,8 @@ export function RollResultCard({ result, title }: Props) {
                 key={`roll-result-line-${index}`}
                 style={{
                   color: isSectionTitle
-                    ? arcane.colors.text
-                    : arcane.colors.textMuted,
+                    ? theme.colors.text
+                    : theme.colors.textMuted,
                   fontWeight: isSectionTitle ? "900" : "500",
                   lineHeight: 20,
                 }}
@@ -115,17 +117,17 @@ export function RollResultCard({ result, title }: Props) {
         <View
           style={{
             gap: 4,
-            marginTop: arcane.spacing.xs,
-            paddingTop: arcane.spacing.sm,
+            marginTop: theme.spacing.xs,
+            paddingTop: theme.spacing.sm,
             borderTopWidth: 1,
-            borderTopColor: arcane.colors.borderSoft,
+            borderTopColor: theme.colors.borderSoft,
           }}
         >
           {rendered.details.map((line, index) => (
             <Text
               key={`roll-result-detail-${index}`}
               style={{
-                color: arcane.colors.textSubtle,
+                color: theme.colors.textSubtle,
                 lineHeight: 19,
               }}
             >

@@ -14,8 +14,7 @@ import type { GroupRow } from "../../../data/repositories/groupsRepo";
 import type { RuleRow } from "../../../data/repositories/rulesRepo";
 import { getRulesForScope } from "../../rules/helpers/ruleCompatibility";
 
-import { arcane } from "../../../theme/arcaneTheme";
-import { arcaneStyles } from "../../../theme/arcaneStyles";
+import { useArcaneTheme } from "../../../theme/ArcaneThemeProvider";
 
 type Props = {
   modernRules: RuleRow[];
@@ -44,6 +43,8 @@ function ModalButton({
   onPress: () => void;
   variant?: "default" | "accent";
 }) {
+  const { theme } = useArcaneTheme();
+
   const isAccent = variant === "accent";
 
   return (
@@ -53,18 +54,18 @@ function ModalButton({
         paddingVertical: 11,
         paddingHorizontal: 14,
         borderWidth: 1,
-        borderColor: isAccent ? arcane.colors.accent : arcane.colors.border,
-        borderRadius: arcane.radius.pill,
+        borderColor: isAccent ? theme.colors.accent : theme.colors.border,
+        borderRadius: theme.radius.pill,
         backgroundColor: isAccent
-          ? arcane.colors.accentSoft
-          : arcane.colors.surfaceAlt,
+          ? theme.colors.accentSoft
+          : theme.colors.surfaceAlt,
         opacity: pressed ? 0.84 : 1,
         transform: [{ scale: pressed ? 0.97 : 1 }],
       })}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontWeight: "900",
         }}
       >
@@ -85,17 +86,18 @@ function RuleChoice({
   selected: boolean;
   onPress: () => void;
 }) {
+  const { theme } = useArcaneTheme();
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        padding: arcane.spacing.md,
+        padding: theme.spacing.md,
         borderWidth: 1,
-        borderColor: selected ? arcane.colors.accent : arcane.colors.border,
-        borderRadius: arcane.radius.lg,
+        borderColor: selected ? theme.colors.accent : theme.colors.border,
+        borderRadius: theme.radius.lg,
         backgroundColor: selected
-          ? arcane.colors.accentSoft
-          : arcane.colors.surfaceAlt,
+          ? theme.colors.accentSoft
+          : theme.colors.surfaceAlt,
         opacity: pressed ? 0.84 : 1,
         transform: [{ scale: pressed ? 0.99 : 1 }],
         gap: 4,
@@ -103,7 +105,7 @@ function RuleChoice({
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontSize: 15,
           fontWeight: selected ? "900" : "800",
         }}
@@ -114,7 +116,7 @@ function RuleChoice({
       {subtitle ? (
         <Text
           style={{
-            color: arcane.colors.textMuted,
+            color: theme.colors.textMuted,
             fontSize: 12,
             lineHeight: 17,
           }}
@@ -141,6 +143,8 @@ export function TableGroupModals({
   onCloseEditGroupRuleModal,
   onSubmitEditGroupRule,
 }: Props) {
+  const { theme, styles } = useArcaneTheme();
+  
   const compatibleModernRules = useMemo(
     () => getRulesForScope(modernRules, "group"),
     [modernRules],
@@ -164,20 +168,20 @@ export function TableGroupModals({
             flex: 1,
             backgroundColor: "rgba(0,0,0,0.68)",
             justifyContent: "center",
-            padding: arcane.spacing.md,
+            padding: theme.spacing.md,
           }}
         >
           <View
             style={{
-              ...arcaneStyles.card,
-              gap: arcane.spacing.md,
+              ...styles.card,
+              gap: theme.spacing.md,
             }}
           >
-            <View style={{ gap: arcane.spacing.xs }}>
+            <View style={{ gap: theme.spacing.xs }}>
               <Text
                 style={{
-                  color: arcane.colors.textSubtle,
-                  fontSize: arcane.typography.tiny,
+                  color: theme.colors.textSubtle,
+                  fontSize: theme.typography.tiny,
                   fontWeight: "900",
                   textTransform: "uppercase",
                   letterSpacing: 0.8,
@@ -188,7 +192,7 @@ export function TableGroupModals({
 
               <Text
                 style={{
-                  color: arcane.colors.text,
+                  color: theme.colors.text,
                   fontSize: 22,
                   fontWeight: "900",
                 }}
@@ -196,16 +200,16 @@ export function TableGroupModals({
                 Renommer l’action
               </Text>
 
-              <Text style={arcaneStyles.muted}>
+              <Text style={styles.muted}>
                 Donne un nom clair à cette action pour la retrouver rapidement
                 dans le profil et sur l’écran Jet.
               </Text>
             </View>
 
-            <View style={{ gap: arcane.spacing.xs }}>
+            <View style={{ gap: theme.spacing.xs }}>
               <Text
                 style={{
-                  color: arcane.colors.text,
+                  color: theme.colors.text,
                   fontWeight: "800",
                 }}
               >
@@ -216,17 +220,17 @@ export function TableGroupModals({
                 value={renameGroupValue}
                 onChangeText={onChangeRenameGroupValue}
                 placeholder="Ex: Attaque, Perception, Persuasion..."
-                placeholderTextColor={arcane.colors.textMuted}
-                selectionColor={arcane.colors.accent}
+                placeholderTextColor={theme.colors.textMuted}
+                selectionColor={theme.colors.accent}
                 style={{
                   minHeight: 48,
                   borderWidth: 1,
-                  borderColor: arcane.colors.border,
-                  borderRadius: arcane.radius.md,
+                  borderColor: theme.colors.border,
+                  borderRadius: theme.radius.md,
                   paddingHorizontal: 12,
                   paddingVertical: 10,
-                  backgroundColor: arcane.colors.surfaceAlt,
-                  color: arcane.colors.text,
+                  backgroundColor: theme.colors.surfaceAlt,
+                  color: theme.colors.text,
                   fontSize: 16,
                   fontWeight: "700",
                 }}
@@ -238,7 +242,7 @@ export function TableGroupModals({
                 flexDirection: "row",
                 justifyContent: "flex-end",
                 flexWrap: "wrap",
-                gap: arcane.spacing.sm,
+                gap: theme.spacing.sm,
               }}
             >
               <ModalButton label="Annuler" onPress={onCloseRenameGroupModal} />
@@ -263,21 +267,21 @@ export function TableGroupModals({
             flex: 1,
             backgroundColor: "rgba(0,0,0,0.68)",
             justifyContent: "center",
-            padding: arcane.spacing.md,
+            padding: theme.spacing.md,
           }}
         >
           <View
             style={{
-              ...arcaneStyles.card,
+              ...styles.card,
               maxHeight: "90%",
-              gap: arcane.spacing.md,
+              gap: theme.spacing.md,
             }}
           >
-            <View style={{ gap: arcane.spacing.xs }}>
+            <View style={{ gap: theme.spacing.xs }}>
               <Text
                 style={{
-                  color: arcane.colors.textSubtle,
-                  fontSize: arcane.typography.tiny,
+                  color: theme.colors.textSubtle,
+                  fontSize: theme.typography.tiny,
                   fontWeight: "900",
                   textTransform: "uppercase",
                   letterSpacing: 0.8,
@@ -288,7 +292,7 @@ export function TableGroupModals({
 
               <Text
                 style={{
-                  color: arcane.colors.text,
+                  color: theme.colors.text,
                   fontSize: 22,
                   fontWeight: "900",
                 }}
@@ -297,11 +301,11 @@ export function TableGroupModals({
               </Text>
 
               {editingGroupForRule ? (
-                <Text style={arcaneStyles.muted}>
+                <Text style={styles.muted}>
                   Action : {editingGroupForRule.name}
                 </Text>
               ) : (
-                <Text style={arcaneStyles.muted}>
+                <Text style={styles.muted}>
                   Choisis le comportement appliqué à l’ensemble de l’action.
                 </Text>
               )}
@@ -309,7 +313,7 @@ export function TableGroupModals({
 
             <ScrollView
               style={{ maxHeight: 420 }}
-              contentContainerStyle={{ gap: arcane.spacing.sm }}
+              contentContainerStyle={{ gap: theme.spacing.sm }}
               showsVerticalScrollIndicator={false}
             >
               <RuleChoice
@@ -321,12 +325,12 @@ export function TableGroupModals({
 
               <Text
                 style={{
-                  color: arcane.colors.textSubtle,
-                  fontSize: arcane.typography.tiny,
+                  color: theme.colors.textSubtle,
+                  fontSize: theme.typography.tiny,
                   fontWeight: "900",
                   textTransform: "uppercase",
                   letterSpacing: 0.8,
-                  marginTop: arcane.spacing.sm,
+                  marginTop: theme.spacing.sm,
                 }}
               >
                 Règles disponibles
@@ -334,10 +338,10 @@ export function TableGroupModals({
 
               {compatibleModernRules.length === 0 &&
               compatibleLegacyRules.length === 0 ? (
-                <View style={arcaneStyles.cardSoft}>
+                <View style={styles.cardSoft}>
                   <Text
                     style={{
-                      color: arcane.colors.text,
+                      color: theme.colors.text,
                       fontWeight: "800",
                     }}
                   >
@@ -346,8 +350,8 @@ export function TableGroupModals({
 
                   <Text
                     style={[
-                      arcaneStyles.muted,
-                      { marginTop: arcane.spacing.xs },
+                      styles.muted,
+                      { marginTop: theme.spacing.xs },
                     ]}
                   >
                     Crée une règle compatible ou utilise la somme simple.
@@ -371,12 +375,12 @@ export function TableGroupModals({
                 <>
                   <Text
                     style={{
-                      color: arcane.colors.textSubtle,
-                      fontSize: arcane.typography.tiny,
+                      color: theme.colors.textSubtle,
+                      fontSize: theme.typography.tiny,
                       fontWeight: "900",
                       textTransform: "uppercase",
                       letterSpacing: 0.8,
-                      marginTop: arcane.spacing.sm,
+                      marginTop: theme.spacing.sm,
                     }}
                   >
                     Compatibilité
@@ -400,7 +404,7 @@ export function TableGroupModals({
                 flexDirection: "row",
                 justifyContent: "flex-end",
                 flexWrap: "wrap",
-                gap: arcane.spacing.sm,
+                gap: theme.spacing.sm,
               }}
             >
               <ModalButton

@@ -4,8 +4,7 @@ import { View, Text, Pressable, ScrollView } from "react-native";
 import type { RuleBehaviorKey } from "../../../core/rules/behaviorRegistry";
 import type { QuickBehaviorPickerOption } from "../hooks/useQuickDieBehaviorPicker";
 
-import { arcane } from "../../../theme/arcaneTheme";
-import { arcaneStyles } from "../../../theme/arcaneStyles";
+import { useArcaneTheme } from "../../../theme/ArcaneThemeProvider";
 
 type BehaviorDefinition = {
   key: RuleBehaviorKey;
@@ -34,24 +33,26 @@ function BehaviorOptionCard({
   disabled?: boolean;
   onPress: () => void;
 }) {
+  const { theme, styles } = useArcaneTheme();
+
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
       style={({ pressed }) => ({
-        ...arcaneStyles.cardSoft,
-        gap: arcane.spacing.xs,
-        borderColor: arcane.colors.border,
+        ...styles.cardSoft,
+        gap: theme.spacing.xs,
+        borderColor: theme.colors.border,
         backgroundColor: pressed
-          ? arcane.colors.surfaceSoft
-          : arcane.colors.surfaceAlt,
+          ? theme.colors.surfaceSoft
+          : theme.colors.surfaceAlt,
         opacity: disabled ? 0.45 : pressed ? 0.86 : 1,
         transform: [{ scale: pressed ? 0.98 : 1 }],
       })}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontSize: 16,
           fontWeight: "900",
         }}
@@ -62,7 +63,7 @@ function BehaviorOptionCard({
       {description ? (
         <Text
           style={{
-            color: arcane.colors.textMuted,
+            color: theme.colors.textMuted,
             lineHeight: 19,
           }}
         >
@@ -81,6 +82,8 @@ export function QuickDieBehaviorPickerModal({
   onSelectBehavior,
   onClose,
 }: Props) {
+  const { theme, styles } = useArcaneTheme();
+  
   if (!visible || editingDieSides === null) return null;
 
   return (
@@ -98,25 +101,25 @@ export function QuickDieBehaviorPickerModal({
     >
       <View
         style={{
-          ...arcaneStyles.card,
-          gap: arcane.spacing.md,
-          borderColor: arcane.colors.accent,
+          ...styles.card,
+          gap: theme.spacing.md,
+          borderColor: theme.colors.accent,
           maxHeight: "88%",
         }}
       >
-        <View style={{ gap: arcane.spacing.xs }}>
-          <Text style={arcaneStyles.sectionTitle}>
+        <View style={{ gap: theme.spacing.xs }}>
+          <Text style={styles.sectionTitle}>
             Configurer d{editingDieSides}
           </Text>
 
-          <Text style={arcaneStyles.muted}>
+          <Text style={styles.muted}>
             Choisis le comportement à appliquer à ce jet rapide.
           </Text>
         </View>
 
         <ScrollView
           style={{ maxHeight: 420 }}
-          contentContainerStyle={{ gap: arcane.spacing.sm }}
+          contentContainerStyle={{ gap: theme.spacing.sm }}
           showsVerticalScrollIndicator
         >
           {behaviors.map((behavior) => {
@@ -138,8 +141,8 @@ export function QuickDieBehaviorPickerModal({
           })}
 
           {behaviors.length === 0 ? (
-            <View style={arcaneStyles.cardSoft}>
-              <Text style={arcaneStyles.muted}>
+            <View style={styles.cardSoft}>
+              <Text style={styles.muted}>
                 Aucun comportement compatible avec ce dé.
               </Text>
             </View>
@@ -153,17 +156,17 @@ export function QuickDieBehaviorPickerModal({
             paddingVertical: 10,
             paddingHorizontal: 14,
             borderWidth: 1,
-            borderColor: arcane.colors.border,
-            borderRadius: arcane.radius.pill,
+            borderColor: theme.colors.border,
+            borderRadius: theme.radius.pill,
             backgroundColor: pressed
-              ? arcane.colors.surfaceSoft
-              : arcane.colors.surfaceAlt,
+              ? theme.colors.surfaceSoft
+              : theme.colors.surfaceAlt,
             opacity: pressed ? 0.84 : 1,
           })}
         >
           <Text
             style={{
-              color: arcane.colors.text,
+              color: theme.colors.text,
               fontWeight: "900",
             }}
           >

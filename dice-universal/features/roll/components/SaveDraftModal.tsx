@@ -10,8 +10,8 @@ import {
   View,
 } from "react-native";
 
-import { arcane } from "../../../theme/arcaneTheme";
-import { arcaneStyles } from "../../../theme/arcaneStyles";
+import { useArcaneTheme } from "../../../theme/ArcaneThemeProvider";
+
 
 type SaveMode =
   | "new_table_new_profile"
@@ -50,11 +50,12 @@ type Props = {
 };
 
 function SectionLabel({ children }: { children: string }) {
+  const { theme } = useArcaneTheme();
   return (
     <Text
       style={{
-        color: arcane.colors.textSubtle,
-        fontSize: arcane.typography.tiny,
+        color: theme.colors.textSubtle,
+        fontSize: theme.typography.tiny,
         fontWeight: "900",
         textTransform: "uppercase",
         letterSpacing: 0.8,
@@ -66,10 +67,11 @@ function SectionLabel({ children }: { children: string }) {
 }
 
 function FieldLabel({ children }: { children: string }) {
+  const { theme } = useArcaneTheme();
   return (
     <Text
       style={{
-        color: arcane.colors.textMuted,
+        color: theme.colors.textMuted,
         fontWeight: "800",
         marginBottom: 6,
       }}
@@ -88,18 +90,19 @@ function ModalInput({
   onChangeText: (value: string) => void;
   placeholder: string;
 }) {
+  const { theme } = useArcaneTheme();
   return (
     <TextInput
       value={value}
       onChangeText={onChangeText}
       placeholder={placeholder}
-      placeholderTextColor={arcane.colors.textSubtle}
+      placeholderTextColor={theme.colors.textSubtle}
       style={{
-        color: arcane.colors.text,
-        backgroundColor: arcane.colors.surfaceAlt,
+        color: theme.colors.text,
+        backgroundColor: theme.colors.surfaceAlt,
         borderWidth: 1,
-        borderColor: arcane.colors.border,
-        borderRadius: arcane.radius.md,
+        borderColor: theme.colors.border,
+        borderRadius: theme.radius.md,
         paddingHorizontal: 12,
         paddingVertical: 11,
         fontSize: 16,
@@ -119,23 +122,24 @@ function ModeOption({
   selected: boolean;
   onPress: () => void;
 }) {
+  const { theme, styles } = useArcaneTheme();
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        ...arcaneStyles.cardSoft,
-        gap: arcane.spacing.xs,
-        borderColor: selected ? arcane.colors.accent : arcane.colors.border,
+        ...styles.cardSoft,
+        gap: theme.spacing.xs,
+        borderColor: selected ? theme.colors.accent : theme.colors.border,
         backgroundColor: selected
-          ? arcane.colors.accentSoft
-          : arcane.colors.surfaceAlt,
+          ? theme.colors.accentSoft
+          : theme.colors.surfaceAlt,
         opacity: pressed ? 0.86 : 1,
         transform: [{ scale: pressed ? 0.99 : 1 }],
       })}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontWeight: selected ? "900" : "800",
         }}
       >
@@ -144,7 +148,7 @@ function ModeOption({
 
       <Text
         style={{
-          color: arcane.colors.textMuted,
+          color: theme.colors.textMuted,
           fontSize: 12,
           lineHeight: 17,
         }}
@@ -166,23 +170,24 @@ function SelectOption({
   selected: boolean;
   onPress: () => void;
 }) {
+  const { theme, styles } = useArcaneTheme();
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        ...arcaneStyles.cardSoft,
-        gap: arcane.spacing.xs,
-        borderColor: selected ? arcane.colors.accent : arcane.colors.border,
+        ...styles.cardSoft,
+        gap: theme.spacing.xs,
+        borderColor: selected ? theme.colors.accent : theme.colors.border,
         backgroundColor: selected
-          ? arcane.colors.accentSoft
-          : arcane.colors.surfaceAlt,
+          ? theme.colors.accentSoft
+          : theme.colors.surfaceAlt,
         opacity: pressed ? 0.86 : 1,
         transform: [{ scale: pressed ? 0.99 : 1 }],
       })}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontWeight: selected ? "900" : "800",
         }}
       >
@@ -192,7 +197,7 @@ function SelectOption({
       {description ? (
         <Text
           style={{
-            color: arcane.colors.textMuted,
+            color: theme.colors.textMuted,
             fontSize: 12,
           }}
         >
@@ -212,6 +217,8 @@ function ModalButton({
   onPress: () => void;
   variant?: "default" | "accent";
 }) {
+  const { theme } = useArcaneTheme();
+
   const isAccent = variant === "accent";
 
   return (
@@ -221,18 +228,18 @@ function ModalButton({
         paddingVertical: 10,
         paddingHorizontal: 14,
         borderWidth: 1,
-        borderColor: isAccent ? arcane.colors.accent : arcane.colors.border,
-        borderRadius: arcane.radius.pill,
+        borderColor: isAccent ? theme.colors.accent : theme.colors.border,
+        borderRadius: theme.radius.pill,
         backgroundColor: isAccent
-          ? arcane.colors.accentSoft
-          : arcane.colors.surfaceAlt,
+          ? theme.colors.accentSoft
+          : theme.colors.surfaceAlt,
         opacity: pressed ? 0.84 : 1,
         transform: [{ scale: pressed ? 0.97 : 1 }],
       })}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontWeight: "900",
         }}
       >
@@ -251,6 +258,8 @@ export function SaveDraftModal({
   onCancel,
   onConfirm,
 }: Props) {
+  const { theme, styles } = useArcaneTheme();
+  
   const [mode, setMode] = useState<SaveMode>("new_table_new_profile");
   const [tableName, setTableName] = useState(initialTableName);
   const [profileName, setProfileName] = useState(initialProfileName);
@@ -338,26 +347,26 @@ export function SaveDraftModal({
       >
         <View
           style={{
-            ...arcaneStyles.card,
-            gap: arcane.spacing.md,
-            borderColor: arcane.colors.accent,
+            ...styles.card,
+            gap: theme.spacing.md,
+            borderColor: theme.colors.accent,
             maxHeight: "90%",
           }}
         >
-          <View style={{ gap: arcane.spacing.xs }}>
-            <Text style={arcaneStyles.sectionTitle}>Sauvegarder ce jet</Text>
+          <View style={{ gap: theme.spacing.xs }}>
+            <Text style={styles.sectionTitle}>Sauvegarder ce jet</Text>
 
-            <Text style={arcaneStyles.muted}>
+            <Text style={styles.muted}>
               Transforme ton jet rapide en action réutilisable dans une table.
             </Text>
           </View>
 
           <ScrollView
             style={{ maxHeight: 560 }}
-            contentContainerStyle={{ gap: arcane.spacing.md }}
+            contentContainerStyle={{ gap: theme.spacing.md }}
             showsVerticalScrollIndicator
           >
-            <View style={{ gap: arcane.spacing.sm }}>
+            <View style={{ gap: theme.spacing.sm }}>
               <SectionLabel>Destination</SectionLabel>
 
               <ModeOption
@@ -383,7 +392,7 @@ export function SaveDraftModal({
             </View>
 
             {mode === "new_table_new_profile" ? (
-              <View style={{ gap: arcane.spacing.md }}>
+              <View style={{ gap: theme.spacing.md }}>
                 <View>
                   <FieldLabel>Nom de la table</FieldLabel>
                   <ModalInput
@@ -405,22 +414,22 @@ export function SaveDraftModal({
             ) : null}
 
             {mode === "existing_table_new_profile" ? (
-              <View style={{ gap: arcane.spacing.md }}>
-                <View style={{ gap: arcane.spacing.sm }}>
+              <View style={{ gap: theme.spacing.md }}>
+                <View style={{ gap: theme.spacing.sm }}>
                   <SectionLabel>Table existante</SectionLabel>
 
                   <ScrollView
                     style={{ maxHeight: 190 }}
-                    contentContainerStyle={{ gap: arcane.spacing.sm }}
+                    contentContainerStyle={{ gap: theme.spacing.sm }}
                     nestedScrollEnabled
                   >
                     {loadingTargets ? (
-                      <View style={arcaneStyles.cardSoft}>
-                        <Text style={arcaneStyles.muted}>Chargement…</Text>
+                      <View style={styles.cardSoft}>
+                        <Text style={styles.muted}>Chargement…</Text>
                       </View>
                     ) : availableTargets.length === 0 ? (
-                      <View style={arcaneStyles.cardSoft}>
-                        <Text style={arcaneStyles.muted}>
+                      <View style={styles.cardSoft}>
+                        <Text style={styles.muted}>
                           Aucune table disponible.
                         </Text>
                       </View>
@@ -452,22 +461,22 @@ export function SaveDraftModal({
             ) : null}
 
             {mode === "existing_table_existing_profile" ? (
-              <View style={{ gap: arcane.spacing.md }}>
-                <View style={{ gap: arcane.spacing.sm }}>
+              <View style={{ gap: theme.spacing.md }}>
+                <View style={{ gap: theme.spacing.sm }}>
                   <SectionLabel>Table existante</SectionLabel>
 
                   <ScrollView
                     style={{ maxHeight: 160 }}
-                    contentContainerStyle={{ gap: arcane.spacing.sm }}
+                    contentContainerStyle={{ gap: theme.spacing.sm }}
                     nestedScrollEnabled
                   >
                     {loadingTargets ? (
-                      <View style={arcaneStyles.cardSoft}>
-                        <Text style={arcaneStyles.muted}>Chargement…</Text>
+                      <View style={styles.cardSoft}>
+                        <Text style={styles.muted}>Chargement…</Text>
                       </View>
                     ) : availableTargets.length === 0 ? (
-                      <View style={arcaneStyles.cardSoft}>
-                        <Text style={arcaneStyles.muted}>
+                      <View style={styles.cardSoft}>
+                        <Text style={styles.muted}>
                           Aucune table disponible.
                         </Text>
                       </View>
@@ -484,23 +493,23 @@ export function SaveDraftModal({
                   </ScrollView>
                 </View>
 
-                <View style={{ gap: arcane.spacing.sm }}>
+                <View style={{ gap: theme.spacing.sm }}>
                   <SectionLabel>Profil existant</SectionLabel>
 
                   <ScrollView
                     style={{ maxHeight: 160 }}
-                    contentContainerStyle={{ gap: arcane.spacing.sm }}
+                    contentContainerStyle={{ gap: theme.spacing.sm }}
                     nestedScrollEnabled
                   >
                     {!selectedTable ? (
-                      <View style={arcaneStyles.cardSoft}>
-                        <Text style={arcaneStyles.muted}>
+                      <View style={styles.cardSoft}>
+                        <Text style={styles.muted}>
                           Sélectionne d’abord une table.
                         </Text>
                       </View>
                     ) : selectedTable.profiles.length === 0 ? (
-                      <View style={arcaneStyles.cardSoft}>
-                        <Text style={arcaneStyles.muted}>
+                      <View style={styles.cardSoft}>
+                        <Text style={styles.muted}>
                           Cette table ne contient aucun profil.
                         </Text>
                       </View>
@@ -524,7 +533,7 @@ export function SaveDraftModal({
             style={{
               flexDirection: "row",
               justifyContent: "flex-end",
-              gap: arcane.spacing.sm,
+              gap: theme.spacing.sm,
             }}
           >
             <ModalButton label="Annuler" onPress={onCancel} />

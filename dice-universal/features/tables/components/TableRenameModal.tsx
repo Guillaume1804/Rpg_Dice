@@ -2,8 +2,7 @@
 
 import { Modal, Pressable, Text, TextInput, View } from "react-native";
 
-import { arcane } from "../../../theme/arcaneTheme";
-import { arcaneStyles } from "../../../theme/arcaneStyles";
+import { useArcaneTheme } from "../../../theme/ArcaneThemeProvider";
 
 type TableRenameModalProps = {
   visible: boolean;
@@ -22,6 +21,8 @@ function ModalButton({
   onPress: () => void;
   variant?: "default" | "accent";
 }) {
+  const { theme } = useArcaneTheme();
+
   const isAccent = variant === "accent";
 
   return (
@@ -31,18 +32,18 @@ function ModalButton({
         paddingVertical: 11,
         paddingHorizontal: 14,
         borderWidth: 1,
-        borderColor: isAccent ? arcane.colors.accent : arcane.colors.border,
-        borderRadius: arcane.radius.pill,
+        borderColor: isAccent ? theme.colors.accent : theme.colors.border,
+        borderRadius: theme.radius.pill,
         backgroundColor: isAccent
-          ? arcane.colors.accentSoft
-          : arcane.colors.surfaceAlt,
+          ? theme.colors.accentSoft
+          : theme.colors.surfaceAlt,
         opacity: pressed ? 0.84 : 1,
         transform: [{ scale: pressed ? 0.97 : 1 }],
       })}
     >
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontWeight: "900",
         }}
       >
@@ -59,6 +60,8 @@ export function TableRenameModal({
   onClose,
   onSubmit,
 }: TableRenameModalProps) {
+  const { theme, styles } = useArcaneTheme();
+  
   return (
     <Modal
       visible={visible}
@@ -71,20 +74,20 @@ export function TableRenameModal({
           flex: 1,
           backgroundColor: "rgba(0,0,0,0.68)",
           justifyContent: "center",
-          padding: arcane.spacing.md,
+          padding: theme.spacing.md,
         }}
       >
         <View
           style={{
-            ...arcaneStyles.card,
-            gap: arcane.spacing.md,
+            ...styles.card,
+            gap: theme.spacing.md,
           }}
         >
-          <View style={{ gap: arcane.spacing.xs }}>
+          <View style={{ gap: theme.spacing.xs }}>
             <Text
               style={{
-                color: arcane.colors.textSubtle,
-                fontSize: arcane.typography.tiny,
+                color: theme.colors.textSubtle,
+                fontSize: theme.typography.tiny,
                 fontWeight: "900",
                 textTransform: "uppercase",
                 letterSpacing: 0.8,
@@ -95,7 +98,7 @@ export function TableRenameModal({
 
             <Text
               style={{
-                color: arcane.colors.text,
+                color: theme.colors.text,
                 fontSize: 22,
                 fontWeight: "900",
               }}
@@ -103,16 +106,16 @@ export function TableRenameModal({
               Renommer la table
             </Text>
 
-            <Text style={arcaneStyles.muted}>
+            <Text style={styles.muted}>
               Choisis un nom clair pour retrouver rapidement cette table dans
               l’onglet Tables et sur l’écran Jet.
             </Text>
           </View>
 
-          <View style={{ gap: arcane.spacing.xs }}>
+          <View style={{ gap: theme.spacing.xs }}>
             <Text
               style={{
-                color: arcane.colors.text,
+                color: theme.colors.text,
                 fontWeight: "800",
               }}
             >
@@ -123,17 +126,17 @@ export function TableRenameModal({
               value={value}
               onChangeText={onChangeValue}
               placeholder="Ex: Campagne principale"
-              placeholderTextColor={arcane.colors.textMuted}
-              selectionColor={arcane.colors.accent}
+              placeholderTextColor={theme.colors.textMuted}
+              selectionColor={theme.colors.accent}
               style={{
                 minHeight: 48,
                 borderWidth: 1,
-                borderColor: arcane.colors.border,
-                borderRadius: arcane.radius.md,
+                borderColor: theme.colors.border,
+                borderRadius: theme.radius.md,
                 paddingHorizontal: 12,
                 paddingVertical: 10,
-                backgroundColor: arcane.colors.surfaceAlt,
-                color: arcane.colors.text,
+                backgroundColor: theme.colors.surfaceAlt,
+                color: theme.colors.text,
                 fontSize: 16,
                 fontWeight: "700",
               }}
@@ -145,7 +148,7 @@ export function TableRenameModal({
               flexDirection: "row",
               justifyContent: "flex-end",
               flexWrap: "wrap",
-              gap: arcane.spacing.sm,
+              gap: theme.spacing.sm,
             }}
           >
             <ModalButton label="Annuler" onPress={onClose} />

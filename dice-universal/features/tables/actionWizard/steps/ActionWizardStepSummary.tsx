@@ -4,19 +4,19 @@ import { Text, View } from "react-native";
 import { buildActionWizardSummary } from "../helpers";
 import type { ActionWizardDraft } from "../types";
 
-import { arcane } from "../../../../theme/arcaneTheme";
-import { arcaneStyles } from "../../../../theme/arcaneStyles";
+import { useArcaneTheme } from "../../../../theme/ArcaneThemeProvider";
 
 type Props = {
   draft: ActionWizardDraft;
 };
 
 function SectionLabel({ children }: { children: string }) {
+  const { theme } = useArcaneTheme();
   return (
     <Text
       style={{
-        color: arcane.colors.textSubtle,
-        fontSize: arcane.typography.tiny,
+        color: theme.colors.textSubtle,
+        fontSize: theme.typography.tiny,
         fontWeight: "900",
         textTransform: "uppercase",
         letterSpacing: 0.8,
@@ -28,6 +28,7 @@ function SectionLabel({ children }: { children: string }) {
 }
 
 function InfoLine({ label, value }: { label: string; value: string }) {
+  const { theme } = useArcaneTheme();
   return (
     <View
       style={{
@@ -36,7 +37,7 @@ function InfoLine({ label, value }: { label: string; value: string }) {
     >
       <Text
         style={{
-          color: arcane.colors.textSubtle,
+          color: theme.colors.textSubtle,
           fontSize: 12,
           fontWeight: "800",
         }}
@@ -46,7 +47,7 @@ function InfoLine({ label, value }: { label: string; value: string }) {
 
       <Text
         style={{
-          color: arcane.colors.text,
+          color: theme.colors.text,
           fontSize: 15,
           fontWeight: "800",
         }}
@@ -102,31 +103,32 @@ function getBehaviorLabel(value: ActionWizardDraft["behaviorType"]) {
 }
 
 export function ActionWizardStepSummary({ draft }: Props) {
+  const { theme, styles } = useArcaneTheme();
   const dice = draft.dice.length > 0 ? draft.dice : [draft.die];
 
   return (
-    <View style={{ gap: arcane.spacing.md }}>
-      <View style={{ gap: arcane.spacing.xs }}>
-        <Text style={arcaneStyles.sectionTitle}>Résumé</Text>
+    <View style={{ gap: theme.spacing.md }}>
+      <View style={{ gap: theme.spacing.xs }}>
+        <Text style={styles.sectionTitle}>Résumé</Text>
 
-        <Text style={arcaneStyles.muted}>
+        <Text style={styles.muted}>
           Vérifie les informations avant de créer l’action.
         </Text>
       </View>
 
       <View
         style={{
-          ...arcaneStyles.cardSoft,
-          gap: arcane.spacing.md,
-          borderColor: arcane.colors.accent,
-          backgroundColor: arcane.colors.accentSoft,
+          ...styles.cardSoft,
+          gap: theme.spacing.md,
+          borderColor: theme.colors.accent,
+          backgroundColor: theme.colors.accentSoft,
         }}
       >
         <SectionLabel>Action prête à créer</SectionLabel>
 
         <Text
           style={{
-            color: arcane.colors.text,
+            color: theme.colors.text,
             fontSize: 18,
             fontWeight: "900",
             lineHeight: 24,
@@ -138,8 +140,8 @@ export function ActionWizardStepSummary({ draft }: Props) {
 
       <View
         style={{
-          ...arcaneStyles.cardSoft,
-          gap: arcane.spacing.md,
+          ...styles.cardSoft,
+          gap: theme.spacing.md,
         }}
       >
         <SectionLabel>Détails</SectionLabel>
@@ -165,8 +167,8 @@ export function ActionWizardStepSummary({ draft }: Props) {
 
       <View
         style={{
-          ...arcaneStyles.cardSoft,
-          gap: arcane.spacing.sm,
+          ...styles.cardSoft,
+          gap: theme.spacing.sm,
         }}
       >
         <SectionLabel>Dés</SectionLabel>
@@ -178,14 +180,14 @@ export function ActionWizardStepSummary({ draft }: Props) {
               paddingVertical: 10,
               paddingHorizontal: 12,
               borderWidth: 1,
-              borderColor: arcane.colors.border,
-              borderRadius: arcane.radius.md,
-              backgroundColor: arcane.colors.surfaceAlt,
+              borderColor: theme.colors.border,
+              borderRadius: theme.radius.md,
+              backgroundColor: theme.colors.surfaceAlt,
             }}
           >
             <Text
               style={{
-                color: arcane.colors.text,
+                color: theme.colors.text,
                 fontWeight: "900",
               }}
             >
