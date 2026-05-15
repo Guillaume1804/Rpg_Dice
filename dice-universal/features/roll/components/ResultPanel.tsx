@@ -1,4 +1,4 @@
-// dice-universal/features/roll/components/ResultPanel.tsx
+// dice-universal\features\roll\components\ResultPanel.tsx
 
 import { useMemo } from "react";
 import { Text, View } from "react-native";
@@ -56,7 +56,7 @@ function getResultHeadline(result: GroupRollResult): ResultHeadline {
       eyebrow: "Le destin se retourne",
       title: "Échec critique",
       subtitle: `Total : ${result.total}`,
-      icon: "❌",
+      icon: "✖",
       tone: "failure",
     };
   }
@@ -66,7 +66,7 @@ function getResultHeadline(result: GroupRollResult): ResultHeadline {
       eyebrow: "Le destin vous sourit",
       title: "Réussite critique",
       subtitle: `Total : ${result.total}`,
-      icon: "💥",
+      icon: "✦",
       tone: "critical",
     };
   }
@@ -83,7 +83,7 @@ function getResultHeadline(result: GroupRollResult): ResultHeadline {
         ? `${anyResult.successes} succès + complication`
         : `${anyResult.successes} succès`,
       subtitle: `Total : ${result.total}`,
-      icon: complication ? "⚠️" : "🎯",
+      icon: complication ? "⚠" : "◎",
       tone: complication ? "warning" : "success",
     };
   }
@@ -93,7 +93,7 @@ function getResultHeadline(result: GroupRollResult): ResultHeadline {
       eyebrow: "Action réussie",
       title: "Réussite",
       subtitle: `Total : ${result.total}`,
-      icon: "✅",
+      icon: "✓",
       tone: "success",
     };
   }
@@ -103,7 +103,7 @@ function getResultHeadline(result: GroupRollResult): ResultHeadline {
       eyebrow: "Action échouée",
       title: "Échec",
       subtitle: `Total : ${result.total}`,
-      icon: "❌",
+      icon: "✖",
       tone: "failure",
     };
   }
@@ -145,7 +145,7 @@ function getToneColors(
   if (tone === "critical") {
     return {
       border: theme.colors.accent,
-      background: rollTheme.cockpit.background,
+      background: rollTheme.hero.background,
       soft: theme.colors.accentSoft,
       text: theme.colors.accent,
       glow: rollTheme.cockpit.glow,
@@ -184,8 +184,8 @@ function getToneColors(
 
   return {
     border: theme.colors.border,
-    background: theme.colors.backgroundElevated,
-    soft: theme.colors.surfaceAlt,
+    background: rollTheme.cockpit.panel,
+    soft: rollTheme.cockpit.panelAlt,
     text: theme.colors.text,
     glow: theme.colors.arcane,
   };
@@ -201,13 +201,19 @@ export function ResultPanel({ result }: ResultPanelProps) {
     ? getToneColors(headline.tone, theme, rollTheme)
     : getToneColors("neutral", theme, rollTheme);
 
+  const firstEntry = result?.entries[0] ?? null;
+  const hasMultipleEntries = (result?.entries.length ?? 0) > 1;
+
   return (
     <View
       style={{
         ...styles.card,
-        gap: theme.spacing.md,
+        minHeight: result ? 132 : 118,
+        paddingVertical: theme.spacing.md,
+        paddingHorizontal: theme.spacing.md,
+        gap: theme.spacing.sm,
         borderRadius: rollTheme.layout.cockpitRadius,
-        borderColor: result ? toneColors.border : theme.colors.borderSoft,
+        borderColor: result ? toneColors.border : rollTheme.cockpit.borderSoft,
         backgroundColor: result
           ? toneColors.background
           : rollTheme.cockpit.panel,
@@ -215,207 +221,209 @@ export function ResultPanel({ result }: ResultPanelProps) {
       }}
     >
       <View
+        pointerEvents="none"
         style={{
           position: "absolute",
-          left: -54,
-          top: -54,
-          width: 150,
-          height: 150,
+          left: -42,
+          top: -46,
+          width: 136,
+          height: 136,
           borderRadius: 999,
-          backgroundColor: result ? toneColors.glow : theme.colors.surfaceSoft,
-          opacity: result ? 0.2 : 0.12,
+          backgroundColor: result
+            ? toneColors.glow
+            : rollTheme.cockpit.magicGlow,
+          opacity: result ? 0.22 : 0.12,
+        }}
+      />
+
+      <View
+        pointerEvents="none"
+        style={{
+          position: "absolute",
+          right: -58,
+          bottom: -64,
+          width: 170,
+          height: 170,
+          borderRadius: 999,
+          backgroundColor: rollTheme.cockpit.magicGlow,
+          opacity: result ? 0.14 : 0.1,
         }}
       />
 
       <View
         style={{
-          position: "absolute",
-          right: -36,
-          bottom: -48,
-          width: 130,
-          height: 130,
-          borderRadius: 999,
-          backgroundColor: theme.colors.arcane,
-          opacity: result ? 0.14 : 0.08,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: theme.spacing.md,
         }}
-      />
-
-      <View style={{ gap: theme.spacing.xs }}>
-        <Text
+      >
+        <View
           style={{
-            color: theme.colors.textSubtle,
-            fontSize: theme.typography.tiny,
-            fontWeight: "900",
-            textTransform: "uppercase",
-            letterSpacing: 0.9,
+            width: result ? 72 : 62,
+            height: result ? 72 : 62,
+            borderRadius: theme.radius.xl,
+            borderWidth: 1,
+            borderColor: result
+              ? toneColors.border
+              : rollTheme.cockpit.borderSoft,
+            backgroundColor: result
+              ? toneColors.soft
+              : rollTheme.cockpit.panelAlt,
+            alignItems: "center",
+            justifyContent: "center",
+            shadowColor: toneColors.glow,
+            shadowOpacity: result ? 0.28 : 0.08,
+            shadowRadius: 14,
+            shadowOffset: { width: 0, height: 6 },
+            elevation: result ? 4 : 1,
           }}
         >
-          ✦ Résultat
-        </Text>
+          <Text
+            style={{
+              color: toneColors.text,
+              fontSize: result ? 31 : 27,
+              fontWeight: "900",
+              lineHeight: result ? 34 : 30,
+            }}
+          >
+            {headline?.icon ?? "🎲"}
+          </Text>
+        </View>
 
-        {!result || !headline ? (
-          <>
-            <Text
-              style={{
-                color: theme.colors.text,
-                fontSize: 22,
-                fontWeight: "900",
-                letterSpacing: -0.2,
-              }}
-            >
-              En attente du lancer
-            </Text>
+        <View style={{ flex: 1, gap: 4 }}>
+          <Text
+            numberOfLines={1}
+            style={{
+              color: theme.colors.textSubtle,
+              fontSize: theme.typography.tiny,
+              fontWeight: "900",
+              textTransform: "uppercase",
+              letterSpacing: 0.9,
+            }}
+          >
+            ✦ {headline?.eyebrow ?? "Résultat"}
+          </Text>
 
-            <Text
+          <Text
+            numberOfLines={2}
+            style={{
+              color: result ? toneColors.text : theme.colors.text,
+              fontSize: result ? 24 : 23,
+              fontWeight: "900",
+              letterSpacing: -0.5,
+              lineHeight: result ? 29 : 28,
+            }}
+          >
+            {headline?.title ?? "En attente du lancer"}
+          </Text>
+
+          <Text
+            numberOfLines={2}
+            style={{
+              color: theme.colors.textMuted,
+              lineHeight: 19,
+              fontWeight: "700",
+            }}
+          >
+            {headline?.subtitle ??
+              "Prépare un jet, puis laisse le destin décider."}
+          </Text>
+        </View>
+      </View>
+
+      {result && firstEntry ? (
+        <View
+          style={{
+            marginTop: theme.spacing.xs,
+            paddingTop: theme.spacing.sm,
+            borderTopWidth: 1,
+            borderTopColor: rollTheme.cockpit.borderSoft,
+            gap: theme.spacing.xs,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              flexWrap: "wrap",
+              gap: theme.spacing.sm,
+              alignItems: "center",
+            }}
+          >
+            <View
               style={{
-                color: theme.colors.textMuted,
-                lineHeight: 20,
-                fontWeight: "600",
+                paddingVertical: 6,
+                paddingHorizontal: 10,
+                borderWidth: 1,
+                borderColor: rollTheme.cockpit.borderSoft,
+                borderRadius: theme.radius.pill,
+                backgroundColor: rollTheme.cockpit.panelAlt,
               }}
             >
-              Lance un jet préparé pour révéler le résultat ici.
-            </Text>
-          </>
-        ) : (
-          <>
-            <Text
-              style={{
-                color: theme.colors.textMuted,
-                fontWeight: "800",
-              }}
-            >
-              {result.label}
-            </Text>
+              <Text
+                numberOfLines={1}
+                style={{
+                  color: theme.colors.textMuted,
+                  fontSize: theme.typography.small,
+                  fontWeight: "900",
+                }}
+              >
+                {getEntryLabel(firstEntry)}
+              </Text>
+            </View>
 
             <View
               style={{
-                marginTop: theme.spacing.xs,
-                padding: theme.spacing.lg,
+                flex: 1,
+                minWidth: 160,
+                paddingVertical: 6,
+                paddingHorizontal: 10,
                 borderWidth: 1,
-                borderColor: toneColors.border,
-                borderRadius: rollTheme.layout.cockpitRadius,
-                backgroundColor: toneColors.soft,
-                gap: theme.spacing.sm,
-                shadowColor: toneColors.glow,
-                shadowOpacity: 0.22,
-                shadowRadius: 18,
-                shadowOffset: { width: 0, height: 8 },
-                elevation: 4,
+                borderColor: rollTheme.cockpit.borderSoft,
+                borderRadius: theme.radius.pill,
+                backgroundColor: rollTheme.cockpit.panelAlt,
               }}
             >
               <Text
-                style={{
-                  color: theme.colors.textSubtle,
-                  fontSize: theme.typography.tiny,
-                  fontWeight: "900",
-                  textTransform: "uppercase",
-                  letterSpacing: 0.8,
-                }}
-              >
-                {headline.eyebrow}
-              </Text>
-
-              <Text
-                style={{
-                  color: toneColors.text,
-                  fontSize: 26,
-                  fontWeight: "900",
-                  letterSpacing: -0.4,
-                  lineHeight: 32,
-                }}
-              >
-                {headline.icon} {headline.title}
-              </Text>
-
-              <Text
+                numberOfLines={1}
                 style={{
                   color: theme.colors.textMuted,
+                  fontSize: theme.typography.small,
                   fontWeight: "800",
                 }}
               >
-                {headline.subtitle}
+                Valeurs : {formatValues(firstEntry.natural_values)}
               </Text>
             </View>
-          </>
-        )}
-      </View>
 
-      {result ? (
-        <View style={{ gap: theme.spacing.sm }}>
+            {hasMultipleEntries ? (
+              <View
+                style={{
+                  paddingVertical: 6,
+                  paddingHorizontal: 10,
+                  borderWidth: 1,
+                  borderColor: theme.colors.accent,
+                  borderRadius: theme.radius.pill,
+                  backgroundColor: theme.colors.accentSoft,
+                }}
+              >
+                <Text
+                  style={{
+                    color: theme.colors.accent,
+                    fontSize: theme.typography.small,
+                    fontWeight: "900",
+                  }}
+                >
+                  +{result.entries.length - 1}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+
           {result.group_eval_result ? (
             <RollResultCard
               result={result.group_eval_result}
-              title="Résultat principal"
+              title="Détail du résultat"
             />
-          ) : null}
-
-          {result.entries.map((entry) => (
-            <View
-              key={entry.entryId}
-              style={{
-                ...styles.cardSoft,
-                gap: theme.spacing.sm,
-                backgroundColor: rollTheme.cockpit.panelAlt,
-                borderColor: rollTheme.cockpit.borderSoft,
-              }}
-            >
-              {entry.eval_result ? (
-                <RollResultCard
-                  result={entry.eval_result}
-                  title={getEntryLabel(entry)}
-                />
-              ) : (
-                <>
-                  <Text
-                    style={{
-                      color: theme.colors.text,
-                      fontWeight: "900",
-                    }}
-                  >
-                    {getEntryLabel(entry)}
-                  </Text>
-
-                  <Text
-                    style={{
-                      color: theme.colors.textMuted,
-                      lineHeight: 20,
-                    }}
-                  >
-                    Valeurs : {formatValues(entry.natural_values)}
-                  </Text>
-
-                  <Text
-                    style={{
-                      color: theme.colors.text,
-                      fontSize: 18,
-                      fontWeight: "900",
-                    }}
-                  >
-                    Total : {entry.final_total}
-                  </Text>
-                </>
-              )}
-            </View>
-          ))}
-
-          {!result.group_eval_result && result.entries.length > 1 ? (
-            <View
-              style={{
-                paddingTop: theme.spacing.sm,
-                borderTopWidth: 1,
-                borderTopColor: rollTheme.cockpit.borderSoft,
-              }}
-            >
-              <Text
-                style={{
-                  color: theme.colors.accent,
-                  fontSize: 24,
-                  fontWeight: "900",
-                }}
-              >
-                Total : {result.total}
-              </Text>
-            </View>
           ) : null}
         </View>
       ) : null}

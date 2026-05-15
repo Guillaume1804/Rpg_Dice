@@ -1,4 +1,5 @@
-// RollScreen.tsx
+// dice-universal\screens\RollScreen.tsx
+
 import { useEffect, useMemo, useState } from "react";
 import { View, Text, ScrollView, Pressable } from "react-native";
 import { useDb } from "../data/db/DbProvider";
@@ -77,6 +78,16 @@ export default function RollScreen() {
   const layout = useArcaneLayout();
   const { theme, styles } = useArcaneTheme();
   const rollTheme = useMemo(() => createRollScreenTheme(theme), [theme]);
+
+  const compactSpacing = layout.isSmallHeight ? 4 : 6;
+
+  const resultToDiceOverlap = layout.isSmallHeight ? -18 : -14;
+  const diceToPreparedOverlap = layout.isSmallHeight ? -18 : -14;
+  const preparedToActionsOverlap = layout.isSmallHeight ? -8 : -6;
+
+  const advancedSpacing = layout.isSmallHeight
+    ? theme.spacing.sm
+    : theme.spacing.md;
 
   const [preparedRoll, setPreparedRoll] = useState<PreparedRoll | null>(null);
   const [latestResult, setLatestResult] = useState<GroupRollResult | null>(
@@ -708,11 +719,11 @@ export default function RollScreen() {
         contentContainerStyle={{
           paddingTop: layout.insets.top + theme.spacing.sm,
           paddingHorizontal: layout.horizontalPadding,
-          paddingBottom: layout.scrollBottomPadding,
+          paddingBottom: layout.scrollBottomPadding + theme.spacing.md,
           alignSelf: "center",
           width: "100%",
-          maxWidth: rollTheme.layout.maxCockpitWidth,
-          gap: theme.spacing.sm,
+          maxWidth: layout.maxContentWidth,
+          gap: compactSpacing,
         }}
         showsVerticalScrollIndicator={false}
       >
@@ -734,115 +745,123 @@ export default function RollScreen() {
 
         <ResultPanel result={latestResult} />
 
-        <FreeDicePad
-          dice={STANDARD_DICE}
-          countsBySides={freeDiceCountsBySides}
-          onPressDie={handleAddQuickStandardDie}
-          onLongPressDie={quickDieBehaviorPicker.open}
-        />
+        <View style={{ marginTop: resultToDiceOverlap }}>
+          <FreeDicePad
+            dice={STANDARD_DICE}
+            countsBySides={freeDiceCountsBySides}
+            onPressDie={handleAddQuickStandardDie}
+            onLongPressDie={quickDieBehaviorPicker.open}
+          />
+        </View>
 
-        <PreparedRollCard
-          name={preparedCardName}
-          detail={preparedCardDetail}
-          isEmpty={!hasPreparedRoll}
-          onEdit={
-            preparedRoll?.source === "free" && hasPreparedRoll
-              ? handleOpenPreparedEdit
-              : undefined
-          }
-          onClear={hasPreparedRoll ? handleClearPreparedRoll : undefined}
-          onSave={
-            preparedRoll?.source === "free" && hasPreparedRoll
-              ? handleOpenSaveDraftModal
-              : undefined
-          }
-        />
+        <View style={{ marginTop: diceToPreparedOverlap }}>
+          <PreparedRollCard
+            name={preparedCardName}
+            detail={preparedCardDetail}
+            isEmpty={!hasPreparedRoll}
+            onEdit={
+              preparedRoll?.source === "free" && hasPreparedRoll
+                ? handleOpenPreparedEdit
+                : undefined
+            }
+            onClear={hasPreparedRoll ? handleClearPreparedRoll : undefined}
+            onSave={
+              preparedRoll?.source === "free" && hasPreparedRoll
+                ? handleOpenSaveDraftModal
+                : undefined
+            }
+          />
+        </View>
 
         {hasActiveTable ? (
-          <ActionRail
-            profileName={activeProfile?.name ?? null}
-            actions={actionRailItems}
-            selectedActionId={
-              preparedRoll?.source === "action" ? preparedRoll.groupId : null
-            }
-            onPrepareAction={handlePrepareSavedAction}
-          />
+          <View style={{ marginTop: preparedToActionsOverlap }}>
+            <ActionRail
+              profileName={activeProfile?.name ?? null}
+              actions={actionRailItems}
+              selectedActionId={
+                preparedRoll?.source === "action" ? preparedRoll.groupId : null
+              }
+              onPrepareAction={handlePrepareSavedAction}
+            />
+          </View>
         ) : null}
 
         {showAdvanced ? (
-          <QuickRollSection
-            simplified={true}
-            hideInternalRollControls={true}
-            hideDicePicker={true}
-            hideStandardQuickGroup={true}
-            title="Action temporaire"
-            standardDice={STANDARD_DICE}
-            draftGroups={draftGroups}
-            draftResults={draftResults}
-            selectedDraftGroupId={selectedDraftGroupId}
-            tableIsSystem={table?.is_system === 1}
-            showSaveOptions={showSaveOptions}
-            showAdvanced={showAdvanced}
-            onToggleSaveOptions={() => setShowSaveOptions((v) => !v)}
-            onToggleAdvanced={() => setShowAdvanced((v) => !v)}
-            onAddDraftGroup={addDraftGroup}
-            onAddQuickStandardDie={handleAddQuickStandardDie}
-            onSelectDraftGroup={setSelectedDraftGroupId}
-            onRenameDraftGroup={openRenameDraftGroupModal}
-            onEditDraftGroupRule={openDraftGroupRuleEditor}
-            onRemoveDraftGroup={removeDraftGroup}
-            onEditDraftDie={openDraftEditor}
-            onOpenDieConfig={quickDieBehaviorPicker.open}
-            onRemoveDraftDie={removeDraftDie}
-            onRollDraft={rollDraft}
-            onRollQuickGroup={rollSingleDraftGroup}
-            onClearQuickGroup={clearDraftGroup}
-            onClearDraft={handleClearQuickRoll}
-            onReplaceCurrentTable={replaceCurrentTable}
-            onCreateNewTable={handleOpenSaveDraftModal}
-            availableRules={availableRules}
-            onEditQuickDieQty={quickQtyModal.open}
-            onAdjustQuickDieQty={quickQtyModal.adjust}
-          />
+          <View style={{ marginTop: advancedSpacing }}>
+            <QuickRollSection
+              simplified={true}
+              hideInternalRollControls={true}
+              hideDicePicker={true}
+              hideStandardQuickGroup={true}
+              title="Action temporaire"
+              standardDice={STANDARD_DICE}
+              draftGroups={draftGroups}
+              draftResults={draftResults}
+              selectedDraftGroupId={selectedDraftGroupId}
+              tableIsSystem={table?.is_system === 1}
+              showSaveOptions={showSaveOptions}
+              showAdvanced={showAdvanced}
+              onToggleSaveOptions={() => setShowSaveOptions((v) => !v)}
+              onToggleAdvanced={() => setShowAdvanced((v) => !v)}
+              onAddDraftGroup={addDraftGroup}
+              onAddQuickStandardDie={handleAddQuickStandardDie}
+              onSelectDraftGroup={setSelectedDraftGroupId}
+              onRenameDraftGroup={openRenameDraftGroupModal}
+              onEditDraftGroupRule={openDraftGroupRuleEditor}
+              onRemoveDraftGroup={removeDraftGroup}
+              onEditDraftDie={openDraftEditor}
+              onOpenDieConfig={quickDieBehaviorPicker.open}
+              onRemoveDraftDie={removeDraftDie}
+              onRollDraft={rollDraft}
+              onRollQuickGroup={rollSingleDraftGroup}
+              onClearQuickGroup={clearDraftGroup}
+              onClearDraft={handleClearQuickRoll}
+              onReplaceCurrentTable={replaceCurrentTable}
+              onCreateNewTable={handleOpenSaveDraftModal}
+              availableRules={availableRules}
+              onEditQuickDieQty={quickQtyModal.open}
+              onAdjustQuickDieQty={quickQtyModal.adjust}
+            />
+          </View>
         ) : null}
-
-        <RollModals
-          draftGroups={draftGroups}
-          editingDraftGroupId={editingDraftGroupId}
-          editingDraftIndex={editingDraftIndex}
-          draftEditSign={draftEditSign}
-          draftEditSides={draftEditSides}
-          draftEditQty={draftEditQty}
-          draftEditModifier={draftEditModifier}
-          draftEditRuleId={draftEditRuleId}
-          modernRules={modernRules}
-          legacyRules={legacyRules}
-          onChangeSign={setDraftEditSign}
-          onChangeSides={setDraftEditSides}
-          onChangeQty={setDraftEditQty}
-          onChangeModifier={setDraftEditModifier}
-          onChangeRuleId={setDraftEditRuleId}
-          onCancelDraftEditor={resetDraftEditorState}
-          onSaveDraftEditor={saveDraftEditor}
-          showDraftGroupRuleModal={showDraftGroupRuleModal}
-          draftGroupRuleSelection={draftGroupRuleSelection}
-          onSelectDraftGroupRule={setDraftGroupRuleSelection}
-          onCancelDraftGroupRule={closeDraftGroupRuleModal}
-          onSaveDraftGroupRule={saveDraftGroupRuleEditor}
-          showRenameDraftGroupModal={showRenameDraftGroupModal}
-          renameDraftGroupValue={renameDraftGroupValue}
-          onChangeRenameDraftGroupValue={setRenameDraftGroupValue}
-          onCancelRenameDraftGroup={closeRenameDraftGroupModal}
-          onSaveRenameDraftGroup={saveRenameDraftGroup}
-          showNameModal={showNameModal}
-          newTableName={newTableName}
-          newProfileName={newProfileName}
-          availableSaveTargets={availableSaveTargets}
-          loadingSaveTargets={loadingSaveTargets}
-          onCancelNewTable={closeCreateTableModal}
-          onSaveDraftTarget={handleSaveDraftTarget}
-        />
       </ScrollView>
+
+      <RollModals
+        draftGroups={draftGroups}
+        editingDraftGroupId={editingDraftGroupId}
+        editingDraftIndex={editingDraftIndex}
+        draftEditSign={draftEditSign}
+        draftEditSides={draftEditSides}
+        draftEditQty={draftEditQty}
+        draftEditModifier={draftEditModifier}
+        draftEditRuleId={draftEditRuleId}
+        modernRules={modernRules}
+        legacyRules={legacyRules}
+        onChangeSign={setDraftEditSign}
+        onChangeSides={setDraftEditSides}
+        onChangeQty={setDraftEditQty}
+        onChangeModifier={setDraftEditModifier}
+        onChangeRuleId={setDraftEditRuleId}
+        onCancelDraftEditor={resetDraftEditorState}
+        onSaveDraftEditor={saveDraftEditor}
+        showDraftGroupRuleModal={showDraftGroupRuleModal}
+        draftGroupRuleSelection={draftGroupRuleSelection}
+        onSelectDraftGroupRule={setDraftGroupRuleSelection}
+        onCancelDraftGroupRule={closeDraftGroupRuleModal}
+        onSaveDraftGroupRule={saveDraftGroupRuleEditor}
+        showRenameDraftGroupModal={showRenameDraftGroupModal}
+        renameDraftGroupValue={renameDraftGroupValue}
+        onChangeRenameDraftGroupValue={setRenameDraftGroupValue}
+        onCancelRenameDraftGroup={closeRenameDraftGroupModal}
+        onSaveRenameDraftGroup={saveRenameDraftGroup}
+        showNameModal={showNameModal}
+        newTableName={newTableName}
+        newProfileName={newProfileName}
+        availableSaveTargets={availableSaveTargets}
+        loadingSaveTargets={loadingSaveTargets}
+        onCancelNewTable={closeCreateTableModal}
+        onSaveDraftTarget={handleSaveDraftTarget}
+      />
 
       <Pressable
         onPress={() => setShowAdvanced((v) => !v)}

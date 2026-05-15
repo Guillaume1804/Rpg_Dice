@@ -1,4 +1,4 @@
-// dice-universal/features/roll/components/PreparedRollCard.tsx
+// dice-universal\features\roll\components\PreparedRollCard.tsx
 
 import { useMemo } from "react";
 import { Pressable, Text, View } from "react-native";
@@ -26,7 +26,6 @@ function PreparedActionButton({
   variant?: "default" | "accent" | "danger";
 }) {
   const { theme } = useArcaneTheme();
-  const rollTheme = useMemo(() => createRollScreenTheme(theme), [theme]);
 
   const backgroundColor =
     variant === "accent"
@@ -40,37 +39,33 @@ function PreparedActionButton({
       ? theme.colors.accent
       : variant === "danger"
         ? theme.colors.failure
-        : theme.colors.border;
+        : theme.colors.borderSoft;
 
   const textColor =
     variant === "danger"
       ? theme.colors.failure
       : variant === "accent"
         ? theme.colors.accent
-        : theme.colors.text;
+        : theme.colors.textMuted;
 
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        paddingVertical: 10,
-        paddingHorizontal: 13,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
         borderWidth: 1,
         borderColor,
         borderRadius: theme.radius.pill,
         backgroundColor: pressed ? theme.colors.surfaceSoft : backgroundColor,
         opacity: pressed ? 0.86 : 1,
         transform: [{ scale: pressed ? 0.97 : 1 }],
-        shadowColor: rollTheme.cockpit.glow,
-        shadowOpacity: variant === "accent" ? 0.22 : 0,
-        shadowRadius: 10,
-        shadowOffset: { width: 0, height: 4 },
-        elevation: variant === "accent" ? 3 : 0,
       })}
     >
       <Text
         style={{
           color: textColor,
+          fontSize: 13,
           fontWeight: "900",
         }}
       >
@@ -80,7 +75,7 @@ function PreparedActionButton({
   );
 }
 
-function PreparedLineBadge({
+function PreparedMiniBadge({
   label,
   tone = "default",
 }: {
@@ -93,7 +88,7 @@ function PreparedLineBadge({
     <View
       style={{
         alignSelf: "flex-start",
-        paddingVertical: 6,
+        paddingVertical: 5,
         paddingHorizontal: 10,
         borderWidth: 1,
         borderColor:
@@ -104,14 +99,46 @@ function PreparedLineBadge({
       }}
     >
       <Text
+        numberOfLines={1}
         style={{
           color:
             tone === "accent" ? theme.colors.accent : theme.colors.textMuted,
-          fontSize: theme.typography.small,
+          fontSize: 12,
           fontWeight: "900",
         }}
       >
         {label}
+      </Text>
+    </View>
+  );
+}
+
+function PreparedIcon({ empty }: { empty: boolean }) {
+  const { theme } = useArcaneTheme();
+
+  return (
+    <View
+      style={{
+        width: 46,
+        height: 46,
+        borderRadius: theme.radius.lg,
+        borderWidth: 1,
+        borderColor: empty ? theme.colors.borderSoft : theme.colors.accent,
+        backgroundColor: empty
+          ? theme.colors.surfaceAlt
+          : theme.colors.accentSoft,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <Text
+        style={{
+          color: empty ? theme.colors.textSubtle : theme.colors.accent,
+          fontSize: 22,
+          fontWeight: "900",
+        }}
+      >
+        {empty ? "?" : "✦"}
       </Text>
     </View>
   );
@@ -138,11 +165,14 @@ export function PreparedRollCard({
     [detail],
   );
 
+  const mainDetail = detailParts[0] ?? null;
+  const secondaryDetails = detailParts.slice(1, 3);
+
   return (
     <View
       style={{
         ...styles.card,
-        gap: theme.spacing.md,
+        gap: theme.spacing.sm,
         borderRadius: rollTheme.layout.cockpitRadius,
         borderColor: isEmpty
           ? theme.colors.borderSoft
@@ -152,17 +182,18 @@ export function PreparedRollCard({
       }}
     >
       <View
+        pointerEvents="none"
         style={{
           position: "absolute",
-          top: -48,
-          right: -48,
-          width: 130,
-          height: 130,
+          top: -60,
+          right: -54,
+          width: 150,
+          height: 150,
           borderRadius: 999,
           backgroundColor: isEmpty
             ? theme.colors.surfaceSoft
             : rollTheme.cockpit.glow,
-          opacity: isEmpty ? 0.16 : 0.22,
+          opacity: isEmpty ? 0.12 : 0.16,
         }}
       />
 
@@ -170,29 +201,106 @@ export function PreparedRollCard({
         style={{
           flexDirection: "row",
           justifyContent: "space-between",
-          alignItems: "flex-start",
-          gap: theme.spacing.md,
+          alignItems: "center",
+          gap: theme.spacing.sm,
         }}
       >
-        <View style={{ flex: 1, gap: theme.spacing.xs }}>
-          <Text
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: theme.spacing.sm,
+            flex: 1,
+          }}
+        >
+          <View
             style={{
-              color: theme.colors.textSubtle,
-              fontSize: theme.typography.tiny,
-              fontWeight: "900",
-              textTransform: "uppercase",
-              letterSpacing: 0.9,
+              width: 32,
+              height: 32,
+              borderRadius: theme.radius.pill,
+              borderWidth: 1,
+              borderColor: theme.colors.arcane,
+              backgroundColor: theme.colors.arcaneSoft,
+              alignItems: "center",
+              justifyContent: "center",
             }}
           >
-            ✦ {title}
-          </Text>
+            <Text
+              style={{
+                color: theme.colors.arcane,
+                fontSize: 16,
+                fontWeight: "900",
+              }}
+            >
+              ⚑
+            </Text>
+          </View>
 
-          {isEmpty ? (
-            <>
+          <Text
+            style={{
+              color: theme.colors.text,
+              fontSize: 19,
+              fontWeight: "900",
+              letterSpacing: -0.2,
+              textTransform: "uppercase",
+            }}
+          >
+            {title}
+          </Text>
+        </View>
+
+        {onEdit ? (
+          <Pressable
+            onPress={onEdit}
+            style={({ pressed }) => ({
+              paddingVertical: 7,
+              paddingHorizontal: 11,
+              borderRadius: theme.radius.pill,
+              borderWidth: 1,
+              borderColor: theme.colors.borderSoft,
+              backgroundColor: pressed
+                ? theme.colors.surfaceSoft
+                : theme.colors.surfaceAlt,
+              opacity: pressed ? 0.86 : 1,
+            })}
+          >
+            <Text
+              style={{
+                color: theme.colors.textMuted,
+                fontSize: 13,
+                fontWeight: "900",
+              }}
+            >
+              Modifier ✎
+            </Text>
+          </Pressable>
+        ) : null}
+      </View>
+
+      <View
+        style={{
+          ...styles.cardSoft,
+          gap: theme.spacing.sm,
+          backgroundColor: rollTheme.cockpit.panelAlt,
+          borderColor: rollTheme.cockpit.borderSoft,
+          paddingVertical: theme.spacing.md,
+        }}
+      >
+        {isEmpty ? (
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: theme.spacing.md,
+            }}
+          >
+            <PreparedIcon empty />
+
+            <View style={{ flex: 1, gap: 3 }}>
               <Text
                 style={{
                   color: theme.colors.text,
-                  fontSize: 21,
+                  fontSize: 20,
                   fontWeight: "900",
                   letterSpacing: -0.2,
                 }}
@@ -203,115 +311,153 @@ export function PreparedRollCard({
               <Text
                 style={{
                   color: theme.colors.textMuted,
-                  lineHeight: 20,
+                  lineHeight: 19,
                   fontWeight: "600",
                 }}
               >
-                Choisis un dé libre ou une action pour préparer ton prochain
-                jet.
+                Choisis un dé libre ou une action.
               </Text>
-            </>
-          ) : (
-            <>
-              <Text
-                style={{
-                  color: theme.colors.text,
-                  fontSize: 23,
-                  fontWeight: "900",
-                  letterSpacing: -0.3,
-                }}
-              >
-                {name ?? "Jet"}
-              </Text>
+            </View>
+          </View>
+        ) : (
+          <>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: theme.spacing.md,
+              }}
+            >
+              <PreparedIcon empty={false} />
 
-              {detailParts.length > 0 ? (
-                <View
+              <View style={{ flex: 1, gap: 3 }}>
+                <Text
+                  numberOfLines={1}
                   style={{
-                    flexDirection: "row",
-                    flexWrap: "wrap",
-                    gap: theme.spacing.sm,
-                    marginTop: theme.spacing.xs,
+                    color: theme.colors.text,
+                    fontSize: 24,
+                    fontWeight: "900",
+                    letterSpacing: -0.4,
                   }}
                 >
-                  {detailParts.map((part, index) => (
-                    <PreparedLineBadge
-                      key={`prepared-detail-${index}-${part}`}
-                      label={part}
-                      tone={index === 0 ? "accent" : "default"}
-                    />
-                  ))}
-                </View>
-              ) : null}
-            </>
-          )}
-        </View>
+                  {mainDetail ?? name ?? "Jet"}
+                </Text>
 
-        <View
-          style={{
-            width: 46,
-            height: 46,
-            borderRadius: theme.radius.pill,
-            borderWidth: 1,
-            borderColor: isEmpty
-              ? theme.colors.borderSoft
-              : theme.colors.accent,
-            backgroundColor: isEmpty
-              ? theme.colors.surfaceAlt
-              : theme.colors.accentSoft,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Text
-            style={{
-              color: isEmpty ? theme.colors.textSubtle : theme.colors.accent,
-              fontSize: 22,
-              fontWeight: "900",
-            }}
-          >
-            {isEmpty ? "?" : "🎲"}
-          </Text>
-        </View>
+                <Text
+                  numberOfLines={1}
+                  style={{
+                    color: theme.colors.textMuted,
+                    fontSize: 14,
+                    fontWeight: "700",
+                  }}
+                >
+                  {name ?? "Jet principal"}
+                </Text>
+              </View>
+
+              <PreparedMiniBadge label="Principal" tone="accent" />
+            </View>
+
+            {secondaryDetails.length > 0 ? (
+              <View
+                style={{
+                  flexDirection: "row",
+                  flexWrap: "wrap",
+                  gap: theme.spacing.sm,
+                  paddingLeft: 58,
+                }}
+              >
+                {secondaryDetails.map((part, index) => (
+                  <PreparedMiniBadge
+                    key={`prepared-secondary-${index}-${part}`}
+                    label={part}
+                  />
+                ))}
+              </View>
+            ) : null}
+
+            {onEdit ? (
+              <>
+                <View
+                  style={{
+                    height: 1,
+                    backgroundColor: rollTheme.cockpit.borderSoft,
+                    opacity: 0.8,
+                    marginTop: 2,
+                  }}
+                />
+
+                <Pressable
+                  onPress={onEdit}
+                  style={({ pressed }) => ({
+                    alignSelf: "flex-start",
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: theme.spacing.sm,
+                    paddingVertical: 8,
+                    paddingHorizontal: 2,
+                    opacity: pressed ? 0.78 : 1,
+                  })}
+                >
+                  <View
+                    style={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: theme.radius.pill,
+                      borderWidth: 1,
+                      borderColor: theme.colors.arcane,
+                      backgroundColor: theme.colors.arcaneSoft,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: theme.colors.arcane,
+                        fontSize: 20,
+                        fontWeight: "900",
+                      }}
+                    >
+                      +
+                    </Text>
+                  </View>
+
+                  <Text
+                    style={{
+                      color: theme.colors.arcane,
+                      fontSize: 16,
+                      fontWeight: "900",
+                    }}
+                  >
+                    Ajouter un élément
+                  </Text>
+                </Pressable>
+              </>
+            ) : null}
+          </>
+        )}
       </View>
 
       {!isEmpty ? (
-        <>
-          <View
-            style={{
-              height: 1,
-              backgroundColor: rollTheme.cockpit.borderSoft,
-              opacity: 0.9,
-            }}
-          />
+        <View
+          style={{
+            flexDirection: "row",
+            flexWrap: "wrap",
+            gap: theme.spacing.sm,
+          }}
+        >
+          {onSave ? (
+            <PreparedActionButton label="Sauvegarder" onPress={onSave} />
+          ) : null}
 
-          <View
-            style={{
-              flexDirection: "row",
-              flexWrap: "wrap",
-              gap: theme.spacing.sm,
-            }}
-          >
-            {onEdit ? (
-              <PreparedActionButton
-                label="Modifier"
-                onPress={onEdit}
-                variant="accent"
-              />
-            ) : null}
-
-            {onSave ? (
-              <PreparedActionButton label="Sauvegarder" onPress={onSave} />
-            ) : null}
-
-            {onClear ? (
-              <PreparedActionButton
-                label="Vider"
-                onPress={onClear}
-                variant="danger"
-              />
-            ) : null}
-          </View>
-        </>
+          {onClear ? (
+            <PreparedActionButton
+              label="Vider"
+              onPress={onClear}
+              variant="danger"
+            />
+          ) : null}
+        </View>
       ) : null}
     </View>
   );
