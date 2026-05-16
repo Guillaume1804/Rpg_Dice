@@ -1,4 +1,4 @@
-// dice-universal\features\roll\components\StickyRollButton.tsx
+// dice-universal/features/roll/components/StickyRollButton.tsx
 
 import { useMemo } from "react";
 import { Pressable, Text, View } from "react-native";
@@ -23,17 +23,13 @@ export function StickyRollButton({
   const layout = useArcaneLayout();
   const rollTheme = useMemo(() => createRollScreenTheme(theme), [theme]);
 
-  const buttonBackground = disabled
-    ? rollTheme.cockpit.panelAlt
-    : theme.colors.accentSoft;
-
-  const buttonBorder = disabled
-    ? rollTheme.cockpit.borderSoft
-    : theme.colors.accent;
-
-  const glowColor = disabled
-    ? rollTheme.cockpit.magicGlow
-    : rollTheme.launchButton.glow;
+  /**
+   * IMPORTANT :
+   * Ne pas utiliser layout.bottomBarHeight ici.
+   * Le bouton doit être collé au bas de l'écran de contenu,
+   * juste au-dessus de la tab bar native.
+   */
+  const bottomOffset = Math.max(layout.insets.bottom, 0) + 8;
 
   return (
     <View
@@ -42,26 +38,33 @@ export function StickyRollButton({
         position: "absolute",
         left: 0,
         right: 0,
-        bottom: 0,
+        bottom: bottomOffset,
         paddingHorizontal: layout.horizontalPadding,
-        paddingTop: theme.spacing.md,
-        paddingBottom: Math.max(theme.spacing.lg, layout.insets.bottom + 12),
-        backgroundColor: rollTheme.cockpit.background,
-        borderTopWidth: 1,
-        borderTopColor: rollTheme.cockpit.borderSoft,
+        zIndex: 100,
+        elevation: 100,
       }}
     >
       <View
         pointerEvents="none"
         style={{
           position: "absolute",
-          left: -40,
-          right: -40,
-          top: -28,
-          height: 96,
-          backgroundColor: glowColor,
-          opacity: disabled ? 0.07 : 0.14,
+          alignSelf: "center",
+          bottom: -10,
+          width: "88%",
+          maxWidth: layout.maxContentWidth,
+          height: layout.isSmallHeight ? 58 : 64,
           borderRadius: 999,
+          backgroundColor: disabled
+            ? "rgba(145, 113, 255, 0.12)"
+            : rollTheme.launchButton.glow,
+          opacity: disabled ? 0.16 : 0.22,
+          shadowColor: disabled
+            ? rollTheme.cockpit.magicGlow
+            : rollTheme.launchButton.glow,
+          shadowOpacity: disabled ? 0.12 : 0.3,
+          shadowRadius: 22,
+          shadowOffset: { width: 0, height: 0 },
+          elevation: disabled ? 1 : 6,
         }}
       />
 
@@ -75,24 +78,30 @@ export function StickyRollButton({
         <Pressable
           onPress={onPress}
           disabled={disabled}
+          hitSlop={8}
           style={({ pressed }) => ({
-            minHeight: 72,
-            borderRadius: theme.radius.xl,
+            minHeight: layout.isSmallHeight ? 54 : 58,
+            borderRadius: theme.radius.pill,
             borderWidth: 1,
-            borderColor: buttonBorder,
+            borderColor: disabled
+              ? "rgba(145, 113, 255, 0.22)"
+              : "rgba(217, 160, 55, 0.9)",
+            backgroundColor: disabled
+              ? "rgba(43, 42, 103, 0.82)"
+              : pressed
+                ? "rgba(217, 160, 55, 0.22)"
+                : "rgba(217, 160, 55, 0.15)",
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor:
-              pressed && !disabled
-                ? theme.colors.surfaceSoft
-                : buttonBackground,
-            opacity: disabled ? 0.64 : pressed ? 0.92 : 1,
-            transform: [{ scale: pressed && !disabled ? 0.985 : 1 }],
             overflow: "hidden",
-            shadowColor: glowColor,
-            shadowOpacity: disabled ? 0.08 : 0.34,
-            shadowRadius: disabled ? 8 : 22,
-            shadowOffset: { width: 0, height: disabled ? 4 : 10 },
+            opacity: disabled ? 0.76 : pressed ? 0.92 : 1,
+            transform: [{ scale: pressed && !disabled ? 0.985 : 1 }],
+            shadowColor: disabled
+              ? rollTheme.cockpit.magicGlow
+              : theme.colors.accent,
+            shadowOpacity: disabled ? 0.12 : 0.34,
+            shadowRadius: disabled ? 10 : 20,
+            shadowOffset: { width: 0, height: 8 },
             elevation: disabled ? 2 : 8,
           })}
         >
@@ -100,15 +109,14 @@ export function StickyRollButton({
             pointerEvents="none"
             style={{
               position: "absolute",
-              left: -36,
+              left: -40,
               top: -42,
-              width: 120,
-              height: 120,
+              width: 130,
+              height: 130,
               borderRadius: 999,
               backgroundColor: disabled
-                ? rollTheme.cockpit.magicGlow
-                : theme.colors.accent,
-              opacity: disabled ? 0.08 : 0.2,
+                ? "rgba(145, 113, 255, 0.1)"
+                : "rgba(217, 160, 55, 0.2)",
             }}
           />
 
@@ -116,40 +124,82 @@ export function StickyRollButton({
             pointerEvents="none"
             style={{
               position: "absolute",
-              right: -48,
+              right: -56,
               bottom: -58,
               width: 150,
               height: 150,
               borderRadius: 999,
-              backgroundColor: rollTheme.cockpit.magicGlow,
-              opacity: disabled ? 0.08 : 0.16,
+              backgroundColor: disabled
+                ? "rgba(145, 113, 255, 0.1)"
+                : "rgba(160, 92, 255, 0.22)",
             }}
           />
 
-          <Text
+          <View
+            pointerEvents="none"
             style={{
-              color: disabled ? theme.colors.textSubtle : theme.colors.accent,
-              fontSize: theme.typography.tiny,
-              fontWeight: "900",
-              letterSpacing: 1.2,
-              textTransform: "uppercase",
-              marginBottom: 3,
+              position: "absolute",
+              left: 18,
+              right: 18,
+              top: 8,
+              height: 1,
+              backgroundColor: disabled
+                ? "rgba(255,255,255,0.08)"
+                : "rgba(255,255,255,0.22)",
             }}
-          >
-            {disabled ? "En attente" : "✦ Prêt à lancer"}
-          </Text>
+          />
 
-          <Text
+          <View
             style={{
-              color: disabled ? theme.colors.textMuted : theme.colors.text,
-              fontSize: 21,
-              fontWeight: "900",
-              letterSpacing: 0.8,
-              textTransform: "uppercase",
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 12,
             }}
           >
-            🎲 {disabled ? disabledLabel : label}
-          </Text>
+            <View
+              style={{
+                width: layout.isSmallHeight ? 34 : 38,
+                height: layout.isSmallHeight ? 34 : 38,
+                borderRadius: theme.radius.pill,
+                borderWidth: 1,
+                borderColor: disabled
+                  ? "rgba(145, 113, 255, 0.22)"
+                  : "rgba(217, 160, 55, 0.88)",
+                backgroundColor: disabled
+                  ? "rgba(8, 10, 30, 0.42)"
+                  : "rgba(217, 160, 55, 0.18)",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text
+                style={{
+                  color: disabled
+                    ? theme.colors.textSubtle
+                    : theme.colors.accent,
+                  fontSize: layout.isSmallHeight ? 18 : 20,
+                  fontWeight: "900",
+                  lineHeight: layout.isSmallHeight ? 22 : 24,
+                }}
+              >
+                ✦
+              </Text>
+            </View>
+
+            <Text
+              numberOfLines={1}
+              style={{
+                color: disabled ? theme.colors.textSubtle : theme.colors.text,
+                fontSize: layout.isSmallHeight ? 16 : 18,
+                fontWeight: "900",
+                letterSpacing: 1.4,
+                textTransform: "uppercase",
+              }}
+            >
+              {disabled ? disabledLabel : label}
+            </Text>
+          </View>
         </Pressable>
       </View>
     </View>

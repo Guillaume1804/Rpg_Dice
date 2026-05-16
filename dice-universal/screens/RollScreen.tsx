@@ -65,14 +65,14 @@ function findDraftGroupById(
 
 type PreparedRoll =
   | {
-      source: "free";
-    }
+    source: "free";
+  }
   | {
-      source: "action";
-      profileId: string;
-      groupId: string;
-      label: string;
-    };
+    source: "action";
+    profileId: string;
+    groupId: string;
+    label: string;
+  };
 
 export default function RollScreen() {
   const layout = useArcaneLayout();
@@ -82,8 +82,8 @@ export default function RollScreen() {
   const compactSpacing = layout.isSmallHeight ? 4 : 6;
 
   const resultToDiceOverlap = layout.isSmallHeight ? -18 : -14;
-  const diceToPreparedOverlap = layout.isSmallHeight ? -18 : -14;
-  const preparedToActionsOverlap = layout.isSmallHeight ? -8 : -6;
+  const diceToPreparedOverlap = layout.isSmallHeight ? -24 : -20;
+  const preparedToActionsOverlap = layout.isSmallHeight ? -10 : -8;
 
   const advancedSpacing = layout.isSmallHeight
     ? theme.spacing.sm
@@ -370,9 +370,9 @@ export default function RollScreen() {
 
   async function handleSaveDraftTarget(params: {
     mode:
-      | "new_table_new_profile"
-      | "existing_table_new_profile"
-      | "existing_table_existing_profile";
+    | "new_table_new_profile"
+    | "existing_table_new_profile"
+    | "existing_table_existing_profile";
     tableName?: string;
     profileName?: string;
     tableId?: string;
@@ -719,7 +719,7 @@ export default function RollScreen() {
         contentContainerStyle={{
           paddingTop: layout.insets.top + theme.spacing.sm,
           paddingHorizontal: layout.horizontalPadding,
-          paddingBottom: layout.scrollBottomPadding + theme.spacing.md,
+          paddingBottom: layout.insets.bottom + 112,
           alignSelf: "center",
           width: "100%",
           maxWidth: layout.maxContentWidth,
