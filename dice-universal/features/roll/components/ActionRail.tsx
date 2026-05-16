@@ -27,9 +27,9 @@ function getActionIcon(index: number) {
 function compactActionName(name: string) {
   const trimmed = name.trim();
 
-  if (trimmed.length <= 16) return trimmed;
+  if (trimmed.length <= 13) return trimmed;
 
-  return `${trimmed.slice(0, 14).trim()}…`;
+  return `${trimmed.slice(0, 11).trim()}…`;
 }
 
 function ActionTile({
@@ -50,49 +50,49 @@ function ActionTile({
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        width: 92,
-        height: 94,
-        paddingVertical: 9,
-        paddingHorizontal: 7,
+        width: 78,
+        height: 78,
+        paddingVertical: 7,
+        paddingHorizontal: 6,
         borderWidth: 1,
         borderColor: selected
-          ? theme.colors.accent
-          : "rgba(145, 113, 255, 0.22)",
-        borderRadius: 16,
+          ? "rgba(217, 160, 55, 0.76)"
+          : "rgba(145, 113, 255, 0.2)",
+        borderRadius: 15,
         backgroundColor: selected
-          ? "rgba(217, 160, 55, 0.18)"
-          : "rgba(18, 23, 58, 0.72)",
+          ? "rgba(217, 160, 55, 0.15)"
+          : "rgba(18, 23, 58, 0.58)",
         alignItems: "center",
         justifyContent: "center",
-        gap: 7,
-        opacity: pressed ? 0.84 : selected ? 1 : 0.94,
+        gap: 6,
+        opacity: pressed ? 0.82 : selected ? 1 : 0.92,
         transform: [{ scale: pressed ? 0.96 : 1 }],
         shadowColor: selected ? theme.colors.accent : rollTheme.cockpit.glow,
-        shadowOpacity: selected ? 0.24 : 0.08,
-        shadowRadius: selected ? 14 : 8,
-        shadowOffset: { width: 0, height: selected ? 6 : 4 },
+        shadowOpacity: selected ? 0.22 : 0.06,
+        shadowRadius: selected ? 12 : 6,
+        shadowOffset: { width: 0, height: selected ? 5 : 3 },
         elevation: selected ? 4 : 1,
       })}
     >
       <View
         style={{
-          width: 42,
-          height: 42,
-          borderRadius: 15,
+          width: 36,
+          height: 36,
+          borderRadius: 14,
           borderWidth: 1,
           borderColor: selected
-            ? theme.colors.accent
-            : "rgba(173, 102, 255, 0.56)",
+            ? "rgba(217, 160, 55, 0.74)"
+            : "rgba(173, 102, 255, 0.48)",
           backgroundColor: selected
-            ? "rgba(217, 160, 55, 0.16)"
-            : "rgba(90, 55, 170, 0.16)",
+            ? "rgba(217, 160, 55, 0.14)"
+            : "rgba(90, 55, 170, 0.14)",
           alignItems: "center",
           justifyContent: "center",
         }}
       >
         <Text
           style={{
-            fontSize: 23,
+            fontSize: 20,
             color: selected ? theme.colors.accent : theme.colors.arcane,
           }}
         >
@@ -104,8 +104,8 @@ function ActionTile({
         numberOfLines={2}
         style={{
           color: theme.colors.text,
-          fontSize: 12,
-          lineHeight: 14,
+          fontSize: 11,
+          lineHeight: 13,
           fontWeight: "800",
           textAlign: "center",
         }}
@@ -122,28 +122,28 @@ function MoreActionTile() {
   return (
     <View
       style={{
-        width: 92,
-        height: 94,
-        paddingVertical: 9,
-        paddingHorizontal: 7,
+        width: 78,
+        height: 78,
+        paddingVertical: 7,
+        paddingHorizontal: 6,
         borderWidth: 1,
-        borderColor: "rgba(145, 113, 255, 0.18)",
-        borderRadius: 16,
-        backgroundColor: "rgba(18, 23, 58, 0.52)",
+        borderColor: "rgba(145, 113, 255, 0.16)",
+        borderRadius: 15,
+        backgroundColor: "rgba(18, 23, 58, 0.42)",
         alignItems: "center",
         justifyContent: "center",
-        gap: 7,
-        opacity: 0.82,
+        gap: 6,
+        opacity: 0.78,
       }}
     >
       <View
         style={{
-          width: 42,
-          height: 42,
-          borderRadius: 15,
+          width: 36,
+          height: 36,
+          borderRadius: 14,
           borderWidth: 1,
-          borderColor: "rgba(145, 113, 255, 0.28)",
-          backgroundColor: "rgba(90, 55, 170, 0.1)",
+          borderColor: "rgba(145, 113, 255, 0.24)",
+          backgroundColor: "rgba(90, 55, 170, 0.08)",
           alignItems: "center",
           justifyContent: "center",
         }}
@@ -151,9 +151,9 @@ function MoreActionTile() {
         <Text
           style={{
             color: theme.colors.textMuted,
-            fontSize: 25,
+            fontSize: 23,
             fontWeight: "900",
-            lineHeight: 26,
+            lineHeight: 24,
           }}
         >
           ⋯
@@ -163,7 +163,7 @@ function MoreActionTile() {
       <Text
         style={{
           color: theme.colors.textMuted,
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: "800",
           textAlign: "center",
         }}
@@ -180,21 +180,21 @@ function EmptyActionTile() {
   return (
     <View
       style={{
-        minHeight: 82,
-        paddingVertical: 14,
-        paddingHorizontal: 14,
+        minHeight: 64,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
         borderWidth: 1,
-        borderColor: "rgba(145, 113, 255, 0.18)",
-        borderRadius: 18,
-        backgroundColor: "rgba(18, 23, 58, 0.56)",
+        borderColor: "rgba(145, 113, 255, 0.16)",
+        borderRadius: 16,
+        backgroundColor: "rgba(18, 23, 58, 0.48)",
         justifyContent: "center",
-        gap: 4,
+        gap: 3,
       }}
     >
       <Text
         style={{
           color: theme.colors.text,
-          fontSize: 15,
+          fontSize: 14,
           fontWeight: "900",
         }}
       >
@@ -202,14 +202,15 @@ function EmptyActionTile() {
       </Text>
 
       <Text
+        numberOfLines={1}
         style={{
           color: theme.colors.textMuted,
-          fontSize: 13,
-          lineHeight: 18,
+          fontSize: 12,
+          lineHeight: 16,
           fontWeight: "600",
         }}
       >
-        Crée des actions depuis l’écran Tables pour les retrouver ici.
+        Crée des actions depuis l’écran Tables.
       </Text>
     </View>
   );
@@ -228,8 +229,8 @@ export function ActionRail({
   return (
     <View
       style={{
-        gap: 8,
-        marginTop: -2,
+        gap: 6,
+        marginTop: -4,
       }}
     >
       <View
@@ -237,7 +238,7 @@ export function ActionRail({
           flexDirection: "row",
           justifyContent: "space-between",
           alignItems: "flex-end",
-          gap: theme.spacing.md,
+          gap: theme.spacing.sm,
           paddingHorizontal: 2,
         }}
       >
@@ -245,10 +246,10 @@ export function ActionRail({
           <Text
             style={{
               color: theme.colors.textMuted,
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: "900",
               textTransform: "uppercase",
-              letterSpacing: 0.7,
+              letterSpacing: 0.65,
             }}
           >
             Actions rapides
@@ -257,9 +258,9 @@ export function ActionRail({
           <Text
             numberOfLines={1}
             style={{
-              marginTop: 1,
+              marginTop: 0,
               color: theme.colors.textSubtle,
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: "700",
             }}
           >
@@ -270,7 +271,7 @@ export function ActionRail({
         <Text
           style={{
             color: theme.colors.textMuted,
-            fontSize: 12,
+            fontSize: 11,
             fontWeight: "800",
           }}
         >
@@ -285,9 +286,9 @@ export function ActionRail({
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{
-            gap: 10,
+            gap: 8,
             paddingHorizontal: 2,
-            paddingBottom: 3,
+            paddingBottom: 1,
           }}
         >
           {actions.map((action, index) => (

@@ -1,4 +1,4 @@
-// dice-universal\features\roll\components\SessionBar.tsx
+// dice-universal/features/roll/components/SessionBar.tsx
 
 import { useMemo } from "react";
 import { Pressable, Text, View } from "react-native";
@@ -11,8 +11,8 @@ type SessionBarProps = {
   activeProfileName: string | null;
   hasActiveTable: boolean;
   profileCount: number;
-  onPressProfile: () => void;
-  onClearTable: () => void | Promise<void>;
+  onPressTableMenu: () => void;
+  onPressProfileMenu: () => void;
 };
 
 function HeaderLogo() {
@@ -23,18 +23,18 @@ function HeaderLogo() {
       style={{
         alignItems: "center",
         justifyContent: "center",
-        minWidth: 86,
-        paddingTop: 2,
+        width: 66,
+        paddingTop: 1,
       }}
     >
       <Text
         numberOfLines={1}
         style={{
           color: theme.colors.text,
-          fontSize: 30,
+          fontSize: 22,
           fontWeight: "900",
-          letterSpacing: 4,
-          lineHeight: 34,
+          letterSpacing: 2.8,
+          lineHeight: 25,
         }}
       >
         DICE
@@ -44,11 +44,11 @@ function HeaderLogo() {
         numberOfLines={1}
         style={{
           color: theme.colors.accent,
-          fontSize: 11,
+          fontSize: 8,
           fontWeight: "900",
-          letterSpacing: 4,
+          letterSpacing: 2.4,
           textTransform: "uppercase",
-          marginTop: -1,
+          marginTop: -2,
         }}
       >
         Universal
@@ -63,7 +63,6 @@ function SessionTile({
   subtitle,
   icon,
   disabled = false,
-  showChevron = false,
   onPress,
 }: {
   eyebrow: string;
@@ -71,57 +70,61 @@ function SessionTile({
   subtitle: string;
   icon: string;
   disabled?: boolean;
-  showChevron?: boolean;
-  onPress?: () => void;
+  onPress: () => void;
 }) {
   const { theme } = useArcaneTheme();
   const rollTheme = useMemo(() => createRollScreenTheme(theme), [theme]);
 
-  const content = (
-    <>
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => ({
+        flex: 1,
+        minHeight: 56,
+        paddingVertical: 7,
+        paddingHorizontal: 8,
+        borderWidth: 1,
+        borderColor: "rgba(145, 113, 255, 0.22)",
+        borderRadius: 18,
+        backgroundColor: "rgba(13, 19, 43, 0.72)",
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 7,
+        overflow: "hidden",
+        opacity: disabled ? 0.74 : pressed ? 0.86 : 1,
+        transform: [{ scale: pressed && !disabled ? 0.985 : 1 }],
+      })}
+    >
       <View
         pointerEvents="none"
         style={{
           position: "absolute",
-          top: -34,
-          right: -26,
-          width: 92,
-          height: 92,
-          borderRadius: 999,
-          backgroundColor: rollTheme.cockpit.magicGlow,
-          opacity: 0.18,
-        }}
-      />
-
-      <View
-        pointerEvents="none"
-        style={{
-          position: "absolute",
-          left: -28,
-          bottom: -38,
+          top: -32,
+          right: -28,
           width: 82,
           height: 82,
           borderRadius: 999,
-          backgroundColor: rollTheme.cockpit.glow,
-          opacity: 0.08,
+          backgroundColor: rollTheme.cockpit.magicGlow,
+          opacity: 0.13,
         }}
       />
 
       <View
         style={{
-          width: 42,
-          height: 42,
-          borderRadius: theme.radius.pill,
+          width: 32,
+          height: 32,
+          borderRadius: 12,
           borderWidth: 1,
-          borderColor: rollTheme.cockpit.borderSoft,
-          backgroundColor: rollTheme.cockpit.panelAlt,
+          borderColor: "rgba(145, 113, 255, 0.2)",
+          backgroundColor: "rgba(32, 41, 88, 0.5)",
           alignItems: "center",
           justifyContent: "center",
         }}
       >
         <Text
           style={{
-            fontSize: 21,
+            fontSize: 17,
             fontWeight: "900",
           }}
         >
@@ -129,15 +132,16 @@ function SessionTile({
         </Text>
       </View>
 
-      <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
+      <View style={{ flex: 1, minWidth: 0 }}>
         <Text
           numberOfLines={1}
           style={{
             color: theme.colors.textSubtle,
-            fontSize: 10,
+            fontSize: 9,
             fontWeight: "900",
             textTransform: "uppercase",
-            letterSpacing: 0.8,
+            letterSpacing: 0.7,
+            lineHeight: 12,
           }}
         >
           {eyebrow}
@@ -147,10 +151,10 @@ function SessionTile({
           numberOfLines={1}
           style={{
             color: theme.colors.text,
-            fontSize: 16,
+            fontSize: 14,
             fontWeight: "900",
-            letterSpacing: -0.25,
-            lineHeight: 20,
+            letterSpacing: -0.2,
+            lineHeight: 17,
           }}
         >
           {title}
@@ -160,61 +164,26 @@ function SessionTile({
           numberOfLines={1}
           style={{
             color: theme.colors.textMuted,
-            fontSize: 12,
+            fontSize: 10,
             fontWeight: "800",
-            lineHeight: 15,
+            lineHeight: 13,
           }}
         >
           {subtitle}
         </Text>
       </View>
 
-      {showChevron ? (
-        <Text
-          style={{
-            color: theme.colors.textMuted,
-            fontSize: 16,
-            fontWeight: "900",
-            marginLeft: -2,
-          }}
-        >
-          ▾
-        </Text>
-      ) : null}
-    </>
-  );
-
-  const baseStyle = {
-    flex: 1,
-    minHeight: 68,
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: rollTheme.cockpit.borderSoft,
-    borderRadius: theme.radius.xl,
-    backgroundColor: rollTheme.cockpit.panel,
-    flexDirection: "row" as const,
-    alignItems: "center" as const,
-    gap: 8,
-    overflow: "hidden" as const,
-    opacity: disabled ? 0.74 : 1,
-  };
-
-  if (!onPress) {
-    return <View style={baseStyle}>{content}</View>;
-  }
-
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      style={({ pressed }) => ({
-        ...baseStyle,
-        opacity: disabled ? 0.74 : pressed ? 0.86 : 1,
-        transform: [{ scale: pressed && !disabled ? 0.985 : 1 }],
-      })}
-    >
-      {content}
+      <Text
+        style={{
+          color: theme.colors.textMuted,
+          fontSize: 16,
+          fontWeight: "900",
+          marginLeft: -4,
+          lineHeight: 18,
+        }}
+      >
+        ☰
+      </Text>
     </Pressable>
   );
 }
@@ -224,21 +193,18 @@ export function SessionBar({
   activeProfileName,
   hasActiveTable,
   profileCount,
-  onPressProfile,
-  onClearTable,
+  onPressTableMenu,
+  onPressProfileMenu,
 }: SessionBarProps) {
-  const { theme } = useArcaneTheme();
-
   const displayTableName = tableName ?? "Mode libre";
   const displayProfileName = activeProfileName ?? "Aucun profil";
-  const canCycleProfile = hasActiveTable && profileCount > 1;
 
   return (
-    <View style={{ gap: 8 }}>
+    <View>
       <View
         style={{
           flexDirection: "row",
-          gap: 8,
+          gap: 7,
           alignItems: "center",
         }}
       >
@@ -247,7 +213,7 @@ export function SessionBar({
           title={displayTableName}
           subtitle={hasActiveTable ? "Session liée" : "Jet libre"}
           icon={hasActiveTable ? "🏰" : "🎲"}
-          showChevron={hasActiveTable}
+          onPress={onPressTableMenu}
         />
 
         <HeaderLogo />
@@ -261,39 +227,10 @@ export function SessionBar({
               : "Non lié"
           }
           icon={hasActiveTable ? "✦" : "◇"}
-          disabled={!canCycleProfile}
-          showChevron={canCycleProfile}
-          onPress={canCycleProfile ? onPressProfile : undefined}
+          disabled={!hasActiveTable}
+          onPress={onPressProfileMenu}
         />
       </View>
-
-      {hasActiveTable ? (
-        <Pressable
-          onPress={onClearTable}
-          style={({ pressed }) => ({
-            alignSelf: "flex-start",
-            paddingVertical: 7,
-            paddingHorizontal: 11,
-            borderWidth: 1,
-            borderColor: theme.colors.borderSoft,
-            borderRadius: theme.radius.pill,
-            backgroundColor: pressed
-              ? theme.colors.surfaceSoft
-              : theme.colors.surfaceAlt,
-            opacity: pressed ? 0.86 : 1,
-          })}
-        >
-          <Text
-            style={{
-              color: theme.colors.textMuted,
-              fontSize: 12,
-              fontWeight: "900",
-            }}
-          >
-            Quitter la table
-          </Text>
-        </Pressable>
-      ) : null}
     </View>
   );
 }
