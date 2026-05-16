@@ -719,7 +719,7 @@ export default function RollScreen() {
         contentContainerStyle={{
           paddingTop: layout.insets.top + theme.spacing.sm,
           paddingHorizontal: layout.horizontalPadding,
-          paddingBottom: layout.insets.bottom + 112,
+          paddingBottom: theme.spacing.sm,
           alignSelf: "center",
           width: "100%",
           maxWidth: layout.maxContentWidth,
@@ -785,6 +785,18 @@ export default function RollScreen() {
             />
           </View>
         ) : null}
+
+        <View
+          style={{
+            marginTop: layout.isSmallHeight ? 0 : 2,
+            marginBottom: 0,
+          }}
+        >
+          <StickyRollButton
+            disabled={!hasPreparedRoll}
+            onPress={handleRollPrepared}
+          />
+        </View>
 
         {showAdvanced ? (
           <View style={{ marginTop: advancedSpacing }}>
@@ -863,12 +875,13 @@ export default function RollScreen() {
         onSaveDraftTarget={handleSaveDraftTarget}
       />
 
+      {/*
       <Pressable
         onPress={() => setShowAdvanced((v) => !v)}
         style={({ pressed }) => ({
           position: "absolute",
           right: layout.horizontalPadding + 4,
-          bottom: layout.bottomBarHeight + 16,
+          bottom: layout.bottomBarHeight + 88,
           width: 56,
           height: 56,
           borderWidth: 1,
@@ -895,11 +908,7 @@ export default function RollScreen() {
           +
         </Text>
       </Pressable>
-
-      <StickyRollButton
-        disabled={!hasPreparedRoll}
-        onPress={handleRollPrepared}
-      />
+      */}
 
       <QuickDieBehaviorPickerModal
         visible={quickDieBehaviorPicker.visible}
