@@ -1,16 +1,19 @@
 // dice-universal\screens\RollScreen.tsx
 
-import { useEffect, useMemo, useState } from "react";
-import { View, Text, ScrollView, Pressable, useWindowDimensions } from "react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  LayoutAnimation,
+  ScrollView,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import { useDb } from "../data/db/DbProvider";
 import { useActiveTable } from "../data/state/ActiveTableProvider";
 
 import { useDataRefresh } from "../data/state/DataRefreshProvider";
 
-import {
-  listTables,
-  type TableRow,
-} from "../data/repositories/tablesRepo";
+import { listTables, type TableRow } from "../data/repositories/tablesRepo";
 
 import { RollModals } from "../features/roll/components/RollModals";
 import { QuickRollSection } from "../features/roll/components/QuickRollSection";
@@ -75,14 +78,31 @@ function findDraftGroupById(
 
 type PreparedRoll =
   | {
-    source: "free";
-  }
+      source: "free";
+    }
   | {
-    source: "action";
-    profileId: string;
-    groupId: string;
-    label: string;
-  };
+      source: "action";
+      profileId: string;
+      groupId: string;
+      label: string;
+    };
+
+function animateCockpitLayout() {
+  LayoutAnimation.configureNext({
+    duration: 180,
+    create: {
+      type: LayoutAnimation.Types.easeInEaseOut,
+      property: LayoutAnimation.Properties.opacity,
+    },
+    update: {
+      type: LayoutAnimation.Types.easeInEaseOut,
+    },
+    delete: {
+      type: LayoutAnimation.Types.easeInEaseOut,
+      property: LayoutAnimation.Properties.opacity,
+    },
+  });
+}
 
 export default function RollScreen() {
   const layout = useArcaneLayout();
@@ -94,15 +114,9 @@ export default function RollScreen() {
   const isVerySmallScreen = windowHeight < 760;
   const isCompactScreen = windowHeight < 820;
 
-  const compactSpacing = layout.isSmallHeight ? 4 : 6;
-
   const resultToDiceOverlap = layout.isSmallHeight ? -18 : -14;
   const diceToPreparedOverlap = layout.isSmallHeight ? -24 : -20;
   const preparedToActionsOverlap = layout.isSmallHeight ? -10 : -8;
-
-  const advancedSpacing = layout.isSmallHeight
-    ? theme.spacing.sm
-    : theme.spacing.md;
 
   const [preparedRoll, setPreparedRoll] = useState<PreparedRoll | null>(null);
   const [latestResult, setLatestResult] = useState<GroupRollResult | null>(
@@ -363,6 +377,8 @@ export default function RollScreen() {
   }
 
   function handleClearPreparedRoll() {
+    animateCockpitLayout();
+
     if (preparedRoll?.source === "free") {
       clearDraft();
     }
@@ -415,9 +431,9 @@ export default function RollScreen() {
 
   async function handleSaveDraftTarget(params: {
     mode:
-    | "new_table_new_profile"
-    | "existing_table_new_profile"
-    | "existing_table_existing_profile";
+      | "new_table_new_profile"
+      | "existing_table_new_profile"
+      | "existing_table_existing_profile";
     tableName?: string;
     profileName?: string;
     tableId?: string;
@@ -527,6 +543,8 @@ export default function RollScreen() {
 
     if (!action) return;
 
+    animateCockpitLayout();
+
     setPreparedRoll({
       source: "action",
       profileId: activeProfile.id,
@@ -537,6 +555,8 @@ export default function RollScreen() {
   }
 
   function handleAddQuickStandardDie(sides: number) {
+    animateCockpitLayout();
+
     addQuickStandardDie(sides);
     setPreparedRoll({ source: "free" });
     setLatestResult(null);
@@ -584,19 +604,10 @@ export default function RollScreen() {
     setLatestResult(null);
   }
 
-  async function handleClearActiveSession() {
+  const handleClearActiveSession = useCallback(async (): Promise<void> => {
+    animateCockpitLayout();
+
     await clearActiveTableId();
-    setSelectedProfileId(null);
-    setResults([]);
-    setPreparedRoll(null);
-    setLatestResult(null);
-    setShowPreparedEditSheet(false);
-    setShowTableSessionMenu(false);
-    setShowProfileSessionMenu(false);
-  }
-
-  async function handleSelectActiveTable(nextTableId: string) {
-    await setActiveTableId(nextTableId);
 
     setSelectedProfileId(null);
     setResults([]);
@@ -605,7 +616,24 @@ export default function RollScreen() {
     setShowPreparedEditSheet(false);
     setShowTableSessionMenu(false);
     setShowProfileSessionMenu(false);
-  }
+  }, [clearActiveTableId]);
+
+  const handleSelectActiveTable = useCallback(
+    async (nextTableId: string): Promise<void> => {
+      animateCockpitLayout();
+
+      await setActiveTableId(nextTableId);
+
+      setSelectedProfileId(null);
+      setResults([]);
+      setPreparedRoll(null);
+      setLatestResult(null);
+      setShowPreparedEditSheet(false);
+      setShowTableSessionMenu(false);
+      setShowProfileSessionMenu(false);
+    },
+    [setActiveTableId],
+  );
 
   const standardPreparedQuickGroup = useMemo(
     () => findStandardQuickGroup(draftGroups),
@@ -705,15 +733,17 @@ export default function RollScreen() {
   const hasPreparedRoll = !!preparedCardName && !!preparedCardDetail;
 
   const hasResult = !!latestResult;
-  const hasActionRail = hasActiveTable;
 
   const isFreeIdleCockpit = !hasActiveTable && !hasPreparedRoll && !hasResult;
   const isTableIdleCockpit = hasActiveTable && !hasPreparedRoll && !hasResult;
-  const isIdleCockpit = isFreeIdleCockpit || isTableIdleCockpit;
 
   const isFullCockpit = hasActiveTable && hasPreparedRoll && hasResult;
   const shouldCompressCockpit =
-    isVerySmallScreen || isCompactScreen || hasActiveTable || hasPreparedRoll || hasResult;
+    isVerySmallScreen ||
+    isCompactScreen ||
+    hasActiveTable ||
+    hasPreparedRoll ||
+    hasResult;
 
   const screenTopPadding = isVerySmallScreen
     ? layout.insets.top + 2
@@ -754,26 +784,6 @@ export default function RollScreen() {
     : isFullCockpit
       ? preparedToActionsOverlap
       : -6;
-
-  const cockpitTopLift = isTableIdleCockpit
-    ? layout.isSmallHeight
-      ? -4
-      : -8
-    : isFreeIdleCockpit
-      ? layout.isSmallHeight
-        ? 0
-        : 4
-      : 0;
-
-  const stickyButtonTopSpacing = hasActiveTable
-    ? layout.isSmallHeight
-      ? 2
-      : 4
-    : isIdleCockpit
-      ? layout.isSmallHeight
-        ? 4
-        : 8
-      : 2;
 
   useEffect(() => {
     if (preparedRoll?.source !== "free") return;
@@ -863,39 +873,47 @@ export default function RollScreen() {
     }
 
     return [freeModeItem, ...tableItems];
-  }, [activeTableId, allTables, loadingTables]);
+  }, [
+    activeTableId,
+    allTables,
+    loadingTables,
+    handleClearActiveSession,
+    handleSelectActiveTable,
+  ]);
 
   const profileSessionMenuItems = useMemo<SessionMenuItem[]>(
     () =>
       profiles.length > 0
         ? profiles.map(
-          (entry): SessionMenuItem => ({
-            id: entry.profile.id,
-            label: entry.profile.name,
-            description:
-              entry.profile.id === activeProfile?.id
-                ? "Profil actuellement actif."
-                : "Activer ce profil pour ses actions rapides.",
-            icon: entry.profile.id === activeProfile?.id ? "✦" : "◇",
-            selected: entry.profile.id === activeProfile?.id,
-            onPress: (): void => {
-              setSelectedProfileId(entry.profile.id);
-              setShowProfileSessionMenu(false);
-            },
-          }),
-        )
+            (entry): SessionMenuItem => ({
+              id: entry.profile.id,
+              label: entry.profile.name,
+              description:
+                entry.profile.id === activeProfile?.id
+                  ? "Profil actuellement actif."
+                  : "Activer ce profil pour ses actions rapides.",
+              icon: entry.profile.id === activeProfile?.id ? "✦" : "◇",
+              selected: entry.profile.id === activeProfile?.id,
+              onPress: (): void => {
+                animateCockpitLayout();
+
+                setSelectedProfileId(entry.profile.id);
+                setShowProfileSessionMenu(false);
+              },
+            }),
+          )
         : [
-          {
-            id: "no-profile",
-            label: "Aucun profil disponible",
-            description: "Active une table contenant des profils.",
-            icon: "◇",
-            disabled: true,
-            onPress: (): void => {
-              return;
+            {
+              id: "no-profile",
+              label: "Aucun profil disponible",
+              description: "Active une table contenant des profils.",
+              icon: "◇",
+              disabled: true,
+              onPress: (): void => {
+                return;
+              },
             },
-          },
-        ],
+          ],
     [profiles, activeProfile?.id],
   );
 
@@ -954,51 +972,50 @@ export default function RollScreen() {
         }}
       />
 
-      <ScrollView
-        style={{ flex: 1 }}
-        scrollEnabled={showAdvanced}
-        contentContainerStyle={{
-          flexGrow: 1,
+      <View
+        style={{
+          flex: 1,
           paddingTop: screenTopPadding,
           paddingHorizontal: layout.horizontalPadding,
           paddingBottom: theme.spacing.xs,
         }}
-        showsVerticalScrollIndicator={false}
       >
+        {/* Zone haute fixe */}
+        <View
+          style={{
+            alignSelf: "center",
+            width: "100%",
+            maxWidth: layout.maxContentWidth,
+            zIndex: 10,
+          }}
+        >
+          <SessionBar
+            tableName={table?.name ?? null}
+            activeProfileName={activeProfile?.name ?? null}
+            hasActiveTable={hasActiveTable}
+            profileCount={profiles.length}
+            onPressTableMenu={() => setShowTableSessionMenu(true)}
+            onPressProfileMenu={() => setShowProfileSessionMenu(true)}
+          />
+        </View>
+
+        {/* Zone centrale dynamique */}
         <View
           style={{
             flex: 1,
             alignSelf: "center",
             width: "100%",
             maxWidth: layout.maxContentWidth,
-            gap: adaptiveContentGap,
+            justifyContent: "center",
+            paddingTop: isVerySmallScreen ? 0 : 4,
+            paddingBottom: isVerySmallScreen ? 2 : 6,
           }}
         >
           <View
             style={{
-              flex: isFreeIdleCockpit ? 1 : undefined,
-              justifyContent: isFreeIdleCockpit ? "center" : "flex-start",
               gap: adaptiveContentGap,
-              transform: [
-                {
-                  translateY: isFreeIdleCockpit
-                    ? layout.isSmallHeight
-                      ? -8
-                      : -14
-                    : cockpitTopLift,
-                },
-              ],
             }}
           >
-            <SessionBar
-              tableName={table?.name ?? null}
-              activeProfileName={activeProfile?.name ?? null}
-              hasActiveTable={hasActiveTable}
-              profileCount={profiles.length}
-              onPressTableMenu={() => setShowTableSessionMenu(true)}
-              onPressProfileMenu={() => setShowProfileSessionMenu(true)}
-            />
-
             <ResultPanel result={latestResult} />
 
             <View style={{ marginTop: adaptiveResultToDiceOverlap }}>
@@ -1035,70 +1052,92 @@ export default function RollScreen() {
                   profileName={activeProfile?.name ?? null}
                   actions={actionRailItems}
                   selectedActionId={
-                    preparedRoll?.source === "action" ? preparedRoll.groupId : null
+                    preparedRoll?.source === "action"
+                      ? preparedRoll.groupId
+                      : null
                   }
                   onPrepareAction={handlePrepareSavedAction}
                 />
               </View>
             ) : null}
           </View>
+        </View>
 
-          <View
-            style={{
-              marginTop: isFreeIdleCockpit
-                ? layout.isSmallHeight
-                  ? 10
-                  : 14
-                : stickyButtonTopSpacing,
-              marginBottom: 0,
+        {/* Zone basse fixe */}
+        <View
+          style={{
+            alignSelf: "center",
+            width: "100%",
+            maxWidth: layout.maxContentWidth,
+            zIndex: 10,
+          }}
+        >
+          <StickyRollButton
+            disabled={!hasPreparedRoll}
+            onPress={handleRollPrepared}
+          />
+        </View>
+      </View>
+
+      {showAdvanced ? (
+        <View
+          style={{
+            position: "absolute",
+            left: layout.horizontalPadding,
+            right: layout.horizontalPadding,
+            top: screenTopPadding + 72,
+            bottom: theme.spacing.md,
+            zIndex: 50,
+            borderRadius: rollTheme.layout.cockpitRadius,
+            backgroundColor: "rgba(7, 12, 31, 0.96)",
+            borderWidth: 1,
+            borderColor: "rgba(145, 113, 255, 0.24)",
+            overflow: "hidden",
+          }}
+        >
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{
+              padding: theme.spacing.md,
             }}
           >
-            <StickyRollButton
-              disabled={!hasPreparedRoll}
-              onPress={handleRollPrepared}
+            <QuickRollSection
+              simplified={true}
+              hideInternalRollControls={true}
+              hideDicePicker={true}
+              hideStandardQuickGroup={true}
+              title="Action temporaire"
+              standardDice={STANDARD_DICE}
+              draftGroups={draftGroups}
+              draftResults={draftResults}
+              selectedDraftGroupId={selectedDraftGroupId}
+              tableIsSystem={table?.is_system === 1}
+              showSaveOptions={showSaveOptions}
+              showAdvanced={showAdvanced}
+              onToggleSaveOptions={() => setShowSaveOptions((v) => !v)}
+              onToggleAdvanced={() => setShowAdvanced((v) => !v)}
+              onAddDraftGroup={addDraftGroup}
+              onAddQuickStandardDie={handleAddQuickStandardDie}
+              onSelectDraftGroup={setSelectedDraftGroupId}
+              onRenameDraftGroup={openRenameDraftGroupModal}
+              onEditDraftGroupRule={openDraftGroupRuleEditor}
+              onRemoveDraftGroup={removeDraftGroup}
+              onEditDraftDie={openDraftEditor}
+              onOpenDieConfig={quickDieBehaviorPicker.open}
+              onRemoveDraftDie={removeDraftDie}
+              onRollDraft={rollDraft}
+              onRollQuickGroup={rollSingleDraftGroup}
+              onClearQuickGroup={clearDraftGroup}
+              onClearDraft={handleClearQuickRoll}
+              onReplaceCurrentTable={replaceCurrentTable}
+              onCreateNewTable={handleOpenSaveDraftModal}
+              availableRules={availableRules}
+              onEditQuickDieQty={quickQtyModal.open}
+              onAdjustQuickDieQty={quickQtyModal.adjust}
             />
-          </View>
-
-          {showAdvanced ? (
-            <View style={{ marginTop: advancedSpacing }}>
-              <QuickRollSection
-                simplified={true}
-                hideInternalRollControls={true}
-                hideDicePicker={true}
-                hideStandardQuickGroup={true}
-                title="Action temporaire"
-                standardDice={STANDARD_DICE}
-                draftGroups={draftGroups}
-                draftResults={draftResults}
-                selectedDraftGroupId={selectedDraftGroupId}
-                tableIsSystem={table?.is_system === 1}
-                showSaveOptions={showSaveOptions}
-                showAdvanced={showAdvanced}
-                onToggleSaveOptions={() => setShowSaveOptions((v) => !v)}
-                onToggleAdvanced={() => setShowAdvanced((v) => !v)}
-                onAddDraftGroup={addDraftGroup}
-                onAddQuickStandardDie={handleAddQuickStandardDie}
-                onSelectDraftGroup={setSelectedDraftGroupId}
-                onRenameDraftGroup={openRenameDraftGroupModal}
-                onEditDraftGroupRule={openDraftGroupRuleEditor}
-                onRemoveDraftGroup={removeDraftGroup}
-                onEditDraftDie={openDraftEditor}
-                onOpenDieConfig={quickDieBehaviorPicker.open}
-                onRemoveDraftDie={removeDraftDie}
-                onRollDraft={rollDraft}
-                onRollQuickGroup={rollSingleDraftGroup}
-                onClearQuickGroup={clearDraftGroup}
-                onClearDraft={handleClearQuickRoll}
-                onReplaceCurrentTable={replaceCurrentTable}
-                onCreateNewTable={handleOpenSaveDraftModal}
-                availableRules={availableRules}
-                onEditQuickDieQty={quickQtyModal.open}
-                onAdjustQuickDieQty={quickQtyModal.adjust}
-              />
-            </View>
-          ) : null}
+          </ScrollView>
         </View>
-      </ScrollView>
+      ) : null}
 
       <RollModals
         draftGroups={draftGroups}
@@ -1136,41 +1175,6 @@ export default function RollScreen() {
         onCancelNewTable={closeCreateTableModal}
         onSaveDraftTarget={handleSaveDraftTarget}
       />
-
-      {/*
-      <Pressable
-        onPress={() => setShowAdvanced((v) => !v)}
-        style={({ pressed }) => ({
-          position: "absolute",
-          right: layout.horizontalPadding + 4,
-          bottom: layout.bottomBarHeight + 88,
-          width: 56,
-          height: 56,
-          borderWidth: 1,
-          borderColor: showAdvanced ? theme.colors.arcane : theme.colors.border,
-          borderRadius: theme.radius.pill,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: showAdvanced
-            ? theme.colors.arcane
-            : theme.colors.surfaceAlt,
-          opacity: pressed ? 0.82 : 1,
-          transform: [{ scale: pressed ? 0.96 : 1 }],
-          ...theme.shadow.button,
-        })}
-      >
-        <Text
-          style={{
-            fontSize: 28,
-            fontWeight: "900",
-            lineHeight: 30,
-            color: showAdvanced ? theme.colors.white : theme.colors.text,
-          }}
-        >
-          +
-        </Text>
-      </Pressable>
-      */}
 
       <SessionMenuModal
         visible={showTableSessionMenu}
