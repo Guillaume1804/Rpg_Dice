@@ -48,7 +48,17 @@ function getDieIcon(sides: number) {
   return "◈";
 }
 
-function PillButton({
+function getDiceSummary(dice: PreparedRollEditDie[]) {
+  if (dice.length === 0) return "Aucun dé";
+
+  return dice.map(formatDieLabel).join(" + ");
+}
+
+function getTotalDiceCount(dice: PreparedRollEditDie[]) {
+  return dice.reduce((total, die) => total + Math.max(0, die.qty), 0);
+}
+
+function SheetPillButton({
   label,
   onPress,
   variant = "default",
@@ -58,51 +68,50 @@ function PillButton({
   variant?: "default" | "danger" | "accent";
 }) {
   const { theme } = useArcaneTheme();
-  const rollTheme = useMemo(() => createRollScreenTheme(theme), [theme]);
 
   const borderColor =
     variant === "danger"
-      ? theme.colors.failure
+      ? "rgba(255, 92, 122, 0.78)"
       : variant === "accent"
-        ? theme.colors.accent
-        : theme.colors.border;
+        ? "rgba(217, 160, 55, 0.78)"
+        : "rgba(145, 113, 255, 0.22)";
 
   const backgroundColor =
     variant === "danger"
-      ? theme.colors.failureSoft
+      ? "rgba(255, 92, 122, 0.1)"
       : variant === "accent"
-        ? theme.colors.accentSoft
-        : theme.colors.surfaceAlt;
+        ? "rgba(217, 160, 55, 0.13)"
+        : "rgba(32, 41, 88, 0.52)";
 
   const textColor =
     variant === "danger"
       ? theme.colors.failure
       : variant === "accent"
         ? theme.colors.accent
-        : theme.colors.text;
+        : theme.colors.textMuted;
 
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        paddingVertical: 10,
-        paddingHorizontal: 13,
+        minHeight: 34,
+        paddingVertical: 7,
+        paddingHorizontal: 11,
         borderWidth: 1,
         borderColor,
         borderRadius: theme.radius.pill,
-        backgroundColor: pressed ? theme.colors.surfaceSoft : backgroundColor,
-        opacity: pressed ? 0.84 : 1,
+        backgroundColor,
+        opacity: pressed ? 0.82 : 1,
         transform: [{ scale: pressed ? 0.97 : 1 }],
-        shadowColor: rollTheme.cockpit.glow,
-        shadowOpacity: variant === "accent" ? 0.18 : 0,
-        shadowRadius: 10,
-        shadowOffset: { width: 0, height: 4 },
-        elevation: variant === "accent" ? 3 : 0,
+        alignItems: "center",
+        justifyContent: "center",
       })}
     >
       <Text
+        numberOfLines={1}
         style={{
           color: textColor,
+          fontSize: 12,
           fontWeight: "900",
         }}
       >
@@ -112,7 +121,7 @@ function PillButton({
   );
 }
 
-function RoundButton({
+function QuantityButton({
   label,
   onPress,
 }: {
@@ -125,16 +134,16 @@ function RoundButton({
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        width: 42,
-        height: 42,
+        width: 34,
+        height: 34,
         borderWidth: 1,
-        borderColor: theme.colors.border,
+        borderColor: "rgba(145, 113, 255, 0.24)",
         borderRadius: theme.radius.pill,
         alignItems: "center",
         justifyContent: "center",
         backgroundColor: pressed
-          ? theme.colors.surfaceSoft
-          : theme.colors.surfaceAlt,
+          ? "rgba(32, 41, 88, 0.76)"
+          : "rgba(18, 23, 58, 0.74)",
         opacity: pressed ? 0.84 : 1,
         transform: [{ scale: pressed ? 0.94 : 1 }],
       })}
@@ -142,13 +151,205 @@ function RoundButton({
       <Text
         style={{
           color: theme.colors.text,
-          fontSize: 20,
+          fontSize: 18,
           fontWeight: "900",
+          lineHeight: 21,
         }}
       >
         {label}
       </Text>
     </Pressable>
+  );
+}
+
+function SummaryStat({ label, value }: { label: string; value: string }) {
+  const { theme } = useArcaneTheme();
+
+  return (
+    <View
+      style={{
+        flex: 1,
+        minHeight: 48,
+        borderWidth: 1,
+        borderColor: "rgba(145, 113, 255, 0.18)",
+        borderRadius: 16,
+        backgroundColor: "rgba(18, 23, 58, 0.56)",
+        paddingVertical: 8,
+        paddingHorizontal: 10,
+        justifyContent: "center",
+        gap: 2,
+      }}
+    >
+      <Text
+        numberOfLines={1}
+        style={{
+          color: theme.colors.textSubtle,
+          fontSize: 9,
+          fontWeight: "900",
+          textTransform: "uppercase",
+          letterSpacing: 0.7,
+        }}
+      >
+        {label}
+      </Text>
+
+      <Text
+        numberOfLines={1}
+        style={{
+          color: theme.colors.text,
+          fontSize: 15,
+          fontWeight: "900",
+        }}
+      >
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+function PreparedDieRow({
+  die,
+  index,
+  onAdjustDieQty,
+  onEditDie,
+  onRemoveDie,
+}: {
+  die: PreparedRollEditDie;
+  index: number;
+  onAdjustDieQty: (index: number, delta: number) => void;
+  onEditDie: (index: number) => void;
+  onRemoveDie: (index: number) => void;
+}) {
+  const { theme } = useArcaneTheme();
+  const rollTheme = useMemo(() => createRollScreenTheme(theme), [theme]);
+
+  return (
+    <View
+      style={{
+        borderRadius: 22,
+        borderWidth: 1,
+        borderColor: "rgba(145, 113, 255, 0.2)",
+        backgroundColor: "rgba(18, 23, 58, 0.68)",
+        padding: 11,
+        gap: 10,
+        overflow: "hidden",
+      }}
+    >
+      <View
+        pointerEvents="none"
+        style={{
+          position: "absolute",
+          right: -46,
+          top: -60,
+          width: 138,
+          height: 138,
+          borderRadius: 999,
+          backgroundColor: rollTheme.cockpit.magicGlow,
+          opacity: 0.09,
+        }}
+      />
+
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 10,
+        }}
+      >
+        <View
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: 17,
+            borderWidth: 1,
+            borderColor: "rgba(217, 160, 55, 0.78)",
+            backgroundColor: "rgba(217, 160, 55, 0.13)",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text
+            style={{
+              color: theme.colors.accent,
+              fontSize: 23,
+              fontWeight: "900",
+              lineHeight: 27,
+            }}
+          >
+            {getDieIcon(die.sides)}
+          </Text>
+        </View>
+
+        <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+          <Text
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            style={{
+              color: theme.colors.text,
+              fontSize: 18,
+              fontWeight: "900",
+              letterSpacing: -0.25,
+              lineHeight: 22,
+            }}
+          >
+            {formatDieLabel(die)}
+          </Text>
+
+          <Text
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            style={{
+              color: theme.colors.textMuted,
+              fontSize: 12,
+              fontWeight: "700",
+              lineHeight: 15,
+            }}
+          >
+            {die.ruleLabel || "Somme simple"}
+          </Text>
+        </View>
+
+        <View
+          style={{
+            flexDirection: "row",
+            gap: 7,
+            alignItems: "center",
+          }}
+        >
+          <QuantityButton label="−" onPress={() => onAdjustDieQty(index, -1)} />
+
+          <QuantityButton label="+" onPress={() => onAdjustDieQty(index, 1)} />
+        </View>
+      </View>
+
+      <View
+        style={{
+          height: 1,
+          backgroundColor: "rgba(145, 113, 255, 0.14)",
+        }}
+      />
+
+      <View
+        style={{
+          flexDirection: "row",
+          gap: 8,
+          justifyContent: "flex-end",
+          flexWrap: "wrap",
+        }}
+      >
+        <SheetPillButton
+          label="Réglages"
+          onPress={() => onEditDie(index)}
+          variant="accent"
+        />
+
+        <SheetPillButton
+          label="Retirer"
+          onPress={() => onRemoveDie(index)}
+          variant="danger"
+        />
+      </View>
+    </View>
   );
 }
 
@@ -161,8 +362,11 @@ export function PreparedRollEditSheet({
   onEditDie,
   onRemoveDie,
 }: PreparedRollEditSheetProps) {
-  const { theme, styles } = useArcaneTheme();
+  const { theme } = useArcaneTheme();
   const rollTheme = useMemo(() => createRollScreenTheme(theme), [theme]);
+
+  const diceSummary = useMemo(() => getDiceSummary(dice), [dice]);
+  const totalDiceCount = useMemo(() => getTotalDiceCount(dice), [dice]);
 
   return (
     <Modal
@@ -174,20 +378,33 @@ export function PreparedRollEditSheet({
       <View
         style={{
           flex: 1,
-          backgroundColor: "rgba(0,0,0,0.68)",
+          backgroundColor: "rgba(0, 0, 0, 0.68)",
           justifyContent: "flex-end",
         }}
       >
+        <Pressable
+          onPress={onClose}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+          }}
+        />
+
         <View
           style={{
-            maxHeight: "86%",
-            backgroundColor: rollTheme.cockpit.panel,
+            maxHeight: "88%",
+            backgroundColor: "rgba(8, 12, 31, 0.98)",
             borderTopLeftRadius: 30,
             borderTopRightRadius: 30,
             borderWidth: 1,
-            borderColor: rollTheme.cockpit.border,
-            padding: theme.spacing.md,
-            gap: theme.spacing.md,
+            borderColor: "rgba(145, 113, 255, 0.28)",
+            paddingTop: 10,
+            paddingHorizontal: 14,
+            paddingBottom: 14,
+            gap: 12,
             overflow: "hidden",
             ...theme.shadow.card,
           }}
@@ -196,13 +413,13 @@ export function PreparedRollEditSheet({
             pointerEvents="none"
             style={{
               position: "absolute",
-              top: -70,
-              right: -60,
-              width: 180,
-              height: 180,
+              top: -78,
+              right: -70,
+              width: 190,
+              height: 190,
               borderRadius: 999,
-              backgroundColor: rollTheme.cockpit.glow,
-              opacity: 0.16,
+              backgroundColor: rollTheme.cockpit.magicGlow,
+              opacity: 0.15,
             }}
           />
 
@@ -210,13 +427,13 @@ export function PreparedRollEditSheet({
             pointerEvents="none"
             style={{
               position: "absolute",
-              bottom: -80,
-              left: -70,
-              width: 190,
-              height: 190,
+              bottom: -92,
+              left: -76,
+              width: 210,
+              height: 210,
               borderRadius: 999,
-              backgroundColor: rollTheme.cockpit.magicGlow,
-              opacity: 0.12,
+              backgroundColor: rollTheme.cockpit.glow,
+              opacity: 0.11,
             }}
           />
 
@@ -226,8 +443,7 @@ export function PreparedRollEditSheet({
               width: 52,
               height: 5,
               borderRadius: theme.radius.pill,
-              backgroundColor: theme.colors.borderSoft,
-              opacity: 0.9,
+              backgroundColor: "rgba(145, 113, 255, 0.34)",
             }}
           />
 
@@ -235,58 +451,71 @@ export function PreparedRollEditSheet({
             style={{
               flexDirection: "row",
               justifyContent: "space-between",
-              alignItems: "center",
-              gap: theme.spacing.md,
+              alignItems: "flex-start",
+              gap: 12,
             }}
           >
-            <View style={{ flex: 1, gap: theme.spacing.xs }}>
+            <View style={{ flex: 1, gap: 3 }}>
               <Text
                 style={{
                   color: theme.colors.textSubtle,
-                  fontSize: theme.typography.tiny,
+                  fontSize: 10,
                   fontWeight: "900",
                   textTransform: "uppercase",
-                  letterSpacing: 0.9,
+                  letterSpacing: 0.85,
                 }}
               >
                 ✦ Jet préparé
               </Text>
 
-              <Text style={styles.sectionTitle}>{title}</Text>
-
               <Text
+                numberOfLines={1}
                 style={{
-                  color: theme.colors.textMuted,
-                  lineHeight: 20,
-                  fontWeight: "600",
+                  color: theme.colors.text,
+                  fontSize: 22,
+                  fontWeight: "900",
+                  letterSpacing: -0.4,
+                  lineHeight: 27,
                 }}
               >
-                Ajuste une ligne de dés sans reconstruire tout le jet.
+                {title}
+              </Text>
+
+              <Text
+                numberOfLines={2}
+                style={{
+                  color: theme.colors.textMuted,
+                  fontSize: 12,
+                  lineHeight: 16,
+                  fontWeight: "700",
+                }}
+              >
+                Ajuste chaque ligne sans reconstruire tout le jet.
               </Text>
             </View>
 
             <Pressable
               onPress={onClose}
               style={({ pressed }) => ({
-                width: 44,
-                height: 44,
+                width: 40,
+                height: 40,
                 borderWidth: 1,
-                borderColor: theme.colors.border,
+                borderColor: "rgba(145, 113, 255, 0.22)",
                 borderRadius: theme.radius.pill,
                 alignItems: "center",
                 justifyContent: "center",
                 backgroundColor: pressed
-                  ? theme.colors.surfaceSoft
-                  : theme.colors.surfaceAlt,
+                  ? "rgba(32, 41, 88, 0.78)"
+                  : "rgba(18, 23, 58, 0.76)",
                 opacity: pressed ? 0.84 : 1,
               })}
             >
               <Text
                 style={{
                   color: theme.colors.text,
-                  fontSize: 22,
+                  fontSize: 21,
                   fontWeight: "900",
-                  lineHeight: 24,
+                  lineHeight: 23,
                 }}
               >
                 ×
@@ -294,142 +523,98 @@ export function PreparedRollEditSheet({
             </Pressable>
           </View>
 
+          <View
+            style={{
+              flexDirection: "row",
+              gap: 8,
+            }}
+          >
+            <SummaryStat label="Composition" value={diceSummary} />
+
+            <SummaryStat label="Total dés" value={`${totalDiceCount}`} />
+          </View>
+
           {dice.length === 0 ? (
             <View
               style={{
-                ...styles.cardSoft,
-                gap: theme.spacing.xs,
-                backgroundColor: rollTheme.cockpit.panelAlt,
-                borderColor: rollTheme.cockpit.borderSoft,
+                borderRadius: 22,
+                borderWidth: 1,
+                borderColor: "rgba(145, 113, 255, 0.2)",
+                backgroundColor: "rgba(18, 23, 58, 0.66)",
+                padding: 14,
+                gap: 5,
               }}
             >
               <Text
                 style={{
                   color: theme.colors.text,
+                  fontSize: 16,
                   fontWeight: "900",
                 }}
               >
                 Aucun dé à modifier
               </Text>
 
-              <Text style={styles.muted}>
+              <Text
+                style={{
+                  color: theme.colors.textMuted,
+                  fontSize: 13,
+                  lineHeight: 18,
+                  fontWeight: "700",
+                }}
+              >
                 Ajoute d’abord un dé libre depuis l’écran Jet.
               </Text>
             </View>
           ) : (
             <ScrollView
               contentContainerStyle={{
-                gap: theme.spacing.sm,
-                paddingBottom: theme.spacing.md,
+                gap: 9,
+                paddingBottom: 4,
               }}
               showsVerticalScrollIndicator={false}
             >
               {dice.map((die, index) => (
-                <View
-                  key={`prepared-die-${index}-${die.sides}`}
-                  style={{
-                    ...styles.cardSoft,
-                    gap: theme.spacing.md,
-                    backgroundColor: rollTheme.cockpit.panelAlt,
-                    borderColor: rollTheme.cockpit.borderSoft,
-                  }}
-                >
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: theme.spacing.md,
-                    }}
-                  >
-                    <View
-                      style={{
-                        width: 54,
-                        height: 54,
-                        borderRadius: theme.radius.lg,
-                        borderWidth: 1,
-                        borderColor: theme.colors.accent,
-                        backgroundColor: theme.colors.accentSoft,
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <Text
-                        style={{
-                          color: theme.colors.accent,
-                          fontSize: 26,
-                          fontWeight: "900",
-                          lineHeight: 30,
-                        }}
-                      >
-                        {getDieIcon(die.sides)}
-                      </Text>
-                    </View>
-
-                    <View style={{ flex: 1, gap: theme.spacing.xs }}>
-                      <Text
-                        style={{
-                          color: theme.colors.text,
-                          fontSize: 19,
-                          fontWeight: "900",
-                          letterSpacing: -0.2,
-                        }}
-                      >
-                        {formatDieLabel(die)}
-                      </Text>
-
-                      <Text
-                        style={{
-                          color: theme.colors.textMuted,
-                          lineHeight: 19,
-                          fontWeight: "600",
-                        }}
-                      >
-                        {die.ruleLabel || "Somme simple"}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View
-                    style={{
-                      height: 1,
-                      backgroundColor: rollTheme.cockpit.borderSoft,
-                    }}
-                  />
-
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      flexWrap: "wrap",
-                      gap: theme.spacing.sm,
-                      alignItems: "center",
-                    }}
-                  >
-                    <RoundButton
-                      label="−"
-                      onPress={() => onAdjustDieQty(index, -1)}
-                    />
-
-                    <RoundButton
-                      label="+"
-                      onPress={() => onAdjustDieQty(index, 1)}
-                    />
-
-                    <PillButton
-                      label="Réglages"
-                      onPress={() => onEditDie(index)}
-                      variant="accent"
-                    />
-
-                    <PillButton
-                      label="Retirer"
-                      onPress={() => onRemoveDie(index)}
-                      variant="danger"
-                    />
-                  </View>
-                </View>
+                <PreparedDieRow
+                  key={`prepared-die-${index}-${die.sides}-${die.qty}`}
+                  die={die}
+                  index={index}
+                  onAdjustDieQty={onAdjustDieQty}
+                  onEditDie={onEditDie}
+                  onRemoveDie={onRemoveDie}
+                />
               ))}
             </ScrollView>
           )}
+
+          <Pressable
+            onPress={onClose}
+            style={({ pressed }) => ({
+              height: 48,
+              borderRadius: theme.radius.pill,
+              borderWidth: 1,
+              borderColor: "rgba(217, 160, 55, 0.7)",
+              backgroundColor: pressed
+                ? "rgba(217, 160, 55, 0.2)"
+                : "rgba(217, 160, 55, 0.13)",
+              alignItems: "center",
+              justifyContent: "center",
+              opacity: pressed ? 0.86 : 1,
+              transform: [{ scale: pressed ? 0.985 : 1 }],
+            })}
+          >
+            <Text
+              style={{
+                color: theme.colors.accent,
+                fontSize: 15,
+                fontWeight: "900",
+                textTransform: "uppercase",
+                letterSpacing: 1,
+              }}
+            >
+              Terminé
+            </Text>
+          </Pressable>
         </View>
       </View>
     </Modal>

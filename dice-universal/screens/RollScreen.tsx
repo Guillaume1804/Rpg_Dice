@@ -366,8 +366,24 @@ export default function RollScreen() {
     }
   }, [profiles, preparedRoll]);
 
-  function handleClearQuickRoll() {
+  const resetFreeDraftState = useCallback((): void => {
     clearDraft();
+    setDraftResults([]);
+    setSelectedDraftGroupId(null);
+    setDraftGroupRuleSelection(null);
+    resetDraftEditorState();
+  }, [
+    clearDraft,
+    resetDraftEditorState,
+    setDraftGroupRuleSelection,
+    setDraftResults,
+    setSelectedDraftGroupId,
+  ]);
+
+  function handleClearQuickRoll() {
+    animateCockpitLayout();
+
+    resetFreeDraftState();
 
     if (preparedRoll?.source === "free") {
       setPreparedRoll(null);
@@ -379,9 +395,7 @@ export default function RollScreen() {
   function handleClearPreparedRoll() {
     animateCockpitLayout();
 
-    if (preparedRoll?.source === "free") {
-      clearDraft();
-    }
+    resetFreeDraftState();
 
     setPreparedRoll(null);
     setLatestResult(null);
@@ -482,6 +496,10 @@ export default function RollScreen() {
       return;
     }
 
+    if (preparedRoll?.source === "action") {
+      resetFreeDraftState();
+    }
+
     const tempRule = buildDraftTempRuleFromPreset({
       preset: {
         key: quickBehaviorConfig.pendingBehaviorKey,
@@ -545,6 +563,8 @@ export default function RollScreen() {
 
     animateCockpitLayout();
 
+    resetFreeDraftState();
+
     setPreparedRoll({
       source: "action",
       profileId: activeProfile.id,
@@ -552,14 +572,20 @@ export default function RollScreen() {
       label: action.group.name,
     });
     setLatestResult(null);
+    setShowPreparedEditSheet(false);
   }
 
   function handleAddQuickStandardDie(sides: number) {
     animateCockpitLayout();
 
+    if (preparedRoll?.source === "action") {
+      resetFreeDraftState();
+    }
+
     addQuickStandardDie(sides);
     setPreparedRoll({ source: "free" });
     setLatestResult(null);
+    setShowPreparedEditSheet(false);
   }
 
   function handleOpenPreparedEdit() {
@@ -607,6 +633,8 @@ export default function RollScreen() {
   const handleClearActiveSession = useCallback(async (): Promise<void> => {
     animateCockpitLayout();
 
+    resetFreeDraftState();
+
     await clearActiveTableId();
 
     setSelectedProfileId(null);
@@ -616,11 +644,13 @@ export default function RollScreen() {
     setShowPreparedEditSheet(false);
     setShowTableSessionMenu(false);
     setShowProfileSessionMenu(false);
-  }, [clearActiveTableId]);
+  }, [clearActiveTableId, resetFreeDraftState]);
 
   const handleSelectActiveTable = useCallback(
     async (nextTableId: string): Promise<void> => {
       animateCockpitLayout();
+
+      resetFreeDraftState();
 
       await setActiveTableId(nextTableId);
 
@@ -632,9 +662,9 @@ export default function RollScreen() {
       setShowTableSessionMenu(false);
       setShowProfileSessionMenu(false);
     },
-    [setActiveTableId],
+    [resetFreeDraftState, setActiveTableId],
   );
-
+  
   const standardPreparedQuickGroup = useMemo(
     () => findStandardQuickGroup(draftGroups),
     [draftGroups],
@@ -737,13 +767,12 @@ export default function RollScreen() {
   const isFreeIdleCockpit = !hasActiveTable && !hasPreparedRoll && !hasResult;
   const isTableIdleCockpit = hasActiveTable && !hasPreparedRoll && !hasResult;
 
+  const isFreePreparedCockpit =
+    !hasActiveTable && hasPreparedRoll && !hasResult;
+  const isTablePreparedCockpit =
+    hasActiveTable && hasPreparedRoll && !hasResult;
+  const isResultCockpit = hasResult;
   const isFullCockpit = hasActiveTable && hasPreparedRoll && hasResult;
-  const shouldCompressCockpit =
-    isVerySmallScreen ||
-    isCompactScreen ||
-    hasActiveTable ||
-    hasPreparedRoll ||
-    hasResult;
 
   const screenTopPadding = isVerySmallScreen
     ? layout.insets.top + 2
@@ -751,39 +780,56 @@ export default function RollScreen() {
       ? layout.insets.top + 4
       : layout.insets.top + theme.spacing.xs;
 
-  const adaptiveContentGap = shouldCompressCockpit
-    ? layout.isSmallHeight
+  /**
+   * La scène centrale ne doit pas changer de logique à chaque état.
+   * On ajuste seulement des micro-valeurs.
+   */
+  const cockpitStageJustify: "center" | "space-evenly" =
+    isFreeIdleCockpit || isTableIdleCockpit ? "center" : "space-evenly";
+
+  const cockpitStageScale = isVerySmallScreen ? 0.96 : isFullCockpit ? 0.97 : 1;
+
+  const cockpitStageTranslateY = isVerySmallScreen
+    ? -2
+    : isFreeIdleCockpit
+      ? -6
+      : isTableIdleCockpit
+        ? -8
+        : isResultCockpit
+          ? -4
+          : 0;
+
+  const adaptiveContentGap = isVerySmallScreen
+    ? 1
+    : isCompactScreen
       ? 2
-      : 4
-    : 8;
+      : isResultCockpit || hasActiveTable || hasPreparedRoll
+        ? 3
+        : 6;
 
   const adaptiveResultToDiceOverlap = isTableIdleCockpit
-    ? layout.isSmallHeight
-      ? -22
-      : -18
+    ? -20
     : isFreeIdleCockpit
-      ? layout.isSmallHeight
-        ? -14
-        : -10
-      : resultToDiceOverlap;
+      ? -12
+      : isResultCockpit
+        ? -16
+        : resultToDiceOverlap;
 
   const adaptiveDiceToPreparedOverlap = isTableIdleCockpit
-    ? layout.isSmallHeight
-      ? -30
-      : -26
+    ? -28
     : isFreeIdleCockpit
-      ? layout.isSmallHeight
-        ? -22
-        : -18
-      : diceToPreparedOverlap;
+      ? -20
+      : isFreePreparedCockpit
+        ? -24
+        : isTablePreparedCockpit
+          ? -26
+          : diceToPreparedOverlap;
 
   const adaptivePreparedToActionsOverlap = hasActiveTable
-    ? layout.isSmallHeight
+    ? isResultCockpit
       ? -14
       : -12
-    : isFullCockpit
-      ? preparedToActionsOverlap
-      : -6;
+    : preparedToActionsOverlap;
 
   useEffect(() => {
     if (preparedRoll?.source !== "free") return;
@@ -1006,14 +1052,19 @@ export default function RollScreen() {
             alignSelf: "center",
             width: "100%",
             maxWidth: layout.maxContentWidth,
-            justifyContent: "center",
-            paddingTop: isVerySmallScreen ? 0 : 4,
-            paddingBottom: isVerySmallScreen ? 2 : 6,
+            justifyContent: cockpitStageJustify,
+            paddingTop: isVerySmallScreen ? 0 : 2,
+            paddingBottom: isVerySmallScreen ? 0 : 4,
+            overflow: "visible",
           }}
         >
           <View
             style={{
               gap: adaptiveContentGap,
+              transform: [
+                { translateY: cockpitStageTranslateY },
+                { scale: cockpitStageScale },
+              ],
             }}
           >
             <ResultPanel result={latestResult} />
@@ -1070,6 +1121,7 @@ export default function RollScreen() {
             width: "100%",
             maxWidth: layout.maxContentWidth,
             zIndex: 10,
+            paddingTop: isVerySmallScreen ? 0 : 2,
           }}
         >
           <StickyRollButton
