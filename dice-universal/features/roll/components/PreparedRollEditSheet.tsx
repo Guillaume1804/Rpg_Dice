@@ -1,6 +1,6 @@
 // dice-universal/features/roll/components/PreparedRollEditSheet.tsx
 
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import {
   Modal,
   Pressable,
@@ -49,7 +49,7 @@ type PreparedRollEditSheetProps = {
   onChangeNameValue?: (value: string) => void;
   dice: PreparedRollEditDie[];
   behaviorPickerData?: BehaviorPickerData;
-  behaviorConfigPanel?: React.ReactNode;
+  behaviorConfigPanel?: ReactNode;
   onClose: () => void;
   onAdjustDieQty: (index: number, delta: number) => void;
   onAdjustDieModifier: (index: number, delta: number) => void;
