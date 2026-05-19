@@ -396,6 +396,27 @@ export function useQuickBehaviorConfigModal() {
     );
   }
 
+  function addRange() {
+    setConfigRanges((prev) => [
+      ...prev,
+      {
+        min: "",
+        max: "",
+        label: "",
+      },
+    ]);
+  }
+
+  function removeRange(index: number) {
+    setConfigRanges((prev) => {
+      if (prev.length <= 1) {
+        return prev;
+      }
+
+      return prev.filter((_, i) => i !== index);
+    });
+  }
+
   function isValid() {
     if (!pendingBehaviorKey) return false;
 
@@ -500,29 +521,29 @@ export function useQuickBehaviorConfigModal() {
     if (pendingBehaviorKey === "custom_pipeline") {
       const resolvedKeepHighest =
         pendingConfigVariant === "keep_drop" &&
-          keepDropMode === "keep" &&
-          keepDropTarget === "highest"
+        keepDropMode === "keep" &&
+        keepDropTarget === "highest"
           ? keepDropCount
           : pipelineKeepHighest;
 
       const resolvedKeepLowest =
         pendingConfigVariant === "keep_drop" &&
-          keepDropMode === "keep" &&
-          keepDropTarget === "lowest"
+        keepDropMode === "keep" &&
+        keepDropTarget === "lowest"
           ? keepDropCount
           : pipelineKeepLowest;
 
       const resolvedDropHighest =
         pendingConfigVariant === "keep_drop" &&
-          keepDropMode === "drop" &&
-          keepDropTarget === "highest"
+        keepDropMode === "drop" &&
+        keepDropTarget === "highest"
           ? keepDropCount
           : pipelineDropHighest;
 
       const resolvedDropLowest =
         pendingConfigVariant === "keep_drop" &&
-          keepDropMode === "drop" &&
-          keepDropTarget === "lowest"
+        keepDropMode === "drop" &&
+        keepDropTarget === "lowest"
           ? keepDropCount
           : pipelineDropLowest;
 
@@ -617,6 +638,8 @@ export function useQuickBehaviorConfigModal() {
     open,
     close,
     updateRange,
+    addRange,
+    removeRange,
     isValid,
     buildDefaultValues,
 

@@ -42,6 +42,26 @@ export type QuickPresetSelection = {
   rule: DraftTempRule;
 };
 
+export type QuickStandardDieOptions = {
+  modifier?: number;
+};
+
+export type LoadSavedGroupIntoDraftParams = {
+  group: {
+    id: string;
+    name: string;
+    rule_id?: string | null;
+  };
+  dice: {
+    sides: number;
+    qty: number;
+    modifier?: number;
+    sign?: number;
+    rule_id?: string | null;
+  }[];
+  draftName?: string;
+};
+
 export type UseQuickRollDraftParams = {
   db: Db;
   table: TableRow | null;
@@ -202,7 +222,14 @@ export function useQuickRollDraft({
     setDraftResults([]);
   }
 
-  function addQuickStandardDie(sides: number) {
+  function addQuickStandardDie(
+    sides: number,
+    options: QuickStandardDieOptions = {},
+  ) {
+    const modifier = Number.isFinite(options.modifier ?? 0)
+      ? (options.modifier ?? 0)
+      : 0;
+
     setDraftGroups((prev) => {
       let next = [...prev];
 
@@ -223,14 +250,24 @@ export function useQuickRollDraft({
       return next.map((group) => {
         if (group.id !== targetGroupId) return group;
 
-        const existingIndex = group.dice.findIndex(
-          (die) =>
-            die.sides === sides &&
-            (die.modifier ?? 0) === 0 &&
-            (die.sign ?? 1) === 1 &&
-            !die.rule_id &&
-            !die.rule_temp,
-        );
+        /**
+         * On agrège uniquement les dés standards sans modificateur.
+         *
+         * Important :
+         * Si modifier !== 0, on crée une ligne séparée pour que le bonus/malus
+         * appartienne bien à cette entrée de dé, et pas à tout le pool.
+         */
+        const existingIndex =
+          modifier === 0
+            ? group.dice.findIndex(
+                (die) =>
+                  die.sides === sides &&
+                  (die.modifier ?? 0) === 0 &&
+                  (die.sign ?? 1) === 1 &&
+                  !die.rule_id &&
+                  !die.rule_temp,
+              )
+            : -1;
 
         if (existingIndex >= 0) {
           return {
@@ -238,9 +275,9 @@ export function useQuickRollDraft({
             dice: group.dice.map((die, index) =>
               index === existingIndex
                 ? {
-                  ...die,
-                  qty: die.qty + 1,
-                }
+                    ...die,
+                    qty: die.qty + 1,
+                  }
                 : die,
             ),
           };
@@ -253,7 +290,7 @@ export function useQuickRollDraft({
             {
               sides,
               qty: 1,
-              modifier: 0,
+              modifier,
               sign: 1,
               rule_id: null,
               rule_temp: null,
@@ -264,6 +301,42 @@ export function useQuickRollDraft({
     });
 
     setDraftResults([]);
+  }
+
+  function loadSavedGroupIntoDraft(
+    params: LoadSavedGroupIntoDraftParams,
+  ): string {
+    const draftGroupId = `draft-action-${params.group.id}-${Date.now()}`;
+
+    const nextGroup: DraftGroupState = {
+      id: draftGroupId,
+      name: params.draftName ?? params.group.name,
+      rule_id: params.group.rule_id ?? null,
+      rule_temp: null,
+      dice: params.dice.map((die) => ({
+        sides: die.sides,
+        qty: die.qty,
+        modifier: die.modifier ?? 0,
+        sign: die.sign ?? 1,
+        rule_id: die.rule_id ?? null,
+        rule_temp: null,
+      })),
+    };
+
+    setDraftGroups([nextGroup]);
+    setDraftResults([]);
+    setSelectedDraftGroupId(draftGroupId);
+
+    setShowRenameDraftGroupModal(false);
+    setRenamingDraftGroupId(null);
+    setRenameDraftGroupValue("");
+
+    setShowDraftGroupRuleModal(false);
+    setDraftGroupRuleSelection(null);
+
+    resetDraftEditorState();
+
+    return draftGroupId;
   }
 
   function addQuickPresetDie(
@@ -278,21 +351,21 @@ export function useQuickRollDraft({
     const newDie: DraftDie =
       preset.scope === "group"
         ? {
-          sides,
-          qty: 1,
-          modifier: 0,
-          sign: 1,
-          rule_id: null,
-          rule_temp: null,
-        }
+            sides,
+            qty: 1,
+            modifier: 0,
+            sign: 1,
+            rule_id: null,
+            rule_temp: null,
+          }
         : {
-          sides,
-          qty: 1,
-          modifier: 0,
-          sign: 1,
-          rule_id: null,
-          rule_temp: preset.rule,
-        };
+            sides,
+            qty: 1,
+            modifier: 0,
+            sign: 1,
+            rule_id: null,
+            rule_temp: preset.rule,
+          };
 
     const nextGroup: DraftGroupState = {
       ...newGroup,
@@ -317,8 +390,8 @@ export function useQuickRollDraft({
       const resolvedTempRule =
         forcedTempRule === undefined
           ? (prev
-            .flatMap((group) => group.dice)
-            .find((die) => die.sides === sides && die.rule_temp)?.rule_temp ??
+              .flatMap((group) => group.dice)
+              .find((die) => die.sides === sides && die.rule_temp)?.rule_temp ??
             null)
           : forcedTempRule;
 
@@ -337,13 +410,13 @@ export function useQuickRollDraft({
 
         const existingIndex = shouldAggregate
           ? group.dice.findIndex(
-            (die) =>
-              die.sides === sides &&
-              (die.modifier ?? 0) === 0 &&
-              (die.sign ?? 1) === 1 &&
-              (die.rule_id ?? null) === null &&
-              sameTempRule(die.rule_temp ?? null, resolvedTempRule),
-          )
+              (die) =>
+                die.sides === sides &&
+                (die.modifier ?? 0) === 0 &&
+                (die.sign ?? 1) === 1 &&
+                (die.rule_id ?? null) === null &&
+                sameTempRule(die.rule_temp ?? null, resolvedTempRule),
+            )
           : -1;
 
         if (existingIndex >= 0) {
@@ -352,9 +425,9 @@ export function useQuickRollDraft({
             dice: group.dice.map((die, index) =>
               index === existingIndex
                 ? {
-                  ...die,
-                  qty: die.qty + 1,
-                }
+                    ...die,
+                    qty: die.qty + 1,
+                  }
                 : die,
             ),
           };
@@ -387,10 +460,10 @@ export function useQuickRollDraft({
         dice: group.dice.map((die) =>
           die.sides === sides
             ? {
-              ...die,
-              rule_temp: rule,
-              rule_id: rule ? null : (die.rule_id ?? null),
-            }
+                ...die,
+                rule_temp: rule,
+                rule_id: rule ? null : (die.rule_id ?? null),
+              }
             : die,
         ),
       })),
@@ -406,9 +479,9 @@ export function useQuickRollDraft({
         dice: group.dice.map((die) =>
           die.sides === sides
             ? {
-              ...die,
-              rule_temp: null,
-            }
+                ...die,
+                rule_temp: null,
+              }
             : die,
         ),
       })),
@@ -467,16 +540,16 @@ export function useQuickRollDraft({
       prev.map((group) =>
         group.id === groupId
           ? {
-            ...group,
-            dice: group.dice.map((die, i) =>
-              i === index
-                ? {
-                  ...die,
-                  qty,
-                }
-                : die,
-            ),
-          }
+              ...group,
+              dice: group.dice.map((die, i) =>
+                i === index
+                  ? {
+                      ...die,
+                      qty,
+                    }
+                  : die,
+              ),
+            }
           : group,
       ),
     );
@@ -499,19 +572,57 @@ export function useQuickRollDraft({
       prev.map((group) =>
         group.id === groupId
           ? {
-            ...group,
-            dice: group.dice.map((die, i) =>
-              i === index
-                ? {
-                  ...die,
-                  qty: values.qty,
-                  modifier: values.modifier,
-                }
-                : die,
-            ),
-          }
+              ...group,
+              dice: group.dice.map((die, i) =>
+                i === index
+                  ? {
+                      ...die,
+                      qty: values.qty,
+                      modifier: values.modifier,
+                    }
+                  : die,
+              ),
+            }
           : group,
       ),
+    );
+
+    setDraftResults([]);
+  }
+
+  function applyPresetToDraftDie(
+    groupId: string,
+    index: number,
+    preset: QuickPresetSelection,
+  ) {
+    setDraftGroups((prev) =>
+      prev.map((group) => {
+        if (group.id !== groupId) return group;
+
+        const targetDie = group.dice[index];
+        if (!targetDie) return group;
+
+        if (preset.scope === "group") {
+          return {
+            ...group,
+            rule_id: null,
+            rule_temp: preset.rule,
+          };
+        }
+
+        return {
+          ...group,
+          dice: group.dice.map((die, dieIndex) =>
+            dieIndex === index
+              ? {
+                  ...die,
+                  rule_id: null,
+                  rule_temp: preset.rule,
+                }
+              : die,
+          ),
+        };
+      }),
     );
 
     setDraftResults([]);
@@ -535,9 +646,9 @@ export function useQuickRollDraft({
             dice: group.dice.map((die, i) =>
               i === index
                 ? {
-                  ...die,
-                  qty: nextQty,
-                }
+                    ...die,
+                    qty: nextQty,
+                  }
                 : die,
             ),
           };
@@ -558,6 +669,44 @@ export function useQuickRollDraft({
         return {
           ...group,
           dice: nextDice,
+        };
+      }),
+    );
+
+    setDraftResults([]);
+  }
+
+  function adjustDraftDieModifier(
+    groupId: string,
+    index: number,
+    delta: number,
+  ) {
+    setDraftGroups((prev) =>
+      prev.map((group) => {
+        if (group.id !== groupId) return group;
+
+        const targetDie = group.dice[index];
+        if (!targetDie) return group;
+
+        const currentModifier = Number.isFinite(targetDie.modifier ?? 0)
+          ? (targetDie.modifier ?? 0)
+          : 0;
+
+        const nextModifier = Math.max(
+          -99,
+          Math.min(99, currentModifier + delta),
+        );
+
+        return {
+          ...group,
+          dice: group.dice.map((die, dieIndex) =>
+            dieIndex === index
+              ? {
+                  ...die,
+                  modifier: nextModifier,
+                }
+              : die,
+          ),
         };
       }),
     );
@@ -691,20 +840,20 @@ export function useQuickRollDraft({
       prev.map((group) =>
         group.id === editingDraftGroupId
           ? {
-            ...group,
-            dice: group.dice.map((d, i) =>
-              i === editingDraftIndex
-                ? {
-                  ...d,
-                  sides,
-                  qty,
-                  modifier: Number.isFinite(modifier) ? modifier : 0,
-                  sign: sign === -1 ? -1 : 1,
-                  rule_id: draftEditRuleId ?? null,
-                }
-                : d,
-            ),
-          }
+              ...group,
+              dice: group.dice.map((d, i) =>
+                i === editingDraftIndex
+                  ? {
+                      ...d,
+                      sides,
+                      qty,
+                      modifier: Number.isFinite(modifier) ? modifier : 0,
+                      sign: sign === -1 ? -1 : 1,
+                      rule_id: draftEditRuleId ?? null,
+                    }
+                  : d,
+              ),
+            }
           : group,
       ),
     );
@@ -772,21 +921,21 @@ export function useQuickRollDraft({
             sign: d.sign ?? 1,
             rule: rule
               ? {
-                id: rule.id,
-                name: rule.name,
-                kind: rule.kind,
-                params_json: rule.params_json,
-              }
+                  id: rule.id,
+                  name: rule.name,
+                  kind: rule.kind,
+                  params_json: rule.params_json,
+                }
               : null,
           };
         }),
         groupRule: groupRule
           ? {
-            id: groupRule.id,
-            name: groupRule.name,
-            kind: groupRule.kind,
-            params_json: groupRule.params_json,
-          }
+              id: groupRule.id,
+              name: groupRule.name,
+              kind: groupRule.kind,
+              params_json: groupRule.params_json,
+            }
           : null,
         evaluateRule,
       });
@@ -859,21 +1008,21 @@ export function useQuickRollDraft({
             sign: d.sign ?? 1,
             rule: rule
               ? {
-                id: rule.id,
-                name: rule.name,
-                kind: rule.kind,
-                params_json: rule.params_json,
-              }
+                  id: rule.id,
+                  name: rule.name,
+                  kind: rule.kind,
+                  params_json: rule.params_json,
+                }
               : null,
           };
         }),
         groupRule: groupRule
           ? {
-            id: groupRule.id,
-            name: groupRule.name,
-            kind: groupRule.kind,
-            params_json: groupRule.params_json,
-          }
+              id: groupRule.id,
+              name: groupRule.name,
+              kind: groupRule.kind,
+              params_json: groupRule.params_json,
+            }
           : null,
         evaluateRule,
       }),
@@ -936,9 +1085,9 @@ export function useQuickRollDraft({
       return prev.map((group) =>
         group.id === targetGroupId
           ? {
-            ...group,
-            rule_temp: rule,
-          }
+              ...group,
+              rule_temp: rule,
+            }
           : group,
       );
     });
@@ -955,9 +1104,9 @@ export function useQuickRollDraft({
       return prev.map((group) =>
         group.id === targetGroupId
           ? {
-            ...group,
-            rule_temp: null,
-          }
+              ...group,
+              rule_temp: null,
+            }
           : group,
       );
     });
@@ -1004,10 +1153,14 @@ export function useQuickRollDraft({
     addDieToDraft,
     addQuickStandardDie,
     addQuickPresetDie,
+    loadSavedGroupIntoDraft,
+
     removeDraftDie,
     updateDraftDieQty,
     updateDraftDieEntry,
+    applyPresetToDraftDie,
     adjustDraftDieQty,
+    adjustDraftDieModifier,
     replaceDraftDieWithQtySplit,
     removeDraftGroup,
     clearDraft,

@@ -6,6 +6,7 @@ import {
 } from "../../../core/rules/behaviorRegistry";
 import { buildDraftTempRuleFromPreset } from "../helpers/buildDraftTempRuleFromPreset";
 import { behaviorNeedsSelectionConfig } from "../helpers/quickBehaviorConfig";
+import type { QuickPresetSelection } from "./useQuickRollDraft";
 
 export type QuickBehaviorPickerVariant = "default" | "keep_drop";
 
@@ -57,7 +58,15 @@ function sortQuickOptions(
 export function useQuickDieBehaviorPicker({
   addQuickPresetDie,
   quickBehaviorConfig,
-}: any) {
+  onApplyPresetToExistingDraftDie,
+}: {
+  addQuickPresetDie: (sides: number, preset: QuickPresetSelection) => string;
+  quickBehaviorConfig: any;
+  onApplyPresetToExistingDraftDie?: (
+    sides: number,
+    preset: QuickPresetSelection,
+  ) => boolean;
+}) {
   const [editingDieSides, setEditingDieSides] = useState<number | null>(null);
   const [visible, setVisible] = useState(false);
 
@@ -172,10 +181,22 @@ export function useQuickDieBehaviorPicker({
       actionName: label,
     });
 
-    addQuickPresetDie(editingDieSides, {
+    const preset: QuickPresetSelection = {
       scope: quickScope,
       rule: tempRule,
-    });
+    };
+
+    const wasAppliedToExistingDie = onApplyPresetToExistingDraftDie?.(
+      editingDieSides,
+      preset,
+    );
+
+    if (wasAppliedToExistingDie) {
+      close();
+      return;
+    }
+
+    addQuickPresetDie(editingDieSides, preset);
 
     close();
   }

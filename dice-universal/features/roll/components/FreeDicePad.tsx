@@ -10,6 +10,9 @@ type FreeDicePadProps = {
   subtitle?: string;
   dice: number[];
   countsBySides?: Record<number, number>;
+  modifierValue?: number;
+  onIncrementModifier?: () => void;
+  onDecrementModifier?: () => void;
   onPressDie: (sides: number) => void;
   onLongPressDie?: (sides: number) => void;
 };
@@ -136,12 +139,22 @@ export function FreeDicePad({
   subtitle: _subtitle = "Appui long : effet",
   dice,
   countsBySides = {},
+  modifierValue = 0,
+  onIncrementModifier,
+  onDecrementModifier,
   onPressDie,
   onLongPressDie,
 }: FreeDicePadProps) {
   const { width } = useWindowDimensions();
   const { theme } = useArcaneTheme();
   const rollTheme = useMemo(() => createRollScreenTheme(theme), [theme]);
+
+  const modifierLabel =
+    modifierValue > 0
+      ? `+ ${modifierValue}`
+      : modifierValue < 0
+        ? `− ${Math.abs(modifierValue)}`
+        : "0";
 
   const arenaWidth = Math.max(300, Math.min(width - 48, 620));
   const arenaHeight = 284;
@@ -488,7 +501,7 @@ export function FreeDicePad({
 
       {/* zone modificateur intégrée dans l'arche */}
       <View
-        pointerEvents="none"
+        pointerEvents="auto"
         style={{
           position: "absolute",
           alignSelf: "center",
@@ -525,76 +538,72 @@ export function FreeDicePad({
             paddingHorizontal: 12,
           }}
         >
-          <Text
-            style={{
-              color: theme.colors.textMuted,
-              fontSize: 20,
-              fontWeight: "900",
-            }}
+          <Pressable
+            onPress={onDecrementModifier}
+            disabled={!onDecrementModifier}
+            hitSlop={8}
+            style={({ pressed }) => ({
+              width: 28,
+              height: 28,
+              borderRadius: theme.radius.pill,
+              alignItems: "center",
+              justifyContent: "center",
+              opacity: pressed ? 0.72 : 1,
+              transform: [{ scale: pressed ? 0.92 : 1 }],
+            })}
           >
-            –
-          </Text>
+            <Text
+              style={{
+                color: theme.colors.textMuted,
+                fontSize: 20,
+                fontWeight: "900",
+              }}
+            >
+              –
+            </Text>
+          </Pressable>
 
           <Text
             style={{
-              color: theme.colors.text,
+              color:
+                modifierValue === 0
+                  ? theme.colors.textMuted
+                  : modifierValue > 0
+                    ? theme.colors.accent
+                    : theme.colors.failure,
               fontSize: 17,
               fontWeight: "900",
+              minWidth: 34,
+              textAlign: "center",
             }}
           >
-            + 5
+            {modifierLabel}
           </Text>
 
-          <Text
-            style={{
-              color: theme.colors.textMuted,
-              fontSize: 20,
-              fontWeight: "900",
-            }}
-          >
-            +
-          </Text>
-        </View>
-
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 10,
-          }}
-        >
-          <Text
-            style={{
-              color: theme.colors.textMuted,
-              fontSize: 12,
-              fontWeight: "700",
-            }}
-          >
-            Avantage
-          </Text>
-
-          <View
-            style={{
-              width: 46,
-              height: 26,
+          <Pressable
+            onPress={onIncrementModifier}
+            disabled={!onIncrementModifier}
+            hitSlop={8}
+            style={({ pressed }) => ({
+              width: 28,
+              height: 28,
               borderRadius: theme.radius.pill,
-              borderWidth: 1,
-              borderColor: "rgba(145, 113, 255, 0.22)",
-              backgroundColor: "rgba(8, 10, 30, 0.88)",
-              padding: 3,
+              alignItems: "center",
               justifyContent: "center",
-            }}
+              opacity: pressed ? 0.72 : 1,
+              transform: [{ scale: pressed ? 0.92 : 1 }],
+            })}
           >
-            <View
+            <Text
               style={{
-                width: 18,
-                height: 18,
-                borderRadius: 999,
-                backgroundColor: theme.colors.text,
-                alignSelf: "flex-end",
+                color: theme.colors.textMuted,
+                fontSize: 20,
+                fontWeight: "900",
               }}
-            />
-          </View>
+            >
+              +
+            </Text>
+          </Pressable>
         </View>
       </View>
 

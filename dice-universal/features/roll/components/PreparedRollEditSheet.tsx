@@ -2,6 +2,8 @@
 
 import { useMemo } from "react";
 import { Modal, Pressable, ScrollView, Text, View } from "react-native";
+import type { RuleBehaviorKey } from "../../../core/rules/behaviorRegistry";
+import type { QuickBehaviorPickerOption } from "../hooks/useQuickDieBehaviorPicker";
 
 import { useArcaneTheme } from "../../../theme/ArcaneThemeProvider";
 import { createRollScreenTheme } from "../../../theme/rollScreenTheme";
@@ -14,14 +16,36 @@ export type PreparedRollEditDie = {
   ruleLabel?: string | null;
 };
 
+type PreparedRollEditMode = "dice" | "behavior_picker" | "behavior_config";
+
+type BehaviorDefinition = {
+  key: RuleBehaviorKey;
+  label: string;
+  description?: string;
+  defaultScope?: "entry" | "group" | "both";
+};
+
+type BehaviorPickerData = {
+  targetDieIndex: number | null;
+  targetDieSides: number | null;
+  behaviors: QuickBehaviorPickerOption[];
+  getDefinition: (behaviorKey: RuleBehaviorKey) => BehaviorDefinition | null;
+  onSelectBehavior: (option: QuickBehaviorPickerOption) => void;
+  onBack: () => void;
+};
+
 type PreparedRollEditSheetProps = {
   visible: boolean;
   title?: string;
+  mode?: PreparedRollEditMode;
   dice: PreparedRollEditDie[];
+  behaviorPickerData?: BehaviorPickerData;
+  behaviorConfigPanel?: React.ReactNode;
   onClose: () => void;
   onAdjustDieQty: (index: number, delta: number) => void;
-  onEditDie: (index: number) => void;
+  onAdjustDieModifier: (index: number, delta: number) => void;
   onRemoveDie: (index: number) => void;
+  onConfigureDieBehavior?: (index: number) => void;
 };
 
 function formatModifier(modifier?: number) {
@@ -46,6 +70,29 @@ function getDieIcon(sides: number) {
   if (sides === 20) return "✦";
   if (sides === 100) return "%";
   return "◈";
+}
+
+function getBehaviorIcon(behaviorKey: RuleBehaviorKey) {
+  if (behaviorKey === "single_check") return "🎯";
+  if (behaviorKey === "success_pool") return "✦";
+  if (behaviorKey === "sum_total") return "Σ";
+  if (behaviorKey === "banded_sum") return "▤";
+  if (behaviorKey === "table_lookup") return "📜";
+  if (behaviorKey === "highest_of_pool") return "⬆";
+  if (behaviorKey === "lowest_of_pool") return "⬇";
+  if (behaviorKey === "keep_highest_n") return "◆";
+  if (behaviorKey === "keep_lowest_n") return "◇";
+  if (behaviorKey === "drop_highest_n") return "✂";
+  if (behaviorKey === "drop_lowest_n") return "⌄";
+  if (behaviorKey === "custom_pipeline") return "⚙";
+  return "◈";
+}
+
+function getScopeLabel(scope?: "entry" | "group" | "both") {
+  if (scope === "entry") return "Dé";
+  if (scope === "group") return "Groupe";
+  if (scope === "both") return "Mixte";
+  return "Libre";
 }
 
 function getDiceSummary(dice: PreparedRollEditDie[]) {
@@ -211,14 +258,16 @@ function PreparedDieRow({
   die,
   index,
   onAdjustDieQty,
-  onEditDie,
+  onAdjustDieModifier,
   onRemoveDie,
+  onConfigureDieBehavior,
 }: {
   die: PreparedRollEditDie;
   index: number;
   onAdjustDieQty: (index: number, delta: number) => void;
-  onEditDie: (index: number) => void;
+  onAdjustDieModifier: (index: number, delta: number) => void;
   onRemoveDie: (index: number) => void;
+  onConfigureDieBehavior?: (index: number) => void;
 }) {
   const { theme } = useArcaneTheme();
   const rollTheme = useMemo(() => createRollScreenTheme(theme), [theme]);
@@ -331,24 +380,345 @@ function PreparedDieRow({
 
       <View
         style={{
-          flexDirection: "row",
-          gap: 8,
-          justifyContent: "flex-end",
-          flexWrap: "wrap",
+          gap: 9,
         }}
       >
-        <SheetPillButton
-          label="Réglages"
-          onPress={() => onEditDie(index)}
-          variant="accent"
-        />
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+            flexWrap: "wrap",
+          }}
+        >
+          <View style={{ gap: 3 }}>
+            <Text
+              style={{
+                color: theme.colors.textSubtle,
+                fontSize: 9,
+                fontWeight: "900",
+                textTransform: "uppercase",
+                letterSpacing: 0.7,
+              }}
+            >
+              Modificateur
+            </Text>
 
-        <SheetPillButton
-          label="Retirer"
-          onPress={() => onRemoveDie(index)}
-          variant="danger"
-        />
+            <Text
+              style={{
+                color:
+                  (die.modifier ?? 0) === 0
+                    ? theme.colors.textMuted
+                    : (die.modifier ?? 0) > 0
+                      ? theme.colors.accent
+                      : theme.colors.failure,
+                fontSize: 15,
+                fontWeight: "900",
+              }}
+            >
+              {(die.modifier ?? 0) > 0
+                ? `+${die.modifier}`
+                : `${die.modifier ?? 0}`}
+            </Text>
+          </View>
+
+          <View
+            style={{
+              flexDirection: "row",
+              gap: 7,
+              alignItems: "center",
+            }}
+          >
+            <QuantityButton
+              label="−"
+              onPress={() => onAdjustDieModifier(index, -1)}
+            />
+
+            <QuantityButton
+              label="+"
+              onPress={() => onAdjustDieModifier(index, 1)}
+            />
+          </View>
+        </View>
+
+        <View
+          style={{
+            flexDirection: "row",
+            gap: 8,
+            justifyContent: "flex-end",
+            flexWrap: "wrap",
+          }}
+        >
+          {onConfigureDieBehavior ? (
+            <SheetPillButton
+              label="Comportement"
+              onPress={() => onConfigureDieBehavior(index)}
+              variant="accent"
+            />
+          ) : null}
+
+          <SheetPillButton
+            label="Retirer"
+            onPress={() => onRemoveDie(index)}
+            variant="danger"
+          />
+        </View>
       </View>
+    </View>
+  );
+}
+
+function PreparedBehaviorPickerPanel({ data }: { data: BehaviorPickerData }) {
+  const { theme } = useArcaneTheme();
+  const rollTheme = useMemo(() => createRollScreenTheme(theme), [theme]);
+
+  return (
+    <View style={{ gap: 10 }}>
+      <View
+        style={{
+          borderRadius: 22,
+          borderWidth: 1,
+          borderColor: "rgba(217, 160, 55, 0.34)",
+          backgroundColor: "rgba(217, 160, 55, 0.08)",
+          padding: 12,
+          gap: 5,
+        }}
+      >
+        <Text
+          style={{
+            color: theme.colors.textSubtle,
+            fontSize: 10,
+            fontWeight: "900",
+            textTransform: "uppercase",
+            letterSpacing: 0.8,
+          }}
+        >
+          ✦ Comportement du dé
+        </Text>
+
+        <Text
+          style={{
+            color: theme.colors.text,
+            fontSize: 18,
+            fontWeight: "900",
+          }}
+        >
+          Configurer d{data.targetDieSides ?? "?"}
+        </Text>
+
+        <Text
+          style={{
+            color: theme.colors.textMuted,
+            fontSize: 12,
+            lineHeight: 17,
+            fontWeight: "700",
+          }}
+        >
+          Choisis comment cette ligne de dés doit être interprétée au moment du
+          lancer.
+        </Text>
+      </View>
+
+      <Pressable
+        onPress={data.onBack}
+        style={({ pressed }) => ({
+          alignSelf: "flex-start",
+          paddingVertical: 8,
+          paddingHorizontal: 12,
+          borderRadius: theme.radius.pill,
+          borderWidth: 1,
+          borderColor: "rgba(145, 113, 255, 0.24)",
+          backgroundColor: pressed
+            ? "rgba(32, 41, 88, 0.78)"
+            : "rgba(18, 23, 58, 0.72)",
+          opacity: pressed ? 0.84 : 1,
+        })}
+      >
+        <Text
+          style={{
+            color: theme.colors.textMuted,
+            fontSize: 12,
+            fontWeight: "900",
+          }}
+        >
+          ← Retour aux dés
+        </Text>
+      </Pressable>
+
+      {data.behaviors.length === 0 ? (
+        <View
+          style={{
+            borderRadius: 22,
+            borderWidth: 1,
+            borderColor: "rgba(145, 113, 255, 0.2)",
+            backgroundColor: "rgba(18, 23, 58, 0.66)",
+            padding: 14,
+          }}
+        >
+          <Text
+            style={{
+              color: theme.colors.textMuted,
+              fontSize: 13,
+              lineHeight: 18,
+              fontWeight: "700",
+            }}
+          >
+            Aucun comportement compatible avec ce dé.
+          </Text>
+        </View>
+      ) : null}
+
+      {data.behaviors.map((behavior) => {
+        const definition = data.getDefinition(behavior.behaviorKey);
+        if (!definition) return null;
+
+        const label = behavior.label ?? definition.label;
+        const description = behavior.description ?? definition.description;
+
+        return (
+          <Pressable
+            key={behavior.optionId}
+            onPress={() => data.onSelectBehavior(behavior)}
+            disabled={!behavior.enabled}
+            style={({ pressed }) => ({
+              borderRadius: 22,
+              borderWidth: 1,
+              borderColor: behavior.enabled
+                ? "rgba(145, 113, 255, 0.26)"
+                : "rgba(145, 113, 255, 0.12)",
+              backgroundColor: pressed
+                ? "rgba(32, 41, 88, 0.82)"
+                : "rgba(18, 23, 58, 0.68)",
+              padding: 12,
+              opacity: behavior.enabled ? (pressed ? 0.86 : 1) : 0.45,
+              transform: [{ scale: pressed && behavior.enabled ? 0.985 : 1 }],
+              gap: 8,
+              overflow: "hidden",
+            })}
+          >
+            <View
+              pointerEvents="none"
+              style={{
+                position: "absolute",
+                right: -48,
+                top: -58,
+                width: 136,
+                height: 136,
+                borderRadius: 999,
+                backgroundColor: rollTheme.cockpit.magicGlow,
+                opacity: 0.08,
+              }}
+            />
+
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "flex-start",
+                gap: 10,
+              }}
+            >
+              <View
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 16,
+                  borderWidth: 1,
+                  borderColor: behavior.enabled
+                    ? "rgba(217, 160, 55, 0.72)"
+                    : "rgba(145, 113, 255, 0.16)",
+                  backgroundColor: behavior.enabled
+                    ? "rgba(217, 160, 55, 0.12)"
+                    : "rgba(32, 41, 88, 0.42)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text
+                  style={{
+                    color: behavior.enabled
+                      ? theme.colors.accent
+                      : theme.colors.textSubtle,
+                    fontSize: 19,
+                    fontWeight: "900",
+                  }}
+                >
+                  {getBehaviorIcon(behavior.behaviorKey)}
+                </Text>
+              </View>
+
+              <View style={{ flex: 1, gap: 4 }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "flex-start",
+                    justifyContent: "space-between",
+                    gap: 8,
+                  }}
+                >
+                  <Text
+                    style={{
+                      flex: 1,
+                      color: theme.colors.text,
+                      fontSize: 15,
+                      fontWeight: "900",
+                    }}
+                  >
+                    {label}
+                  </Text>
+
+                  <View
+                    style={{
+                      paddingVertical: 4,
+                      paddingHorizontal: 8,
+                      borderRadius: theme.radius.pill,
+                      borderWidth: 1,
+                      borderColor: "rgba(145, 113, 255, 0.18)",
+                      backgroundColor: "rgba(32, 41, 88, 0.46)",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: theme.colors.textMuted,
+                        fontSize: 9,
+                        fontWeight: "900",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      {getScopeLabel(definition.defaultScope)}
+                    </Text>
+                  </View>
+                </View>
+
+                {description ? (
+                  <Text
+                    style={{
+                      color: theme.colors.textMuted,
+                      fontSize: 12,
+                      lineHeight: 17,
+                      fontWeight: "700",
+                    }}
+                  >
+                    {description}
+                  </Text>
+                ) : null}
+
+                {!behavior.enabled ? (
+                  <Text
+                    style={{
+                      color: theme.colors.textSubtle,
+                      fontSize: 11,
+                      fontWeight: "800",
+                    }}
+                  >
+                    Non compatible avec ce dé.
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
@@ -356,11 +726,15 @@ function PreparedDieRow({
 export function PreparedRollEditSheet({
   visible,
   title = "Modifier le jet",
+  mode = "dice",
   dice,
+  behaviorPickerData,
+  behaviorConfigPanel,
   onClose,
   onAdjustDieQty,
-  onEditDie,
+  onAdjustDieModifier,
   onRemoveDie,
+  onConfigureDieBehavior,
 }: PreparedRollEditSheetProps) {
   const { theme } = useArcaneTheme();
   const rollTheme = useMemo(() => createRollScreenTheme(theme), [theme]);
@@ -534,58 +908,84 @@ export function PreparedRollEditSheet({
             <SummaryStat label="Total dés" value={`${totalDiceCount}`} />
           </View>
 
-          {dice.length === 0 ? (
-            <View
-              style={{
-                borderRadius: 22,
-                borderWidth: 1,
-                borderColor: "rgba(145, 113, 255, 0.2)",
-                backgroundColor: "rgba(18, 23, 58, 0.66)",
-                padding: 14,
-                gap: 5,
-              }}
-            >
-              <Text
+          <ScrollView
+            contentContainerStyle={{
+              gap: 9,
+              paddingBottom: 4,
+            }}
+            showsVerticalScrollIndicator={false}
+          >
+            {mode === "behavior_picker" && behaviorPickerData ? (
+              <PreparedBehaviorPickerPanel data={behaviorPickerData} />
+            ) : mode === "behavior_config" ? (
+              (behaviorConfigPanel ?? (
+                <View
+                  style={{
+                    borderRadius: 22,
+                    borderWidth: 1,
+                    borderColor: "rgba(217, 160, 55, 0.34)",
+                    backgroundColor: "rgba(217, 160, 55, 0.08)",
+                    padding: 14,
+                    gap: 8,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: theme.colors.text,
+                      fontSize: 16,
+                      fontWeight: "900",
+                    }}
+                  >
+                    Aucun panneau de configuration disponible.
+                  </Text>
+                </View>
+              ))
+            ) : dice.length === 0 ? (
+              <View
                 style={{
-                  color: theme.colors.text,
-                  fontSize: 16,
-                  fontWeight: "900",
+                  borderRadius: 22,
+                  borderWidth: 1,
+                  borderColor: "rgba(145, 113, 255, 0.2)",
+                  backgroundColor: "rgba(18, 23, 58, 0.66)",
+                  padding: 14,
+                  gap: 5,
                 }}
               >
-                Aucun dé à modifier
-              </Text>
+                <Text
+                  style={{
+                    color: theme.colors.text,
+                    fontSize: 16,
+                    fontWeight: "900",
+                  }}
+                >
+                  Aucun dé à modifier
+                </Text>
 
-              <Text
-                style={{
-                  color: theme.colors.textMuted,
-                  fontSize: 13,
-                  lineHeight: 18,
-                  fontWeight: "700",
-                }}
-              >
-                Ajoute d’abord un dé libre depuis l’écran Jet.
-              </Text>
-            </View>
-          ) : (
-            <ScrollView
-              contentContainerStyle={{
-                gap: 9,
-                paddingBottom: 4,
-              }}
-              showsVerticalScrollIndicator={false}
-            >
-              {dice.map((die, index) => (
+                <Text
+                  style={{
+                    color: theme.colors.textMuted,
+                    fontSize: 13,
+                    lineHeight: 18,
+                    fontWeight: "700",
+                  }}
+                >
+                  Ajoute d’abord un dé libre depuis l’écran Jet.
+                </Text>
+              </View>
+            ) : (
+              dice.map((die, index) => (
                 <PreparedDieRow
                   key={`prepared-die-${index}-${die.sides}-${die.qty}`}
                   die={die}
                   index={index}
                   onAdjustDieQty={onAdjustDieQty}
-                  onEditDie={onEditDie}
+                  onAdjustDieModifier={onAdjustDieModifier}
                   onRemoveDie={onRemoveDie}
+                  onConfigureDieBehavior={onConfigureDieBehavior}
                 />
-              ))}
-            </ScrollView>
-          )}
+              ))
+            )}
+          </ScrollView>
 
           <Pressable
             onPress={onClose}
