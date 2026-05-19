@@ -293,9 +293,12 @@ export default function RollScreen() {
     addQuickStandardDie,
     addQuickPresetDie,
     loadSavedGroupIntoDraft,
+    updateDraftGroupName,
 
     updateDraftDieEntry,
     applyPresetToDraftDie,
+    clearDraftDieBehavior,
+    clearDraftGroupBehavior,
     adjustDraftDieQty,
     replaceDraftDieWithQtySplit,
     adjustDraftDieModifier,
@@ -727,6 +730,20 @@ export default function RollScreen() {
     setShowPreparedEditSheet(true);
   }
 
+  function handleChangePreparedRollName(value: string) {
+    if (
+      preparedRoll?.source !== "free" &&
+      preparedRoll?.source !== "action_draft"
+    ) {
+      return;
+    }
+
+    if (!editablePreparedDraftGroup) return;
+
+    updateDraftGroupName(editablePreparedDraftGroup.id, value);
+    setLatestResult(null);
+  }
+
   function handleClosePreparedEdit() {
     setPreparedEditMode("dice");
     setPreparedBehaviorTargetIndex(null);
@@ -788,6 +805,36 @@ export default function RollScreen() {
     setPreparedEditMode("behavior_picker");
 
     quickDieBehaviorPicker.open(die.sides);
+  }
+
+  function handleClearPreparedDieBehavior(index: number) {
+    if (
+      preparedRoll?.source !== "free" &&
+      preparedRoll?.source !== "action_draft"
+    ) {
+      return;
+    }
+
+    if (!editablePreparedDraftGroup) return;
+
+    const die = editablePreparedDraftGroup.dice[index];
+    if (!die) return;
+
+    const hasDieBehavior = !!die.rule_id || !!die.rule_temp;
+    const hasGroupBehavior =
+      !!editablePreparedDraftGroup.rule_id ||
+      !!editablePreparedDraftGroup.rule_temp;
+
+    if (hasDieBehavior) {
+      clearDraftDieBehavior(editablePreparedDraftGroup.id, index);
+      setLatestResult(null);
+      return;
+    }
+
+    if (hasGroupBehavior) {
+      clearDraftGroupBehavior(editablePreparedDraftGroup.id);
+      setLatestResult(null);
+    }
   }
 
   function handleRemovePreparedDie(index: number) {
@@ -1958,6 +2005,8 @@ export default function RollScreen() {
                 : "Modifier le jet libre"
         }
         mode={preparedEditMode}
+        nameValue={editablePreparedDraftGroup?.name ?? ""}
+        onChangeNameValue={handleChangePreparedRollName}
         dice={preparedQuickEditDice}
         behaviorPickerData={{
           targetDieIndex: preparedBehaviorTargetIndex,
@@ -2149,6 +2198,7 @@ export default function RollScreen() {
         onAdjustDieModifier={handleAdjustPreparedDieModifier}
         onRemoveDie={handleRemovePreparedDie}
         onConfigureDieBehavior={handleConfigurePreparedDieBehavior}
+        onClearDieBehavior={handleClearPreparedDieBehavior}
       />
 
       <QuickQtyModal

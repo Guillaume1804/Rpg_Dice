@@ -339,6 +339,21 @@ export function useQuickRollDraft({
     return draftGroupId;
   }
 
+  function updateDraftGroupName(groupId: string, name: string) {
+    setDraftGroups((prev) =>
+      prev.map((group) =>
+        group.id === groupId
+          ? {
+              ...group,
+              name,
+            }
+          : group,
+      ),
+    );
+
+    setDraftResults([]);
+  }
+
   function addQuickPresetDie(
     sides: number,
     preset: QuickPresetSelection,
@@ -623,6 +638,45 @@ export function useQuickRollDraft({
           ),
         };
       }),
+    );
+
+    setDraftResults([]);
+  }
+
+  function clearDraftDieBehavior(groupId: string, index: number) {
+    setDraftGroups((prev) =>
+      prev.map((group) => {
+        if (group.id !== groupId) return group;
+
+        return {
+          ...group,
+          dice: group.dice.map((die, dieIndex) =>
+            dieIndex === index
+              ? {
+                  ...die,
+                  rule_id: null,
+                  rule_temp: null,
+                }
+              : die,
+          ),
+        };
+      }),
+    );
+
+    setDraftResults([]);
+  }
+
+  function clearDraftGroupBehavior(groupId: string) {
+    setDraftGroups((prev) =>
+      prev.map((group) =>
+        group.id === groupId
+          ? {
+              ...group,
+              rule_id: null,
+              rule_temp: null,
+            }
+          : group,
+      ),
     );
 
     setDraftResults([]);
@@ -1154,11 +1208,14 @@ export function useQuickRollDraft({
     addQuickStandardDie,
     addQuickPresetDie,
     loadSavedGroupIntoDraft,
+    updateDraftGroupName,
 
     removeDraftDie,
     updateDraftDieQty,
     updateDraftDieEntry,
     applyPresetToDraftDie,
+    clearDraftDieBehavior,
+    clearDraftGroupBehavior,
     adjustDraftDieQty,
     adjustDraftDieModifier,
     replaceDraftDieWithQtySplit,

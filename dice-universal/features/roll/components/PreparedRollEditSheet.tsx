@@ -1,7 +1,14 @@
 // dice-universal/features/roll/components/PreparedRollEditSheet.tsx
 
 import { useMemo } from "react";
-import { Modal, Pressable, ScrollView, Text, View } from "react-native";
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import type { RuleBehaviorKey } from "../../../core/rules/behaviorRegistry";
 import type { QuickBehaviorPickerOption } from "../hooks/useQuickDieBehaviorPicker";
 
@@ -38,6 +45,8 @@ type PreparedRollEditSheetProps = {
   visible: boolean;
   title?: string;
   mode?: PreparedRollEditMode;
+  nameValue?: string;
+  onChangeNameValue?: (value: string) => void;
   dice: PreparedRollEditDie[];
   behaviorPickerData?: BehaviorPickerData;
   behaviorConfigPanel?: React.ReactNode;
@@ -46,6 +55,7 @@ type PreparedRollEditSheetProps = {
   onAdjustDieModifier: (index: number, delta: number) => void;
   onRemoveDie: (index: number) => void;
   onConfigureDieBehavior?: (index: number) => void;
+  onClearDieBehavior?: (index: number) => void;
 };
 
 function formatModifier(modifier?: number) {
@@ -261,6 +271,7 @@ function PreparedDieRow({
   onAdjustDieModifier,
   onRemoveDie,
   onConfigureDieBehavior,
+  onClearDieBehavior,
 }: {
   die: PreparedRollEditDie;
   index: number;
@@ -268,9 +279,11 @@ function PreparedDieRow({
   onAdjustDieModifier: (index: number, delta: number) => void;
   onRemoveDie: (index: number) => void;
   onConfigureDieBehavior?: (index: number) => void;
+  onClearDieBehavior?: (index: number) => void;
 }) {
   const { theme } = useArcaneTheme();
   const rollTheme = useMemo(() => createRollScreenTheme(theme), [theme]);
+  const hasBehavior = !!die.ruleLabel && die.ruleLabel !== "Somme simple";
 
   return (
     <View
@@ -455,6 +468,13 @@ function PreparedDieRow({
               label="Comportement"
               onPress={() => onConfigureDieBehavior(index)}
               variant="accent"
+            />
+          ) : null}
+
+          {hasBehavior && onClearDieBehavior ? (
+            <SheetPillButton
+              label="Somme simple"
+              onPress={() => onClearDieBehavior(index)}
             />
           ) : null}
 
@@ -727,6 +747,8 @@ export function PreparedRollEditSheet({
   visible,
   title = "Modifier le jet",
   mode = "dice",
+  nameValue = "",
+  onChangeNameValue,
   dice,
   behaviorPickerData,
   behaviorConfigPanel,
@@ -735,6 +757,7 @@ export function PreparedRollEditSheet({
   onAdjustDieModifier,
   onRemoveDie,
   onConfigureDieBehavior,
+  onClearDieBehavior,
 }: PreparedRollEditSheetProps) {
   const { theme } = useArcaneTheme();
   const rollTheme = useMemo(() => createRollScreenTheme(theme), [theme]);
@@ -897,6 +920,51 @@ export function PreparedRollEditSheet({
             </Pressable>
           </View>
 
+          {mode === "dice" && onChangeNameValue ? (
+            <View
+              style={{
+                borderRadius: 20,
+                borderWidth: 1,
+                borderColor: "rgba(145, 113, 255, 0.2)",
+                backgroundColor: "rgba(18, 23, 58, 0.62)",
+                padding: 11,
+                gap: 7,
+              }}
+            >
+              <Text
+                style={{
+                  color: theme.colors.textSubtle,
+                  fontSize: 9,
+                  fontWeight: "900",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.75,
+                }}
+              >
+                Nom du jet
+              </Text>
+
+              <TextInput
+                value={nameValue}
+                onChangeText={onChangeNameValue}
+                placeholder="Nom du jet"
+                placeholderTextColor={theme.colors.textSubtle}
+                selectionColor={theme.colors.accent}
+                style={{
+                  minHeight: 44,
+                  color: theme.colors.text,
+                  backgroundColor: "rgba(8, 12, 31, 0.68)",
+                  borderWidth: 1,
+                  borderColor: "rgba(145, 113, 255, 0.18)",
+                  borderRadius: theme.radius.lg,
+                  paddingHorizontal: 12,
+                  paddingVertical: 9,
+                  fontSize: 16,
+                  fontWeight: "800",
+                }}
+              />
+            </View>
+          ) : null}
+
           <View
             style={{
               flexDirection: "row",
@@ -982,6 +1050,7 @@ export function PreparedRollEditSheet({
                   onAdjustDieModifier={onAdjustDieModifier}
                   onRemoveDie={onRemoveDie}
                   onConfigureDieBehavior={onConfigureDieBehavior}
+                  onClearDieBehavior={onClearDieBehavior}
                 />
               ))
             )}
