@@ -54,10 +54,8 @@ import type { GroupRollResult } from "../core/roll/roll";
 import { buildDraftTempRuleFromPreset } from "../features/roll/helpers/buildDraftTempRuleFromPreset";
 
 import { QuickBehaviorConfigModal } from "../features/roll/components/QuickBehaviorConfigModal";
-import { QuickQtyModal } from "../features/roll/components/QuickQtyModal";
 import { QuickDieBehaviorPickerModal } from "../features/roll/components/QuickDieBehaviorPickerModal";
 import { useQuickBehaviorConfigModal } from "../features/roll/hooks/useQuickBehaviorConfigModal";
-import { useQuickQtyModal } from "../features/roll/hooks/useQuickQtyModal";
 import { useQuickDieBehaviorPicker } from "../features/roll/hooks/useQuickDieBehaviorPicker";
 import {
   formatDraftGroupDiceLabel,
@@ -295,12 +293,10 @@ export default function RollScreen() {
     loadSavedGroupIntoDraft,
     updateDraftGroupName,
 
-    updateDraftDieEntry,
     applyPresetToDraftDie,
     clearDraftDieBehavior,
     clearDraftGroupBehavior,
     adjustDraftDieQty,
-    replaceDraftDieWithQtySplit,
     adjustDraftDieModifier,
 
     removeDraftDie,
@@ -351,14 +347,6 @@ export default function RollScreen() {
 
       return true;
     },
-  });
-
-  const quickQtyModal = useQuickQtyModal({
-    draftGroups,
-    availableRules,
-    adjustDraftDieQty,
-    updateDraftDieEntry,
-    replaceDraftDieWithQtySplit,
   });
 
   const { rollSavedGroup } = useRollExecution({
@@ -1592,8 +1580,7 @@ export default function RollScreen() {
               onReplaceCurrentTable={replaceCurrentTable}
               onCreateNewTable={handleOpenSaveDraftModal}
               availableRules={availableRules}
-              onEditQuickDieQty={quickQtyModal.open}
-              onAdjustQuickDieQty={quickQtyModal.adjust}
+              onAdjustQuickDieQty={adjustDraftDieQty}
             />
           </ScrollView>
         </View>
@@ -2199,16 +2186,6 @@ export default function RollScreen() {
         onRemoveDie={handleRemovePreparedDie}
         onConfigureDieBehavior={handleConfigurePreparedDieBehavior}
         onClearDieBehavior={handleClearPreparedDieBehavior}
-      />
-
-      <QuickQtyModal
-        visible={quickQtyModal.visible}
-        qtyValue={quickQtyModal.qtyValue}
-        modifierValue={quickQtyModal.modifierValue}
-        onChangeQtyValue={quickQtyModal.setQtyValue}
-        onChangeModifierValue={quickQtyModal.setModifierValue}
-        onClose={quickQtyModal.close}
-        onSave={quickQtyModal.save}
       />
     </View>
   );

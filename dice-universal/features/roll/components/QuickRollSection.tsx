@@ -66,12 +66,6 @@ type QuickRollSectionProps = {
   onEditDraftGroupRule: (groupId: string) => void;
   onRemoveDraftGroup: (groupId: string) => void;
   onEditDraftDie: (groupId: string, index: number) => void;
-  onEditQuickDieQty: (
-    groupId: string,
-    index: number,
-    currentQty: number,
-    currentModifier: number,
-  ) => void;
   onAdjustQuickDieQty: (groupId: string, index: number, delta: number) => void;
   onOpenDieConfig: (sides: number) => void;
   onRemoveDraftDie: (groupId: string, index: number) => void;
@@ -114,11 +108,10 @@ function getEntryResultForIndex(result: GroupRollResult | null, index: number) {
 }
 
 function getEntryLabel(entryResult: GroupRollResult["entries"][number]) {
-  return `${entryResult.qty}d${entryResult.sides}${
-    entryResult.modifier
-      ? ` ${entryResult.modifier > 0 ? "+" : ""}${entryResult.modifier}`
-      : ""
-  }`;
+  return `${entryResult.qty}d${entryResult.sides}${entryResult.modifier
+    ? ` ${entryResult.modifier > 0 ? "+" : ""}${entryResult.modifier}`
+    : ""
+    }`;
 }
 
 function FallbackEntryResultCard({
@@ -187,7 +180,6 @@ export function QuickRollSection({
   onEditDraftGroupRule,
   onRemoveDraftGroup,
   onEditDraftDie,
-  onEditQuickDieQty,
   onAdjustQuickDieQty,
   onOpenDieConfig,
   onRemoveDraftDie,
@@ -295,8 +287,8 @@ export function QuickRollSection({
         ) : null}
 
         {!hideStandardQuickGroup &&
-        standardQuickGroup &&
-        !hideInternalRollControls ? (
+          standardQuickGroup &&
+          !hideInternalRollControls ? (
           <View
             style={{
               padding: 14,
@@ -338,14 +330,7 @@ export function QuickRollSection({
                         }}
                       >
                         <Pressable
-                          onPress={() =>
-                            onEditQuickDieQty(
-                              standardQuickGroup.id,
-                              index,
-                              die.qty,
-                              die.modifier ?? 0,
-                            )
-                          }
+                          onPress={() => onEditDraftDie(standardQuickGroup.id, index)}
                           style={{ flex: 1 }}
                         >
                           <Text style={{ fontWeight: "700" }}>
@@ -494,14 +479,7 @@ export function QuickRollSection({
                       }}
                     >
                       <Pressable
-                        onPress={() =>
-                          onEditQuickDieQty(
-                            group.id,
-                            index,
-                            die.qty,
-                            die.modifier ?? 0,
-                          )
-                        }
+                        onPress={() => onEditDraftDie(group.id, index)}
                         style={{ flex: 1 }}
                       >
                         <Text style={{ fontWeight: "700" }}>
@@ -553,8 +531,8 @@ export function QuickRollSection({
                     </View>
 
                     {!hideInternalRollControls &&
-                    groupResult?.group_eval_result &&
-                    index === 0 ? (
+                      groupResult?.group_eval_result &&
+                      index === 0 ? (
                       <View style={{ paddingTop: 6, borderTopWidth: 1 }}>
                         <RollResultCard
                           result={groupResult.group_eval_result}
