@@ -60,7 +60,7 @@ import { useQuickDieBehaviorPicker } from "../features/roll/hooks/useQuickDieBeh
 import {
   formatDraftGroupDiceLabel,
   formatSavedActionDetail,
-  getDraftGroupBehaviorSummary,
+  // getDraftGroupBehaviorSummary,
   getRuleSummaryFromRuleId,
   getRuleSummaryFromTempRule,
   type DraftGroupSummary,
