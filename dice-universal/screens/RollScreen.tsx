@@ -1870,6 +1870,18 @@ export default function RollScreen() {
           configSuccessAtOrAbove={quickBehaviorConfig.configSuccessAtOrAbove}
           configFailFaces={quickBehaviorConfig.configFailFaces}
           configGlitchRule={quickBehaviorConfig.configGlitchRule}
+          configCriticalFailureRule={
+            quickBehaviorConfig.configCriticalFailureRule
+          }
+          configCriticalSuccessRule={
+            quickBehaviorConfig.configCriticalSuccessRule
+          }
+          configCriticalSuccessThreshold={
+            quickBehaviorConfig.configCriticalSuccessThreshold
+          }
+          configCriticalSuccessFaces={
+            quickBehaviorConfig.configCriticalSuccessFaces
+          }
           configRanges={quickBehaviorConfig.configRanges}
           onChangeKeepCount={quickBehaviorConfig.setConfigKeepCount}
           onChangeDropCount={quickBehaviorConfig.setConfigDropCount}
@@ -1889,6 +1901,18 @@ export default function RollScreen() {
           }
           onChangeFailFaces={quickBehaviorConfig.setConfigFailFaces}
           onChangeGlitchRule={quickBehaviorConfig.setConfigGlitchRule}
+          onChangeCriticalFailureRule={
+            quickBehaviorConfig.setConfigCriticalFailureRule
+          }
+          onChangeCriticalSuccessRule={
+            quickBehaviorConfig.setConfigCriticalSuccessRule
+          }
+          onChangeCriticalSuccessThreshold={
+            quickBehaviorConfig.setConfigCriticalSuccessThreshold
+          }
+          onChangeCriticalSuccessFaces={
+            quickBehaviorConfig.setConfigCriticalSuccessFaces
+          }
           onUpdateRange={quickBehaviorConfig.updateRange}
           onAddRange={quickBehaviorConfig.addRange}
           onRemoveRange={quickBehaviorConfig.removeRange}
@@ -1928,6 +1952,18 @@ export default function RollScreen() {
           }
           pipelineComplicationRule={
             quickBehaviorConfig.pipelineComplicationRule
+          }
+          pipelineCriticalFailureRule={
+            quickBehaviorConfig.pipelineCriticalFailureRule
+          }
+          pipelineCriticalSuccessRule={
+            quickBehaviorConfig.pipelineCriticalSuccessRule
+          }
+          pipelineCriticalSuccessThreshold={
+            quickBehaviorConfig.pipelineCriticalSuccessThreshold
+          }
+          pipelineCriticalSuccessFaces={
+            quickBehaviorConfig.pipelineCriticalSuccessFaces
           }
           onChangePipelineRerollFaces={
             quickBehaviorConfig.setPipelineRerollFaces
@@ -1976,6 +2012,18 @@ export default function RollScreen() {
           }
           onChangePipelineComplicationRule={
             quickBehaviorConfig.setPipelineComplicationRule
+          }
+          onChangePipelineCriticalFailureRule={
+            quickBehaviorConfig.setPipelineCriticalFailureRule
+          }
+          onChangePipelineCriticalSuccessRule={
+            quickBehaviorConfig.setPipelineCriticalSuccessRule
+          }
+          onChangePipelineCriticalSuccessThreshold={
+            quickBehaviorConfig.setPipelineCriticalSuccessThreshold
+          }
+          onChangePipelineCriticalSuccessFaces={
+            quickBehaviorConfig.setPipelineCriticalSuccessFaces
           }
         />
       ) : null}
@@ -2061,6 +2109,18 @@ export default function RollScreen() {
             configSuccessAtOrAbove={quickBehaviorConfig.configSuccessAtOrAbove}
             configFailFaces={quickBehaviorConfig.configFailFaces}
             configGlitchRule={quickBehaviorConfig.configGlitchRule}
+            configCriticalFailureRule={
+              quickBehaviorConfig.configCriticalFailureRule
+            }
+            configCriticalSuccessRule={
+              quickBehaviorConfig.configCriticalSuccessRule
+            }
+            configCriticalSuccessThreshold={
+              quickBehaviorConfig.configCriticalSuccessThreshold
+            }
+            configCriticalSuccessFaces={
+              quickBehaviorConfig.configCriticalSuccessFaces
+            }
             configRanges={quickBehaviorConfig.configRanges}
             onChangeKeepCount={quickBehaviorConfig.setConfigKeepCount}
             onChangeDropCount={quickBehaviorConfig.setConfigDropCount}
@@ -2080,6 +2140,18 @@ export default function RollScreen() {
             }
             onChangeFailFaces={quickBehaviorConfig.setConfigFailFaces}
             onChangeGlitchRule={quickBehaviorConfig.setConfigGlitchRule}
+            onChangeCriticalFailureRule={
+              quickBehaviorConfig.setConfigCriticalFailureRule
+            }
+            onChangeCriticalSuccessRule={
+              quickBehaviorConfig.setConfigCriticalSuccessRule
+            }
+            onChangeCriticalSuccessThreshold={
+              quickBehaviorConfig.setConfigCriticalSuccessThreshold
+            }
+            onChangeCriticalSuccessFaces={
+              quickBehaviorConfig.setConfigCriticalSuccessFaces
+            }
             onUpdateRange={quickBehaviorConfig.updateRange}
             onAddRange={quickBehaviorConfig.addRange}
             onRemoveRange={quickBehaviorConfig.removeRange}
@@ -2121,6 +2193,18 @@ export default function RollScreen() {
             }
             pipelineComplicationRule={
               quickBehaviorConfig.pipelineComplicationRule
+            }
+            pipelineCriticalFailureRule={
+              quickBehaviorConfig.pipelineCriticalFailureRule
+            }
+            pipelineCriticalSuccessRule={
+              quickBehaviorConfig.pipelineCriticalSuccessRule
+            }
+            pipelineCriticalSuccessThreshold={
+              quickBehaviorConfig.pipelineCriticalSuccessThreshold
+            }
+            pipelineCriticalSuccessFaces={
+              quickBehaviorConfig.pipelineCriticalSuccessFaces
             }
             onChangePipelineRerollFaces={
               quickBehaviorConfig.setPipelineRerollFaces
@@ -2177,6 +2261,18 @@ export default function RollScreen() {
             }
             onChangePipelineComplicationRule={
               quickBehaviorConfig.setPipelineComplicationRule
+            }
+            onChangePipelineCriticalFailureRule={
+              quickBehaviorConfig.setPipelineCriticalFailureRule
+            }
+            onChangePipelineCriticalSuccessRule={
+              quickBehaviorConfig.setPipelineCriticalSuccessRule
+            }
+            onChangePipelineCriticalSuccessThreshold={
+              quickBehaviorConfig.setPipelineCriticalSuccessThreshold
+            }
+            onChangePipelineCriticalSuccessFaces={
+              quickBehaviorConfig.setPipelineCriticalSuccessFaces
             }
           />
         }

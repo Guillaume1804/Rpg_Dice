@@ -20,6 +20,10 @@ export type RuleBuildInput = {
   successAtOrAbove?: string;
   failFaces?: string;
   glitchRule?: string;
+  criticalFailureRule?: string;
+  criticalSuccessRule?: string;
+  criticalSuccessThreshold?: string;
+  criticalSuccessFaces?: string;
   ranges?: {
     min: string;
     max: string;
@@ -110,7 +114,19 @@ function getInputValue(input: RuleBuildInput, key: string): unknown {
       return parseNumberList(input.failFaces);
 
     case "glitchRule":
-      return input.glitchRule ?? "ones_gt_successes";
+      return input.glitchRule ?? "special_failures_gt_successes";
+
+    case "criticalFailureRule":
+      return input.criticalFailureRule ?? "complication_and_zero_successes";
+
+    case "criticalSuccessRule":
+      return input.criticalSuccessRule ?? "none";
+
+    case "criticalSuccessThreshold":
+      return parseOptionalNumber(input.criticalSuccessThreshold);
+
+    case "criticalSuccessFaces":
+      return parseNumberList(input.criticalSuccessFaces);
 
     case "keepCount":
       return Number(input.keepCount ?? "1");
@@ -157,10 +173,14 @@ function buildParams(input: RuleBuildInput): Record<string, unknown> {
 
   for (const field of behavior.fields) {
     const paramsKey = field.paramsKey ?? field.key;
+    const value = getInputValue(input, field.key);
 
-    params[paramsKey] = getInputValue(input, field.key);
+    if (value === null || value === undefined) {
+      continue;
+    }
+
+    params[paramsKey] = value;
   }
-
   if (input.behaviorKey === "table_lookup") {
     params.defaultLabel = "—";
   }

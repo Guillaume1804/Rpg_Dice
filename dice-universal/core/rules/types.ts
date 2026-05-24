@@ -17,7 +17,37 @@ export type SingleCheckParams = {
 export type SuccessPoolParams = {
   success_at_or_above: number;
   fail_faces?: number[];
-  glitch_rule?: "ones_gt_successes" | "ones_gte_successes" | "none";
+  glitch_rule?:
+    | "none"
+    | "any_special_failure"
+    | "special_failures_gt_successes"
+    | "special_failures_gte_successes"
+    | "special_failures_gt_half_dice"
+    | "special_failures_gte_half_dice"
+    | "special_failures_gt_half_successes"
+    | "special_failures_gte_half_successes"
+    | "ones_gt_successes"
+    | "ones_gte_successes";
+
+  critical_failure_rule?:
+    | "none"
+    | "zero_successes"
+    | "all_special_failures"
+    | "special_failures_gt_successes"
+    | "special_failures_gte_successes"
+    | "complication_and_zero_successes"
+    | "complication_and_failure";
+
+  critical_success_rule?:
+    | "none"
+    | "successes_gte_threshold"
+    | "all_dice_successes"
+    | "all_dice_max_faces"
+    | "any_max_face"
+    | "any_critical_face";
+
+  critical_success_threshold?: number | null;
+  critical_success_faces?: number[];
 };
 
 export type TableLookupRange = {
@@ -65,6 +95,34 @@ export type PipelineStep =
   | { op: "lookup"; ranges: TableLookupRange[] }
   | { op: "sum" };
 
+export type PipelineComplicationRule =
+  | "none"
+  | "any"
+  | "gt_successes"
+  | "gte_successes"
+  | "zero_successes"
+  | "gt_half_dice"
+  | "gte_half_dice"
+  | "gt_half_successes"
+  | "gte_half_successes";
+
+export type PipelineCriticalFailureRule =
+  | "none"
+  | "zero_successes"
+  | "all_complication_faces"
+  | "complications_gt_successes"
+  | "complications_gte_successes"
+  | "complication_and_zero_successes"
+  | "complication_and_failed_threshold";
+
+export type PipelineCriticalSuccessRule =
+  | "none"
+  | "successes_gte_threshold"
+  | "all_dice_successes"
+  | "all_dice_max_faces"
+  | "any_max_face"
+  | "any_critical_face";
+
 export type PipelineParams = {
   steps: PipelineStep[];
   output?:
@@ -82,12 +140,12 @@ export type PipelineParams = {
   compare?: "gte" | "lte";
 
   complication_faces?: number[];
-  complication_rule?:
-    | "none"
-    | "any"
-    | "gt_successes"
-    | "gte_successes"
-    | "zero_successes";
+  complication_rule?: PipelineComplicationRule;
+
+  critical_failure_rule?: PipelineCriticalFailureRule;
+  critical_success_rule?: PipelineCriticalSuccessRule;
+  critical_success_threshold?: number | null;
+  critical_success_faces?: number[];
 };
 
 export type UniversalRuleParams =
@@ -114,7 +172,21 @@ export type RuleResult =
       successes: number;
       fail_count: number;
       fail_faces: number[];
-      outcome: "crit_glitch" | "glitch" | "success" | "failure";
+      dice_count: number;
+      success_at_or_above: number;
+      complication: boolean;
+      critical_success: boolean;
+      critical_failure: boolean;
+      complication_rule: string;
+      critical_failure_rule: string;
+      critical_success_rule: string;
+      outcome:
+        | "crit_success"
+        | "crit_glitch"
+        | "crit_failure"
+        | "glitch"
+        | "success"
+        | "failure";
     }
   | { kind: "table_lookup"; value: number; label: string }
   | { kind: "banded_sum"; total: number; label: string }

@@ -246,15 +246,52 @@ function buildQuickPipelineParams(values: Record<string, unknown> | undefined) {
     crit_success_faces: parseNumberList(values?.pipelineCritSuccessFaces),
     crit_failure_faces: parseNumberList(values?.pipelineCritFailureFaces),
     complication_faces: parseNumberList(values?.pipelineComplicationFaces),
+    critical_success_faces: parseNumberList(
+      values?.pipelineCriticalSuccessFaces,
+    ),
 
     complication_rule:
       values?.pipelineComplicationRule === "any" ||
       values?.pipelineComplicationRule === "gt_successes" ||
       values?.pipelineComplicationRule === "gte_successes" ||
       values?.pipelineComplicationRule === "zero_successes" ||
+      values?.pipelineComplicationRule === "gt_half_dice" ||
+      values?.pipelineComplicationRule === "gte_half_dice" ||
+      values?.pipelineComplicationRule === "gt_half_successes" ||
+      values?.pipelineComplicationRule === "gte_half_successes" ||
       values?.pipelineComplicationRule === "none"
         ? values.pipelineComplicationRule
         : "none",
+
+    critical_failure_rule:
+      values?.pipelineCriticalFailureRule === "zero_successes" ||
+      values?.pipelineCriticalFailureRule === "all_complication_faces" ||
+      values?.pipelineCriticalFailureRule === "complications_gt_successes" ||
+      values?.pipelineCriticalFailureRule === "complications_gte_successes" ||
+      values?.pipelineCriticalFailureRule ===
+        "complication_and_zero_successes" ||
+      values?.pipelineCriticalFailureRule ===
+        "complication_and_failed_threshold" ||
+      values?.pipelineCriticalFailureRule === "none"
+        ? values.pipelineCriticalFailureRule
+        : "none",
+
+    critical_success_rule:
+      values?.pipelineCriticalSuccessRule === "successes_gte_threshold" ||
+      values?.pipelineCriticalSuccessRule === "all_dice_successes" ||
+      values?.pipelineCriticalSuccessRule === "all_dice_max_faces" ||
+      values?.pipelineCriticalSuccessRule === "any_max_face" ||
+      values?.pipelineCriticalSuccessRule === "any_critical_face" ||
+      values?.pipelineCriticalSuccessRule === "none"
+        ? values.pipelineCriticalSuccessRule
+        : "none",
+
+    critical_success_threshold:
+      typeof values?.pipelineCriticalSuccessThreshold === "string" &&
+      values.pipelineCriticalSuccessThreshold.trim() !== "" &&
+      Number.isFinite(Number(values.pipelineCriticalSuccessThreshold))
+        ? Number(values.pipelineCriticalSuccessThreshold)
+        : undefined,
   };
 }
 
@@ -303,6 +340,22 @@ export function buildDraftTempRuleFromPreset(params: {
     successAtOrAbove: readString(preset.defaultValues, "successAtOrAbove"),
     failFaces: readString(preset.defaultValues, "failFaces"),
     glitchRule: readString(preset.defaultValues, "glitchRule"),
+    criticalFailureRule: readString(
+      preset.defaultValues,
+      "criticalFailureRule",
+    ),
+    criticalSuccessRule: readString(
+      preset.defaultValues,
+      "criticalSuccessRule",
+    ),
+    criticalSuccessThreshold: readString(
+      preset.defaultValues,
+      "criticalSuccessThreshold",
+    ),
+    criticalSuccessFaces: readString(
+      preset.defaultValues,
+      "criticalSuccessFaces",
+    ),
     ranges: readRanges(preset.defaultValues, "ranges"),
     keepCount: readString(preset.defaultValues, "keepCount"),
     dropCount: readString(preset.defaultValues, "dropCount"),

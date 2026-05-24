@@ -24,10 +24,24 @@ export type RuleResult =
     }
   | {
       kind: "success_pool";
-      outcome: "success" | "failure" | "glitch" | "crit_glitch";
+      outcome:
+        | "crit_success"
+        | "success"
+        | "failure"
+        | "glitch"
+        | "crit_glitch"
+        | "crit_failure";
       successes: number;
       fail_count: number;
       fail_faces: number[];
+      dice_count: number;
+      success_at_or_above: number;
+      complication: boolean;
+      critical_success: boolean;
+      critical_failure: boolean;
+      complication_rule: string;
+      critical_failure_rule: string;
+      critical_success_rule: string;
     }
   | { kind: "table_lookup"; label: string; value: number }
   | { kind: "banded_sum"; total: number; label: string }
@@ -407,27 +421,61 @@ function runPipeline(
     const successes =
       typeof meta.successes === "number" ? meta.successes : final;
 
+    const successAtOrAboveStep = (params.steps || []).find(
+      (step) => step.op === "count_successes",
+    );
+
+    const successAtOrAbove =
+      successAtOrAboveStep?.op === "count_successes"
+        ? successAtOrAboveStep.at_or_above
+        : null;
+
     const complicationRule = params.complication_rule ?? "none";
+    const criticalFailureRule = params.critical_failure_rule ?? "none";
+    const criticalSuccessRule = params.critical_success_rule ?? "none";
+
+    const hasComplication = resolvePipelineComplication({
+      rule: complicationRule,
+      complications,
+      successes: Number(successes ?? 0),
+      diceCount: kept.length,
+    });
+
+    const isCriticalFailure = resolvePipelineCriticalFailure({
+      rule: criticalFailureRule,
+      complications,
+      successes: Number(successes ?? 0),
+      diceCount: kept.length,
+      complication: hasComplication,
+      thresholdFailed: !ok,
+    });
+
+    const isCriticalSuccess = resolvePipelineCriticalSuccess({
+      rule: criticalSuccessRule,
+      values: kept,
+      successes: Number(successes ?? 0),
+      successAtOrAbove,
+      criticalSuccessThreshold:
+        typeof params.critical_success_threshold === "number" &&
+        Number.isFinite(params.critical_success_threshold)
+          ? params.critical_success_threshold
+          : null,
+      criticalSuccessFaces: params.critical_success_faces ?? [],
+      sides,
+    });
 
     let outcome: string = ok ? "success" : "failure";
 
-    const hasComplication =
-      complicationRule === "any"
-        ? complications > 0
-        : complicationRule === "gt_successes"
-          ? complications > Number(successes ?? 0)
-          : complicationRule === "gte_successes"
-            ? complications >= Number(successes ?? 0) && complications > 0
-            : complicationRule === "zero_successes"
-              ? Number(successes ?? 0) <= 0 && complications > 0
-              : false;
-
-    if (hasComplication) {
-      if (!ok || Number(successes ?? 0) <= 0) {
-        outcome = "crit_glitch";
-      } else {
-        outcome = "glitch";
-      }
+    if (isCriticalSuccess) {
+      outcome = "crit_success";
+    } else if (isCriticalFailure) {
+      outcome =
+        criticalFailureRule === "complication_and_zero_successes" ||
+        criticalFailureRule === "complication_and_failed_threshold"
+          ? "crit_glitch"
+          : "crit_failure";
+    } else if (hasComplication) {
+      outcome = !ok || Number(successes ?? 0) <= 0 ? "crit_glitch" : "glitch";
     }
 
     return {
@@ -439,8 +487,86 @@ function runPipeline(
         ...meta,
         outcome,
         compare,
+        success_threshold: params.success_threshold,
+        complication: hasComplication,
+        critical_failure: isCriticalFailure,
+        critical_success: isCriticalSuccess,
+        complication_rule: complicationRule,
+        critical_failure_rule: criticalFailureRule,
+        critical_success_rule: criticalSuccessRule,
+        critical_success_threshold: params.critical_success_threshold ?? null,
+        critical_success_faces: params.critical_success_faces ?? [],
       },
     };
+  }
+
+  const complications =
+    typeof meta.complications === "number" ? meta.complications : 0;
+
+  const successes =
+    typeof meta.successes === "number"
+      ? meta.successes
+      : typeof final === "number"
+        ? final
+        : 0;
+
+  const successAtOrAboveStep = (params.steps || []).find(
+    (step) => step.op === "count_successes",
+  );
+
+  const successAtOrAbove =
+    successAtOrAboveStep?.op === "count_successes"
+      ? successAtOrAboveStep.at_or_above
+      : null;
+
+  const complicationRule = params.complication_rule ?? "none";
+  const criticalFailureRule = params.critical_failure_rule ?? "none";
+  const criticalSuccessRule = params.critical_success_rule ?? "none";
+
+  const hasComplication = resolvePipelineComplication({
+    rule: complicationRule,
+    complications,
+    successes: Number(successes ?? 0),
+    diceCount: kept.length,
+  });
+
+  const isCriticalFailure = resolvePipelineCriticalFailure({
+    rule: criticalFailureRule,
+    complications,
+    successes: Number(successes ?? 0),
+    diceCount: kept.length,
+    complication: hasComplication,
+    thresholdFailed: false,
+  });
+
+  const isCriticalSuccess = resolvePipelineCriticalSuccess({
+    rule: criticalSuccessRule,
+    values: kept,
+    successes: Number(successes ?? 0),
+    successAtOrAbove,
+    criticalSuccessThreshold:
+      typeof params.critical_success_threshold === "number" &&
+      Number.isFinite(params.critical_success_threshold)
+        ? params.critical_success_threshold
+        : null,
+    criticalSuccessFaces: params.critical_success_faces ?? [],
+    sides,
+  });
+
+  let outcome: string | undefined;
+
+  if (isCriticalSuccess) {
+    outcome = "crit_success";
+  } else if (isCriticalFailure) {
+    outcome =
+      criticalFailureRule === "complication_and_zero_successes" ||
+      criticalFailureRule === "complication_and_failed_threshold"
+        ? "crit_glitch"
+        : "crit_failure";
+  } else if (hasComplication) {
+    outcome = Number(successes ?? 0) <= 0 ? "crit_glitch" : "glitch";
+  } else if (typeof meta.successes === "number") {
+    outcome = meta.successes > 0 ? "success" : "failure";
   }
 
   return {
@@ -448,8 +574,296 @@ function runPipeline(
     values: initialNatural,
     kept,
     final,
-    meta,
+    meta: {
+      ...meta,
+      outcome,
+      complication: hasComplication,
+      critical_failure: isCriticalFailure,
+      critical_success: isCriticalSuccess,
+      complication_rule: complicationRule,
+      critical_failure_rule: criticalFailureRule,
+      critical_success_rule: criticalSuccessRule,
+      critical_success_threshold: params.critical_success_threshold ?? null,
+      critical_success_faces: params.critical_success_faces ?? [],
+    },
   };
+}
+
+function countValuesMatchingFaces(values: number[], faces: number[]) {
+  if (faces.length === 0) return 0;
+  const faceSet = new Set(faces);
+  return values.filter((value) => faceSet.has(value)).length;
+}
+
+function resolveSuccessPoolComplication(params: {
+  rule: string;
+  specialFailureCount: number;
+  successes: number;
+  diceCount: number;
+}) {
+  const { rule, specialFailureCount, successes, diceCount } = params;
+
+  if (rule === "none") return false;
+
+  if (rule === "any_special_failure") {
+    return specialFailureCount > 0;
+  }
+
+  if (rule === "special_failures_gt_successes") {
+    return specialFailureCount > successes;
+  }
+
+  if (rule === "special_failures_gte_successes") {
+    return specialFailureCount >= successes && specialFailureCount > 0;
+  }
+
+  if (rule === "special_failures_gt_half_dice") {
+    return specialFailureCount > diceCount / 2;
+  }
+
+  if (rule === "special_failures_gte_half_dice") {
+    return specialFailureCount >= diceCount / 2 && specialFailureCount > 0;
+  }
+
+  if (rule === "special_failures_gt_half_successes") {
+    return specialFailureCount > successes / 2 && specialFailureCount > 0;
+  }
+
+  if (rule === "special_failures_gte_half_successes") {
+    return specialFailureCount >= successes / 2 && specialFailureCount > 0;
+  }
+
+  // Compatibilité avec les anciennes valeurs
+  if (rule === "ones_gt_successes") {
+    return specialFailureCount > successes;
+  }
+
+  if (rule === "ones_gte_successes") {
+    return specialFailureCount >= successes && specialFailureCount > 0;
+  }
+
+  return false;
+}
+
+function resolveSuccessPoolCriticalFailure(params: {
+  rule: string;
+  specialFailureCount: number;
+  successes: number;
+  diceCount: number;
+  complication: boolean;
+}) {
+  const { rule, specialFailureCount, successes, diceCount, complication } =
+    params;
+
+  if (rule === "none") return false;
+
+  if (rule === "zero_successes") {
+    return successes <= 0;
+  }
+
+  if (rule === "all_special_failures") {
+    return diceCount > 0 && specialFailureCount === diceCount;
+  }
+
+  if (rule === "special_failures_gt_successes") {
+    return specialFailureCount > successes;
+  }
+
+  if (rule === "special_failures_gte_successes") {
+    return specialFailureCount >= successes && specialFailureCount > 0;
+  }
+
+  if (rule === "complication_and_zero_successes") {
+    return complication && successes <= 0;
+  }
+
+  if (rule === "complication_and_failure") {
+    return complication && successes <= 0;
+  }
+
+  return false;
+}
+
+function resolveSuccessPoolCriticalSuccess(params: {
+  rule: string;
+  values: number[];
+  successes: number;
+  successThreshold: number;
+  criticalSuccessThreshold: number | null;
+  criticalSuccessFaces: number[];
+  sides: number;
+}) {
+  const {
+    rule,
+    values,
+    successes,
+    successThreshold,
+    criticalSuccessThreshold,
+    criticalSuccessFaces,
+    sides,
+  } = params;
+
+  if (rule === "none") return false;
+  if (values.length === 0) return false;
+
+  if (rule === "successes_gte_threshold") {
+    return (
+      criticalSuccessThreshold != null && successes >= criticalSuccessThreshold
+    );
+  }
+
+  if (rule === "all_dice_successes") {
+    return values.every((value) => value >= successThreshold);
+  }
+
+  if (rule === "all_dice_max_faces") {
+    return values.every((value) => value === sides);
+  }
+
+  if (rule === "any_max_face") {
+    return values.some((value) => value === sides);
+  }
+
+  if (rule === "any_critical_face") {
+    return countValuesMatchingFaces(values, criticalSuccessFaces) > 0;
+  }
+
+  return false;
+}
+
+function resolvePipelineComplication(params: {
+  rule: string;
+  complications: number;
+  successes: number;
+  diceCount: number;
+}) {
+  const { rule, complications, successes, diceCount } = params;
+
+  if (rule === "none") return false;
+
+  if (rule === "any") return complications > 0;
+
+  if (rule === "gt_successes") return complications > successes;
+
+  if (rule === "gte_successes") {
+    return complications >= successes && complications > 0;
+  }
+
+  if (rule === "zero_successes") {
+    return successes <= 0 && complications > 0;
+  }
+
+  if (rule === "gt_half_dice") {
+    return complications > diceCount / 2;
+  }
+
+  if (rule === "gte_half_dice") {
+    return complications >= diceCount / 2 && complications > 0;
+  }
+
+  if (rule === "gt_half_successes") {
+    return complications > successes / 2 && complications > 0;
+  }
+
+  if (rule === "gte_half_successes") {
+    return complications >= successes / 2 && complications > 0;
+  }
+
+  return false;
+}
+
+function resolvePipelineCriticalFailure(params: {
+  rule: string;
+  complications: number;
+  successes: number;
+  diceCount: number;
+  complication: boolean;
+  thresholdFailed: boolean;
+}) {
+  const {
+    rule,
+    complications,
+    successes,
+    diceCount,
+    complication,
+    thresholdFailed,
+  } = params;
+
+  if (rule === "none") return false;
+
+  if (rule === "zero_successes") {
+    return successes <= 0;
+  }
+
+  if (rule === "all_complication_faces") {
+    return diceCount > 0 && complications === diceCount;
+  }
+
+  if (rule === "complications_gt_successes") {
+    return complications > successes;
+  }
+
+  if (rule === "complications_gte_successes") {
+    return complications >= successes && complications > 0;
+  }
+
+  if (rule === "complication_and_zero_successes") {
+    return complication && successes <= 0;
+  }
+
+  if (rule === "complication_and_failed_threshold") {
+    return complication && thresholdFailed;
+  }
+
+  return false;
+}
+
+function resolvePipelineCriticalSuccess(params: {
+  rule: string;
+  values: number[];
+  successes: number;
+  successAtOrAbove: number | null;
+  criticalSuccessThreshold: number | null;
+  criticalSuccessFaces: number[];
+  sides: number;
+}) {
+  const {
+    rule,
+    values,
+    successes,
+    successAtOrAbove,
+    criticalSuccessThreshold,
+    criticalSuccessFaces,
+    sides,
+  } = params;
+
+  if (rule === "none") return false;
+  if (values.length === 0) return false;
+
+  if (rule === "successes_gte_threshold") {
+    return (
+      criticalSuccessThreshold != null && successes >= criticalSuccessThreshold
+    );
+  }
+
+  if (rule === "all_dice_successes") {
+    if (successAtOrAbove == null) return false;
+    return values.every((value) => value >= successAtOrAbove);
+  }
+
+  if (rule === "all_dice_max_faces") {
+    return values.every((value) => value === sides);
+  }
+
+  if (rule === "any_max_face") {
+    return values.some((value) => value === sides);
+  }
+
+  if (rule === "any_critical_face") {
+    return countValuesMatchingFaces(values, criticalSuccessFaces) > 0;
+  }
+
+  return false;
 }
 
 // --------------------------------------------------
@@ -610,33 +1024,95 @@ export function evaluateRule(
         ? Number(p.success_at_or_above)
         : Number(p.successAtOrAbove ?? 4);
 
+    const successThreshold = Number.isFinite(at) ? at : 4;
+
     const failFaces = Array.isArray(p.fail_faces)
-      ? p.fail_faces.map(Number)
-      : [Number(p.critFailureFace ?? 1)];
+      ? p.fail_faces.map(Number).filter(Number.isFinite)
+      : [Number(p.critFailureFace ?? 1)].filter(Number.isFinite);
 
     const glitchRule = String(
-      p.glitch_rule ?? p.glitchRule ?? "ones_gt_successes",
+      p.glitch_rule ?? p.glitchRule ?? "special_failures_gt_successes",
     );
 
+    const criticalFailureRule = String(
+      p.critical_failure_rule ??
+        p.criticalFailureRule ??
+        "complication_and_zero_successes",
+    );
+
+    const criticalSuccessRule = String(
+      p.critical_success_rule ?? p.criticalSuccessRule ?? "none",
+    );
+
+    const criticalSuccessThreshold =
+      p.critical_success_threshold != null
+        ? Number(p.critical_success_threshold)
+        : p.criticalSuccessThreshold != null
+          ? Number(p.criticalSuccessThreshold)
+          : null;
+
+    const resolvedCriticalSuccessThreshold =
+      criticalSuccessThreshold != null &&
+      Number.isFinite(criticalSuccessThreshold)
+        ? criticalSuccessThreshold
+        : null;
+
+    const criticalSuccessFaces = Array.isArray(p.critical_success_faces)
+      ? p.critical_success_faces.map(Number).filter(Number.isFinite)
+      : [];
+
     const values = ctx.values;
-    const successes = values.filter((v) => v >= at).length;
-    const failCount = values.filter((v) => failFaces.includes(v)).length;
+    const diceCount = values.length;
 
-    const isGlitch =
-      glitchRule === "ones_gte_successes"
-        ? failCount >= successes
-        : glitchRule === "none"
-          ? false
-          : failCount > successes;
+    const successes = values.filter((v) => v >= successThreshold).length;
+    const failCount = countValuesMatchingFaces(values, failFaces);
 
-    const outcome =
-      successes > 0
-        ? isGlitch
-          ? "glitch"
-          : "success"
-        : isGlitch
+    const complication = resolveSuccessPoolComplication({
+      rule: glitchRule,
+      specialFailureCount: failCount,
+      successes,
+      diceCount,
+    });
+
+    const criticalSuccess = resolveSuccessPoolCriticalSuccess({
+      rule: criticalSuccessRule,
+      values,
+      successes,
+      successThreshold,
+      criticalSuccessThreshold: resolvedCriticalSuccessThreshold,
+      criticalSuccessFaces,
+      sides: ctx.sides,
+    });
+
+    const criticalFailure = resolveSuccessPoolCriticalFailure({
+      rule: criticalFailureRule,
+      specialFailureCount: failCount,
+      successes,
+      diceCount,
+      complication,
+    });
+
+    let outcome:
+      | "crit_success"
+      | "success"
+      | "failure"
+      | "glitch"
+      | "crit_glitch"
+      | "crit_failure";
+
+    if (criticalSuccess) {
+      outcome = "crit_success";
+    } else if (criticalFailure) {
+      outcome =
+        criticalFailureRule === "complication_and_zero_successes" ||
+        criticalFailureRule === "complication_and_failure"
           ? "crit_glitch"
-          : "failure";
+          : "crit_failure";
+    } else if (successes > 0) {
+      outcome = complication ? "glitch" : "success";
+    } else {
+      outcome = complication ? "crit_glitch" : "failure";
+    }
 
     return {
       kind: "success_pool",
@@ -644,6 +1120,14 @@ export function evaluateRule(
       successes,
       fail_count: failCount,
       fail_faces: failFaces,
+      dice_count: diceCount,
+      success_at_or_above: successThreshold,
+      complication,
+      critical_success: criticalSuccess,
+      critical_failure: criticalFailure,
+      complication_rule: glitchRule,
+      critical_failure_rule: criticalFailureRule,
+      critical_success_rule: criticalSuccessRule,
     };
   }
 
@@ -778,7 +1262,7 @@ export function evaluateRule(
       success_threshold:
         p.success_threshold == null ? undefined : Number(p.success_threshold),
       compare: p.compare === "lte" ? "lte" : "gte",
-      
+
       complication_faces: Array.isArray(p.complication_faces)
         ? p.complication_faces.map(Number).filter(Number.isFinite)
         : undefined,
@@ -788,9 +1272,43 @@ export function evaluateRule(
         p.complication_rule === "gt_successes" ||
         p.complication_rule === "gte_successes" ||
         p.complication_rule === "zero_successes" ||
+        p.complication_rule === "gt_half_dice" ||
+        p.complication_rule === "gte_half_dice" ||
+        p.complication_rule === "gt_half_successes" ||
+        p.complication_rule === "gte_half_successes" ||
         p.complication_rule === "none"
           ? p.complication_rule
           : undefined,
+
+      critical_failure_rule:
+        p.critical_failure_rule === "zero_successes" ||
+        p.critical_failure_rule === "all_complication_faces" ||
+        p.critical_failure_rule === "complications_gt_successes" ||
+        p.critical_failure_rule === "complications_gte_successes" ||
+        p.critical_failure_rule === "complication_and_zero_successes" ||
+        p.critical_failure_rule === "complication_and_failed_threshold" ||
+        p.critical_failure_rule === "none"
+          ? p.critical_failure_rule
+          : undefined,
+
+      critical_success_rule:
+        p.critical_success_rule === "successes_gte_threshold" ||
+        p.critical_success_rule === "all_dice_successes" ||
+        p.critical_success_rule === "all_dice_max_faces" ||
+        p.critical_success_rule === "any_max_face" ||
+        p.critical_success_rule === "any_critical_face" ||
+        p.critical_success_rule === "none"
+          ? p.critical_success_rule
+          : undefined,
+
+      critical_success_threshold:
+        p.critical_success_threshold == null
+          ? undefined
+          : Number(p.critical_success_threshold),
+
+      critical_success_faces: Array.isArray(p.critical_success_faces)
+        ? p.critical_success_faces.map(Number).filter(Number.isFinite)
+        : undefined,
     };
 
     return runPipeline(ctx.values, ctx, params);

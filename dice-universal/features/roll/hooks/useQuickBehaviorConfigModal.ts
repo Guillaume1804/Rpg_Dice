@@ -28,6 +28,10 @@ function applyFieldDefault(
     setConfigSuccessAtOrAbove: (value: string) => void;
     setConfigFailFaces: (value: string) => void;
     setConfigGlitchRule: (value: string) => void;
+    setConfigCriticalFailureRule: (value: string) => void;
+    setConfigCriticalSuccessRule: (value: string) => void;
+    setConfigCriticalSuccessThreshold: (value: string) => void;
+    setConfigCriticalSuccessFaces: (value: string) => void;
     setConfigTargetValue: (value: string) => void;
     setConfigDegreeStep: (value: string) => void;
     setConfigCritSuccessMin: (value: string) => void;
@@ -77,6 +81,22 @@ function applyFieldDefault(
       setters.setConfigGlitchRule(value);
       break;
 
+    case "criticalFailureRule":
+      setters.setConfigCriticalFailureRule(value);
+      break;
+
+    case "criticalSuccessRule":
+      setters.setConfigCriticalSuccessRule(value);
+      break;
+
+    case "criticalSuccessThreshold":
+      setters.setConfigCriticalSuccessThreshold(value);
+      break;
+
+    case "criticalSuccessFaces":
+      setters.setConfigCriticalSuccessFaces(value);
+      break;
+
     case "targetValue":
       setters.setConfigTargetValue(value);
       break;
@@ -113,6 +133,10 @@ function getFieldValue(params: {
   configCritSuccessFaces: string;
   configCritFailureFaces: string;
   configSuccessAtOrAbove: string;
+  configCriticalFailureRule: string;
+  configCriticalSuccessRule: string;
+  configCriticalSuccessThreshold: string;
+  configCriticalSuccessFaces: string;
   configFailFaces: string;
   configGlitchRule: string;
   configTargetValue: string;
@@ -152,6 +176,18 @@ function getFieldValue(params: {
 
     case "glitchRule":
       return params.configGlitchRule;
+
+    case "criticalFailureRule":
+      return params.configCriticalFailureRule;
+
+    case "criticalSuccessRule":
+      return params.configCriticalSuccessRule;
+
+    case "criticalSuccessThreshold":
+      return params.configCriticalSuccessThreshold;
+
+    case "criticalSuccessFaces":
+      return params.configCriticalSuccessFaces;
 
     case "targetValue":
       return params.configTargetValue;
@@ -218,7 +254,19 @@ export function useQuickBehaviorConfigModal() {
 
   const [configSuccessAtOrAbove, setConfigSuccessAtOrAbove] = useState("5");
   const [configFailFaces, setConfigFailFaces] = useState("1");
-  const [configGlitchRule, setConfigGlitchRule] = useState("ones_gt_successes");
+  const [configGlitchRule, setConfigGlitchRule] = useState(
+    "special_failures_gt_successes",
+  );
+
+  const [configCriticalFailureRule, setConfigCriticalFailureRule] = useState(
+    "complication_and_zero_successes",
+  );
+  const [configCriticalSuccessRule, setConfigCriticalSuccessRule] =
+    useState("none");
+  const [configCriticalSuccessThreshold, setConfigCriticalSuccessThreshold] =
+    useState("");
+  const [configCriticalSuccessFaces, setConfigCriticalSuccessFaces] =
+    useState("");
 
   const [configRanges, setConfigRanges] =
     useState<RangeRow[]>(DEFAULT_QUICK_RANGES);
@@ -257,8 +305,45 @@ export function useQuickBehaviorConfigModal() {
   const [pipelineComplicationFaces, setPipelineComplicationFaces] =
     useState("");
   const [pipelineComplicationRule, setPipelineComplicationRule] = useState<
-    "none" | "any" | "gt_successes" | "gte_successes" | "zero_successes"
+    | "none"
+    | "any"
+    | "gt_successes"
+    | "gte_successes"
+    | "zero_successes"
+    | "gt_half_dice"
+    | "gte_half_dice"
+    | "gt_half_successes"
+    | "gte_half_successes"
   >("none");
+
+  const [pipelineCriticalFailureRule, setPipelineCriticalFailureRule] =
+    useState<
+      | "none"
+      | "zero_successes"
+      | "all_complication_faces"
+      | "complications_gt_successes"
+      | "complications_gte_successes"
+      | "complication_and_zero_successes"
+      | "complication_and_failed_threshold"
+    >("none");
+
+  const [pipelineCriticalSuccessRule, setPipelineCriticalSuccessRule] =
+    useState<
+      | "none"
+      | "successes_gte_threshold"
+      | "all_dice_successes"
+      | "all_dice_max_faces"
+      | "any_max_face"
+      | "any_critical_face"
+    >("none");
+
+  const [
+    pipelineCriticalSuccessThreshold,
+    setPipelineCriticalSuccessThreshold,
+  ] = useState("");
+
+  const [pipelineCriticalSuccessFaces, setPipelineCriticalSuccessFaces] =
+    useState("");
 
   function resetPipelineConfig() {
     setPipelineRerollFaces("");
@@ -284,6 +369,10 @@ export function useQuickBehaviorConfigModal() {
     setPipelineCritFailureFaces("");
     setPipelineComplicationFaces("");
     setPipelineComplicationRule("none");
+    setPipelineCriticalFailureRule("none");
+    setPipelineCriticalSuccessRule("none");
+    setPipelineCriticalSuccessThreshold("");
+    setPipelineCriticalSuccessFaces("");
   }
 
   function open(params: {
@@ -312,7 +401,11 @@ export function useQuickBehaviorConfigModal() {
     setConfigCritFailureFaces("");
     setConfigSuccessAtOrAbove("5");
     setConfigFailFaces("1");
-    setConfigGlitchRule("ones_gt_successes");
+    setConfigGlitchRule("special_failures_gt_successes");
+    setConfigCriticalFailureRule("complication_and_zero_successes");
+    setConfigCriticalSuccessRule("none");
+    setConfigCriticalSuccessThreshold("");
+    setConfigCriticalSuccessFaces("");
     setConfigRanges(DEFAULT_QUICK_RANGES);
     resetPipelineConfig();
     setConfigTargetValue("65");
@@ -340,6 +433,10 @@ export function useQuickBehaviorConfigModal() {
           setConfigSuccessAtOrAbove,
           setConfigFailFaces,
           setConfigGlitchRule,
+          setConfigCriticalFailureRule,
+          setConfigCriticalSuccessRule,
+          setConfigCriticalSuccessThreshold,
+          setConfigCriticalSuccessFaces,
           setConfigTargetValue,
           setConfigDegreeStep,
           setConfigCritSuccessMin,
@@ -375,7 +472,12 @@ export function useQuickBehaviorConfigModal() {
 
     setConfigSuccessAtOrAbove("5");
     setConfigFailFaces("1");
-    setConfigGlitchRule("ones_gt_successes");
+    setConfigGlitchRule("special_failures_gt_successes");
+    setConfigCriticalFailureRule("complication_and_zero_successes");
+    setConfigCriticalSuccessRule("none");
+    setConfigCriticalSuccessThreshold("");
+    setConfigCriticalSuccessFaces("");
+
     setConfigRanges(DEFAULT_QUICK_RANGES);
     resetPipelineConfig();
     setConfigTargetValue("65");
@@ -441,6 +543,7 @@ export function useQuickBehaviorConfigModal() {
         pipelineCountRangeMin,
         pipelineCountRangeMax,
         pipelineSuccessThreshold,
+        pipelineCriticalSuccessThreshold,
       ];
 
       for (const value of numericFields) {
@@ -486,6 +589,10 @@ export function useQuickBehaviorConfigModal() {
           configSuccessAtOrAbove,
           configFailFaces,
           configGlitchRule,
+          configCriticalFailureRule,
+          configCriticalSuccessRule,
+          configCriticalSuccessThreshold,
+          configCriticalSuccessFaces,
           configTargetValue,
           configDegreeStep,
           configCritSuccessMin,
@@ -504,7 +611,9 @@ export function useQuickBehaviorConfigModal() {
         if (
           (field.key === "keepCount" ||
             field.key === "dropCount" ||
-            field.key === "degreeStep") &&
+            field.key === "degreeStep" ||
+            field.key === "criticalSuccessThreshold") &&
+          value.trim() !== "" &&
           Number(value) <= 0
         ) {
           return false;
@@ -572,6 +681,11 @@ export function useQuickBehaviorConfigModal() {
 
         pipelineComplicationFaces,
         pipelineComplicationRule,
+
+        pipelineCriticalFailureRule,
+        pipelineCriticalSuccessRule,
+        pipelineCriticalSuccessThreshold,
+        pipelineCriticalSuccessFaces,
       };
     }
 
@@ -587,6 +701,10 @@ export function useQuickBehaviorConfigModal() {
       successAtOrAbove: configSuccessAtOrAbove,
       failFaces: configFailFaces,
       glitchRule: configGlitchRule,
+      criticalFailureRule: configCriticalFailureRule,
+      criticalSuccessRule: configCriticalSuccessRule,
+      criticalSuccessThreshold: configCriticalSuccessThreshold,
+      criticalSuccessFaces: configCriticalSuccessFaces,
       ranges: configRanges,
       targetValue: configTargetValue,
       degreeStep: configDegreeStep,
@@ -618,6 +736,10 @@ export function useQuickBehaviorConfigModal() {
     configSuccessAtOrAbove,
     configFailFaces,
     configGlitchRule,
+    configCriticalFailureRule,
+    configCriticalSuccessRule,
+    configCriticalSuccessThreshold,
+    configCriticalSuccessFaces,
     configRanges,
 
     setConfigKeepCount,
@@ -630,6 +752,10 @@ export function useQuickBehaviorConfigModal() {
     setConfigSuccessAtOrAbove,
     setConfigFailFaces,
     setConfigGlitchRule,
+    setConfigCriticalFailureRule,
+    setConfigCriticalSuccessRule,
+    setConfigCriticalSuccessThreshold,
+    setConfigCriticalSuccessFaces,
 
     setKeepDropMode,
     setKeepDropTarget,
@@ -677,6 +803,10 @@ export function useQuickBehaviorConfigModal() {
     pipelineCritFailureFaces,
     pipelineComplicationFaces,
     pipelineComplicationRule,
+    pipelineCriticalFailureRule,
+    pipelineCriticalSuccessRule,
+    pipelineCriticalSuccessThreshold,
+    pipelineCriticalSuccessFaces,
 
     setPipelineRerollFaces,
     setPipelineRerollOnce,
@@ -698,5 +828,9 @@ export function useQuickBehaviorConfigModal() {
     setPipelineCritFailureFaces,
     setPipelineComplicationFaces,
     setPipelineComplicationRule,
+    setPipelineCriticalFailureRule,
+    setPipelineCriticalSuccessRule,
+    setPipelineCriticalSuccessThreshold,
+    setPipelineCriticalSuccessFaces,
   };
 }

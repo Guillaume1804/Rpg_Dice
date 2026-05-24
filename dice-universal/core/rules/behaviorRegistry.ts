@@ -23,20 +23,20 @@ type BaseBehaviorField = {
 
 export type RuleBehaviorField =
   | (BaseBehaviorField & {
-    type: "text" | "number";
-    defaultValue: string;
-    placeholder?: string;
-  })
+      type: "text" | "number";
+      defaultValue: string;
+      placeholder?: string;
+    })
   | (BaseBehaviorField & {
-    type: "select";
-    defaultValue: string;
-    options: { value: string; label: string }[];
-  })
+      type: "select";
+      defaultValue: string;
+      options: { value: string; label: string }[];
+    })
   | (BaseBehaviorField & {
-    type: "ranges";
-    paramsKey: "ranges" | "bands";
-    defaultValue: { min: string; max: string; label: string }[];
-  });
+      type: "ranges";
+      paramsKey: "ranges" | "bands";
+      defaultValue: { min: string; max: string; label: string }[];
+    });
 
 export type RuleBehaviorRegistryItem = {
   key: RuleBehaviorKey;
@@ -229,26 +229,124 @@ export const RULE_BEHAVIORS: RuleBehaviorRegistryItem[] = [
         label: "Faces d’échec spécial",
         type: "text",
         defaultValue: "1",
-        placeholder: "Ex: 1",
+        placeholder: "Ex: 1 ou 1,2",
       },
       {
         key: "glitchRule",
         paramsKey: "glitch_rule",
         label: "Règle de complication",
         type: "select",
-        defaultValue: "ones_gt_successes",
+        defaultValue: "special_failures_gt_successes",
         options: [
           { value: "none", label: "Aucune" },
-          { value: "ones_gt_successes", label: "1 > succès" },
-          { value: "ones_gte_successes", label: "1 ≥ succès" },
+          {
+            value: "any_special_failure",
+            label: "Dès qu’il y a une face spéciale",
+          },
+          {
+            value: "special_failures_gt_successes",
+            label: "Faces spéciales > succès",
+          },
+          {
+            value: "special_failures_gte_successes",
+            label: "Faces spéciales ≥ succès",
+          },
+          {
+            value: "special_failures_gt_half_dice",
+            label: "Faces spéciales > moitié des dés",
+          },
+          {
+            value: "special_failures_gte_half_dice",
+            label: "Faces spéciales ≥ moitié des dés",
+          },
+          {
+            value: "special_failures_gt_half_successes",
+            label: "Faces spéciales > moitié des succès",
+          },
+          {
+            value: "special_failures_gte_half_successes",
+            label: "Faces spéciales ≥ moitié des succès",
+          },
         ],
+      },
+      {
+        key: "criticalFailureRule",
+        paramsKey: "critical_failure_rule",
+        label: "Règle d’échec critique",
+        type: "select",
+        defaultValue: "complication_and_zero_successes",
+        options: [
+          { value: "none", label: "Aucune" },
+          { value: "zero_successes", label: "Aucun succès" },
+          {
+            value: "all_special_failures",
+            label: "Tous les dés sont des échecs spéciaux",
+          },
+          {
+            value: "special_failures_gt_successes",
+            label: "Faces spéciales > succès",
+          },
+          {
+            value: "special_failures_gte_successes",
+            label: "Faces spéciales ≥ succès",
+          },
+          {
+            value: "complication_and_zero_successes",
+            label: "Complication + aucun succès",
+          },
+          { value: "complication_and_failure", label: "Complication + échec" },
+        ],
+      },
+      {
+        key: "criticalSuccessRule",
+        paramsKey: "critical_success_rule",
+        label: "Règle de réussite critique",
+        type: "select",
+        defaultValue: "none",
+        options: [
+          { value: "none", label: "Aucune" },
+          {
+            value: "successes_gte_threshold",
+            label: "Succès ≥ seuil critique",
+          },
+          {
+            value: "all_dice_successes",
+            label: "Tous les dés sont des succès",
+          },
+          {
+            value: "all_dice_max_faces",
+            label: "Tous les dés sont au maximum",
+          },
+          { value: "any_max_face", label: "Au moins une face maximale" },
+          {
+            value: "any_critical_face",
+            label: "Au moins une face critique choisie",
+          },
+        ],
+      },
+      {
+        key: "criticalSuccessThreshold",
+        paramsKey: "critical_success_threshold",
+        label: "Seuil de réussite critique",
+        type: "number",
+        defaultValue: "",
+        placeholder: "Ex: 5",
+      },
+      {
+        key: "criticalSuccessFaces",
+        paramsKey: "critical_success_faces",
+        label: "Faces de réussite critique",
+        type: "text",
+        defaultValue: "",
+        placeholder: "Ex: 6 ou 10",
       },
     ],
   },
   {
     key: "table_lookup",
     label: "Table / Paliers",
-    description: "Associe une plage de valeurs à un résultat : table aléatoire, localisation, réussite partielle, palier narratif.",
+    description:
+      "Associe une plage de valeurs à un résultat : table aléatoire, localisation, réussite partielle, palier narratif.",
     kind: "table_lookup",
     defaultScope: "entry",
     allowedScopes: ["entry", "group", "both"],

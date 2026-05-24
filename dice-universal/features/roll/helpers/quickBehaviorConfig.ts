@@ -47,6 +47,10 @@ export function buildQuickBehaviorDefaultValues(params: {
   successAtOrAbove: string;
   failFaces: string;
   glitchRule: string;
+  criticalFailureRule: string;
+  criticalSuccessRule: string;
+  criticalSuccessThreshold: string;
+  criticalSuccessFaces: string;
   ranges: RangeRow[];
   targetValue: string;
   degreeStep: string;
@@ -108,6 +112,22 @@ export function buildQuickBehaviorDefaultValues(params: {
 
       case "glitchRule":
         values[field.key] = params.glitchRule;
+        break;
+
+      case "criticalFailureRule":
+        values[field.key] = params.criticalFailureRule;
+        break;
+
+      case "criticalSuccessRule":
+        values[field.key] = params.criticalSuccessRule;
+        break;
+
+      case "criticalSuccessThreshold":
+        values[field.key] = params.criticalSuccessThreshold;
+        break;
+
+      case "criticalSuccessFaces":
+        values[field.key] = params.criticalSuccessFaces;
         break;
 
       case "targetValue":

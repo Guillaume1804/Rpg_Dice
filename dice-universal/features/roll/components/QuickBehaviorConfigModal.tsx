@@ -87,6 +87,10 @@ type Props = {
   configSuccessAtOrAbove: string;
   configFailFaces: string;
   configGlitchRule: string;
+  configCriticalFailureRule: string;
+  configCriticalSuccessRule: string;
+  configCriticalSuccessThreshold: string;
+  configCriticalSuccessFaces: string;
   configRanges: RangeRow[];
 
   pipelineRerollFaces: string;
@@ -124,7 +128,31 @@ type Props = {
     | "any"
     | "gt_successes"
     | "gte_successes"
-    | "zero_successes";
+    | "zero_successes"
+    | "gt_half_dice"
+    | "gte_half_dice"
+    | "gt_half_successes"
+    | "gte_half_successes";
+
+  pipelineCriticalFailureRule:
+    | "none"
+    | "zero_successes"
+    | "all_complication_faces"
+    | "complications_gt_successes"
+    | "complications_gte_successes"
+    | "complication_and_zero_successes"
+    | "complication_and_failed_threshold";
+
+  pipelineCriticalSuccessRule:
+    | "none"
+    | "successes_gte_threshold"
+    | "all_dice_successes"
+    | "all_dice_max_faces"
+    | "any_max_face"
+    | "any_critical_face";
+
+  pipelineCriticalSuccessThreshold: string;
+  pipelineCriticalSuccessFaces: string;
 
   configTargetValue: string;
   configDegreeStep: string;
@@ -150,6 +178,10 @@ type Props = {
   onChangeSuccessAtOrAbove: (value: string) => void;
   onChangeFailFaces: (value: string) => void;
   onChangeGlitchRule: (value: string) => void;
+  onChangeCriticalFailureRule: (value: string) => void;
+  onChangeCriticalSuccessRule: (value: string) => void;
+  onChangeCriticalSuccessThreshold: (value: string) => void;
+  onChangeCriticalSuccessFaces: (value: string) => void;
   onUpdateRange: (
     index: number,
     key: "min" | "max" | "label",
@@ -192,8 +224,41 @@ type Props = {
 
   onChangePipelineComplicationFaces: (value: string) => void;
   onChangePipelineComplicationRule: (
-    value: "none" | "any" | "gt_successes" | "gte_successes" | "zero_successes",
+    value:
+      | "none"
+      | "any"
+      | "gt_successes"
+      | "gte_successes"
+      | "zero_successes"
+      | "gt_half_dice"
+      | "gte_half_dice"
+      | "gt_half_successes"
+      | "gte_half_successes",
   ) => void;
+
+  onChangePipelineCriticalFailureRule: (
+    value:
+      | "none"
+      | "zero_successes"
+      | "all_complication_faces"
+      | "complications_gt_successes"
+      | "complications_gte_successes"
+      | "complication_and_zero_successes"
+      | "complication_and_failed_threshold",
+  ) => void;
+
+  onChangePipelineCriticalSuccessRule: (
+    value:
+      | "none"
+      | "successes_gte_threshold"
+      | "all_dice_successes"
+      | "all_dice_max_faces"
+      | "any_max_face"
+      | "any_critical_face",
+  ) => void;
+
+  onChangePipelineCriticalSuccessThreshold: (value: string) => void;
+  onChangePipelineCriticalSuccessFaces: (value: string) => void;
 
   onChangeKeepDropMode: (value: "keep" | "drop") => void;
   onChangeKeepDropTarget: (value: "highest" | "lowest") => void;
@@ -514,6 +579,10 @@ export function QuickBehaviorConfigModal({
   configSuccessAtOrAbove,
   configFailFaces,
   configGlitchRule,
+  configCriticalFailureRule,
+  configCriticalSuccessRule,
+  configCriticalSuccessThreshold,
+  configCriticalSuccessFaces,
   configRanges,
 
   configTargetValue,
@@ -543,6 +612,10 @@ export function QuickBehaviorConfigModal({
   pipelineCritFailureFaces,
   pipelineComplicationFaces,
   pipelineComplicationRule,
+  pipelineCriticalFailureRule,
+  pipelineCriticalSuccessRule,
+  pipelineCriticalSuccessThreshold,
+  pipelineCriticalSuccessFaces,
 
   onChangeTargetValue,
   onChangeDegreeStep,
@@ -561,6 +634,10 @@ export function QuickBehaviorConfigModal({
   onChangeSuccessAtOrAbove,
   onChangeFailFaces,
   onChangeGlitchRule,
+  onChangeCriticalFailureRule,
+  onChangeCriticalSuccessRule,
+  onChangeCriticalSuccessThreshold,
+  onChangeCriticalSuccessFaces,
   onUpdateRange,
   onAddRange,
   onRemoveRange,
@@ -584,6 +661,10 @@ export function QuickBehaviorConfigModal({
   onChangePipelineCritFailureFaces,
   onChangePipelineComplicationFaces,
   onChangePipelineComplicationRule,
+  onChangePipelineCriticalFailureRule,
+  onChangePipelineCriticalSuccessRule,
+  onChangePipelineCriticalSuccessThreshold,
+  onChangePipelineCriticalSuccessFaces,
 
   onChangeKeepDropMode,
   onChangeKeepDropTarget,
@@ -628,6 +709,14 @@ export function QuickBehaviorConfigModal({
         return configFailFaces;
       case "glitchRule":
         return configGlitchRule;
+      case "criticalFailureRule":
+        return configCriticalFailureRule;
+      case "criticalSuccessRule":
+        return configCriticalSuccessRule;
+      case "criticalSuccessThreshold":
+        return configCriticalSuccessThreshold;
+      case "criticalSuccessFaces":
+        return configCriticalSuccessFaces;
       case "targetValue":
         return configTargetValue;
       case "degreeStep":
@@ -676,6 +765,18 @@ export function QuickBehaviorConfigModal({
         return;
       case "glitchRule":
         onChangeGlitchRule(value);
+        return;
+      case "criticalFailureRule":
+        onChangeCriticalFailureRule(value);
+        return;
+      case "criticalSuccessRule":
+        onChangeCriticalSuccessRule(value);
+        return;
+      case "criticalSuccessThreshold":
+        onChangeCriticalSuccessThreshold(value);
+        return;
+      case "criticalSuccessFaces":
+        onChangeCriticalSuccessFaces(value);
         return;
       case "targetValue":
         onChangeTargetValue(value);
@@ -994,6 +1095,38 @@ export function QuickBehaviorConfigModal({
                     onChangePipelineComplicationRule("zero_successes")
                   }
                 />
+
+                <ChoiceButton
+                  label="> moitié des dés"
+                  selected={pipelineComplicationRule === "gt_half_dice"}
+                  onPress={() =>
+                    onChangePipelineComplicationRule("gt_half_dice")
+                  }
+                />
+
+                <ChoiceButton
+                  label="≥ moitié des dés"
+                  selected={pipelineComplicationRule === "gte_half_dice"}
+                  onPress={() =>
+                    onChangePipelineComplicationRule("gte_half_dice")
+                  }
+                />
+
+                <ChoiceButton
+                  label="> moitié des succès"
+                  selected={pipelineComplicationRule === "gt_half_successes"}
+                  onPress={() =>
+                    onChangePipelineComplicationRule("gt_half_successes")
+                  }
+                />
+
+                <ChoiceButton
+                  label="≥ moitié des succès"
+                  selected={pipelineComplicationRule === "gte_half_successes"}
+                  onPress={() =>
+                    onChangePipelineComplicationRule("gte_half_successes")
+                  }
+                />
               </View>
 
               <ConfigInput
@@ -1032,6 +1165,165 @@ export function QuickBehaviorConfigModal({
                   />
                 </View>
               </View>
+            </ConfigSection>
+
+            <ConfigSection
+              title="Critiques du pool"
+              description="Détermine quand un pipeline de type pool produit une réussite critique ou un échec critique."
+            >
+              <FieldLabel>Échec critique</FieldLabel>
+
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                <ChoiceButton
+                  label="Aucun"
+                  selected={pipelineCriticalFailureRule === "none"}
+                  onPress={() => onChangePipelineCriticalFailureRule("none")}
+                />
+
+                <ChoiceButton
+                  label="Aucun succès"
+                  selected={pipelineCriticalFailureRule === "zero_successes"}
+                  onPress={() =>
+                    onChangePipelineCriticalFailureRule("zero_successes")
+                  }
+                />
+
+                <ChoiceButton
+                  label="Toutes les faces sont spéciales"
+                  selected={
+                    pipelineCriticalFailureRule === "all_complication_faces"
+                  }
+                  onPress={() =>
+                    onChangePipelineCriticalFailureRule(
+                      "all_complication_faces",
+                    )
+                  }
+                />
+
+                <ChoiceButton
+                  label="Faces spéciales > succès"
+                  selected={
+                    pipelineCriticalFailureRule === "complications_gt_successes"
+                  }
+                  onPress={() =>
+                    onChangePipelineCriticalFailureRule(
+                      "complications_gt_successes",
+                    )
+                  }
+                />
+
+                <ChoiceButton
+                  label="Faces spéciales ≥ succès"
+                  selected={
+                    pipelineCriticalFailureRule ===
+                    "complications_gte_successes"
+                  }
+                  onPress={() =>
+                    onChangePipelineCriticalFailureRule(
+                      "complications_gte_successes",
+                    )
+                  }
+                />
+
+                <ChoiceButton
+                  label="Complication + 0 succès"
+                  selected={
+                    pipelineCriticalFailureRule ===
+                    "complication_and_zero_successes"
+                  }
+                  onPress={() =>
+                    onChangePipelineCriticalFailureRule(
+                      "complication_and_zero_successes",
+                    )
+                  }
+                />
+
+                <ChoiceButton
+                  label="Complication + seuil raté"
+                  selected={
+                    pipelineCriticalFailureRule ===
+                    "complication_and_failed_threshold"
+                  }
+                  onPress={() =>
+                    onChangePipelineCriticalFailureRule(
+                      "complication_and_failed_threshold",
+                    )
+                  }
+                />
+              </View>
+
+              <FieldLabel>Réussite critique</FieldLabel>
+
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                <ChoiceButton
+                  label="Aucune"
+                  selected={pipelineCriticalSuccessRule === "none"}
+                  onPress={() => onChangePipelineCriticalSuccessRule("none")}
+                />
+
+                <ChoiceButton
+                  label="Succès ≥ seuil critique"
+                  selected={
+                    pipelineCriticalSuccessRule === "successes_gte_threshold"
+                  }
+                  onPress={() =>
+                    onChangePipelineCriticalSuccessRule(
+                      "successes_gte_threshold",
+                    )
+                  }
+                />
+
+                <ChoiceButton
+                  label="Tous les dés réussissent"
+                  selected={
+                    pipelineCriticalSuccessRule === "all_dice_successes"
+                  }
+                  onPress={() =>
+                    onChangePipelineCriticalSuccessRule("all_dice_successes")
+                  }
+                />
+
+                <ChoiceButton
+                  label="Tous les dés sont au maximum"
+                  selected={
+                    pipelineCriticalSuccessRule === "all_dice_max_faces"
+                  }
+                  onPress={() =>
+                    onChangePipelineCriticalSuccessRule("all_dice_max_faces")
+                  }
+                />
+
+                <ChoiceButton
+                  label="Au moins une face max"
+                  selected={pipelineCriticalSuccessRule === "any_max_face"}
+                  onPress={() =>
+                    onChangePipelineCriticalSuccessRule("any_max_face")
+                  }
+                />
+
+                <ChoiceButton
+                  label="Face critique choisie"
+                  selected={pipelineCriticalSuccessRule === "any_critical_face"}
+                  onPress={() =>
+                    onChangePipelineCriticalSuccessRule("any_critical_face")
+                  }
+                />
+              </View>
+
+              <ConfigInput
+                label="Seuil de réussite critique"
+                value={pipelineCriticalSuccessThreshold}
+                onChangeText={onChangePipelineCriticalSuccessThreshold}
+                placeholder="Ex: 4"
+                keyboardType="number-pad"
+              />
+
+              <ConfigInput
+                label="Faces de réussite critique"
+                value={pipelineCriticalSuccessFaces}
+                onChangeText={onChangePipelineCriticalSuccessFaces}
+                placeholder="Ex: 6 ou 10"
+              />
             </ConfigSection>
 
             <ConfigSection
