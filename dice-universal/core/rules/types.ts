@@ -146,6 +146,14 @@ export type PipelineParams = {
   critical_success_rule?: PipelineCriticalSuccessRule;
   critical_success_threshold?: number | null;
   critical_success_faces?: number[];
+
+  degree_target?: number | null;
+  degree_compare?: "gte" | "lte";
+  degree_step?: number | null;
+  degree_crit_success_min?: number | null;
+  degree_crit_success_max?: number | null;
+  degree_crit_failure_min?: number | null;
+  degree_crit_failure_max?: number | null;
 };
 
 export type UniversalRuleParams =

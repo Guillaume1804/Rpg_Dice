@@ -137,6 +137,91 @@ function cloneArray(arr: number[]) {
   return [...arr];
 }
 
+function resolvePipelineDegrees(params: {
+  final: number | null;
+  naturalFirst: number;
+  degreeTarget: number | null | undefined;
+  degreeCompare: "gte" | "lte" | undefined;
+  degreeStep: number | null | undefined;
+  critSuccessMin: number | null | undefined;
+  critSuccessMax: number | null | undefined;
+  critFailureMin: number | null | undefined;
+  critFailureMax: number | null | undefined;
+}) {
+  const {
+    final,
+    naturalFirst,
+    degreeTarget,
+    degreeCompare,
+    degreeStep,
+    critSuccessMin,
+    critSuccessMax,
+    critFailureMin,
+    critFailureMax,
+  } = params;
+
+  if (final == null) return null;
+  if (degreeTarget == null || !Number.isFinite(degreeTarget)) return null;
+
+  const compare: "gte" | "lte" = degreeCompare === "lte" ? "lte" : "gte";
+  const safeDegreeStep =
+    degreeStep != null && Number.isFinite(degreeStep) && degreeStep > 0
+      ? degreeStep
+      : 10;
+
+  const isSuccess =
+    compare === "lte" ? final <= degreeTarget : final >= degreeTarget;
+  const margin =
+    compare === "lte" ? degreeTarget - final : final - degreeTarget;
+
+  const degrees = Math.max(
+    1,
+    1 + Math.floor(Math.abs(margin) / safeDegreeStep),
+  );
+
+  const hasCritSuccessRange =
+    critSuccessMin != null &&
+    critSuccessMax != null &&
+    Number.isFinite(critSuccessMin) &&
+    Number.isFinite(critSuccessMax);
+
+  const hasCritFailureRange =
+    critFailureMin != null &&
+    critFailureMax != null &&
+    Number.isFinite(critFailureMin) &&
+    Number.isFinite(critFailureMax);
+
+  const isCritSuccess =
+    hasCritSuccessRange &&
+    naturalFirst >= Number(critSuccessMin) &&
+    naturalFirst <= Number(critSuccessMax);
+
+  const isCritFailure =
+    hasCritFailureRange &&
+    naturalFirst >= Number(critFailureMin) &&
+    naturalFirst <= Number(critFailureMax);
+
+  let outcome: "crit_success" | "crit_failure" | "success" | "failure";
+
+  if (isCritSuccess) {
+    outcome = "crit_success";
+  } else if (isCritFailure) {
+    outcome = "crit_failure";
+  } else {
+    outcome = isSuccess ? "success" : "failure";
+  }
+
+  return {
+    target: degreeTarget,
+    final,
+    compare,
+    margin,
+    degrees,
+    degree_step: safeDegreeStep,
+    outcome,
+  };
+}
+
 function runPipeline(
   initialNatural: number[],
   ctx: EvalContext,
@@ -385,6 +470,19 @@ function runPipeline(
   }
 
   const naturalFirst = initialNatural[0] ?? 0;
+
+  const degreeResult = resolvePipelineDegrees({
+    final,
+    naturalFirst,
+    degreeTarget: params.degree_target,
+    degreeCompare: params.degree_compare,
+    degreeStep: params.degree_step,
+    critSuccessMin: params.degree_crit_success_min,
+    critSuccessMax: params.degree_crit_success_max,
+    critFailureMin: params.degree_crit_failure_min,
+    critFailureMax: params.degree_crit_failure_max,
+  });
+
   const critSuccessFaces = new Set(params.crit_success_faces || []);
   const critFailureFaces = new Set(params.crit_failure_faces || []);
   const compare: "gte" | "lte" = params.compare === "lte" ? "lte" : "gte";
@@ -406,6 +504,24 @@ function runPipeline(
       kept,
       final,
       meta: { ...meta, outcome: "crit_failure", compare },
+    };
+  }
+
+  if (
+    degreeResult?.outcome === "crit_success" ||
+    degreeResult?.outcome === "crit_failure"
+  ) {
+    return {
+      kind: "pipeline",
+      values: initialNatural,
+      kept,
+      final,
+      meta: {
+        ...meta,
+        outcome: degreeResult.outcome,
+        compare,
+        degrees: degreeResult,
+      },
     };
   }
 
@@ -464,7 +580,7 @@ function runPipeline(
       sides,
     });
 
-    let outcome: string = ok ? "success" : "failure";
+    let outcome: string = degreeResult?.outcome ?? (ok ? "success" : "failure");
 
     if (isCriticalSuccess) {
       outcome = "crit_success";
@@ -487,6 +603,7 @@ function runPipeline(
         ...meta,
         outcome,
         compare,
+        degrees: degreeResult,
         success_threshold: params.success_threshold,
         complication: hasComplication,
         critical_failure: isCriticalFailure,
@@ -553,7 +670,7 @@ function runPipeline(
     sides,
   });
 
-  let outcome: string | undefined;
+  let outcome: string | undefined = degreeResult?.outcome;
 
   if (isCriticalSuccess) {
     outcome = "crit_success";
@@ -577,6 +694,7 @@ function runPipeline(
     meta: {
       ...meta,
       outcome,
+      degrees: degreeResult,
       complication: hasComplication,
       critical_failure: isCriticalFailure,
       critical_success: isCriticalSuccess,
@@ -1309,6 +1427,33 @@ export function evaluateRule(
       critical_success_faces: Array.isArray(p.critical_success_faces)
         ? p.critical_success_faces.map(Number).filter(Number.isFinite)
         : undefined,
+
+      degree_target:
+        p.degree_target == null ? undefined : Number(p.degree_target),
+
+      degree_compare: p.degree_compare === "lte" ? "lte" : "gte",
+
+      degree_step: p.degree_step == null ? undefined : Number(p.degree_step),
+
+      degree_crit_success_min:
+        p.degree_crit_success_min == null
+          ? undefined
+          : Number(p.degree_crit_success_min),
+
+      degree_crit_success_max:
+        p.degree_crit_success_max == null
+          ? undefined
+          : Number(p.degree_crit_success_max),
+
+      degree_crit_failure_min:
+        p.degree_crit_failure_min == null
+          ? undefined
+          : Number(p.degree_crit_failure_min),
+
+      degree_crit_failure_max:
+        p.degree_crit_failure_max == null
+          ? undefined
+          : Number(p.degree_crit_failure_max),
     };
 
     return runPipeline(ctx.values, ctx, params);

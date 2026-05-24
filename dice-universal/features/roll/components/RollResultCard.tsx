@@ -10,11 +10,12 @@ type Props = {
   title?: string;
 };
 
-type Tone = "neutral" | "success" | "failure" | "warning";
+type Tone = "neutral" | "success" | "failure" | "warning" | "critical";
 
 type ThemeColors = ReturnType<typeof useArcaneTheme>["theme"]["colors"];
 
 function getToneIcon(tone?: Tone) {
+  if (tone === "critical") return "✨";
   if (tone === "success") return "✅";
   if (tone === "failure") return "❌";
   if (tone === "warning") return "⚠️";
@@ -22,6 +23,14 @@ function getToneIcon(tone?: Tone) {
 }
 
 function getToneColors(tone: Tone | undefined, colors: ThemeColors) {
+  if (tone === "critical") {
+    return {
+      border: colors.accent,
+      background: colors.accentSoft,
+      text: colors.accent,
+    };
+  }
+  
   if (tone === "success") {
     return {
       border: colors.success,

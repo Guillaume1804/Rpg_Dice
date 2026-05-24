@@ -345,6 +345,20 @@ export function useQuickBehaviorConfigModal() {
   const [pipelineCriticalSuccessFaces, setPipelineCriticalSuccessFaces] =
     useState("");
 
+  const [pipelineDegreeTarget, setPipelineDegreeTarget] = useState("");
+  const [pipelineDegreeCompare, setPipelineDegreeCompare] = useState<
+    "gte" | "lte"
+  >("gte");
+  const [pipelineDegreeStep, setPipelineDegreeStep] = useState("");
+  const [pipelineDegreeCritSuccessMin, setPipelineDegreeCritSuccessMin] =
+    useState("");
+  const [pipelineDegreeCritSuccessMax, setPipelineDegreeCritSuccessMax] =
+    useState("");
+  const [pipelineDegreeCritFailureMin, setPipelineDegreeCritFailureMin] =
+    useState("");
+  const [pipelineDegreeCritFailureMax, setPipelineDegreeCritFailureMax] =
+    useState("");
+
   function resetPipelineConfig() {
     setPipelineRerollFaces("");
     setPipelineRerollOnce(true);
@@ -373,6 +387,14 @@ export function useQuickBehaviorConfigModal() {
     setPipelineCriticalSuccessRule("none");
     setPipelineCriticalSuccessThreshold("");
     setPipelineCriticalSuccessFaces("");
+
+    setPipelineDegreeTarget("");
+    setPipelineDegreeCompare("gte");
+    setPipelineDegreeStep("");
+    setPipelineDegreeCritSuccessMin("");
+    setPipelineDegreeCritSuccessMax("");
+    setPipelineDegreeCritFailureMin("");
+    setPipelineDegreeCritFailureMax("");
   }
 
   function open(params: {
@@ -544,6 +566,12 @@ export function useQuickBehaviorConfigModal() {
         pipelineCountRangeMax,
         pipelineSuccessThreshold,
         pipelineCriticalSuccessThreshold,
+        pipelineDegreeTarget,
+        pipelineDegreeStep,
+        pipelineDegreeCritSuccessMin,
+        pipelineDegreeCritSuccessMax,
+        pipelineDegreeCritFailureMin,
+        pipelineDegreeCritFailureMax,
       ];
 
       for (const value of numericFields) {
@@ -559,6 +587,7 @@ export function useQuickBehaviorConfigModal() {
         pipelineKeepLowest,
         pipelineDropHighest,
         pipelineDropLowest,
+        pipelineDegreeStep,
       ];
 
       for (const value of positiveIntegerFields) {
@@ -686,6 +715,14 @@ export function useQuickBehaviorConfigModal() {
         pipelineCriticalSuccessRule,
         pipelineCriticalSuccessThreshold,
         pipelineCriticalSuccessFaces,
+
+        pipelineDegreeTarget,
+        pipelineDegreeCompare,
+        pipelineDegreeStep,
+        pipelineDegreeCritSuccessMin,
+        pipelineDegreeCritSuccessMax,
+        pipelineDegreeCritFailureMin,
+        pipelineDegreeCritFailureMax,
       };
     }
 
@@ -808,6 +845,14 @@ export function useQuickBehaviorConfigModal() {
     pipelineCriticalSuccessThreshold,
     pipelineCriticalSuccessFaces,
 
+    pipelineDegreeTarget,
+    pipelineDegreeCompare,
+    pipelineDegreeStep,
+    pipelineDegreeCritSuccessMin,
+    pipelineDegreeCritSuccessMax,
+    pipelineDegreeCritFailureMin,
+    pipelineDegreeCritFailureMax,
+
     setPipelineRerollFaces,
     setPipelineRerollOnce,
     setPipelineExplodeFaces,
@@ -832,5 +877,13 @@ export function useQuickBehaviorConfigModal() {
     setPipelineCriticalSuccessRule,
     setPipelineCriticalSuccessThreshold,
     setPipelineCriticalSuccessFaces,
+
+    setPipelineDegreeTarget,
+    setPipelineDegreeCompare,
+    setPipelineDegreeStep,
+    setPipelineDegreeCritSuccessMin,
+    setPipelineDegreeCritSuccessMax,
+    setPipelineDegreeCritFailureMin,
+    setPipelineDegreeCritFailureMax,
   };
 }

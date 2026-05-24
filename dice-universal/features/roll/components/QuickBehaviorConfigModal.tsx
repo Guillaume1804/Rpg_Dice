@@ -154,6 +154,14 @@ type Props = {
   pipelineCriticalSuccessThreshold: string;
   pipelineCriticalSuccessFaces: string;
 
+  pipelineDegreeTarget: string;
+  pipelineDegreeCompare: "gte" | "lte";
+  pipelineDegreeStep: string;
+  pipelineDegreeCritSuccessMin: string;
+  pipelineDegreeCritSuccessMax: string;
+  pipelineDegreeCritFailureMin: string;
+  pipelineDegreeCritFailureMax: string;
+
   configTargetValue: string;
   configDegreeStep: string;
   configCritSuccessMin: string;
@@ -259,6 +267,14 @@ type Props = {
 
   onChangePipelineCriticalSuccessThreshold: (value: string) => void;
   onChangePipelineCriticalSuccessFaces: (value: string) => void;
+
+  onChangePipelineDegreeTarget: (value: string) => void;
+  onChangePipelineDegreeCompare: (value: "gte" | "lte") => void;
+  onChangePipelineDegreeStep: (value: string) => void;
+  onChangePipelineDegreeCritSuccessMin: (value: string) => void;
+  onChangePipelineDegreeCritSuccessMax: (value: string) => void;
+  onChangePipelineDegreeCritFailureMin: (value: string) => void;
+  onChangePipelineDegreeCritFailureMax: (value: string) => void;
 
   onChangeKeepDropMode: (value: "keep" | "drop") => void;
   onChangeKeepDropTarget: (value: "highest" | "lowest") => void;
@@ -617,6 +633,14 @@ export function QuickBehaviorConfigModal({
   pipelineCriticalSuccessThreshold,
   pipelineCriticalSuccessFaces,
 
+  pipelineDegreeTarget,
+  pipelineDegreeCompare,
+  pipelineDegreeStep,
+  pipelineDegreeCritSuccessMin,
+  pipelineDegreeCritSuccessMax,
+  pipelineDegreeCritFailureMin,
+  pipelineDegreeCritFailureMax,
+
   onChangeTargetValue,
   onChangeDegreeStep,
   onChangeCritSuccessMin,
@@ -665,6 +689,14 @@ export function QuickBehaviorConfigModal({
   onChangePipelineCriticalSuccessRule,
   onChangePipelineCriticalSuccessThreshold,
   onChangePipelineCriticalSuccessFaces,
+
+  onChangePipelineDegreeTarget,
+  onChangePipelineDegreeCompare,
+  onChangePipelineDegreeStep,
+  onChangePipelineDegreeCritSuccessMin,
+  onChangePipelineDegreeCritSuccessMax,
+  onChangePipelineDegreeCritFailureMin,
+  onChangePipelineDegreeCritFailureMax,
 
   onChangeKeepDropMode,
   onChangeKeepDropTarget,
@@ -1408,6 +1440,87 @@ export function QuickBehaviorConfigModal({
                 onChangeText={onChangePipelineCritFailureFaces}
                 placeholder="Ex: 1"
               />
+            </ConfigSection>
+
+            <ConfigSection
+              title="Seuil avec degrés"
+              description="Ajoute une interprétation par marge et degrés au résultat final du pipeline. Utile pour les systèmes où l’écart avec la cible compte."
+            >
+              <ConfigInput
+                label="Cible / seuil"
+                value={pipelineDegreeTarget}
+                onChangeText={onChangePipelineDegreeTarget}
+                placeholder="Ex: 65"
+                keyboardType="number-pad"
+              />
+
+              <FieldLabel>Type de comparaison</FieldLabel>
+
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                <ChoiceButton
+                  label="Réussir ≥ cible"
+                  selected={pipelineDegreeCompare === "gte"}
+                  onPress={() => onChangePipelineDegreeCompare("gte")}
+                />
+
+                <ChoiceButton
+                  label="Réussir ≤ cible"
+                  selected={pipelineDegreeCompare === "lte"}
+                  onPress={() => onChangePipelineDegreeCompare("lte")}
+                />
+              </View>
+
+              <ConfigInput
+                label="Taille d’un degré"
+                value={pipelineDegreeStep}
+                onChangeText={onChangePipelineDegreeStep}
+                placeholder="Ex: 10"
+                keyboardType="number-pad"
+              />
+
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <View style={{ flex: 1 }}>
+                  <ConfigInput
+                    label="Crit. réussite min"
+                    value={pipelineDegreeCritSuccessMin}
+                    onChangeText={onChangePipelineDegreeCritSuccessMin}
+                    placeholder="Ex: 1"
+                    keyboardType="number-pad"
+                  />
+                </View>
+
+                <View style={{ flex: 1 }}>
+                  <ConfigInput
+                    label="Crit. réussite max"
+                    value={pipelineDegreeCritSuccessMax}
+                    onChangeText={onChangePipelineDegreeCritSuccessMax}
+                    placeholder="Ex: 5"
+                    keyboardType="number-pad"
+                  />
+                </View>
+              </View>
+
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <View style={{ flex: 1 }}>
+                  <ConfigInput
+                    label="Crit. échec min"
+                    value={pipelineDegreeCritFailureMin}
+                    onChangeText={onChangePipelineDegreeCritFailureMin}
+                    placeholder="Ex: 95"
+                    keyboardType="number-pad"
+                  />
+                </View>
+
+                <View style={{ flex: 1 }}>
+                  <ConfigInput
+                    label="Crit. échec max"
+                    value={pipelineDegreeCritFailureMax}
+                    onChangeText={onChangePipelineDegreeCritFailureMax}
+                    placeholder="Ex: 100"
+                    keyboardType="number-pad"
+                  />
+                </View>
+              </View>
             </ConfigSection>
           </>
         ) : null}

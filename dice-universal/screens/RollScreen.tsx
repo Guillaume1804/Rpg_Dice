@@ -1965,6 +1965,21 @@ export default function RollScreen() {
           pipelineCriticalSuccessFaces={
             quickBehaviorConfig.pipelineCriticalSuccessFaces
           }
+          pipelineDegreeTarget={quickBehaviorConfig.pipelineDegreeTarget}
+          pipelineDegreeCompare={quickBehaviorConfig.pipelineDegreeCompare}
+          pipelineDegreeStep={quickBehaviorConfig.pipelineDegreeStep}
+          pipelineDegreeCritSuccessMin={
+            quickBehaviorConfig.pipelineDegreeCritSuccessMin
+          }
+          pipelineDegreeCritSuccessMax={
+            quickBehaviorConfig.pipelineDegreeCritSuccessMax
+          }
+          pipelineDegreeCritFailureMin={
+            quickBehaviorConfig.pipelineDegreeCritFailureMin
+          }
+          pipelineDegreeCritFailureMax={
+            quickBehaviorConfig.pipelineDegreeCritFailureMax
+          }
           onChangePipelineRerollFaces={
             quickBehaviorConfig.setPipelineRerollFaces
           }
@@ -2024,6 +2039,25 @@ export default function RollScreen() {
           }
           onChangePipelineCriticalSuccessFaces={
             quickBehaviorConfig.setPipelineCriticalSuccessFaces
+          }
+          onChangePipelineDegreeTarget={
+            quickBehaviorConfig.setPipelineDegreeTarget
+          }
+          onChangePipelineDegreeCompare={
+            quickBehaviorConfig.setPipelineDegreeCompare
+          }
+          onChangePipelineDegreeStep={quickBehaviorConfig.setPipelineDegreeStep}
+          onChangePipelineDegreeCritSuccessMin={
+            quickBehaviorConfig.setPipelineDegreeCritSuccessMin
+          }
+          onChangePipelineDegreeCritSuccessMax={
+            quickBehaviorConfig.setPipelineDegreeCritSuccessMax
+          }
+          onChangePipelineDegreeCritFailureMin={
+            quickBehaviorConfig.setPipelineDegreeCritFailureMin
+          }
+          onChangePipelineDegreeCritFailureMax={
+            quickBehaviorConfig.setPipelineDegreeCritFailureMax
           }
         />
       ) : null}
@@ -2206,6 +2240,21 @@ export default function RollScreen() {
             pipelineCriticalSuccessFaces={
               quickBehaviorConfig.pipelineCriticalSuccessFaces
             }
+            pipelineDegreeTarget={quickBehaviorConfig.pipelineDegreeTarget}
+            pipelineDegreeCompare={quickBehaviorConfig.pipelineDegreeCompare}
+            pipelineDegreeStep={quickBehaviorConfig.pipelineDegreeStep}
+            pipelineDegreeCritSuccessMin={
+              quickBehaviorConfig.pipelineDegreeCritSuccessMin
+            }
+            pipelineDegreeCritSuccessMax={
+              quickBehaviorConfig.pipelineDegreeCritSuccessMax
+            }
+            pipelineDegreeCritFailureMin={
+              quickBehaviorConfig.pipelineDegreeCritFailureMin
+            }
+            pipelineDegreeCritFailureMax={
+              quickBehaviorConfig.pipelineDegreeCritFailureMax
+            }
             onChangePipelineRerollFaces={
               quickBehaviorConfig.setPipelineRerollFaces
             }
@@ -2273,6 +2322,27 @@ export default function RollScreen() {
             }
             onChangePipelineCriticalSuccessFaces={
               quickBehaviorConfig.setPipelineCriticalSuccessFaces
+            }
+            onChangePipelineDegreeTarget={
+              quickBehaviorConfig.setPipelineDegreeTarget
+            }
+            onChangePipelineDegreeCompare={
+              quickBehaviorConfig.setPipelineDegreeCompare
+            }
+            onChangePipelineDegreeStep={
+              quickBehaviorConfig.setPipelineDegreeStep
+            }
+            onChangePipelineDegreeCritSuccessMin={
+              quickBehaviorConfig.setPipelineDegreeCritSuccessMin
+            }
+            onChangePipelineDegreeCritSuccessMax={
+              quickBehaviorConfig.setPipelineDegreeCritSuccessMax
+            }
+            onChangePipelineDegreeCritFailureMin={
+              quickBehaviorConfig.setPipelineDegreeCritFailureMin
+            }
+            onChangePipelineDegreeCritFailureMax={
+              quickBehaviorConfig.setPipelineDegreeCritFailureMax
             }
           />
         }

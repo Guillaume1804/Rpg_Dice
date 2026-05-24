@@ -113,6 +113,16 @@ function parseOptionalPositiveInt(value: unknown): number | null {
   return Math.floor(n);
 }
 
+function parseOptionalNumber(value: unknown): number | undefined {
+  if (typeof value !== "string") return undefined;
+
+  const text = value.trim();
+  if (!text) return undefined;
+
+  const n = Number(text);
+  return Number.isFinite(n) ? n : undefined;
+}
+
 function readBoolean(
   values: Record<string, unknown> | undefined,
   key: string,
@@ -292,6 +302,26 @@ function buildQuickPipelineParams(values: Record<string, unknown> | undefined) {
       Number.isFinite(Number(values.pipelineCriticalSuccessThreshold))
         ? Number(values.pipelineCriticalSuccessThreshold)
         : undefined,
+
+    degree_target: parseOptionalNumber(values?.pipelineDegreeTarget),
+    degree_compare:
+      values?.pipelineDegreeCompare === "lte" ||
+      values?.pipelineDegreeCompare === "gte"
+        ? values.pipelineDegreeCompare
+        : undefined,
+    degree_step: parseOptionalNumber(values?.pipelineDegreeStep),
+    degree_crit_success_min: parseOptionalNumber(
+      values?.pipelineDegreeCritSuccessMin,
+    ),
+    degree_crit_success_max: parseOptionalNumber(
+      values?.pipelineDegreeCritSuccessMax,
+    ),
+    degree_crit_failure_min: parseOptionalNumber(
+      values?.pipelineDegreeCritFailureMin,
+    ),
+    degree_crit_failure_max: parseOptionalNumber(
+      values?.pipelineDegreeCritFailureMax,
+    ),
   };
 }
 

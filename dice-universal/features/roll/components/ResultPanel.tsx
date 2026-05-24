@@ -8,6 +8,8 @@ import { RollResultCard } from "./RollResultCard";
 import { useArcaneTheme } from "../../../theme/ArcaneThemeProvider";
 import { createRollScreenTheme } from "../../../theme/rollScreenTheme";
 
+import { renderRollResult } from "../renderers/rollResultRenderer";
+
 type ResultPanelProps = {
   result: GroupRollResult | null;
 };
@@ -28,17 +30,42 @@ function formatValues(values: number[]) {
 }
 
 function getEntryLabel(entry: GroupRollResult["entries"][number]) {
-  return `${entry.qty}d${entry.sides}${entry.modifier ? ` ${entry.modifier > 0 ? "+" : ""}${entry.modifier}` : ""
-    }`;
+  return `${entry.qty}d${entry.sides}${
+    entry.modifier ? ` ${entry.modifier > 0 ? "+" : ""}${entry.modifier}` : ""
+  }`;
+}
+
+function getPrimaryEvalResult(result: GroupRollResult) {
+  return (
+    result.group_eval_result ??
+    result.entries.find((entry) => entry.eval_result)?.eval_result ??
+    null
+  );
+}
+
+function toHeadlineTone(
+  tone: "neutral" | "success" | "failure" | "warning" | "critical" | undefined,
+): ResultTone {
+  if (tone === "critical") return "critical";
+  if (tone === "success") return "success";
+  if (tone === "failure") return "failure";
+  if (tone === "warning") return "warning";
+  return "neutral";
+}
+
+function getHeadlineIcon(tone: ResultTone) {
+  if (tone === "critical") return "✦";
+  if (tone === "success") return "✓";
+  if (tone === "failure") return "✖";
+  if (tone === "warning") return "⚠";
+  return "🎲";
 }
 
 function getResultHeadline(result: GroupRollResult): ResultHeadline {
-  const evalResult =
-    result.group_eval_result ??
-    result.entries.find((entry) => entry.eval_result)?.eval_result ??
-    null;
+  const evalResult = getPrimaryEvalResult(result);
+  const rendered = renderRollResult(evalResult);
 
-  if (!evalResult) {
+  if (!rendered) {
     return {
       eyebrow: "Résultat brut",
       title: `Total : ${result.total}`,
@@ -48,91 +75,16 @@ function getResultHeadline(result: GroupRollResult): ResultHeadline {
     };
   }
 
-  const anyResult = evalResult as any;
-
-  if (anyResult.is_critical_failure || anyResult.critical_failure) {
-    return {
-      eyebrow: "Le destin se retourne",
-      title: "Échec critique",
-      subtitle: `Total : ${result.total}`,
-      icon: "✖",
-      tone: "failure",
-    };
-  }
-
-  if (anyResult.is_critical_success || anyResult.critical_success) {
-    return {
-      eyebrow: "Le destin vous sourit",
-      title: "Réussite critique",
-      subtitle: `Total : ${result.total}`,
-      icon: "✦",
-      tone: "critical",
-    };
-  }
-
-  if (typeof anyResult.successes === "number") {
-    const complication =
-      anyResult.has_complication ||
-      anyResult.complication ||
-      anyResult.is_complication;
-
-    return {
-      eyebrow: complication ? "Succès instable" : "Succès comptabilisés",
-      title: complication
-        ? `${anyResult.successes} succès + complication`
-        : `${anyResult.successes} succès`,
-      subtitle: `Total : ${result.total}`,
-      icon: complication ? "⚠" : "◎",
-      tone: complication ? "warning" : "success",
-    };
-  }
-
-  if (anyResult.is_success === true || anyResult.success === true) {
-    return {
-      eyebrow: "Action réussie",
-      title: "Réussite",
-      subtitle: `Total : ${result.total}`,
-      icon: "✓",
-      tone: "success",
-    };
-  }
-
-  if (anyResult.is_success === false || anyResult.success === false) {
-    return {
-      eyebrow: "Action échouée",
-      title: "Échec",
-      subtitle: `Total : ${result.total}`,
-      icon: "✖",
-      tone: "failure",
-    };
-  }
-
-  if (typeof anyResult.final_total === "number") {
-    return {
-      eyebrow: "Résultat interprété",
-      title: `Total : ${anyResult.final_total}`,
-      subtitle: `Total global : ${result.total}`,
-      icon: "🎲",
-      tone: "neutral",
-    };
-  }
-
-  if (typeof anyResult.label === "string" && anyResult.label.trim()) {
-    return {
-      eyebrow: "Résultat narratif",
-      title: anyResult.label,
-      subtitle: `Total : ${result.total}`,
-      icon: "✦",
-      tone: "neutral",
-    };
-  }
+  const tone = toHeadlineTone(rendered.tone);
 
   return {
-    eyebrow: "Résultat interprété",
-    title: `Total : ${result.total}`,
-    subtitle: "Résultat du lancer.",
-    icon: "🎲",
-    tone: "neutral",
+    eyebrow: rendered.title,
+    title: rendered.summary,
+    subtitle: `Total global : ${result.total} · ${result.entries.length} entrée${
+      result.entries.length > 1 ? "s" : ""
+    }`,
+    icon: getHeadlineIcon(tone),
+    tone,
   };
 }
 
@@ -190,13 +142,7 @@ function getToneColors(
   };
 }
 
-function DetailPill({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
+function DetailPill({ label, value }: { label: string; value: string }) {
   const { theme } = useArcaneTheme();
 
   return (
@@ -417,28 +363,48 @@ function ResultDetailsModal({
                     borderWidth: 1,
                     borderColor: "rgba(145, 113, 255, 0.14)",
                     backgroundColor: "rgba(13, 19, 43, 0.54)",
-                    gap: 3,
+                    gap: 8,
                   }}
                 >
-                  <Text
-                    style={{
-                      color: theme.colors.text,
-                      fontSize: 14,
-                      fontWeight: "900",
-                    }}
-                  >
-                    {getEntryLabel(entry)}
-                  </Text>
+                  <View style={{ gap: 3 }}>
+                    <Text
+                      style={{
+                        color: theme.colors.text,
+                        fontSize: 14,
+                        fontWeight: "900",
+                      }}
+                    >
+                      {getEntryLabel(entry)}
+                    </Text>
 
-                  <Text
-                    style={{
-                      color: theme.colors.textMuted,
-                      fontSize: 13,
-                      fontWeight: "700",
-                    }}
-                  >
-                    Valeurs : {formatValues(entry.natural_values)}
-                  </Text>
+                    <Text
+                      style={{
+                        color: theme.colors.textMuted,
+                        fontSize: 13,
+                        fontWeight: "700",
+                      }}
+                    >
+                      Valeurs : {formatValues(entry.natural_values)}
+                    </Text>
+
+                    <Text
+                      style={{
+                        color: theme.colors.textSubtle,
+                        fontSize: 12,
+                        fontWeight: "700",
+                      }}
+                    >
+                      Total brut : {entry.total_with_modifier} · Total
+                      interprété : {entry.final_total}
+                    </Text>
+                  </View>
+
+                  {entry.eval_result ? (
+                    <RollResultCard
+                      result={entry.eval_result}
+                      title="Interprétation de cette ligne"
+                    />
+                  ) : null}
                 </View>
               ))}
             </View>
@@ -446,7 +412,7 @@ function ResultDetailsModal({
             {result.group_eval_result ? (
               <RollResultCard
                 result={result.group_eval_result}
-                title="Interprétation"
+                title="Interprétation du jet complet"
               />
             ) : null}
           </ScrollView>
@@ -476,9 +442,7 @@ export function ResultPanel({ result }: ResultPanelProps) {
           paddingHorizontal: 11,
           borderRadius: rollTheme.layout.cockpitRadius,
           borderWidth: 1,
-          borderColor: result
-            ? toneColors.border
-            : "rgba(145, 113, 255, 0.16)",
+          borderColor: result ? toneColors.border : "rgba(145, 113, 255, 0.16)",
           backgroundColor: result
             ? toneColors.background
             : "rgba(13, 19, 43, 0.52)",

@@ -1,19 +1,21 @@
 // dice-universal\features\roll\renderers\rollResultRenderer.ts
 
+type RenderedTone = "neutral" | "success" | "failure" | "warning" | "critical";
+
 type RenderedRollResult = {
   title: string;
   summary: string;
   lines: string[];
   details?: string[];
-  tone?: "neutral" | "success" | "failure" | "warning";
+  tone?: RenderedTone;
 };
 
 function formatOutcome(outcome: string | undefined): {
   label: string;
-  tone: RenderedRollResult["tone"];
+  tone: RenderedTone;
 } {
   if (outcome === "crit_success") {
-    return { label: "Réussite critique", tone: "success" };
+    return { label: "Réussite critique", tone: "critical" };
   }
 
   if (outcome === "crit_failure") {
@@ -33,7 +35,7 @@ function formatOutcome(outcome: string | undefined): {
   }
 
   if (outcome === "crit_glitch") {
-    return { label: "Complication critique", tone: "failure" };
+    return { label: "Échec critique + complication", tone: "failure" };
   }
 
   return { label: "Résultat", tone: "neutral" };
@@ -42,6 +44,14 @@ function formatOutcome(outcome: string | undefined): {
 function formatValues(values?: number[]) {
   if (!values || values.length === 0) return "—";
   return values.join(" + ");
+}
+
+function pluralizeSuccesses(count: number) {
+  return `${count} succès`;
+}
+
+function formatBoolean(value: unknown) {
+  return value ? "Oui" : "Non";
 }
 
 function formatPipelineSteps(meta: any): string[] {
@@ -96,7 +106,7 @@ function formatPipelineSteps(meta: any): string[] {
 
     if (step.op === "count_complications") {
       lines.push(
-        `Complications sur ${formatValues(step.faces)} : ${step.complications}`,
+        `Faces spéciales ${formatValues(step.faces)} : ${step.complications}`,
       );
       continue;
     }
@@ -135,6 +145,71 @@ function formatPipelineSteps(meta: any): string[] {
   return lines;
 }
 
+function buildSuccessPoolSummary(result: any, outcomeLabel: string) {
+  const successes = typeof result.successes === "number" ? result.successes : 0;
+
+  if (result.outcome === "crit_success") {
+    return `Réussite critique · ${pluralizeSuccesses(successes)}`;
+  }
+
+  if (result.outcome === "crit_failure") {
+    return `Échec critique · ${pluralizeSuccesses(successes)}`;
+  }
+
+  if (result.outcome === "crit_glitch") {
+    return `Échec critique · ${pluralizeSuccesses(successes)} + complication`;
+  }
+
+  if (result.outcome === "glitch") {
+    return `${pluralizeSuccesses(successes)} + complication`;
+  }
+
+  if (result.outcome === "failure") {
+    return successes > 0
+      ? `${outcomeLabel} · ${pluralizeSuccesses(successes)}`
+      : "Échec · 0 succès";
+  }
+
+  return pluralizeSuccesses(successes);
+}
+
+function buildPipelineSummary(result: any, outcomeLabel: string) {
+  const meta = result.meta ?? {};
+  const successes = typeof meta.successes === "number" ? meta.successes : null;
+
+  if (meta.degrees && meta.outcome) {
+    return `${outcomeLabel} · ${meta.degrees.degrees} degré${
+      meta.degrees.degrees > 1 ? "s" : ""
+    }`;
+  }
+
+  if (meta.outcome) {
+    if (successes != null) {
+      return `${outcomeLabel} · ${pluralizeSuccesses(successes)}`;
+    }
+
+    if (typeof result.final === "number") {
+      return `${outcomeLabel} · Final ${result.final}`;
+    }
+
+    return outcomeLabel;
+  }
+
+  if (successes != null) {
+    return pluralizeSuccesses(successes);
+  }
+
+  if (typeof meta.lookup?.label === "string") {
+    return meta.lookup.label;
+  }
+
+  if (result.final != null) {
+    return `Final : ${result.final}`;
+  }
+
+  return "Résultat";
+}
+
 export function renderRollResult(
   result: any | null,
 ): RenderedRollResult | null {
@@ -159,7 +234,7 @@ export function renderRollResult(
         `Naturel : ${result.natural}`,
         `Final : ${result.final}`,
         result.threshold != null ? `Seuil : ${result.threshold}` : "Seuil : —",
-        `Comparaison : ${result.compare === "lte" ? "≤" : "≥"}`,
+        `Comparaison : ${result.compare === "lte" ? "≤ seuil" : "≥ seuil"}`,
       ],
       tone: outcome.tone,
     };
@@ -170,13 +245,17 @@ export function renderRollResult(
 
     return {
       title: "Seuil avec degrés",
-      summary: outcome.label,
+      summary: `${outcome.label} · ${result.degrees} degré${
+        result.degrees > 1 ? "s" : ""
+      }`,
       lines: [
         `Jet : ${result.roll}`,
         `Final : ${result.final}`,
         `Cible : ${result.target}`,
+        `Comparaison : ${result.compare === "lte" ? "≤ cible" : "≥ cible"}`,
         `Marge : ${result.margin}`,
         `Degrés : ${result.degrees}`,
+        `Taille d’un degré : ${result.degree_step}`,
       ],
       tone: outcome.tone,
     };
@@ -187,11 +266,20 @@ export function renderRollResult(
 
     return {
       title: "Pool de succès",
-      summary: outcome.label,
+      summary: buildSuccessPoolSummary(result, outcome.label),
       lines: [
-        `Succès : ${result.successes}`,
-        `Échecs spéciaux : ${result.fail_count}`,
-        `Faces d’échec spécial : ${formatValues(result.fail_faces)}`,
+        `Dés du pool : ${result.dice_count ?? "—"}`,
+        `Succès ≥ ${result.success_at_or_above ?? "—"} : ${result.successes}`,
+        `Faces spéciales : ${formatValues(result.fail_faces)}`,
+        `Nombre de faces spéciales : ${result.fail_count}`,
+        `Complication : ${formatBoolean(result.complication)}`,
+        `Réussite critique : ${formatBoolean(result.critical_success)}`,
+        `Échec critique : ${formatBoolean(result.critical_failure)}`,
+      ],
+      details: [
+        `Règle de complication : ${result.complication_rule ?? "—"}`,
+        `Règle d’échec critique : ${result.critical_failure_rule ?? "—"}`,
+        `Règle de réussite critique : ${result.critical_success_rule ?? "—"}`,
       ],
       tone: outcome.tone,
     };
@@ -226,6 +314,7 @@ export function renderRollResult(
         `Gardé : ${result.kept}`,
         `Final : ${result.final}`,
         result.threshold != null ? `Seuil : ${result.threshold}` : "Seuil : —",
+        `Comparaison : ${result.compare === "lte" ? "≤ seuil" : "≥ seuil"}`,
       ],
       tone: outcome.tone,
     };
@@ -242,6 +331,7 @@ export function renderRollResult(
         `Gardé : ${result.kept}`,
         `Final : ${result.final}`,
         result.threshold != null ? `Seuil : ${result.threshold}` : "Seuil : —",
+        `Comparaison : ${result.compare === "lte" ? "≤ seuil" : "≥ seuil"}`,
       ],
       tone: outcome.tone,
     };
@@ -282,22 +372,60 @@ export function renderRollResult(
   }
 
   if (result.kind === "pipeline") {
-    const outcome = formatOutcome(result.meta?.outcome);
-    const stepLines = formatPipelineSteps(result.meta);
+    const meta = result.meta ?? {};
+    const outcome = formatOutcome(meta.outcome);
+    const stepLines = formatPipelineSteps(meta);
+
+    const lines = [
+      `Jet initial : ${formatValues(result.values)}`,
+      ...stepLines,
+      `Conservés : ${formatValues(result.kept)}`,
+      result.final != null ? `Final : ${result.final}` : "Final : —",
+    ];
+
+    if (typeof meta.successes === "number") {
+      lines.push(`Succès : ${meta.successes}`);
+    }
+
+    if (typeof meta.complications === "number") {
+      lines.push(`Faces spéciales : ${meta.complications}`);
+    }
+
+    if (typeof meta.count_equal === "number") {
+      lines.push(`Faces exactes comptées : ${meta.count_equal}`);
+    }
+
+    if (typeof meta.count_range === "number") {
+      lines.push(`Valeurs dans la plage : ${meta.count_range}`);
+    }
+
+    if (meta.lookup?.label) {
+      lines.push(`Résultat de table : ${meta.lookup.label}`);
+    }
+
+    if (meta.degrees) {
+      lines.push(`Cible des degrés : ${meta.degrees.target}`);
+      lines.push(
+        `Comparaison degrés : ${
+          meta.degrees.compare === "lte" ? "≤ cible" : "≥ cible"
+        }`,
+      );
+      lines.push(`Marge : ${meta.degrees.margin}`);
+      lines.push(`Degrés : ${meta.degrees.degrees}`);
+      lines.push(`Taille d’un degré : ${meta.degrees.degree_step}`);
+    }
 
     return {
       title: "Pipeline personnalisé",
-      summary:
-        result.meta?.outcome != null
-          ? outcome.label
-          : result.final != null
-            ? `Final : ${result.final}`
-            : "Résultat",
-      lines: [
-        `Jet initial : ${formatValues(result.values)}`,
-        ...stepLines,
-        `Conservés : ${formatValues(result.kept)}`,
-        result.final != null ? `Final : ${result.final}` : "Final : —",
+      summary: buildPipelineSummary(result, outcome.label),
+      lines,
+      details: [
+        `Complication : ${formatBoolean(meta.complication)}`,
+        `Réussite critique : ${formatBoolean(meta.critical_success)}`,
+        `Échec critique : ${formatBoolean(meta.critical_failure)}`,
+        `Règle de complication : ${meta.complication_rule ?? "—"}`,
+        `Règle d’échec critique : ${meta.critical_failure_rule ?? "—"}`,
+        `Règle de réussite critique : ${meta.critical_success_rule ?? "—"}`,
       ],
       tone: outcome.tone,
     };
