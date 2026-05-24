@@ -119,6 +119,23 @@ function animateCockpitLayout() {
   });
 }
 
+function formatPreparedCardModifier(modifier?: number) {
+  const safeModifier = Number.isFinite(modifier ?? 0) ? (modifier ?? 0) : 0;
+
+  if (safeModifier === 0) return "";
+
+  return ` ${safeModifier > 0 ? "+" : "-"} ${Math.abs(safeModifier)}`;
+}
+
+function formatPreparedCardDieLabel(die: {
+  sides: number;
+  qty: number;
+  modifier?: number;
+  sign?: number;
+}) {
+  return `${die.qty}d${die.sides}${formatPreparedCardModifier(die.modifier)}`;
+}
+
 export default function RollScreen() {
   const layout = useArcaneLayout();
   const { theme, styles } = useArcaneTheme();
@@ -138,6 +155,8 @@ export default function RollScreen() {
     null,
   );
   const [showPreparedEditSheet, setShowPreparedEditSheet] = useState(false);
+  const [showPreparedAddDicePicker, setShowPreparedAddDicePicker] =
+    useState(false);
   const [showTableSessionMenu, setShowTableSessionMenu] = useState(false);
   const [showProfileSessionMenu, setShowProfileSessionMenu] = useState(false);
 
@@ -289,6 +308,7 @@ export default function RollScreen() {
 
     addDraftGroup,
     addQuickStandardDie,
+    addDieLineToDraftGroup,
     addQuickPresetDie,
     loadSavedGroupIntoDraft,
     updateDraftGroupName,
@@ -298,6 +318,7 @@ export default function RollScreen() {
     clearDraftGroupBehavior,
     adjustDraftDieQty,
     adjustDraftDieModifier,
+    toggleDraftDieSign,
 
     removeDraftDie,
     removeDraftGroup,
@@ -445,6 +466,7 @@ export default function RollScreen() {
     setLatestResult(null);
     setShowPreparedEditSheet(false);
     setQuickModifier(0);
+    setShowPreparedAddDicePicker(false);
   }
 
   async function handleRollPrepared() {
@@ -715,7 +737,45 @@ export default function RollScreen() {
 
     setPreparedEditMode("dice");
     setPreparedBehaviorTargetIndex(null);
+    setShowPreparedAddDicePicker(false);
     setShowPreparedEditSheet(true);
+  }
+
+  function handleTogglePreparedAddDicePicker() {
+    if (
+      preparedRoll?.source !== "free" &&
+      preparedRoll?.source !== "action_draft"
+    ) {
+      return;
+    }
+
+    if (!editablePreparedDraftGroup) return;
+
+    setShowPreparedAddDicePicker((value) => !value);
+  }
+
+  function handleAddPreparedDieLine(sides: number) {
+    if (
+      preparedRoll?.source !== "free" &&
+      preparedRoll?.source !== "action_draft"
+    ) {
+      return;
+    }
+
+    if (!editablePreparedDraftGroup) return;
+
+    animateCockpitLayout();
+
+    addDieLineToDraftGroup(editablePreparedDraftGroup.id, sides);
+
+    setPreparedRoll(
+      preparedRoll?.source === "action_draft"
+        ? preparedRoll
+        : { source: "free" },
+    );
+
+    setLatestResult(null);
+    setShowPreparedAddDicePicker(false);
   }
 
   function handleChangePreparedRollName(value: string) {
@@ -741,6 +801,7 @@ export default function RollScreen() {
     quickBehaviorConfig.close();
 
     setShowPreparedEditSheet(false);
+    setShowPreparedAddDicePicker(false);
   }
 
   function handleAdjustPreparedDieQty(index: number, delta: number) {
@@ -768,6 +829,20 @@ export default function RollScreen() {
     if (!editablePreparedDraftGroup) return;
 
     adjustDraftDieModifier(editablePreparedDraftGroup.id, index, delta);
+    setLatestResult(null);
+  }
+
+  function handleTogglePreparedDieSign(index: number) {
+    if (
+      preparedRoll?.source !== "free" &&
+      preparedRoll?.source !== "action_draft"
+    ) {
+      return;
+    }
+
+    if (!editablePreparedDraftGroup) return;
+
+    toggleDraftDieSign(editablePreparedDraftGroup.id, index);
     setLatestResult(null);
   }
 
@@ -1048,13 +1123,8 @@ export default function RollScreen() {
     [editablePreparedDraftGroup, rulesMap],
   );
 
-  const preparedQuickEditDice = useMemo(() => {
-    const groupBehaviorSummary = getDraftGroupBehaviorSummary(
-      editablePreparedDraftGroup,
-      rulesMap,
-    );
-
-    return (
+  const preparedQuickEditDice = useMemo(
+    () =>
       editablePreparedDraftGroup?.dice.map((die) => ({
         sides: die.sides,
         qty: die.qty,
@@ -1063,10 +1133,21 @@ export default function RollScreen() {
         ruleLabel:
           getRuleSummaryFromTempRule(die.rule_temp) ??
           getRuleSummaryFromRuleId(die.rule_id, rulesMap) ??
-          groupBehaviorSummary,
-      })) ?? []
-    );
-  }, [editablePreparedDraftGroup, rulesMap]);
+          "Somme simple",
+      })) ?? [],
+    [editablePreparedDraftGroup, rulesMap],
+  );
+
+  const preparedCardLines = useMemo(
+    () =>
+      preparedQuickEditDice.map((die, index) => ({
+        id: `${editablePreparedDraftGroup?.id ?? "prepared"}-${index}-${die.sides}`,
+        label: formatPreparedCardDieLabel(die),
+        detail: die.ruleLabel ?? "Somme simple",
+        sign: die.sign ?? 1,
+      })),
+    [preparedQuickEditDice, editablePreparedDraftGroup?.id],
+  );
 
   const freeDiceCountsBySides = useMemo(() => {
     const counts: Record<number, number> = {};
@@ -1474,12 +1555,20 @@ export default function RollScreen() {
               <PreparedRollCard
                 name={preparedCardName}
                 detail={preparedCardDetail}
+                lines={preparedCardLines}
                 isEmpty={!hasPreparedRoll}
                 onEdit={
                   (preparedRoll?.source === "free" ||
                     preparedRoll?.source === "action_draft") &&
                   hasPreparedRoll
                     ? handleOpenPreparedEdit
+                    : undefined
+                }
+                onAddDie={
+                  (preparedRoll?.source === "free" ||
+                    preparedRoll?.source === "action_draft") &&
+                  hasPreparedRoll
+                    ? handleTogglePreparedAddDicePicker
                     : undefined
                 }
                 onClear={hasPreparedRoll ? handleClearPreparedRoll : undefined}
@@ -1491,6 +1580,72 @@ export default function RollScreen() {
                     : undefined
                 }
               />
+              {showPreparedAddDicePicker ? (
+                <View
+                  style={{
+                    marginTop: 8,
+                    borderRadius: 18,
+                    borderWidth: 1,
+                    borderColor: "rgba(217, 160, 55, 0.34)",
+                    backgroundColor: "rgba(13, 19, 43, 0.86)",
+                    padding: 10,
+                    gap: 8,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: theme.colors.textSubtle,
+                      fontSize: 10,
+                      fontWeight: "900",
+                      textTransform: "uppercase",
+                      letterSpacing: 0.8,
+                    }}
+                  >
+                    Ajouter une ligne de dés
+                  </Text>
+
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      flexWrap: "wrap",
+                      gap: 8,
+                    }}
+                  >
+                    {STANDARD_DICE.map((sides) => (
+                      <Pressable
+                        key={`prepared-add-d${sides}`}
+                        onPress={() => handleAddPreparedDieLine(sides)}
+                        style={({ pressed }) => ({
+                          minWidth: 52,
+                          minHeight: 42,
+                          borderRadius: theme.radius.pill,
+                          borderWidth: 1,
+                          borderColor: pressed
+                            ? theme.colors.accent
+                            : "rgba(145, 113, 255, 0.22)",
+                          backgroundColor: pressed
+                            ? "rgba(217, 160, 55, 0.18)"
+                            : "rgba(32, 41, 88, 0.52)",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          opacity: pressed ? 0.86 : 1,
+                          transform: [{ scale: pressed ? 0.96 : 1 }],
+                        })}
+                      >
+                        <Text
+                          style={{
+                            color: theme.colors.text,
+                            fontSize: 13,
+                            fontWeight: "900",
+                          }}
+                        >
+                          d{sides}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+              ) : null}
             </View>
 
             {hasActiveTable ? (
@@ -2349,6 +2504,7 @@ export default function RollScreen() {
         onClose={handleClosePreparedEdit}
         onAdjustDieQty={handleAdjustPreparedDieQty}
         onAdjustDieModifier={handleAdjustPreparedDieModifier}
+        onToggleDieSign={handleTogglePreparedDieSign}
         onRemoveDie={handleRemovePreparedDie}
         onConfigureDieBehavior={handleConfigurePreparedDieBehavior}
         onClearDieBehavior={handleClearPreparedDieBehavior}

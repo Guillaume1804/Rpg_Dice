@@ -53,6 +53,7 @@ type PreparedRollEditSheetProps = {
   onClose: () => void;
   onAdjustDieQty: (index: number, delta: number) => void;
   onAdjustDieModifier: (index: number, delta: number) => void;
+  onToggleDieSign: (index: number) => void;
   onRemoveDie: (index: number) => void;
   onConfigureDieBehavior?: (index: number) => void;
   onClearDieBehavior?: (index: number) => void;
@@ -269,6 +270,7 @@ function PreparedDieRow({
   index,
   onAdjustDieQty,
   onAdjustDieModifier,
+  onToggleDieSign,
   onRemoveDie,
   onConfigureDieBehavior,
   onClearDieBehavior,
@@ -277,6 +279,7 @@ function PreparedDieRow({
   index: number;
   onAdjustDieQty: (index: number, delta: number) => void;
   onAdjustDieModifier: (index: number, delta: number) => void;
+  onToggleDieSign: (index: number) => void;
   onRemoveDie: (index: number) => void;
   onConfigureDieBehavior?: (index: number) => void;
   onClearDieBehavior?: (index: number) => void;
@@ -396,6 +399,74 @@ function PreparedDieRow({
           gap: 9,
         }}
       >
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+            flexWrap: "wrap",
+          }}
+        >
+          <View style={{ gap: 3 }}>
+            <Text
+              style={{
+                color: theme.colors.textSubtle,
+                fontSize: 9,
+                fontWeight: "900",
+                textTransform: "uppercase",
+                letterSpacing: 0.7,
+              }}
+            >
+              Signe de la ligne
+            </Text>
+
+            <Text
+              style={{
+                color:
+                  die.sign === -1 ? theme.colors.failure : theme.colors.success,
+                fontSize: 15,
+                fontWeight: "900",
+              }}
+            >
+              {die.sign === -1 ? "Malus (-)" : "Bonus (+)"}
+            </Text>
+          </View>
+
+          <Pressable
+            onPress={() => onToggleDieSign(index)}
+            style={({ pressed }) => ({
+              minHeight: 34,
+              paddingVertical: 7,
+              paddingHorizontal: 11,
+              borderWidth: 1,
+              borderColor:
+                die.sign === -1
+                  ? "rgba(255, 92, 122, 0.78)"
+                  : "rgba(80, 220, 160, 0.68)",
+              borderRadius: theme.radius.pill,
+              backgroundColor:
+                die.sign === -1
+                  ? "rgba(255, 92, 122, 0.1)"
+                  : "rgba(80, 220, 160, 0.1)",
+              opacity: pressed ? 0.82 : 1,
+              transform: [{ scale: pressed ? 0.97 : 1 }],
+              alignItems: "center",
+              justifyContent: "center",
+            })}
+          >
+            <Text
+              style={{
+                color:
+                  die.sign === -1 ? theme.colors.failure : theme.colors.success,
+                fontSize: 12,
+                fontWeight: "900",
+              }}
+            >
+              Basculer + / -
+            </Text>
+          </Pressable>
+        </View>
         <View
           style={{
             flexDirection: "row",
@@ -756,6 +827,7 @@ export function PreparedRollEditSheet({
   onAdjustDieQty,
   onAdjustDieModifier,
   onRemoveDie,
+  onToggleDieSign,
   onConfigureDieBehavior,
   onClearDieBehavior,
 }: PreparedRollEditSheetProps) {
@@ -1048,6 +1120,7 @@ export function PreparedRollEditSheet({
                   index={index}
                   onAdjustDieQty={onAdjustDieQty}
                   onAdjustDieModifier={onAdjustDieModifier}
+                  onToggleDieSign={onToggleDieSign}
                   onRemoveDie={onRemoveDie}
                   onConfigureDieBehavior={onConfigureDieBehavior}
                   onClearDieBehavior={onClearDieBehavior}

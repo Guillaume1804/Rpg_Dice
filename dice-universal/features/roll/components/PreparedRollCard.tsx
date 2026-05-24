@@ -6,12 +6,21 @@ import { Pressable, Text, View } from "react-native";
 import { useArcaneTheme } from "../../../theme/ArcaneThemeProvider";
 import { createRollScreenTheme } from "../../../theme/rollScreenTheme";
 
+export type PreparedRollCardLine = {
+  id: string;
+  label: string;
+  detail?: string | null;
+  sign?: number;
+};
+
 type PreparedRollCardProps = {
   title?: string;
   name: string | null;
   detail: string | null;
+  lines?: PreparedRollCardLine[];
   isEmpty: boolean;
   onEdit?: () => void;
+  onAddDie?: () => void;
   onClear?: () => void;
   onSave?: () => void;
 };
@@ -155,8 +164,10 @@ export function PreparedRollCard({
   title = "Jet préparé",
   name,
   detail,
+  lines,
   isEmpty,
   onEdit,
+  onAddDie,
   onClear,
   onSave,
 }: PreparedRollCardProps) {
@@ -175,10 +186,25 @@ export function PreparedRollCard({
   const primaryDetail = detailParts[0] ?? null;
   const secondaryDetail = detailParts[1] ?? null;
 
-  const displayTitle = primaryDetail ?? name ?? "Aucun jet préparé";
+  const preparedLines = useMemo(
+    () => lines?.filter((line) => line.label.trim().length > 0) ?? [],
+    [lines],
+  );
+
+  const hasStructuredLines = !isEmpty && preparedLines.length > 0;
+  const visiblePreparedLines = preparedLines.slice(0, 4);
+  const hiddenPreparedLineCount =
+    preparedLines.length - visiblePreparedLines.length;
+
+  const displayTitle = hasStructuredLines
+    ? (name ?? "Jet préparé")
+    : (primaryDetail ?? name ?? "Aucun jet préparé");
+
   const displaySubtitle = isEmpty
     ? "Choisis un dé libre ou une action."
-    : (name ?? secondaryDetail ?? "Jet principal");
+    : hasStructuredLines
+      ? `${preparedLines.length} ligne${preparedLines.length > 1 ? "s" : ""} de dés`
+      : (name ?? secondaryDetail ?? "Jet principal");
 
   return (
     <View
@@ -356,7 +382,115 @@ export function PreparedRollCard({
           {!isEmpty ? <PreparedBadge label="Principal" tone="accent" /> : null}
         </View>
 
-        {!isEmpty && secondaryDetail ? (
+        {hasStructuredLines ? (
+          <>
+            <View
+              style={{
+                height: 1,
+                backgroundColor: "rgba(145, 113, 255, 0.14)",
+              }}
+            />
+
+            <View style={{ gap: 6 }}>
+              {visiblePreparedLines.map((line) => {
+                const isNegative = line.sign === -1;
+
+                return (
+                  <View
+                    key={line.id}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 8,
+                      paddingVertical: 6,
+                      paddingHorizontal: 8,
+                      borderRadius: 13,
+                      borderWidth: 1,
+                      borderColor: isNegative
+                        ? "rgba(255, 92, 122, 0.26)"
+                        : "rgba(145, 113, 255, 0.16)",
+                      backgroundColor: isNegative
+                        ? "rgba(255, 92, 122, 0.08)"
+                        : "rgba(13, 19, 43, 0.44)",
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: theme.radius.pill,
+                        borderWidth: 1,
+                        borderColor: isNegative
+                          ? "rgba(255, 92, 122, 0.62)"
+                          : "rgba(80, 220, 160, 0.48)",
+                        backgroundColor: isNegative
+                          ? "rgba(255, 92, 122, 0.1)"
+                          : "rgba(80, 220, 160, 0.08)",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: isNegative
+                            ? theme.colors.failure
+                            : theme.colors.success,
+                          fontSize: 13,
+                          fontWeight: "900",
+                        }}
+                      >
+                        {isNegative ? "−" : "+"}
+                      </Text>
+                    </View>
+
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                        style={{
+                          color: theme.colors.text,
+                          fontSize: 13,
+                          fontWeight: "900",
+                        }}
+                      >
+                        {line.label}
+                      </Text>
+
+                      {line.detail ? (
+                        <Text
+                          numberOfLines={1}
+                          ellipsizeMode="tail"
+                          style={{
+                            color: theme.colors.textMuted,
+                            fontSize: 10,
+                            fontWeight: "700",
+                            marginTop: 1,
+                          }}
+                        >
+                          {line.detail}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
+                );
+              })}
+
+              {hiddenPreparedLineCount > 0 ? (
+                <Text
+                  style={{
+                    color: theme.colors.textSubtle,
+                    fontSize: 11,
+                    fontWeight: "800",
+                  }}
+                >
+                  + {hiddenPreparedLineCount} autre
+                  {hiddenPreparedLineCount > 1 ? "s" : ""} ligne
+                  {hiddenPreparedLineCount > 1 ? "s" : ""}
+                </Text>
+              ) : null}
+            </View>
+          </>
+        ) : !isEmpty && secondaryDetail ? (
           <>
             <View
               style={{
@@ -426,13 +560,13 @@ export function PreparedRollCard({
           }}
         >
           <Pressable
-            onPress={onEdit}
-            disabled={!onEdit}
+            onPress={onAddDie}
+            disabled={!onAddDie}
             style={({ pressed }) => ({
               flexDirection: "row",
               alignItems: "center",
               gap: 7,
-              opacity: pressed ? 0.78 : onEdit ? 1 : 0.5,
+              opacity: pressed ? 0.78 : onAddDie ? 1 : 0.5,
             })}
           >
             <View
@@ -466,7 +600,7 @@ export function PreparedRollCard({
                 fontWeight: "900",
               }}
             >
-              Ajouter
+              + Dés
             </Text>
           </Pressable>
 
