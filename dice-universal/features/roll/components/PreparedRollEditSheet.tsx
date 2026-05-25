@@ -842,6 +842,7 @@ export function PreparedRollEditSheet({
       visible={visible}
       transparent
       animationType="slide"
+      statusBarTranslucent
       onRequestClose={onClose}
     >
       <View
@@ -864,7 +865,7 @@ export function PreparedRollEditSheet({
 
         <View
           style={{
-            maxHeight: "88%",
+            maxHeight: "84%",
             backgroundColor: "rgba(8, 12, 31, 0.98)",
             borderTopLeftRadius: 30,
             borderTopRightRadius: 30,

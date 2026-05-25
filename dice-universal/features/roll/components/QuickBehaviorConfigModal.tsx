@@ -1,7 +1,7 @@
 // dice-universal/features/roll/components/QuickBehaviorConfigModal.tsx
 
 import { useMemo } from "react";
-import { View, Text, Pressable, TextInput, ScrollView } from "react-native";
+import { Modal, View, Text, Pressable, TextInput, ScrollView } from "react-native";
 import {
   getRuleBehaviorDefinition,
   type RuleBehaviorKey,
@@ -111,12 +111,12 @@ type Props = {
   pipelineCountRangeMax: string;
 
   pipelineOutput:
-    | "sum"
-    | "successes"
-    | "count_equal"
-    | "count_range"
-    | "first_value"
-    | "values";
+  | "sum"
+  | "successes"
+  | "count_equal"
+  | "count_range"
+  | "first_value"
+  | "values";
 
   pipelineSuccessThreshold: string;
   pipelineCompare: "gte" | "lte";
@@ -124,32 +124,32 @@ type Props = {
   pipelineCritFailureFaces: string;
   pipelineComplicationFaces: string;
   pipelineComplicationRule:
-    | "none"
-    | "any"
-    | "gt_successes"
-    | "gte_successes"
-    | "zero_successes"
-    | "gt_half_dice"
-    | "gte_half_dice"
-    | "gt_half_successes"
-    | "gte_half_successes";
+  | "none"
+  | "any"
+  | "gt_successes"
+  | "gte_successes"
+  | "zero_successes"
+  | "gt_half_dice"
+  | "gte_half_dice"
+  | "gt_half_successes"
+  | "gte_half_successes";
 
   pipelineCriticalFailureRule:
-    | "none"
-    | "zero_successes"
-    | "all_complication_faces"
-    | "complications_gt_successes"
-    | "complications_gte_successes"
-    | "complication_and_zero_successes"
-    | "complication_and_failed_threshold";
+  | "none"
+  | "zero_successes"
+  | "all_complication_faces"
+  | "complications_gt_successes"
+  | "complications_gte_successes"
+  | "complication_and_zero_successes"
+  | "complication_and_failed_threshold";
 
   pipelineCriticalSuccessRule:
-    | "none"
-    | "successes_gte_threshold"
-    | "all_dice_successes"
-    | "all_dice_max_faces"
-    | "any_max_face"
-    | "any_critical_face";
+  | "none"
+  | "successes_gte_threshold"
+  | "all_dice_successes"
+  | "all_dice_max_faces"
+  | "any_max_face"
+  | "any_critical_face";
 
   pipelineCriticalSuccessThreshold: string;
   pipelineCriticalSuccessFaces: string;
@@ -323,10 +323,10 @@ function ConfigInput(props: {
   onChangeText: (value: string) => void;
   placeholder?: string;
   keyboardType?:
-    | "default"
-    | "numeric"
-    | "number-pad"
-    | "numbers-and-punctuation";
+  | "default"
+  | "numeric"
+  | "number-pad"
+  | "numbers-and-punctuation";
 }) {
   const { theme } = useArcaneTheme();
   const rollTheme = useMemo(() => createRollScreenTheme(theme), [theme]);
@@ -841,7 +841,7 @@ export function QuickBehaviorConfigModal({
         borderColor: theme.colors.accent,
         backgroundColor: rollTheme.cockpit.panel,
         borderRadius: rollTheme.layout.cockpitRadius,
-        maxHeight: presentation === "modal" ? "92%" : undefined,
+        maxHeight: presentation === "modal" ? "100%" : undefined,
         overflow: "hidden",
       }}
     >
@@ -930,7 +930,7 @@ export function QuickBehaviorConfigModal({
         keyboardShouldPersistTaps="handled"
       >
         {pendingBehaviorKey === "custom_pipeline" &&
-        pendingConfigVariant === "keep_drop" ? (
+          pendingConfigVariant === "keep_drop" ? (
           <>
             <ConfigSection
               title="Garder / retirer"
@@ -1010,9 +1010,8 @@ export function QuickBehaviorConfigModal({
               />
 
               <ChoiceButton
-                label={`Relance une seule fois : ${
-                  pipelineRerollOnce ? "Oui" : "Non"
-                }`}
+                label={`Relance une seule fois : ${pipelineRerollOnce ? "Oui" : "Non"
+                  }`}
                 selected={pipelineRerollOnce}
                 onPress={() => onChangePipelineRerollOnce(!pipelineRerollOnce)}
               />
@@ -1735,19 +1734,44 @@ export function QuickBehaviorConfigModal({
   }
 
   return (
-    <View
-      style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: "rgba(0,0,0,0.72)",
-        justifyContent: "center",
-        padding: 16,
-      }}
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      onRequestClose={onClose}
     >
-      {content}
-    </View>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: "rgba(0,0,0,0.74)",
+          justifyContent: "center",
+          paddingHorizontal: 16,
+          paddingTop: 72,
+          paddingBottom: 92,
+        }}
+      >
+        <Pressable
+          onPress={onClose}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+          }}
+        />
+
+        <View
+          style={{
+            maxHeight: "100%",
+            zIndex: 2,
+            elevation: 12,
+          }}
+        >
+          {content}
+        </View>
+      </View>
+    </Modal>
   );
 }
