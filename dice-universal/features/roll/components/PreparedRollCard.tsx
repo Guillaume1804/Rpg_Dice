@@ -161,6 +161,10 @@ function PreparedDieTile({
   const { theme } = useArcaneTheme();
 
   const qty = Math.max(1, line.qty ?? 1);
+  const modifier = line.modifier ?? 0;
+  const hasModifier = modifier !== 0;
+  const modifierLabel = modifier > 0 ? `+${modifier}` : `${modifier}`;
+
   const isNegative = line.sign === -1;
   const hasBehavior = !!line.hasBehavior;
   const canDecrease = !!onAdjustQty && qty > 1;
@@ -188,14 +192,14 @@ function PreparedDieTile({
       onPress={() => onOpenLineConfig?.(index)}
       disabled={!onOpenLineConfig}
       style={({ pressed }) => ({
-        width: "23.4%",
-        minWidth: 66,
+        width: "23%",
+        minWidth: 0,
         height: 68,
         borderRadius: 16,
         borderWidth: 1,
         borderColor,
         backgroundColor,
-        paddingVertical: 6,
+        paddingVertical: 5,
         paddingHorizontal: 5,
         alignItems: "center",
         justifyContent: "space-between",
@@ -208,11 +212,11 @@ function PreparedDieTile({
         pointerEvents="none"
         style={{
           position: "absolute",
-          top: -9,
-          right: -7,
-          minWidth: 26,
-          height: 24,
-          paddingHorizontal: 7,
+          top: -8,
+          right: 2,
+          minWidth: 25,
+          height: 22,
+          paddingHorizontal: 6,
           borderRadius: theme.radius.pill,
           backgroundColor: theme.colors.accent,
           borderWidth: 1,
@@ -225,7 +229,7 @@ function PreparedDieTile({
         <Text
           style={{
             color: theme.colors.black,
-            fontSize: 11,
+            fontSize: 10,
             fontWeight: "900",
           }}
         >
@@ -280,34 +284,78 @@ function PreparedDieTile({
         </Text>
       </View>
 
-      <View style={{ alignItems: "center", gap: 1 }}>
+      <View style={{ alignItems: "center", gap: 0 }}>
         <Text
           style={{
             color: accentColor,
-            fontSize: line.sides === 100 ? 18 : 17,
+            fontSize: line.sides === 100 ? 17 : 16,
             fontWeight: "900",
-            lineHeight: 20,
+            lineHeight: 18,
           }}
         >
           {getDieShapeLabel(line.sides)}
         </Text>
 
-        <Text
-          numberOfLines={1}
+        <View
           style={{
-            color: theme.colors.text,
-            fontSize: line.sides === 100 ? 13 : 14,
-            fontWeight: "900",
-            lineHeight: 17,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 3,
+            maxWidth: "100%",
           }}
         >
-          {getDieDisplayLabel(line)}
-        </Text>
+          <Text
+            numberOfLines={1}
+            style={{
+              color: theme.colors.text,
+              fontSize: line.sides === 100 ? 12 : 13,
+              fontWeight: "900",
+              lineHeight: 15,
+            }}
+          >
+            {getDieDisplayLabel(line)}
+          </Text>
+
+          {hasModifier ? (
+            <View
+              style={{
+                minWidth: 23,
+                height: 15,
+                paddingHorizontal: 4,
+                borderRadius: theme.radius.pill,
+                borderWidth: 1,
+                borderColor:
+                  modifier > 0
+                    ? "rgba(80, 220, 160, 0.46)"
+                    : "rgba(255, 92, 122, 0.46)",
+                backgroundColor:
+                  modifier > 0
+                    ? "rgba(80, 220, 160, 0.1)"
+                    : "rgba(255, 92, 122, 0.1)",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text
+                numberOfLines={1}
+                style={{
+                  color: modifier > 0 ? theme.colors.success : theme.colors.failure,
+                  fontSize: 8,
+                  fontWeight: "900",
+                  lineHeight: 10,
+                }}
+              >
+                {modifierLabel}
+              </Text>
+            </View>
+          ) : null}
+        </View>
       </View>
 
       <View
         style={{
-          height: 22,
+          height: 21,
           minWidth: 58,
           borderRadius: theme.radius.pill,
           backgroundColor: "rgba(5, 9, 26, 0.42)",
@@ -396,8 +444,8 @@ function PreparedMoreTile({
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        width: "23.4%",
-        minWidth: 66,
+        width: "23%",
+        minWidth: 0,
         height: 68,
         borderRadius: 16,
         borderWidth: 1,
@@ -583,6 +631,7 @@ function PreparedDiceListModal({
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{
+              paddingTop: 12,
               paddingBottom: theme.spacing.md,
               gap: 10,
             }}
@@ -591,7 +640,9 @@ function PreparedDiceListModal({
               style={{
                 flexDirection: "row",
                 flexWrap: "wrap",
-                gap: 7,
+                justifyContent: "space-between",
+                rowGap: 10,
+                paddingTop: 4,
               }}
             >
               {lines.map((line, index) => (
