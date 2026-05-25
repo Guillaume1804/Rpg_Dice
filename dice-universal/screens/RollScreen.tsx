@@ -86,21 +86,21 @@ function findDraftGroupById(
 
 type PreparedRoll =
   | {
-      source: "free";
-    }
+    source: "free";
+  }
   | {
-      source: "action";
-      profileId: string;
-      groupId: string;
-      label: string;
-    }
+    source: "action";
+    profileId: string;
+    groupId: string;
+    label: string;
+  }
   | {
-      source: "action_draft";
-      profileId: string;
-      groupId: string;
-      draftGroupId: string;
-      label: string;
-    };
+    source: "action_draft";
+    profileId: string;
+    groupId: string;
+    draftGroupId: string;
+    label: string;
+  };
 
 function animateCockpitLayout() {
   LayoutAnimation.configureNext({
@@ -146,9 +146,23 @@ export default function RollScreen() {
   const isVerySmallScreen = windowHeight < 760;
   const isCompactScreen = windowHeight < 820;
 
-  const resultToDiceOverlap = layout.isSmallHeight ? -18 : -14;
-  const diceToPreparedOverlap = layout.isSmallHeight ? -24 : -20;
-  const preparedToActionsOverlap = layout.isSmallHeight ? -10 : -8;
+  const cockpitDensity = isVerySmallScreen
+    ? "tight"
+    : isCompactScreen
+      ? "compact"
+      : "comfortable";
+
+  const baseStageGap =
+    cockpitDensity === "tight" ? 0 : cockpitDensity === "compact" ? 2 : 4;
+
+  const resultToDiceOverlap =
+    cockpitDensity === "tight" ? -14 : cockpitDensity === "compact" ? -12 : -8;
+
+  const diceToPreparedOverlap =
+    cockpitDensity === "tight" ? -18 : cockpitDensity === "compact" ? -16 : -12;
+
+  const preparedToActionsOverlap =
+    cockpitDensity === "tight" ? -8 : cockpitDensity === "compact" ? -6 : -4;
 
   const [preparedRoll, setPreparedRoll] = useState<PreparedRoll | null>(null);
   const [latestResult, setLatestResult] = useState<GroupRollResult | null>(
@@ -205,6 +219,10 @@ export default function RollScreen() {
 
   const [preparedBehaviorTargetIndex, setPreparedBehaviorTargetIndex] =
     useState<number | null>(null);
+
+  const [preparedBehaviorFlowOrigin, setPreparedBehaviorFlowOrigin] = useState<
+    "global" | "tile" | null
+  >(null);
 
   const quickBehaviorConfig = useQuickBehaviorConfigModal();
 
@@ -349,6 +367,8 @@ export default function RollScreen() {
     onApplyPresetToExistingDraftDie: (_sides, preset) => {
       if (!draftBehaviorTarget) return false;
 
+      const shouldReturnToMainScreen = preparedBehaviorFlowOrigin === "tile";
+
       applyPresetToDraftDie(
         draftBehaviorTarget.groupId,
         draftBehaviorTarget.index,
@@ -359,11 +379,16 @@ export default function RollScreen() {
       setDraftBehaviorTarget(null);
       setPreparedBehaviorTargetIndex(null);
       setPreparedEditMode("dice");
+      setPreparedBehaviorFlowOrigin(null);
 
       if (preparedRoll?.source === "action_draft") {
         setPreparedRoll(preparedRoll);
       } else {
         setPreparedRoll({ source: "free" });
+      }
+
+      if (shouldReturnToMainScreen) {
+        setShowPreparedEditSheet(false);
       }
 
       return true;
@@ -526,9 +551,9 @@ export default function RollScreen() {
 
   async function handleSaveDraftTarget(params: {
     mode:
-      | "new_table_new_profile"
-      | "existing_table_new_profile"
-      | "existing_table_existing_profile";
+    | "new_table_new_profile"
+    | "existing_table_new_profile"
+    | "existing_table_existing_profile";
     tableName?: string;
     profileName?: string;
     tableId?: string;
@@ -599,6 +624,8 @@ export default function RollScreen() {
     };
 
     if (draftBehaviorTarget) {
+      const shouldReturnToMainScreen = preparedBehaviorFlowOrigin === "tile";
+
       applyPresetToDraftDie(
         draftBehaviorTarget.groupId,
         draftBehaviorTarget.index,
@@ -609,6 +636,7 @@ export default function RollScreen() {
       setDraftBehaviorTarget(null);
       setPreparedBehaviorTargetIndex(null);
       setPreparedEditMode("dice");
+      setPreparedBehaviorFlowOrigin(null);
 
       if (preparedRoll?.source === "action_draft") {
         setPreparedRoll(preparedRoll);
@@ -618,6 +646,11 @@ export default function RollScreen() {
 
       quickBehaviorConfig.close();
       quickDieBehaviorPicker.close();
+
+      if (shouldReturnToMainScreen) {
+        setShowPreparedEditSheet(false);
+      }
+
       return;
     }
 
@@ -796,6 +829,7 @@ export default function RollScreen() {
     setPreparedEditMode("dice");
     setPreparedBehaviorTargetIndex(null);
     setDraftBehaviorTarget(null);
+    setPreparedBehaviorFlowOrigin(null);
 
     quickDieBehaviorPicker.close();
     quickBehaviorConfig.close();
@@ -846,7 +880,10 @@ export default function RollScreen() {
     setLatestResult(null);
   }
 
-  function handleConfigurePreparedDieBehavior(index: number) {
+  function handleConfigurePreparedDieBehavior(
+    index: number,
+    origin: "global" | "tile" = "global",
+  ) {
     if (
       preparedRoll?.source !== "free" &&
       preparedRoll?.source !== "action_draft"
@@ -859,6 +896,8 @@ export default function RollScreen() {
     const die = editablePreparedDraftGroup.dice[index];
     if (!die) return;
 
+    setPreparedBehaviorFlowOrigin(origin);
+
     setDraftBehaviorTarget({
       groupId: editablePreparedDraftGroup.id,
       index,
@@ -866,8 +905,17 @@ export default function RollScreen() {
 
     setPreparedBehaviorTargetIndex(index);
     setPreparedEditMode("behavior_picker");
+    setShowPreparedEditSheet(true);
 
     quickDieBehaviorPicker.open(die.sides);
+  }
+
+  function handleConfigurePreparedDieBehaviorFromGlobal(index: number) {
+    handleConfigurePreparedDieBehavior(index, "global");
+  }
+
+  function handleConfigurePreparedDieBehaviorFromTile(index: number) {
+    handleConfigurePreparedDieBehavior(index, "tile");
   }
 
   function handleClearPreparedDieBehavior(index: number) {
@@ -1140,12 +1188,21 @@ export default function RollScreen() {
 
   const preparedCardLines = useMemo(
     () =>
-      preparedQuickEditDice.map((die, index) => ({
-        id: `${editablePreparedDraftGroup?.id ?? "prepared"}-${index}-${die.sides}`,
-        label: formatPreparedCardDieLabel(die),
-        detail: die.ruleLabel ?? "Somme simple",
-        sign: die.sign ?? 1,
-      })),
+      preparedQuickEditDice.map((die, index) => {
+        const ruleLabel = die.ruleLabel ?? "Somme simple";
+        const hasBehavior = ruleLabel !== "Somme simple";
+
+        return {
+          id: `${editablePreparedDraftGroup?.id ?? "prepared"}-${index}-${die.sides}`,
+          label: formatPreparedCardDieLabel(die),
+          detail: ruleLabel,
+          sign: die.sign ?? 1,
+          sides: die.sides,
+          qty: die.qty,
+          modifier: die.modifier ?? 0,
+          hasBehavior,
+        };
+      }),
     [preparedQuickEditDice, editablePreparedDraftGroup?.id],
   );
 
@@ -1228,49 +1285,47 @@ export default function RollScreen() {
   const cockpitStageJustify: "center" | "space-evenly" =
     isFreeIdleCockpit || isTableIdleCockpit ? "center" : "space-evenly";
 
-  const cockpitStageScale = isVerySmallScreen ? 0.96 : isFullCockpit ? 0.97 : 1;
+  const cockpitStageScale =
+    cockpitDensity === "tight" ? 0.965 : isFullCockpit ? 0.985 : 1;
 
-  const cockpitStageTranslateY = isVerySmallScreen
-    ? -2
-    : isFreeIdleCockpit
-      ? -6
-      : isTableIdleCockpit
-        ? -8
-        : isResultCockpit
-          ? -4
-          : 0;
-
-  const adaptiveContentGap = isVerySmallScreen
-    ? 1
-    : isCompactScreen
-      ? 2
-      : isResultCockpit || hasActiveTable || hasPreparedRoll
-        ? 3
-        : 6;
-
-  const adaptiveResultToDiceOverlap = isTableIdleCockpit
-    ? -20
-    : isFreeIdleCockpit
-      ? -12
+  const cockpitStageTranslateY = isFreeIdleCockpit
+    ? cockpitDensity === "tight"
+      ? -4
+      : -6
+    : isTableIdleCockpit
+      ? cockpitDensity === "tight"
+        ? -5
+        : -7
       : isResultCockpit
-        ? -16
+        ? cockpitDensity === "tight"
+          ? -3
+          : -2
+        : 0;
+
+  const adaptiveContentGap =
+    isResultCockpit || hasActiveTable || hasPreparedRoll
+      ? baseStageGap
+      : baseStageGap + 2;
+
+  const adaptiveResultToDiceOverlap = isFreeIdleCockpit
+    ? resultToDiceOverlap
+    : isTableIdleCockpit
+      ? resultToDiceOverlap - 2
+      : isResultCockpit
+        ? resultToDiceOverlap - 2
         : resultToDiceOverlap;
 
-  const adaptiveDiceToPreparedOverlap = isTableIdleCockpit
-    ? -28
-    : isFreeIdleCockpit
-      ? -20
-      : isFreePreparedCockpit
-        ? -24
-        : isTablePreparedCockpit
-          ? -26
-          : diceToPreparedOverlap;
+  const adaptiveDiceToPreparedOverlap = isFreeIdleCockpit
+    ? diceToPreparedOverlap
+    : isTableIdleCockpit
+      ? diceToPreparedOverlap - 4
+      : hasPreparedRoll
+        ? diceToPreparedOverlap
+        : diceToPreparedOverlap - 2;
 
   const adaptivePreparedToActionsOverlap = hasActiveTable
-    ? isResultCockpit
-      ? -14
-      : -12
-    : preparedToActionsOverlap;
+    ? preparedToActionsOverlap
+    : 0;
 
   useEffect(() => {
     if (preparedRoll?.source !== "free") return;
@@ -1372,35 +1427,35 @@ export default function RollScreen() {
     () =>
       profiles.length > 0
         ? profiles.map(
-            (entry): SessionMenuItem => ({
-              id: entry.profile.id,
-              label: entry.profile.name,
-              description:
-                entry.profile.id === activeProfile?.id
-                  ? "Profil actuellement actif."
-                  : "Activer ce profil pour ses actions rapides.",
-              icon: entry.profile.id === activeProfile?.id ? "✦" : "◇",
-              selected: entry.profile.id === activeProfile?.id,
-              onPress: (): void => {
-                animateCockpitLayout();
+          (entry): SessionMenuItem => ({
+            id: entry.profile.id,
+            label: entry.profile.name,
+            description:
+              entry.profile.id === activeProfile?.id
+                ? "Profil actuellement actif."
+                : "Activer ce profil pour ses actions rapides.",
+            icon: entry.profile.id === activeProfile?.id ? "✦" : "◇",
+            selected: entry.profile.id === activeProfile?.id,
+            onPress: (): void => {
+              animateCockpitLayout();
 
-                setSelectedProfileId(entry.profile.id);
-                setShowProfileSessionMenu(false);
-              },
-            }),
-          )
-        : [
-            {
-              id: "no-profile",
-              label: "Aucun profil disponible",
-              description: "Active une table contenant des profils.",
-              icon: "◇",
-              disabled: true,
-              onPress: (): void => {
-                return;
-              },
+              setSelectedProfileId(entry.profile.id);
+              setShowProfileSessionMenu(false);
             },
-          ],
+          }),
+        )
+        : [
+          {
+            id: "no-profile",
+            label: "Aucun profil disponible",
+            description: "Active une table contenant des profils.",
+            icon: "◇",
+            disabled: true,
+            onPress: (): void => {
+              return;
+            },
+          },
+        ],
     [profiles, activeProfile?.id],
   );
 
@@ -1523,8 +1578,8 @@ export default function RollScreen() {
             width: "100%",
             maxWidth: layout.maxContentWidth,
             justifyContent: cockpitStageJustify,
-            paddingTop: isVerySmallScreen ? 0 : 2,
-            paddingBottom: isVerySmallScreen ? 0 : 4,
+            paddingTop: cockpitDensity === "tight" ? 0 : 3,
+            paddingBottom: cockpitDensity === "tight" ? 8 : 12,
             overflow: "visible",
           }}
         >
@@ -1553,6 +1608,7 @@ export default function RollScreen() {
 
             <View style={{ marginTop: adaptiveDiceToPreparedOverlap }}>
               <PreparedRollCard
+                title={hasPreparedRoll ? (preparedCardName ?? "Jet préparé") : "Jet préparé"}
                 name={preparedCardName}
                 detail={preparedCardDetail}
                 lines={preparedCardLines}
@@ -1560,22 +1616,50 @@ export default function RollScreen() {
                 onEdit={
                   (preparedRoll?.source === "free" ||
                     preparedRoll?.source === "action_draft") &&
-                  hasPreparedRoll
+                    hasPreparedRoll
                     ? handleOpenPreparedEdit
                     : undefined
                 }
-                onAddDie={
+                onAdjustLineQty={
                   (preparedRoll?.source === "free" ||
                     preparedRoll?.source === "action_draft") &&
-                  hasPreparedRoll
-                    ? handleTogglePreparedAddDicePicker
+                    hasPreparedRoll
+                    ? handleAdjustPreparedDieQty
+                    : undefined
+                }
+                onAdjustLineModifier={
+                  (preparedRoll?.source === "free" ||
+                    preparedRoll?.source === "action_draft") &&
+                    hasPreparedRoll
+                    ? handleAdjustPreparedDieModifier
+                    : undefined
+                }
+                onToggleLineSign={
+                  (preparedRoll?.source === "free" ||
+                    preparedRoll?.source === "action_draft") &&
+                    hasPreparedRoll
+                    ? handleTogglePreparedDieSign
+                    : undefined
+                }
+                onRemoveLine={
+                  (preparedRoll?.source === "free" ||
+                    preparedRoll?.source === "action_draft") &&
+                    hasPreparedRoll
+                    ? handleRemovePreparedDie
+                    : undefined
+                }
+                onConfigureLineBehavior={
+                  (preparedRoll?.source === "free" ||
+                    preparedRoll?.source === "action_draft") &&
+                    hasPreparedRoll
+                    ? handleConfigurePreparedDieBehaviorFromTile
                     : undefined
                 }
                 onClear={hasPreparedRoll ? handleClearPreparedRoll : undefined}
                 onSave={
                   (preparedRoll?.source === "free" ||
                     preparedRoll?.source === "action_draft") &&
-                  hasPreparedRoll
+                    hasPreparedRoll
                     ? handleOpenPreparedSave
                     : undefined
                 }
@@ -1672,7 +1756,7 @@ export default function RollScreen() {
             width: "100%",
             maxWidth: layout.maxContentWidth,
             zIndex: 10,
-            paddingTop: isVerySmallScreen ? 0 : 2,
+            paddingTop: isVerySmallScreen ? 2 : 4,
           }}
         >
           <StickyRollButton
@@ -2252,12 +2336,19 @@ export default function RollScreen() {
             setPreparedEditMode("dice");
           },
           onBack: () => {
+            const shouldReturnToMainScreen = preparedBehaviorFlowOrigin === "tile";
+
             setPreparedEditMode("dice");
             setPreparedBehaviorTargetIndex(null);
             setDraftBehaviorTarget(null);
+            setPreparedBehaviorFlowOrigin(null);
 
             quickDieBehaviorPicker.close();
             quickBehaviorConfig.close();
+
+            if (shouldReturnToMainScreen) {
+              setShowPreparedEditSheet(false);
+            }
           },
         }}
         behaviorConfigPanel={
@@ -2345,7 +2436,19 @@ export default function RollScreen() {
             onAddRange={quickBehaviorConfig.addRange}
             onRemoveRange={quickBehaviorConfig.removeRange}
             onClose={() => {
+              const shouldReturnToMainScreen = preparedBehaviorFlowOrigin === "tile";
+
               quickBehaviorConfig.close();
+
+              if (shouldReturnToMainScreen) {
+                setPreparedEditMode("dice");
+                setPreparedBehaviorTargetIndex(null);
+                setDraftBehaviorTarget(null);
+                setPreparedBehaviorFlowOrigin(null);
+                setShowPreparedEditSheet(false);
+                return;
+              }
+
               setPreparedEditMode("behavior_picker");
             }}
             onConfirm={handleConfirmBehaviorConfig}
@@ -2506,7 +2609,7 @@ export default function RollScreen() {
         onAdjustDieModifier={handleAdjustPreparedDieModifier}
         onToggleDieSign={handleTogglePreparedDieSign}
         onRemoveDie={handleRemovePreparedDie}
-        onConfigureDieBehavior={handleConfigurePreparedDieBehavior}
+        onConfigureDieBehavior={handleConfigurePreparedDieBehaviorFromGlobal}
         onClearDieBehavior={handleClearPreparedDieBehavior}
       />
     </View>

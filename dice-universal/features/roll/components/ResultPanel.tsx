@@ -242,9 +242,8 @@ function getResultHeadline(result: GroupRollResult): ResultHeadline {
   return {
     eyebrow: rendered.title,
     title: rendered.summary,
-    subtitle: `Total global : ${result.total} · ${result.entries.length} entrée${
-      result.entries.length > 1 ? "s" : ""
-    }`,
+    subtitle: `Total global : ${result.total} · ${result.entries.length} entrée${result.entries.length > 1 ? "s" : ""
+      }`,
     icon: getHeadlineIcon(tone),
     tone,
   };
@@ -568,33 +567,33 @@ function SpecialEventBadge({ event }: { event: SpecialEvent }) {
   const colors =
     event.tone === "critical"
       ? {
-          border: theme.colors.accent,
-          background: theme.colors.accentSoft,
-          text: theme.colors.accent,
-        }
+        border: theme.colors.accent,
+        background: theme.colors.accentSoft,
+        text: theme.colors.accent,
+      }
       : event.tone === "success"
         ? {
-            border: theme.colors.success,
-            background: theme.colors.successSoft,
-            text: theme.colors.success,
-          }
+          border: theme.colors.success,
+          background: theme.colors.successSoft,
+          text: theme.colors.success,
+        }
         : event.tone === "failure"
           ? {
-              border: theme.colors.failure,
-              background: theme.colors.failureSoft,
-              text: theme.colors.failure,
-            }
+            border: theme.colors.failure,
+            background: theme.colors.failureSoft,
+            text: theme.colors.failure,
+          }
           : event.tone === "warning"
             ? {
-                border: theme.colors.warning,
-                background: theme.colors.warningSoft,
-                text: theme.colors.warning,
-              }
+              border: theme.colors.warning,
+              background: theme.colors.warningSoft,
+              text: theme.colors.warning,
+            }
             : {
-                border: "rgba(145, 113, 255, 0.22)",
-                background: "rgba(32, 41, 88, 0.52)",
-                text: theme.colors.textMuted,
-              };
+              border: "rgba(145, 113, 255, 0.22)",
+              background: "rgba(32, 41, 88, 0.52)",
+              text: theme.colors.textMuted,
+            };
 
   return (
     <View
@@ -828,7 +827,7 @@ function ResultSlidePage({
     <View
       style={{
         width: pageWidth,
-        minHeight: 100,
+        minHeight: 88,
         paddingVertical: 2,
         paddingHorizontal: 0,
         justifyContent: "center",
@@ -844,9 +843,9 @@ function ResultSlidePage({
       >
         <View
           style={{
-            width: 46,
-            height: 46,
-            borderRadius: 17,
+            width: 42,
+            height: 42,
+            borderRadius: 16,
             borderWidth: 1,
             borderColor: toneColors.border,
             backgroundColor: toneColors.soft,
@@ -862,9 +861,9 @@ function ResultSlidePage({
           <Text
             style={{
               color: toneColors.text,
-              fontSize: 23,
+              fontSize: 21,
               fontWeight: "900",
-              lineHeight: 26,
+              lineHeight: 24,
             }}
           >
             {slide.icon}
@@ -890,10 +889,10 @@ function ResultSlidePage({
             ellipsizeMode="tail"
             style={{
               color: toneColors.text,
-              fontSize: 21,
+              fontSize: 19,
               fontWeight: "900",
               letterSpacing: -0.45,
-              lineHeight: 25,
+              lineHeight: 23,
             }}
           >
             {slide.title}
@@ -1312,9 +1311,22 @@ export function ResultPanel({ result }: ResultPanelProps) {
     : "empty";
 
   useEffect(() => {
-    setActiveSlideIndex(0);
-    slideScrollX.setValue(0);
-  }, [result?.groupId, result?.total, result?.entries.length, slideScrollX]);
+    if (slides.length === 0) {
+      setActiveSlideIndex(0);
+      slideScrollX.setValue(0);
+      return;
+    }
+
+    setActiveSlideIndex((currentIndex) => {
+      const safeIndex = Math.max(0, Math.min(slides.length - 1, currentIndex));
+
+      if (safeIndex !== currentIndex) {
+        slideScrollX.setValue(safeIndex * Math.max(1, pageWidth));
+      }
+
+      return safeIndex;
+    });
+  }, [slides.length, pageWidth, slideScrollX]);
 
   useEffect(() => {
     if (!result) {
@@ -1352,50 +1364,50 @@ export function ResultPanel({ result }: ResultPanelProps) {
 
   const animatedPanelStyle = result
     ? {
-        opacity: appearAnim.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0.35, 1],
-        }),
-        transform: [
-          {
-            translateY: appearAnim.interpolate({
+      opacity: appearAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0.35, 1],
+      }),
+      transform: [
+        {
+          translateY: appearAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [8, 0],
+          }),
+        },
+        {
+          scale: Animated.add(
+            appearAnim.interpolate({
               inputRange: [0, 1],
-              outputRange: [8, 0],
+              outputRange: [0.985, 1],
             }),
-          },
-          {
-            scale: Animated.add(
-              appearAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0.985, 1],
-              }),
-              pulseAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, 0.018],
-              }),
-            ),
-          },
-        ],
-      }
+            pulseAnim.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0, 0.018],
+            }),
+          ),
+        },
+      ],
+    }
     : {
-        opacity: 0.58,
-      };
+      opacity: 0.58,
+    };
 
   const animatedGlowStyle = result
     ? {
-        opacity: pulseAnim.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0.18, activeTone === "neutral" ? 0.24 : 0.34],
-        }),
-        transform: [
-          {
-            scale: pulseAnim.interpolate({
-              inputRange: [0, 1],
-              outputRange: [1, 1.18],
-            }),
-          },
-        ],
-      }
+      opacity: pulseAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0.18, activeTone === "neutral" ? 0.24 : 0.34],
+      }),
+      transform: [
+        {
+          scale: pulseAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [1, 1.18],
+          }),
+        },
+      ],
+    }
     : undefined;
 
   return (
@@ -1406,8 +1418,8 @@ export function ResultPanel({ result }: ResultPanelProps) {
         }}
         style={[
           {
-            minHeight: result ? 132 : 54,
-            paddingVertical: result ? 8 : 7,
+            minHeight: result ? 118 : 50,
+            paddingVertical: result ? 6 : 6,
             paddingHorizontal: 11,
             borderRadius: rollTheme.layout.cockpitRadius,
             borderWidth: 1,
@@ -1497,9 +1509,9 @@ export function ResultPanel({ result }: ResultPanelProps) {
                     updateActiveSlideFromOffset(offsetX);
                   }}
                   onMomentumScrollEnd={(event) => {
-                    updateActiveSlideFromOffset(
-                      event.nativeEvent.contentOffset.x,
-                    );
+                    const offsetX = event.nativeEvent.contentOffset.x;
+                    slideScrollX.setValue(offsetX);
+                    updateActiveSlideFromOffset(offsetX);
                   }}
                   contentContainerStyle={{
                     alignItems: "stretch",

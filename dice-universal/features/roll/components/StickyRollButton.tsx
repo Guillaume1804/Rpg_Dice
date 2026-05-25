@@ -16,16 +16,16 @@ type StickyRollButtonProps = {
 export function StickyRollButton({
   disabled,
   label = "LANCER LE JET",
-  disabledLabel = "PRÉPARE UN JET",
+  disabledLabel = "AJOUTE DES DÉS",
   onPress,
 }: StickyRollButtonProps) {
   const { theme } = useArcaneTheme();
   const layout = useArcaneLayout();
   const rollTheme = useMemo(() => createRollScreenTheme(theme), [theme]);
 
-  const buttonHeight = layout.isSmallHeight ? 52 : 58;
-  const iconSize = layout.isSmallHeight ? 32 : 36;
-  const labelSize = layout.isSmallHeight ? 16 : 18;
+  const buttonHeight = layout.isSmallHeight ? 46 : 52;
+  const iconSize = layout.isSmallHeight ? 28 : 32;
+  const labelSize = layout.isSmallHeight ? 14 : 16;
 
   return (
     <View
@@ -41,7 +41,7 @@ export function StickyRollButton({
         style={{
           position: "absolute",
           alignSelf: "center",
-          bottom: -8,
+          bottom: -6,
           width: "88%",
           height: buttonHeight,
           borderRadius: 999,

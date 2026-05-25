@@ -145,7 +145,7 @@ export function FreeDicePad({
   onPressDie,
   onLongPressDie,
 }: FreeDicePadProps) {
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const { theme } = useArcaneTheme();
   const rollTheme = useMemo(() => createRollScreenTheme(theme), [theme]);
 
@@ -157,14 +157,17 @@ export function FreeDicePad({
         : "0";
 
   const arenaWidth = Math.max(300, Math.min(width - 48, 620));
-  const arenaHeight = 284;
+  const isVerySmallHeight = height < 760;
+  const isCompactHeight = height < 820;
+
+  const arenaHeight = isVerySmallHeight ? 246 : isCompactHeight ? 264 : 284;
 
   const wheelCenterX = arenaWidth / 2;
 
   /**
    * Centre bas = impression de grand cercle dont on ne voit que le haut.
    */
-  const wheelCenterY = 264;
+  const wheelCenterY = arenaHeight - 20;
 
   /**
    * Rayon horizontal réduit par rapport à la version précédente.
@@ -176,7 +179,7 @@ export function FreeDicePad({
    * Rayon vertical plus grand : les dés descendent naturellement sur l’arche
    * sans avoir besoin d'être poussés contre les bords.
    */
-  const radiusY = 174;
+  const radiusY = isVerySmallHeight ? 150 : isCompactHeight ? 162 : 174;
 
   /**
    * Les arcs décoratifs sont volontairement un peu plus grands que le rayon
@@ -374,8 +377,8 @@ export function FreeDicePad({
         maxWidth: arenaWidth,
         backgroundColor: "transparent",
         overflow: "visible",
-        marginTop: -18,
-        marginBottom: -18,
+        marginTop: isVerySmallHeight ? -14 : -18,
+        marginBottom: isVerySmallHeight ? -14 : -18,
       }}
     >
       {/* halos de fond, sans effet de carte */}
@@ -505,10 +508,10 @@ export function FreeDicePad({
         style={{
           position: "absolute",
           alignSelf: "center",
-          top: 138,
+          top: isVerySmallHeight ? 124 : isCompactHeight ? 132 : 138,
           width: 166,
           alignItems: "center",
-          gap: 8,
+          gap: isVerySmallHeight ? 6 : 8,
           zIndex: 4,
         }}
       >

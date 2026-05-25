@@ -50,9 +50,9 @@ function ActionTile({
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        width: 78,
-        height: 78,
-        paddingVertical: 7,
+        width: 72,
+        height: 72,
+        paddingVertical: 6,
         paddingHorizontal: 6,
         borderWidth: 1,
         borderColor: selected
@@ -76,9 +76,9 @@ function ActionTile({
     >
       <View
         style={{
-          width: 36,
-          height: 36,
-          borderRadius: 14,
+          width: 32,
+          height: 32,
+          borderRadius: 13,
           borderWidth: 1,
           borderColor: selected
             ? "rgba(217, 160, 55, 0.74)"
@@ -92,7 +92,7 @@ function ActionTile({
       >
         <Text
           style={{
-            fontSize: 20,
+            fontSize: 18,
             color: selected ? theme.colors.accent : theme.colors.arcane,
           }}
         >
@@ -104,8 +104,8 @@ function ActionTile({
         numberOfLines={2}
         style={{
           color: theme.colors.text,
-          fontSize: 11,
-          lineHeight: 13,
+          fontSize: 10,
+          lineHeight: 12,
           fontWeight: "800",
           textAlign: "center",
         }}
@@ -122,9 +122,9 @@ function MoreActionTile() {
   return (
     <View
       style={{
-        width: 78,
-        height: 78,
-        paddingVertical: 7,
+        width: 72,
+        height: 72,
+        paddingVertical: 6,
         paddingHorizontal: 6,
         borderWidth: 1,
         borderColor: "rgba(145, 113, 255, 0.16)",
@@ -138,9 +138,9 @@ function MoreActionTile() {
     >
       <View
         style={{
-          width: 36,
-          height: 36,
-          borderRadius: 14,
+          width: 32,
+          height: 32,
+          borderRadius: 13,
           borderWidth: 1,
           borderColor: "rgba(145, 113, 255, 0.24)",
           backgroundColor: "rgba(90, 55, 170, 0.08)",
@@ -151,7 +151,7 @@ function MoreActionTile() {
         <Text
           style={{
             color: theme.colors.textMuted,
-            fontSize: 23,
+            fontSize: 21,
             fontWeight: "900",
             lineHeight: 24,
           }}
@@ -229,8 +229,8 @@ export function ActionRail({
   return (
     <View
       style={{
-        gap: 6,
-        marginTop: -4,
+        gap: 5,
+        marginTop: -2,
       }}
     >
       <View
@@ -246,7 +246,7 @@ export function ActionRail({
           <Text
             style={{
               color: theme.colors.textMuted,
-              fontSize: 13,
+              fontSize: 12,
               fontWeight: "900",
               textTransform: "uppercase",
               letterSpacing: 0.65,
@@ -260,7 +260,7 @@ export function ActionRail({
             style={{
               marginTop: 0,
               color: theme.colors.textSubtle,
-              fontSize: 11,
+              fontSize: 10,
               fontWeight: "700",
             }}
           >
