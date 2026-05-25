@@ -31,6 +31,7 @@ type PreparedRollCardProps = {
   detail: string | null;
   lines?: PreparedRollCardLine[];
   isEmpty: boolean;
+  focusedLineIndex?: number | null;
   onEdit?: () => void;
   onClear?: () => void;
   onSave?: () => void;
@@ -39,6 +40,8 @@ type PreparedRollCardProps = {
   onToggleLineSign?: (index: number) => void;
   onRemoveLine?: (index: number) => void;
   onConfigureLineBehavior?: (index: number) => void;
+  onRollLine?: (index: number) => void | Promise<void>;
+  onFocusLine?: (index: number) => void;
 };
 
 function getDieShapeLabel(sides?: number) {
@@ -152,11 +155,13 @@ function PreparedDieTile({
   index,
   onAdjustQty,
   onOpenLineConfig,
+  isFocused,
 }: {
   line: PreparedRollCardLine;
   index: number;
   onAdjustQty?: (index: number, delta: number) => void;
   onOpenLineConfig?: (index: number) => void;
+  isFocused?: boolean;
 }) {
   const { theme } = useArcaneTheme();
 
@@ -197,8 +202,10 @@ function PreparedDieTile({
         height: 68,
         borderRadius: 16,
         borderWidth: 1,
-        borderColor,
-        backgroundColor,
+        borderColor: isFocused ? theme.colors.accent : borderColor,
+        backgroundColor: isFocused
+          ? "rgba(217, 160, 55, 0.16)"
+          : backgroundColor,
         paddingVertical: 5,
         paddingHorizontal: 5,
         alignItems: "center",
@@ -283,6 +290,39 @@ function PreparedDieTile({
           ⚙
         </Text>
       </View>
+
+      {isFocused ? (
+        <View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            left: 4,
+            bottom: 24,
+            minWidth: 34,
+            height: 16,
+            paddingHorizontal: 5,
+            borderRadius: theme.radius.pill,
+            borderWidth: 1,
+            borderColor: "rgba(217, 160, 55, 0.52)",
+            backgroundColor: "rgba(217, 160, 55, 0.14)",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 4,
+          }}
+        >
+          <Text
+            numberOfLines={1}
+            style={{
+              color: theme.colors.accent,
+              fontSize: 8,
+              fontWeight: "900",
+              lineHeight: 10,
+            }}
+          >
+            CIBLE
+          </Text>
+        </View>
+      ) : null}
 
       <View style={{ alignItems: "center", gap: 0 }}>
         <Text
@@ -504,12 +544,14 @@ function PreparedDiceListModal({
   onClose,
   onAdjustLineQty,
   onOpenLineConfig,
+  focusedLineIndex,
 }: {
   visible: boolean;
   lines: PreparedRollCardLine[];
   onClose: () => void;
   onAdjustLineQty?: (index: number, delta: number) => void;
   onOpenLineConfig?: (index: number) => void;
+  focusedLineIndex?: number | null;
 }) {
   const { theme } = useArcaneTheme();
   const rollTheme = useMemo(() => createRollScreenTheme(theme), [theme]);
@@ -655,6 +697,7 @@ function PreparedDiceListModal({
                     onClose();
                     onOpenLineConfig?.(lineIndex);
                   }}
+                  isFocused={focusedLineIndex === index}
                 />
               ))}
             </View>
@@ -676,6 +719,175 @@ function PreparedDiceListModal({
   );
 }
 
+function CompactStepper({
+  label,
+  value,
+  valueColor,
+  onDecrement,
+  onIncrement,
+  decrementDisabled,
+}: {
+  label: string;
+  value: string;
+  valueColor?: string;
+  onDecrement?: () => void;
+  onIncrement?: () => void;
+  decrementDisabled?: boolean;
+}) {
+  const { theme } = useArcaneTheme();
+
+  return (
+    <View
+      style={{
+        flex: 1,
+        minWidth: 130,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: "rgba(145, 113, 255, 0.16)",
+        backgroundColor: "rgba(13, 19, 43, 0.42)",
+        paddingVertical: 9,
+        paddingHorizontal: 10,
+        gap: 7,
+      }}
+    >
+      <Text
+        numberOfLines={1}
+        style={{
+          color: theme.colors.textSubtle,
+          fontSize: 9,
+          fontWeight: "900",
+          textTransform: "uppercase",
+          letterSpacing: 0.75,
+        }}
+      >
+        {label}
+      </Text>
+
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 8,
+        }}
+      >
+        <Pressable
+          disabled={!onDecrement || decrementDisabled}
+          onPress={onDecrement}
+          style={({ pressed }) => ({
+            width: 34,
+            height: 34,
+            borderRadius: theme.radius.pill,
+            borderWidth: 1,
+            borderColor: "rgba(145, 113, 255, 0.2)",
+            backgroundColor: "rgba(32, 41, 88, 0.42)",
+            alignItems: "center",
+            justifyContent: "center",
+            opacity:
+              !onDecrement || decrementDisabled ? 0.35 : pressed ? 0.72 : 1,
+            transform: [
+              { scale: pressed && onDecrement && !decrementDisabled ? 0.94 : 1 },
+            ],
+          })}
+        >
+          <Text
+            style={{
+              color: theme.colors.textMuted,
+              fontSize: 19,
+              fontWeight: "900",
+              lineHeight: 21,
+            }}
+          >
+            −
+          </Text>
+        </Pressable>
+
+        <Text
+          numberOfLines={1}
+          style={{
+            flex: 1,
+            color: valueColor ?? theme.colors.text,
+            fontSize: 18,
+            fontWeight: "900",
+            textAlign: "center",
+          }}
+        >
+          {value}
+        </Text>
+
+        <Pressable
+          disabled={!onIncrement}
+          onPress={onIncrement}
+          style={({ pressed }) => ({
+            width: 34,
+            height: 34,
+            borderRadius: theme.radius.pill,
+            borderWidth: 1,
+            borderColor: "rgba(145, 113, 255, 0.2)",
+            backgroundColor: "rgba(32, 41, 88, 0.42)",
+            alignItems: "center",
+            justifyContent: "center",
+            opacity: !onIncrement ? 0.35 : pressed ? 0.72 : 1,
+            transform: [{ scale: pressed && onIncrement ? 0.94 : 1 }],
+          })}
+        >
+          <Text
+            style={{
+              color: theme.colors.textMuted,
+              fontSize: 19,
+              fontWeight: "900",
+              lineHeight: 21,
+            }}
+          >
+            +
+          </Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+function LineRollButton({
+  onPress,
+}: {
+  onPress?: () => void;
+}) {
+  const { theme } = useArcaneTheme();
+
+  if (!onPress) return null;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        minHeight: 52,
+        borderRadius: theme.radius.pill,
+        borderWidth: 1,
+        borderColor: "rgba(217, 160, 55, 0.78)",
+        backgroundColor: pressed
+          ? "rgba(217, 160, 55, 0.22)"
+          : "rgba(217, 160, 55, 0.14)",
+        alignItems: "center",
+        justifyContent: "center",
+        opacity: pressed ? 0.86 : 1,
+        transform: [{ scale: pressed ? 0.985 : 1 }],
+      })}
+    >
+      <Text
+        style={{
+          color: theme.colors.accent,
+          fontSize: 15,
+          fontWeight: "900",
+          textTransform: "uppercase",
+          letterSpacing: 1,
+        }}
+      >
+        ✦ Lancer cette ligne
+      </Text>
+    </Pressable>
+  );
+}
+
 function PreparedLineConfigModal({
   visible,
   line,
@@ -686,6 +898,9 @@ function PreparedLineConfigModal({
   onToggleSign,
   onConfigureBehavior,
   onRemove,
+  onRollLine,
+  onFocusLine,
+  isFocusedLine,
 }: {
   visible: boolean;
   line: PreparedRollCardLine | null;
@@ -696,6 +911,9 @@ function PreparedLineConfigModal({
   onToggleSign?: (index: number) => void;
   onConfigureBehavior?: (index: number) => void;
   onRemove?: (index: number) => void;
+  onRollLine?: (index: number) => void | Promise<void>;
+  onFocusLine?: (index: number) => void;
+  isFocusedLine?: boolean;
 }) {
   const { theme } = useArcaneTheme();
   const rollTheme = useMemo(() => createRollScreenTheme(theme), [theme]);
@@ -866,9 +1084,7 @@ function PreparedLineConfigModal({
               >
                 <Text
                   style={{
-                    color: line.hasBehavior
-                      ? theme.colors.arcane
-                      : theme.colors.accent,
+                    color: line.hasBehavior ? theme.colors.arcane : theme.colors.accent,
                     fontSize: 24,
                     fontWeight: "900",
                     lineHeight: 28,
@@ -889,8 +1105,9 @@ function PreparedLineConfigModal({
                 </Text>
               </View>
 
-              <View style={{ flex: 1, gap: 3 }}>
+              <View style={{ flex: 1, gap: 4 }}>
                 <Text
+                  numberOfLines={1}
                   style={{
                     color: theme.colors.text,
                     fontSize: 18,
@@ -901,18 +1118,6 @@ function PreparedLineConfigModal({
                 </Text>
 
                 <Text
-                  style={{
-                    color: isNegative
-                      ? theme.colors.failure
-                      : theme.colors.success,
-                    fontSize: 13,
-                    fontWeight: "900",
-                  }}
-                >
-                  {isNegative ? "Malus (−)" : "Bonus (+)"}
-                </Text>
-
-                <Text
                   numberOfLines={1}
                   style={{
                     color: theme.colors.textMuted,
@@ -920,249 +1125,132 @@ function PreparedLineConfigModal({
                     fontWeight: "700",
                   }}
                 >
-                  Modificateur : {displayModifier}
+                  {line.detail ?? "Somme simple"}
                 </Text>
-              </View>
-            </View>
 
-            <View
-              style={{
-                height: 1,
-                backgroundColor: "rgba(145, 113, 255, 0.13)",
-              }}
-            />
-
-            <View style={{ gap: 10 }}>
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: theme.spacing.md,
-                }}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text
-                    style={{
-                      color: theme.colors.textSubtle,
-                      fontSize: 10,
-                      fontWeight: "900",
-                      textTransform: "uppercase",
-                      letterSpacing: 0.75,
-                    }}
-                  >
-                    Quantité
-                  </Text>
-
-                  <Text
-                    style={{
-                      color: theme.colors.text,
-                      fontSize: 20,
-                      fontWeight: "900",
-                      marginTop: 2,
-                    }}
-                  >
-                    {qty}
-                  </Text>
-                </View>
-
-                <View
+                <Text
+                  numberOfLines={1}
                   style={{
-                    flexDirection: "row",
-                    gap: 10,
+                    color: modifier > 0
+                      ? theme.colors.success
+                      : modifier < 0
+                        ? theme.colors.failure
+                        : theme.colors.textMuted,
+                    fontSize: 12,
+                    fontWeight: "900",
                   }}
                 >
-                  <Pressable
-                    disabled={!canDecreaseQty}
-                    onPress={() => onAdjustQty?.(index, -1)}
-                    style={({ pressed }) => ({
-                      width: 48,
-                      height: 48,
-                      borderRadius: theme.radius.pill,
-                      borderWidth: 1,
-                      borderColor: "rgba(145, 113, 255, 0.22)",
-                      backgroundColor: "rgba(32, 41, 88, 0.42)",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      opacity: !canDecreaseQty ? 0.35 : pressed ? 0.72 : 1,
-                      transform: [{ scale: pressed && canDecreaseQty ? 0.94 : 1 }],
-                    })}
-                  >
-                    <Text
-                      style={{
-                        color: theme.colors.textMuted,
-                        fontSize: 24,
-                        fontWeight: "900",
-                      }}
-                    >
-                      −
-                    </Text>
-                  </Pressable>
-
-                  <Pressable
-                    disabled={!onAdjustQty}
-                    onPress={() => onAdjustQty?.(index, 1)}
-                    style={({ pressed }) => ({
-                      width: 48,
-                      height: 48,
-                      borderRadius: theme.radius.pill,
-                      borderWidth: 1,
-                      borderColor: "rgba(145, 113, 255, 0.22)",
-                      backgroundColor: "rgba(32, 41, 88, 0.42)",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      opacity: !onAdjustQty ? 0.35 : pressed ? 0.72 : 1,
-                      transform: [{ scale: pressed && onAdjustQty ? 0.94 : 1 }],
-                    })}
-                  >
-                    <Text
-                      style={{
-                        color: theme.colors.textMuted,
-                        fontSize: 24,
-                        fontWeight: "900",
-                      }}
-                    >
-                      +
-                    </Text>
-                  </Pressable>
-                </View>
+                  Modificateur : {displayModifier}
+                </Text>
               </View>
 
               <Pressable
                 disabled={!onToggleSign}
                 onPress={() => onToggleSign?.(index)}
                 style={({ pressed }) => ({
-                  minHeight: 46,
+                  paddingVertical: 7,
+                  paddingHorizontal: 10,
                   borderRadius: theme.radius.pill,
                   borderWidth: 1,
                   borderColor: isNegative
-                    ? "rgba(255, 92, 122, 0.42)"
-                    : "rgba(80, 220, 160, 0.36)",
+                    ? "rgba(255, 92, 122, 0.46)"
+                    : "rgba(80, 220, 160, 0.4)",
                   backgroundColor: isNegative
-                    ? "rgba(255, 92, 122, 0.09)"
+                    ? "rgba(255, 92, 122, 0.1)"
                     : "rgba(80, 220, 160, 0.08)",
-                  alignItems: "center",
-                  justifyContent: "center",
                   opacity: !onToggleSign ? 0.4 : pressed ? 0.78 : 1,
-                  transform: [{ scale: pressed && onToggleSign ? 0.98 : 1 }],
+                  transform: [{ scale: pressed && onToggleSign ? 0.96 : 1 }],
                 })}
               >
                 <Text
                   style={{
-                    color: isNegative
-                      ? theme.colors.failure
-                      : theme.colors.success,
-                    fontSize: 14,
+                    color: isNegative ? theme.colors.failure : theme.colors.success,
+                    fontSize: 11,
                     fontWeight: "900",
                   }}
                 >
-                  Basculer + / −
+                  {isNegative ? "−" : "+"}
                 </Text>
               </Pressable>
+            </View>
 
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: theme.spacing.md,
+            <LineRollButton
+              onPress={
+                onRollLine
+                  ? () => {
+                    onClose();
+                    void onRollLine(index);
+                  }
+                  : undefined
+              }
+            />
+
+            {onFocusLine ? (
+              <Pressable
+                onPress={() => {
+                  onClose();
+                  onFocusLine(index);
                 }}
+                style={({ pressed }) => ({
+                  minHeight: 38,
+                  borderRadius: theme.radius.pill,
+                  borderWidth: 1,
+                  borderColor: isFocusedLine
+                    ? "rgba(217, 160, 55, 0.74)"
+                    : "rgba(145, 113, 255, 0.22)",
+                  backgroundColor: isFocusedLine
+                    ? "rgba(217, 160, 55, 0.14)"
+                    : pressed
+                      ? "rgba(32, 41, 88, 0.62)"
+                      : "rgba(32, 41, 88, 0.42)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: pressed ? 0.82 : 1,
+                  transform: [{ scale: pressed ? 0.985 : 1 }],
+                })}
               >
-                <View style={{ flex: 1 }}>
-                  <Text
-                    style={{
-                      color: theme.colors.textSubtle,
-                      fontSize: 10,
-                      fontWeight: "900",
-                      textTransform: "uppercase",
-                      letterSpacing: 0.75,
-                    }}
-                  >
-                    Modificateur
-                  </Text>
-
-                  <Text
-                    style={{
-                      color:
-                        modifier > 0
-                          ? theme.colors.success
-                          : modifier < 0
-                            ? theme.colors.failure
-                            : theme.colors.textMuted,
-                      fontSize: 20,
-                      fontWeight: "900",
-                      marginTop: 2,
-                    }}
-                  >
-                    {displayModifier}
-                  </Text>
-                </View>
-
-                <View
+                <Text
                   style={{
-                    flexDirection: "row",
-                    gap: 10,
+                    color: isFocusedLine ? theme.colors.accent : theme.colors.textMuted,
+                    fontSize: 12,
+                    fontWeight: "900",
                   }}
                 >
-                  <Pressable
-                    disabled={!onAdjustModifier}
-                    onPress={() => onAdjustModifier?.(index, -1)}
-                    style={({ pressed }) => ({
-                      width: 48,
-                      height: 48,
-                      borderRadius: theme.radius.pill,
-                      borderWidth: 1,
-                      borderColor: "rgba(145, 113, 255, 0.22)",
-                      backgroundColor: "rgba(32, 41, 88, 0.42)",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      opacity: !onAdjustModifier ? 0.35 : pressed ? 0.72 : 1,
-                      transform: [
-                        { scale: pressed && onAdjustModifier ? 0.94 : 1 },
-                      ],
-                    })}
-                  >
-                    <Text
-                      style={{
-                        color: theme.colors.textMuted,
-                        fontSize: 24,
-                        fontWeight: "900",
-                      }}
-                    >
-                      −
-                    </Text>
-                  </Pressable>
+                  {isFocusedLine
+                    ? "Cette ligne est ciblée par le bouton principal"
+                    : "Cibler cette ligne avec le bouton principal"}
+                </Text>
+              </Pressable>
+            ) : null}
 
-                  <Pressable
-                    disabled={!onAdjustModifier}
-                    onPress={() => onAdjustModifier?.(index, 1)}
-                    style={({ pressed }) => ({
-                      width: 48,
-                      height: 48,
-                      borderRadius: theme.radius.pill,
-                      borderWidth: 1,
-                      borderColor: "rgba(145, 113, 255, 0.22)",
-                      backgroundColor: "rgba(32, 41, 88, 0.42)",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      opacity: !onAdjustModifier ? 0.35 : pressed ? 0.72 : 1,
-                      transform: [
-                        { scale: pressed && onAdjustModifier ? 0.94 : 1 },
-                      ],
-                    })}
-                  >
-                    <Text
-                      style={{
-                        color: theme.colors.textMuted,
-                        fontSize: 24,
-                        fontWeight: "900",
-                      }}
-                    >
-                      +
-                    </Text>
-                  </Pressable>
-                </View>
-              </View>
+            <View
+              style={{
+                flexDirection: "row",
+                gap: 9,
+                flexWrap: "wrap",
+              }}
+            >
+              <CompactStepper
+                label="Quantité"
+                value={`${qty}`}
+                onDecrement={() => onAdjustQty?.(index, -1)}
+                onIncrement={() => onAdjustQty?.(index, 1)}
+                decrementDisabled={!canDecreaseQty}
+              />
+
+              <CompactStepper
+                label="Modificateur"
+                value={displayModifier}
+                valueColor={
+                  modifier > 0
+                    ? theme.colors.success
+                    : modifier < 0
+                      ? theme.colors.failure
+                      : theme.colors.textMuted
+                }
+                onDecrement={() => onAdjustModifier?.(index, -1)}
+                onIncrement={() => onAdjustModifier?.(index, 1)}
+              />
             </View>
 
             <View
@@ -1186,7 +1274,6 @@ function PreparedLineConfigModal({
                   onClose();
                   onConfigureBehavior?.(index);
                 }}
-                variant="accent"
               />
 
               <PreparedActionButton
@@ -1280,6 +1367,7 @@ export function PreparedRollCard({
   detail,
   lines,
   isEmpty,
+  focusedLineIndex,
   onEdit,
   onClear,
   onSave,
@@ -1288,6 +1376,8 @@ export function PreparedRollCard({
   onToggleLineSign,
   onRemoveLine,
   onConfigureLineBehavior,
+  onRollLine,
+  onFocusLine,
 }: PreparedRollCardProps) {
   const { theme } = useArcaneTheme();
   const rollTheme = useMemo(() => createRollScreenTheme(theme), [theme]);
@@ -1465,6 +1555,7 @@ export function PreparedRollCard({
                   index={index}
                   onAdjustQty={onAdjustLineQty}
                   onOpenLineConfig={setSelectedLineConfigIndex}
+                  isFocused={focusedLineIndex === index}
                 />
               ))}
 
@@ -1543,6 +1634,7 @@ export function PreparedRollCard({
         onClose={() => setShowAllDiceModal(false)}
         onAdjustLineQty={onAdjustLineQty}
         onOpenLineConfig={setSelectedLineConfigIndex}
+        focusedLineIndex={focusedLineIndex}
       />
 
       <PreparedLineConfigModal
@@ -1559,8 +1651,10 @@ export function PreparedRollCard({
         onToggleSign={onToggleLineSign}
         onConfigureBehavior={onConfigureLineBehavior}
         onRemove={onRemoveLine}
+        onRollLine={onRollLine}
+        onFocusLine={onFocusLine}
+        isFocusedLine={focusedLineIndex === selectedLineConfigIndex}
       />
     </>
-
   );
 }

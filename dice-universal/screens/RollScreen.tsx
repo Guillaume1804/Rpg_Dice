@@ -1,7 +1,9 @@
 // dice-universal\screens\RollScreen.tsx
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Animated,
+  Easing,
   LayoutAnimation,
   Pressable,
   ScrollView,
@@ -49,7 +51,8 @@ import { useRollExecution } from "../features/roll/hooks/useRollExecution";
 import { useQuickRollDraft } from "../features/roll/hooks/useQuickRollDraft";
 import { useRollTableData } from "../features/roll/hooks/useRollTableData";
 
-import type { GroupRollResult } from "../core/roll/roll";
+import { rollGroup, type GroupRollResult } from "../core/roll/roll";
+import { evaluateRule } from "../core/rules/evaluate";
 
 import { buildDraftTempRuleFromPreset } from "../features/roll/helpers/buildDraftTempRuleFromPreset";
 
@@ -169,8 +172,11 @@ export default function RollScreen() {
     null,
   );
   const [showPreparedEditSheet, setShowPreparedEditSheet] = useState(false);
-  const [showPreparedAddDicePicker, setShowPreparedAddDicePicker] =
-    useState(false);
+
+  const resetOverlayAnim = useRef(new Animated.Value(0)).current;
+  const resetSpinnerAnim = useRef(new Animated.Value(0)).current;
+  const [isResettingPreparedRoll, setIsResettingPreparedRoll] = useState(false);
+
   const [showTableSessionMenu, setShowTableSessionMenu] = useState(false);
   const [showProfileSessionMenu, setShowProfileSessionMenu] = useState(false);
 
@@ -222,6 +228,10 @@ export default function RollScreen() {
 
   const [preparedBehaviorFlowOrigin, setPreparedBehaviorFlowOrigin] = useState<
     "global" | "tile" | null
+  >(null);
+
+  const [focusedPreparedLineIndex, setFocusedPreparedLineIndex] = useState<
+    number | null
   >(null);
 
   const quickBehaviorConfig = useQuickBehaviorConfigModal();
@@ -326,7 +336,6 @@ export default function RollScreen() {
 
     addDraftGroup,
     addQuickStandardDie,
-    addDieLineToDraftGroup,
     addQuickPresetDie,
     loadSavedGroupIntoDraft,
     updateDraftGroupName,
@@ -483,15 +492,42 @@ export default function RollScreen() {
   }
 
   function handleClearPreparedRoll() {
-    animateCockpitLayout();
+    if (isResettingPreparedRoll) return;
 
-    resetFreeDraftState();
+    setIsResettingPreparedRoll(true);
+    resetOverlayAnim.setValue(0);
 
-    setPreparedRoll(null);
-    setLatestResult(null);
-    setShowPreparedEditSheet(false);
-    setQuickModifier(0);
-    setShowPreparedAddDicePicker(false);
+    Animated.timing(resetOverlayAnim, {
+      toValue: 1,
+      duration: 180,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start(() => {
+      setTimeout(() => {
+        animateCockpitLayout();
+
+        resetFreeDraftState();
+
+        setPreparedRoll(null);
+        setLatestResult(null);
+        setShowPreparedEditSheet(false);
+        setQuickModifier(0);
+        setFocusedPreparedLineIndex(null);
+
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            Animated.timing(resetOverlayAnim, {
+              toValue: 0,
+              duration: 260,
+              easing: Easing.out(Easing.cubic),
+              useNativeDriver: true,
+            }).start(() => {
+              setIsResettingPreparedRoll(false);
+            });
+          }, 220);
+        });
+      }, 260);
+    });
   }
 
   async function handleRollPrepared() {
@@ -518,6 +554,94 @@ export default function RollScreen() {
 
       setLatestResult(result);
     }
+  }
+
+  async function handleRollPreparedLine(index: number) {
+    if (
+      preparedRoll?.source !== "free" &&
+      preparedRoll?.source !== "action_draft"
+    ) {
+      return;
+    }
+
+    if (!editablePreparedDraftGroup) return;
+
+    const die = editablePreparedDraftGroup.dice[index];
+    if (!die) return;
+
+    const tempRule = die.rule_temp as any | null | undefined;
+    const dbRule = die.rule_id ? rulesMap[die.rule_id] : null;
+    const sourceRule = tempRule ?? dbRule;
+
+    const rule = sourceRule
+      ? {
+        id: String(sourceRule.id ?? `temp-line-rule-${index}`),
+        name: String(sourceRule.name ?? "Comportement temporaire"),
+        kind: String(sourceRule.kind ?? "sum"),
+        params_json:
+          typeof sourceRule.params_json === "string"
+            ? sourceRule.params_json
+            : typeof sourceRule.paramsJson === "string"
+              ? sourceRule.paramsJson
+              : JSON.stringify(sourceRule.params_json ?? {}),
+      }
+      : null;
+
+    const lineLabel = formatPreparedCardDieLabel({
+      sides: die.sides,
+      qty: die.qty,
+      modifier: die.modifier ?? 0,
+      sign: die.sign ?? 1,
+    });
+
+    const result = rollGroup({
+      groupId: `${editablePreparedDraftGroup.id}-line-${index}`,
+      label: `Ligne seule — ${lineLabel}`,
+      entries: [
+        {
+          entryId: `${editablePreparedDraftGroup.id}-line-${index}-entry`,
+          sides: die.sides,
+          qty: die.qty,
+          modifier: die.modifier ?? 0,
+          sign: die.sign ?? 1,
+          rule,
+        },
+      ],
+      groupRule: null,
+      evaluateRule,
+    });
+
+    setLatestResult(result);
+  }
+
+  function handleFocusPreparedLine(index: number) {
+    if (
+      preparedRoll?.source !== "free" &&
+      preparedRoll?.source !== "action_draft"
+    ) {
+      return;
+    }
+
+    if (!editablePreparedDraftGroup?.dice[index]) return;
+
+    setFocusedPreparedLineIndex(index);
+  }
+
+  function handleClearFocusedPreparedLine() {
+    setFocusedPreparedLineIndex(null);
+  }
+
+  async function handlePressStickyRollButton() {
+    if (
+      focusedPreparedLineIndex != null &&
+      (preparedRoll?.source === "free" ||
+        preparedRoll?.source === "action_draft")
+    ) {
+      await handleRollPreparedLine(focusedPreparedLineIndex);
+      return;
+    }
+
+    await handleRollPrepared();
   }
 
   async function handleOpenSaveDraftModal() {
@@ -731,6 +855,7 @@ export default function RollScreen() {
 
     setLatestResult(null);
     setShowPreparedEditSheet(false);
+    setFocusedPreparedLineIndex(null);
   }
 
   function handleAddQuickStandardDie(sides: number) {
@@ -746,6 +871,11 @@ export default function RollScreen() {
 
     setPreparedRoll({ source: "free" });
     setLatestResult(null);
+
+    if (preparedRoll?.source === "action") {
+      setFocusedPreparedLineIndex(null);
+    }
+
     setShowPreparedEditSheet(false);
     setQuickModifier(0);
   }
@@ -770,45 +900,7 @@ export default function RollScreen() {
 
     setPreparedEditMode("dice");
     setPreparedBehaviorTargetIndex(null);
-    setShowPreparedAddDicePicker(false);
     setShowPreparedEditSheet(true);
-  }
-
-  function handleTogglePreparedAddDicePicker() {
-    if (
-      preparedRoll?.source !== "free" &&
-      preparedRoll?.source !== "action_draft"
-    ) {
-      return;
-    }
-
-    if (!editablePreparedDraftGroup) return;
-
-    setShowPreparedAddDicePicker((value) => !value);
-  }
-
-  function handleAddPreparedDieLine(sides: number) {
-    if (
-      preparedRoll?.source !== "free" &&
-      preparedRoll?.source !== "action_draft"
-    ) {
-      return;
-    }
-
-    if (!editablePreparedDraftGroup) return;
-
-    animateCockpitLayout();
-
-    addDieLineToDraftGroup(editablePreparedDraftGroup.id, sides);
-
-    setPreparedRoll(
-      preparedRoll?.source === "action_draft"
-        ? preparedRoll
-        : { source: "free" },
-    );
-
-    setLatestResult(null);
-    setShowPreparedAddDicePicker(false);
   }
 
   function handleChangePreparedRollName(value: string) {
@@ -835,7 +927,6 @@ export default function RollScreen() {
     quickBehaviorConfig.close();
 
     setShowPreparedEditSheet(false);
-    setShowPreparedAddDicePicker(false);
   }
 
   function handleAdjustPreparedDieQty(index: number, delta: number) {
@@ -960,6 +1051,13 @@ export default function RollScreen() {
 
     removeDraftDie(editablePreparedDraftGroup.id, index);
     setLatestResult(null);
+
+    setFocusedPreparedLineIndex((current) => {
+      if (current == null) return null;
+      if (current === index) return null;
+      if (current > index) return current - 1;
+      return current;
+    });
   }
 
   const handleClearActiveSession = useCallback(async (): Promise<void> => {
@@ -974,6 +1072,7 @@ export default function RollScreen() {
     setPreparedRoll(null);
     setLatestResult(null);
     setShowPreparedEditSheet(false);
+    setFocusedPreparedLineIndex(null);
     setShowTableSessionMenu(false);
     setShowProfileSessionMenu(false);
   }, [clearActiveTableId, resetDraftState]);
@@ -991,6 +1090,7 @@ export default function RollScreen() {
       setPreparedRoll(null);
       setLatestResult(null);
       setShowPreparedEditSheet(false);
+      setFocusedPreparedLineIndex(null);
       setShowTableSessionMenu(false);
       setShowProfileSessionMenu(false);
     },
@@ -1206,6 +1306,31 @@ export default function RollScreen() {
     [preparedQuickEditDice, editablePreparedDraftGroup?.id],
   );
 
+  const focusedPreparedLine =
+    focusedPreparedLineIndex != null
+      ? preparedCardLines[focusedPreparedLineIndex] ?? null
+      : null;
+
+  const isFocusedLineMode = !!focusedPreparedLine;
+
+  useEffect(() => {
+    if (focusedPreparedLineIndex == null) return;
+
+    if (
+      preparedRoll?.source !== "free" &&
+      preparedRoll?.source !== "action_draft"
+    ) {
+      setFocusedPreparedLineIndex(null);
+      return;
+    }
+
+    const diceCount = editablePreparedDraftGroup?.dice.length ?? 0;
+
+    if (focusedPreparedLineIndex < 0 || focusedPreparedLineIndex >= diceCount) {
+      setFocusedPreparedLineIndex(null);
+    }
+  }, [focusedPreparedLineIndex, preparedRoll, editablePreparedDraftGroup]);
+
   const freeDiceCountsBySides = useMemo(() => {
     const counts: Record<number, number> = {};
 
@@ -1336,6 +1461,30 @@ export default function RollScreen() {
       setShowPreparedEditSheet(false);
     }
   }, [hasPreparedQuickRoll, preparedRoll]);
+
+  useEffect(() => {
+    if (!isResettingPreparedRoll) {
+      resetSpinnerAnim.setValue(0);
+      return;
+    }
+
+    resetSpinnerAnim.setValue(0);
+
+    const loop = Animated.loop(
+      Animated.timing(resetSpinnerAnim, {
+        toValue: 1,
+        duration: 850,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    );
+
+    loop.start();
+
+    return () => {
+      loop.stop();
+    };
+  }, [isResettingPreparedRoll, resetSpinnerAnim]);
 
   const tableSessionMenuItems = useMemo<SessionMenuItem[]>(() => {
     const freeModeItem: SessionMenuItem = {
@@ -1613,6 +1762,7 @@ export default function RollScreen() {
                 detail={preparedCardDetail}
                 lines={preparedCardLines}
                 isEmpty={!hasPreparedRoll}
+                focusedLineIndex={focusedPreparedLineIndex}
                 onEdit={
                   (preparedRoll?.source === "free" ||
                     preparedRoll?.source === "action_draft") &&
@@ -1655,7 +1805,18 @@ export default function RollScreen() {
                     ? handleConfigurePreparedDieBehaviorFromTile
                     : undefined
                 }
-                onClear={hasPreparedRoll ? handleClearPreparedRoll : undefined}
+                onRollLine={
+                  (preparedRoll?.source === "free" ||
+                    preparedRoll?.source === "action_draft") &&
+                    hasPreparedRoll
+                    ? handleRollPreparedLine
+                    : undefined
+                }
+                onClear={
+                  hasPreparedRoll && !isResettingPreparedRoll
+                    ? handleClearPreparedRoll
+                    : undefined
+                }
                 onSave={
                   (preparedRoll?.source === "free" ||
                     preparedRoll?.source === "action_draft") &&
@@ -1663,73 +1824,14 @@ export default function RollScreen() {
                     ? handleOpenPreparedSave
                     : undefined
                 }
+                onFocusLine={
+                  (preparedRoll?.source === "free" ||
+                    preparedRoll?.source === "action_draft") &&
+                    hasPreparedRoll
+                    ? handleFocusPreparedLine
+                    : undefined
+                }
               />
-              {showPreparedAddDicePicker ? (
-                <View
-                  style={{
-                    marginTop: 8,
-                    borderRadius: 18,
-                    borderWidth: 1,
-                    borderColor: "rgba(217, 160, 55, 0.34)",
-                    backgroundColor: "rgba(13, 19, 43, 0.86)",
-                    padding: 10,
-                    gap: 8,
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: theme.colors.textSubtle,
-                      fontSize: 10,
-                      fontWeight: "900",
-                      textTransform: "uppercase",
-                      letterSpacing: 0.8,
-                    }}
-                  >
-                    Ajouter une ligne de dés
-                  </Text>
-
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      flexWrap: "wrap",
-                      gap: 8,
-                    }}
-                  >
-                    {STANDARD_DICE.map((sides) => (
-                      <Pressable
-                        key={`prepared-add-d${sides}`}
-                        onPress={() => handleAddPreparedDieLine(sides)}
-                        style={({ pressed }) => ({
-                          minWidth: 52,
-                          minHeight: 42,
-                          borderRadius: theme.radius.pill,
-                          borderWidth: 1,
-                          borderColor: pressed
-                            ? theme.colors.accent
-                            : "rgba(145, 113, 255, 0.22)",
-                          backgroundColor: pressed
-                            ? "rgba(217, 160, 55, 0.18)"
-                            : "rgba(32, 41, 88, 0.52)",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          opacity: pressed ? 0.86 : 1,
-                          transform: [{ scale: pressed ? 0.96 : 1 }],
-                        })}
-                      >
-                        <Text
-                          style={{
-                            color: theme.colors.text,
-                            fontSize: 13,
-                            fontWeight: "900",
-                          }}
-                        >
-                          d{sides}
-                        </Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                </View>
-              ) : null}
             </View>
 
             {hasActiveTable ? (
@@ -1759,71 +1861,194 @@ export default function RollScreen() {
             paddingTop: isVerySmallScreen ? 2 : 4,
           }}
         >
+          {isFocusedLineMode ? (
+            <View
+              style={{
+                marginBottom: 7,
+                borderRadius: theme.radius.pill,
+                borderWidth: 1,
+                borderColor: "rgba(217, 160, 55, 0.42)",
+                backgroundColor: "rgba(217, 160, 55, 0.1)",
+                paddingVertical: 6,
+                paddingHorizontal: 10,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 10,
+              }}
+            >
+              <Text
+                numberOfLines={1}
+                style={{
+                  flex: 1,
+                  color: theme.colors.accent,
+                  fontSize: 11,
+                  fontWeight: "900",
+                }}
+              >
+                Ligne ciblée · {focusedPreparedLine?.label}
+              </Text>
+
+              <Pressable
+                onPress={handleClearFocusedPreparedLine}
+                style={({ pressed }) => ({
+                  paddingVertical: 5,
+                  paddingHorizontal: 9,
+                  borderRadius: theme.radius.pill,
+                  borderWidth: 1,
+                  borderColor: "rgba(145, 113, 255, 0.2)",
+                  backgroundColor: pressed
+                    ? "rgba(32, 41, 88, 0.66)"
+                    : "rgba(32, 41, 88, 0.44)",
+                  opacity: pressed ? 0.82 : 1,
+                })}
+              >
+                <Text
+                  style={{
+                    color: theme.colors.textMuted,
+                    fontSize: 10,
+                    fontWeight: "900",
+                  }}
+                >
+                  Jet complet
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
+
           <StickyRollButton
             disabled={!hasPreparedRoll}
-            onPress={handleRollPrepared}
+            onPress={handlePressStickyRollButton}
+            label={isFocusedLineMode ? "LANCER LA LIGNE" : "LANCER LE JET"}
           />
         </View>
       </View>
 
-      {showAdvanced ? (
-        <View
-          style={{
-            position: "absolute",
-            left: layout.horizontalPadding,
-            right: layout.horizontalPadding,
-            top: screenTopPadding + 72,
-            bottom: theme.spacing.md,
-            zIndex: 50,
-            borderRadius: rollTheme.layout.cockpitRadius,
-            backgroundColor: "rgba(7, 12, 31, 0.96)",
-            borderWidth: 1,
-            borderColor: "rgba(145, 113, 255, 0.24)",
-            overflow: "hidden",
-          }}
-        >
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{
-              padding: theme.spacing.md,
+      {
+        showAdvanced ? (
+          <View
+            style={{
+              position: "absolute",
+              left: layout.horizontalPadding,
+              right: layout.horizontalPadding,
+              top: screenTopPadding + 72,
+              bottom: theme.spacing.md,
+              zIndex: 50,
+              borderRadius: rollTheme.layout.cockpitRadius,
+              backgroundColor: "rgba(7, 12, 31, 0.96)",
+              borderWidth: 1,
+              borderColor: "rgba(145, 113, 255, 0.24)",
+              overflow: "hidden",
             }}
           >
-            <QuickRollSection
-              simplified={true}
-              hideInternalRollControls={true}
-              hideDicePicker={true}
-              hideStandardQuickGroup={true}
-              title="Action temporaire"
-              standardDice={STANDARD_DICE}
-              draftGroups={draftGroups}
-              draftResults={draftResults}
-              selectedDraftGroupId={selectedDraftGroupId}
-              tableIsSystem={table?.is_system === 1}
-              showSaveOptions={showSaveOptions}
-              showAdvanced={showAdvanced}
-              onToggleSaveOptions={() => setShowSaveOptions((v) => !v)}
-              onToggleAdvanced={() => setShowAdvanced((v) => !v)}
-              onAddDraftGroup={addDraftGroup}
-              onAddQuickStandardDie={handleAddQuickStandardDie}
-              onSelectDraftGroup={setSelectedDraftGroupId}
-              onRenameDraftGroup={openRenameDraftGroupModal}
-              onEditDraftGroupRule={openDraftGroupRuleEditor}
-              onRemoveDraftGroup={removeDraftGroup}
-              onEditDraftDie={openDraftEditor}
-              onOpenDieConfig={quickDieBehaviorPicker.open}
-              onRemoveDraftDie={removeDraftDie}
-              onRollDraft={rollDraft}
-              onRollQuickGroup={rollSingleDraftGroup}
-              onClearQuickGroup={clearDraftGroup}
-              onClearDraft={handleClearQuickRoll}
-              onReplaceCurrentTable={replaceCurrentTable}
-              onCreateNewTable={handleOpenSaveDraftModal}
-              availableRules={availableRules}
-              onAdjustQuickDieQty={adjustDraftDieQty}
-            />
-          </ScrollView>
-        </View>
-      ) : null}
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{
+                padding: theme.spacing.md,
+              }}
+            >
+              <QuickRollSection
+                simplified={true}
+                hideInternalRollControls={true}
+                hideDicePicker={true}
+                hideStandardQuickGroup={true}
+                title="Action temporaire"
+                standardDice={STANDARD_DICE}
+                draftGroups={draftGroups}
+                draftResults={draftResults}
+                selectedDraftGroupId={selectedDraftGroupId}
+                tableIsSystem={table?.is_system === 1}
+                showSaveOptions={showSaveOptions}
+                showAdvanced={showAdvanced}
+                onToggleSaveOptions={() => setShowSaveOptions((v) => !v)}
+                onToggleAdvanced={() => setShowAdvanced((v) => !v)}
+                onAddDraftGroup={addDraftGroup}
+                onAddQuickStandardDie={handleAddQuickStandardDie}
+                onSelectDraftGroup={setSelectedDraftGroupId}
+                onRenameDraftGroup={openRenameDraftGroupModal}
+                onEditDraftGroupRule={openDraftGroupRuleEditor}
+                onRemoveDraftGroup={removeDraftGroup}
+                onEditDraftDie={openDraftEditor}
+                onOpenDieConfig={quickDieBehaviorPicker.open}
+                onRemoveDraftDie={removeDraftDie}
+                onRollDraft={rollDraft}
+                onRollQuickGroup={rollSingleDraftGroup}
+                onClearQuickGroup={clearDraftGroup}
+                onClearDraft={handleClearQuickRoll}
+                onReplaceCurrentTable={replaceCurrentTable}
+                onCreateNewTable={handleOpenSaveDraftModal}
+                availableRules={availableRules}
+                onAdjustQuickDieQty={adjustDraftDieQty}
+              />
+            </ScrollView>
+          </View>
+        ) : null
+      }
+
+      <Animated.View
+        pointerEvents={isResettingPreparedRoll ? "auto" : "none"}
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 80,
+          elevation: 80,
+          backgroundColor: "rgba(0, 0, 0, 0.94)",
+          opacity: resetOverlayAnim,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Animated.View
+          style={{
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 14,
+            opacity: resetOverlayAnim,
+            transform: [
+              {
+                scale: resetOverlayAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.96, 1],
+                }),
+              },
+            ],
+          }}
+        >
+          <Animated.View
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: 999,
+              borderWidth: 3,
+              borderColor: "rgba(217, 160, 55, 0.22)",
+              borderTopColor: theme.colors.accent,
+              transform: [
+                {
+                  rotate: resetSpinnerAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ["0deg", "360deg"],
+                  }),
+                },
+              ],
+            }}
+          />
+
+          <Text
+            style={{
+              color: theme.colors.accent,
+              fontSize: 13,
+              fontWeight: "900",
+              textTransform: "uppercase",
+              letterSpacing: 1.4,
+            }}
+          >
+            Réinitialisation du jet
+          </Text>
+        </Animated.View>
+      </Animated.View>
 
       <RollModals
         draftGroups={draftGroups}
@@ -1886,420 +2111,426 @@ export default function RollScreen() {
         onClose={() => setShowActionDraftSaveMenu(false)}
       />
 
-      {showActionCopyNameModal ? (
-        <View
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0,0,0,0.72)",
-            justifyContent: "center",
-            padding: 18,
-            zIndex: 90,
-          }}
-        >
+      {
+        showActionCopyNameModal ? (
           <View
             style={{
-              borderRadius: rollTheme.layout.cockpitRadius,
-              borderWidth: 1,
-              borderColor: "rgba(217, 160, 55, 0.7)",
-              backgroundColor: rollTheme.cockpit.panel,
-              padding: theme.spacing.md,
-              gap: theme.spacing.md,
-              overflow: "hidden",
-              ...theme.shadow.card,
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0,0,0,0.72)",
+              justifyContent: "center",
+              padding: 18,
+              zIndex: 90,
             }}
           >
             <View
-              pointerEvents="none"
               style={{
-                position: "absolute",
-                top: -70,
-                right: -60,
-                width: 170,
-                height: 170,
-                borderRadius: 999,
-                backgroundColor: rollTheme.cockpit.glow,
-                opacity: 0.16,
-              }}
-            />
-
-            <View style={{ gap: theme.spacing.xs }}>
-              <Text
-                style={{
-                  color: theme.colors.textSubtle,
-                  fontSize: theme.typography.tiny,
-                  fontWeight: "900",
-                  textTransform: "uppercase",
-                  letterSpacing: 0.9,
-                }}
-              >
-                ✦ Nouvelle action
-              </Text>
-
-              <Text
-                style={{
-                  color: theme.colors.text,
-                  fontSize: 22,
-                  fontWeight: "900",
-                  letterSpacing: -0.3,
-                }}
-              >
-                Nommer la copie
-              </Text>
-
-              <Text
-                style={{
-                  color: theme.colors.textMuted,
-                  lineHeight: 20,
-                  fontWeight: "600",
-                }}
-              >
-                Cette copie sera ajoutée au profil actif sans modifier l’action
-                d’origine.
-              </Text>
-            </View>
-
-            <TextInput
-              value={actionCopyName}
-              onChangeText={setActionCopyName}
-              placeholder="Nom de la nouvelle action"
-              placeholderTextColor={theme.colors.textSubtle}
-              selectionColor={theme.colors.accent}
-              autoFocus
-              style={{
-                minHeight: 52,
-                color: theme.colors.text,
-                backgroundColor: rollTheme.cockpit.panelAlt,
+                borderRadius: rollTheme.layout.cockpitRadius,
                 borderWidth: 1,
-                borderColor: rollTheme.cockpit.borderSoft,
-                borderRadius: theme.radius.lg,
-                paddingHorizontal: 14,
-                paddingVertical: 12,
-                fontSize: 17,
-                fontWeight: "800",
-              }}
-            />
-
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "flex-end",
-                flexWrap: "wrap",
-                gap: theme.spacing.sm,
+                borderColor: "rgba(217, 160, 55, 0.7)",
+                backgroundColor: rollTheme.cockpit.panel,
+                padding: theme.spacing.md,
+                gap: theme.spacing.md,
+                overflow: "hidden",
+                ...theme.shadow.card,
               }}
             >
-              <Pressable
-                onPress={() => {
-                  setShowActionCopyNameModal(false);
-                  setActionCopyName("");
+              <View
+                pointerEvents="none"
+                style={{
+                  position: "absolute",
+                  top: -70,
+                  right: -60,
+                  width: 170,
+                  height: 170,
+                  borderRadius: 999,
+                  backgroundColor: rollTheme.cockpit.glow,
+                  opacity: 0.16,
                 }}
-                style={({ pressed }) => ({
-                  paddingVertical: 11,
-                  paddingHorizontal: 16,
-                  borderWidth: 1,
-                  borderColor: rollTheme.cockpit.borderSoft,
-                  borderRadius: theme.radius.pill,
-                  backgroundColor: pressed
-                    ? theme.colors.surfaceSoft
-                    : rollTheme.cockpit.panelAlt,
-                  opacity: pressed ? 0.84 : 1,
-                })}
-              >
+              />
+
+              <View style={{ gap: theme.spacing.xs }}>
+                <Text
+                  style={{
+                    color: theme.colors.textSubtle,
+                    fontSize: theme.typography.tiny,
+                    fontWeight: "900",
+                    textTransform: "uppercase",
+                    letterSpacing: 0.9,
+                  }}
+                >
+                  ✦ Nouvelle action
+                </Text>
+
                 <Text
                   style={{
                     color: theme.colors.text,
+                    fontSize: 22,
                     fontWeight: "900",
+                    letterSpacing: -0.3,
                   }}
                 >
-                  Annuler
+                  Nommer la copie
                 </Text>
-              </Pressable>
 
-              <Pressable
-                onPress={handleCreateActionCopyFromDraft}
-                disabled={actionCopyName.trim().length === 0}
-                style={({ pressed }) => ({
-                  paddingVertical: 11,
-                  paddingHorizontal: 16,
-                  borderWidth: 1,
-                  borderColor:
-                    actionCopyName.trim().length === 0
-                      ? rollTheme.cockpit.borderSoft
-                      : theme.colors.accent,
-                  borderRadius: theme.radius.pill,
-                  backgroundColor:
-                    actionCopyName.trim().length === 0
-                      ? "rgba(32, 41, 88, 0.36)"
-                      : pressed
-                        ? "rgba(217, 160, 55, 0.2)"
-                        : theme.colors.accentSoft,
-                  opacity: pressed
-                    ? 0.84
-                    : actionCopyName.trim().length === 0
-                      ? 0.5
-                      : 1,
-                })}
-              >
                 <Text
                   style={{
-                    color:
-                      actionCopyName.trim().length === 0
-                        ? theme.colors.textSubtle
-                        : theme.colors.accent,
-                    fontWeight: "900",
+                    color: theme.colors.textMuted,
+                    lineHeight: 20,
+                    fontWeight: "600",
                   }}
                 >
-                  Créer la copie
+                  Cette copie sera ajoutée au profil actif sans modifier l’action
+                  d’origine.
                 </Text>
-              </Pressable>
+              </View>
+
+              <TextInput
+                value={actionCopyName}
+                onChangeText={setActionCopyName}
+                placeholder="Nom de la nouvelle action"
+                placeholderTextColor={theme.colors.textSubtle}
+                selectionColor={theme.colors.accent}
+                autoFocus
+                style={{
+                  minHeight: 52,
+                  color: theme.colors.text,
+                  backgroundColor: rollTheme.cockpit.panelAlt,
+                  borderWidth: 1,
+                  borderColor: rollTheme.cockpit.borderSoft,
+                  borderRadius: theme.radius.lg,
+                  paddingHorizontal: 14,
+                  paddingVertical: 12,
+                  fontSize: 17,
+                  fontWeight: "800",
+                }}
+              />
+
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "flex-end",
+                  flexWrap: "wrap",
+                  gap: theme.spacing.sm,
+                }}
+              >
+                <Pressable
+                  onPress={() => {
+                    setShowActionCopyNameModal(false);
+                    setActionCopyName("");
+                  }}
+                  style={({ pressed }) => ({
+                    paddingVertical: 11,
+                    paddingHorizontal: 16,
+                    borderWidth: 1,
+                    borderColor: rollTheme.cockpit.borderSoft,
+                    borderRadius: theme.radius.pill,
+                    backgroundColor: pressed
+                      ? theme.colors.surfaceSoft
+                      : rollTheme.cockpit.panelAlt,
+                    opacity: pressed ? 0.84 : 1,
+                  })}
+                >
+                  <Text
+                    style={{
+                      color: theme.colors.text,
+                      fontWeight: "900",
+                    }}
+                  >
+                    Annuler
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={handleCreateActionCopyFromDraft}
+                  disabled={actionCopyName.trim().length === 0}
+                  style={({ pressed }) => ({
+                    paddingVertical: 11,
+                    paddingHorizontal: 16,
+                    borderWidth: 1,
+                    borderColor:
+                      actionCopyName.trim().length === 0
+                        ? rollTheme.cockpit.borderSoft
+                        : theme.colors.accent,
+                    borderRadius: theme.radius.pill,
+                    backgroundColor:
+                      actionCopyName.trim().length === 0
+                        ? "rgba(32, 41, 88, 0.36)"
+                        : pressed
+                          ? "rgba(217, 160, 55, 0.2)"
+                          : theme.colors.accentSoft,
+                    opacity: pressed
+                      ? 0.84
+                      : actionCopyName.trim().length === 0
+                        ? 0.5
+                        : 1,
+                  })}
+                >
+                  <Text
+                    style={{
+                      color:
+                        actionCopyName.trim().length === 0
+                          ? theme.colors.textSubtle
+                          : theme.colors.accent,
+                      fontWeight: "900",
+                    }}
+                  >
+                    Créer la copie
+                  </Text>
+                </Pressable>
+              </View>
             </View>
           </View>
-        </View>
-      ) : null}
+        ) : null
+      }
 
-      {!showPreparedEditSheet ? (
-        <QuickDieBehaviorPickerModal
-          visible={quickDieBehaviorPicker.visible}
-          editingDieSides={quickDieBehaviorPicker.editingDieSides}
-          behaviors={quickDieBehaviorPicker.behaviors}
-          getDefinition={quickDieBehaviorPicker.getDefinition}
-          onSelectBehavior={quickDieBehaviorPicker.select}
-          onClose={() => {
-            setDraftBehaviorTarget(null);
-            setPreparedBehaviorTargetIndex(null);
-            quickDieBehaviorPicker.close();
-          }}
-        />
-      ) : null}
+      {
+        !showPreparedEditSheet ? (
+          <QuickDieBehaviorPickerModal
+            visible={quickDieBehaviorPicker.visible}
+            editingDieSides={quickDieBehaviorPicker.editingDieSides}
+            behaviors={quickDieBehaviorPicker.behaviors}
+            getDefinition={quickDieBehaviorPicker.getDefinition}
+            onSelectBehavior={quickDieBehaviorPicker.select}
+            onClose={() => {
+              setDraftBehaviorTarget(null);
+              setPreparedBehaviorTargetIndex(null);
+              quickDieBehaviorPicker.close();
+            }}
+          />
+        ) : null
+      }
 
-      {!showPreparedEditSheet ? (
-        <QuickBehaviorConfigModal
-          visible={quickBehaviorConfig.visible}
-          pendingBehaviorKey={quickBehaviorConfig.pendingBehaviorKey}
-          pendingBehaviorLabel={quickBehaviorConfig.pendingBehaviorLabel}
-          pendingConfigVariant={quickBehaviorConfig.pendingConfigVariant}
-          keepDropMode={quickBehaviorConfig.keepDropMode}
-          keepDropTarget={quickBehaviorConfig.keepDropTarget}
-          keepDropCount={quickBehaviorConfig.keepDropCount}
-          onChangeKeepDropMode={quickBehaviorConfig.setKeepDropMode}
-          onChangeKeepDropTarget={quickBehaviorConfig.setKeepDropTarget}
-          onChangeKeepDropCount={quickBehaviorConfig.setKeepDropCount}
-          configKeepCount={quickBehaviorConfig.configKeepCount}
-          configDropCount={quickBehaviorConfig.configDropCount}
-          configResultMode={quickBehaviorConfig.configResultMode}
-          configCompare={quickBehaviorConfig.configCompare}
-          configSuccessThreshold={quickBehaviorConfig.configSuccessThreshold}
-          configCritSuccessFaces={quickBehaviorConfig.configCritSuccessFaces}
-          configCritFailureFaces={quickBehaviorConfig.configCritFailureFaces}
-          configTargetValue={quickBehaviorConfig.configTargetValue}
-          configDegreeStep={quickBehaviorConfig.configDegreeStep}
-          configCritSuccessMin={quickBehaviorConfig.configCritSuccessMin}
-          configCritSuccessMax={quickBehaviorConfig.configCritSuccessMax}
-          configCritFailureMin={quickBehaviorConfig.configCritFailureMin}
-          configCritFailureMax={quickBehaviorConfig.configCritFailureMax}
-          onChangeTargetValue={quickBehaviorConfig.setConfigTargetValue}
-          onChangeDegreeStep={quickBehaviorConfig.setConfigDegreeStep}
-          onChangeCritSuccessMin={quickBehaviorConfig.setConfigCritSuccessMin}
-          onChangeCritSuccessMax={quickBehaviorConfig.setConfigCritSuccessMax}
-          onChangeCritFailureMin={quickBehaviorConfig.setConfigCritFailureMin}
-          onChangeCritFailureMax={quickBehaviorConfig.setConfigCritFailureMax}
-          configSuccessAtOrAbove={quickBehaviorConfig.configSuccessAtOrAbove}
-          configFailFaces={quickBehaviorConfig.configFailFaces}
-          configGlitchRule={quickBehaviorConfig.configGlitchRule}
-          configCriticalFailureRule={
-            quickBehaviorConfig.configCriticalFailureRule
-          }
-          configCriticalSuccessRule={
-            quickBehaviorConfig.configCriticalSuccessRule
-          }
-          configCriticalSuccessThreshold={
-            quickBehaviorConfig.configCriticalSuccessThreshold
-          }
-          configCriticalSuccessFaces={
-            quickBehaviorConfig.configCriticalSuccessFaces
-          }
-          configRanges={quickBehaviorConfig.configRanges}
-          onChangeKeepCount={quickBehaviorConfig.setConfigKeepCount}
-          onChangeDropCount={quickBehaviorConfig.setConfigDropCount}
-          onChangeResultMode={quickBehaviorConfig.setConfigResultMode}
-          onChangeCompare={quickBehaviorConfig.setConfigCompare}
-          onChangeSuccessThreshold={
-            quickBehaviorConfig.setConfigSuccessThreshold
-          }
-          onChangeCritSuccessFaces={
-            quickBehaviorConfig.setConfigCritSuccessFaces
-          }
-          onChangeCritFailureFaces={
-            quickBehaviorConfig.setConfigCritFailureFaces
-          }
-          onChangeSuccessAtOrAbove={
-            quickBehaviorConfig.setConfigSuccessAtOrAbove
-          }
-          onChangeFailFaces={quickBehaviorConfig.setConfigFailFaces}
-          onChangeGlitchRule={quickBehaviorConfig.setConfigGlitchRule}
-          onChangeCriticalFailureRule={
-            quickBehaviorConfig.setConfigCriticalFailureRule
-          }
-          onChangeCriticalSuccessRule={
-            quickBehaviorConfig.setConfigCriticalSuccessRule
-          }
-          onChangeCriticalSuccessThreshold={
-            quickBehaviorConfig.setConfigCriticalSuccessThreshold
-          }
-          onChangeCriticalSuccessFaces={
-            quickBehaviorConfig.setConfigCriticalSuccessFaces
-          }
-          onUpdateRange={quickBehaviorConfig.updateRange}
-          onAddRange={quickBehaviorConfig.addRange}
-          onRemoveRange={quickBehaviorConfig.removeRange}
-          onClose={() => {
-            setDraftBehaviorTarget(null);
-            quickBehaviorConfig.close();
-          }}
-          onConfirm={handleConfirmBehaviorConfig}
-          pipelineRerollFaces={quickBehaviorConfig.pipelineRerollFaces}
-          pipelineRerollOnce={quickBehaviorConfig.pipelineRerollOnce}
-          pipelineExplodeFaces={quickBehaviorConfig.pipelineExplodeFaces}
-          pipelineMaxRerolls={quickBehaviorConfig.pipelineMaxRerolls}
-          pipelineMaxExplosions={quickBehaviorConfig.pipelineMaxExplosions}
-          pipelineKeepHighest={quickBehaviorConfig.pipelineKeepHighest}
-          pipelineKeepLowest={quickBehaviorConfig.pipelineKeepLowest}
-          pipelineDropHighest={quickBehaviorConfig.pipelineDropHighest}
-          pipelineDropLowest={quickBehaviorConfig.pipelineDropLowest}
-          pipelineCountSuccessAtOrAbove={
-            quickBehaviorConfig.pipelineCountSuccessAtOrAbove
-          }
-          pipelineCountEqualFaces={quickBehaviorConfig.pipelineCountEqualFaces}
-          pipelineCountRangeMin={quickBehaviorConfig.pipelineCountRangeMin}
-          pipelineCountRangeMax={quickBehaviorConfig.pipelineCountRangeMax}
-          pipelineOutput={quickBehaviorConfig.pipelineOutput}
-          pipelineSuccessThreshold={
-            quickBehaviorConfig.pipelineSuccessThreshold
-          }
-          pipelineCompare={quickBehaviorConfig.pipelineCompare}
-          pipelineCritSuccessFaces={
-            quickBehaviorConfig.pipelineCritSuccessFaces
-          }
-          pipelineCritFailureFaces={
-            quickBehaviorConfig.pipelineCritFailureFaces
-          }
-          pipelineComplicationFaces={
-            quickBehaviorConfig.pipelineComplicationFaces
-          }
-          pipelineComplicationRule={
-            quickBehaviorConfig.pipelineComplicationRule
-          }
-          pipelineCriticalFailureRule={
-            quickBehaviorConfig.pipelineCriticalFailureRule
-          }
-          pipelineCriticalSuccessRule={
-            quickBehaviorConfig.pipelineCriticalSuccessRule
-          }
-          pipelineCriticalSuccessThreshold={
-            quickBehaviorConfig.pipelineCriticalSuccessThreshold
-          }
-          pipelineCriticalSuccessFaces={
-            quickBehaviorConfig.pipelineCriticalSuccessFaces
-          }
-          pipelineDegreeTarget={quickBehaviorConfig.pipelineDegreeTarget}
-          pipelineDegreeCompare={quickBehaviorConfig.pipelineDegreeCompare}
-          pipelineDegreeStep={quickBehaviorConfig.pipelineDegreeStep}
-          pipelineDegreeCritSuccessMin={
-            quickBehaviorConfig.pipelineDegreeCritSuccessMin
-          }
-          pipelineDegreeCritSuccessMax={
-            quickBehaviorConfig.pipelineDegreeCritSuccessMax
-          }
-          pipelineDegreeCritFailureMin={
-            quickBehaviorConfig.pipelineDegreeCritFailureMin
-          }
-          pipelineDegreeCritFailureMax={
-            quickBehaviorConfig.pipelineDegreeCritFailureMax
-          }
-          onChangePipelineRerollFaces={
-            quickBehaviorConfig.setPipelineRerollFaces
-          }
-          onChangePipelineRerollOnce={quickBehaviorConfig.setPipelineRerollOnce}
-          onChangePipelineExplodeFaces={
-            quickBehaviorConfig.setPipelineExplodeFaces
-          }
-          onChangePipelineMaxRerolls={quickBehaviorConfig.setPipelineMaxRerolls}
-          onChangePipelineMaxExplosions={
-            quickBehaviorConfig.setPipelineMaxExplosions
-          }
-          onChangePipelineKeepHighest={
-            quickBehaviorConfig.setPipelineKeepHighest
-          }
-          onChangePipelineKeepLowest={quickBehaviorConfig.setPipelineKeepLowest}
-          onChangePipelineDropHighest={
-            quickBehaviorConfig.setPipelineDropHighest
-          }
-          onChangePipelineDropLowest={quickBehaviorConfig.setPipelineDropLowest}
-          onChangePipelineCountSuccessAtOrAbove={
-            quickBehaviorConfig.setPipelineCountSuccessAtOrAbove
-          }
-          onChangePipelineCountEqualFaces={
-            quickBehaviorConfig.setPipelineCountEqualFaces
-          }
-          onChangePipelineCountRangeMin={
-            quickBehaviorConfig.setPipelineCountRangeMin
-          }
-          onChangePipelineCountRangeMax={
-            quickBehaviorConfig.setPipelineCountRangeMax
-          }
-          onChangePipelineOutput={quickBehaviorConfig.setPipelineOutput}
-          onChangePipelineSuccessThreshold={
-            quickBehaviorConfig.setPipelineSuccessThreshold
-          }
-          onChangePipelineCompare={quickBehaviorConfig.setPipelineCompare}
-          onChangePipelineCritSuccessFaces={
-            quickBehaviorConfig.setPipelineCritSuccessFaces
-          }
-          onChangePipelineCritFailureFaces={
-            quickBehaviorConfig.setPipelineCritFailureFaces
-          }
-          onChangePipelineComplicationFaces={
-            quickBehaviorConfig.setPipelineComplicationFaces
-          }
-          onChangePipelineComplicationRule={
-            quickBehaviorConfig.setPipelineComplicationRule
-          }
-          onChangePipelineCriticalFailureRule={
-            quickBehaviorConfig.setPipelineCriticalFailureRule
-          }
-          onChangePipelineCriticalSuccessRule={
-            quickBehaviorConfig.setPipelineCriticalSuccessRule
-          }
-          onChangePipelineCriticalSuccessThreshold={
-            quickBehaviorConfig.setPipelineCriticalSuccessThreshold
-          }
-          onChangePipelineCriticalSuccessFaces={
-            quickBehaviorConfig.setPipelineCriticalSuccessFaces
-          }
-          onChangePipelineDegreeTarget={
-            quickBehaviorConfig.setPipelineDegreeTarget
-          }
-          onChangePipelineDegreeCompare={
-            quickBehaviorConfig.setPipelineDegreeCompare
-          }
-          onChangePipelineDegreeStep={quickBehaviorConfig.setPipelineDegreeStep}
-          onChangePipelineDegreeCritSuccessMin={
-            quickBehaviorConfig.setPipelineDegreeCritSuccessMin
-          }
-          onChangePipelineDegreeCritSuccessMax={
-            quickBehaviorConfig.setPipelineDegreeCritSuccessMax
-          }
-          onChangePipelineDegreeCritFailureMin={
-            quickBehaviorConfig.setPipelineDegreeCritFailureMin
-          }
-          onChangePipelineDegreeCritFailureMax={
-            quickBehaviorConfig.setPipelineDegreeCritFailureMax
-          }
-        />
-      ) : null}
+      {
+        !showPreparedEditSheet ? (
+          <QuickBehaviorConfigModal
+            visible={quickBehaviorConfig.visible}
+            pendingBehaviorKey={quickBehaviorConfig.pendingBehaviorKey}
+            pendingBehaviorLabel={quickBehaviorConfig.pendingBehaviorLabel}
+            pendingConfigVariant={quickBehaviorConfig.pendingConfigVariant}
+            keepDropMode={quickBehaviorConfig.keepDropMode}
+            keepDropTarget={quickBehaviorConfig.keepDropTarget}
+            keepDropCount={quickBehaviorConfig.keepDropCount}
+            onChangeKeepDropMode={quickBehaviorConfig.setKeepDropMode}
+            onChangeKeepDropTarget={quickBehaviorConfig.setKeepDropTarget}
+            onChangeKeepDropCount={quickBehaviorConfig.setKeepDropCount}
+            configKeepCount={quickBehaviorConfig.configKeepCount}
+            configDropCount={quickBehaviorConfig.configDropCount}
+            configResultMode={quickBehaviorConfig.configResultMode}
+            configCompare={quickBehaviorConfig.configCompare}
+            configSuccessThreshold={quickBehaviorConfig.configSuccessThreshold}
+            configCritSuccessFaces={quickBehaviorConfig.configCritSuccessFaces}
+            configCritFailureFaces={quickBehaviorConfig.configCritFailureFaces}
+            configTargetValue={quickBehaviorConfig.configTargetValue}
+            configDegreeStep={quickBehaviorConfig.configDegreeStep}
+            configCritSuccessMin={quickBehaviorConfig.configCritSuccessMin}
+            configCritSuccessMax={quickBehaviorConfig.configCritSuccessMax}
+            configCritFailureMin={quickBehaviorConfig.configCritFailureMin}
+            configCritFailureMax={quickBehaviorConfig.configCritFailureMax}
+            onChangeTargetValue={quickBehaviorConfig.setConfigTargetValue}
+            onChangeDegreeStep={quickBehaviorConfig.setConfigDegreeStep}
+            onChangeCritSuccessMin={quickBehaviorConfig.setConfigCritSuccessMin}
+            onChangeCritSuccessMax={quickBehaviorConfig.setConfigCritSuccessMax}
+            onChangeCritFailureMin={quickBehaviorConfig.setConfigCritFailureMin}
+            onChangeCritFailureMax={quickBehaviorConfig.setConfigCritFailureMax}
+            configSuccessAtOrAbove={quickBehaviorConfig.configSuccessAtOrAbove}
+            configFailFaces={quickBehaviorConfig.configFailFaces}
+            configGlitchRule={quickBehaviorConfig.configGlitchRule}
+            configCriticalFailureRule={
+              quickBehaviorConfig.configCriticalFailureRule
+            }
+            configCriticalSuccessRule={
+              quickBehaviorConfig.configCriticalSuccessRule
+            }
+            configCriticalSuccessThreshold={
+              quickBehaviorConfig.configCriticalSuccessThreshold
+            }
+            configCriticalSuccessFaces={
+              quickBehaviorConfig.configCriticalSuccessFaces
+            }
+            configRanges={quickBehaviorConfig.configRanges}
+            onChangeKeepCount={quickBehaviorConfig.setConfigKeepCount}
+            onChangeDropCount={quickBehaviorConfig.setConfigDropCount}
+            onChangeResultMode={quickBehaviorConfig.setConfigResultMode}
+            onChangeCompare={quickBehaviorConfig.setConfigCompare}
+            onChangeSuccessThreshold={
+              quickBehaviorConfig.setConfigSuccessThreshold
+            }
+            onChangeCritSuccessFaces={
+              quickBehaviorConfig.setConfigCritSuccessFaces
+            }
+            onChangeCritFailureFaces={
+              quickBehaviorConfig.setConfigCritFailureFaces
+            }
+            onChangeSuccessAtOrAbove={
+              quickBehaviorConfig.setConfigSuccessAtOrAbove
+            }
+            onChangeFailFaces={quickBehaviorConfig.setConfigFailFaces}
+            onChangeGlitchRule={quickBehaviorConfig.setConfigGlitchRule}
+            onChangeCriticalFailureRule={
+              quickBehaviorConfig.setConfigCriticalFailureRule
+            }
+            onChangeCriticalSuccessRule={
+              quickBehaviorConfig.setConfigCriticalSuccessRule
+            }
+            onChangeCriticalSuccessThreshold={
+              quickBehaviorConfig.setConfigCriticalSuccessThreshold
+            }
+            onChangeCriticalSuccessFaces={
+              quickBehaviorConfig.setConfigCriticalSuccessFaces
+            }
+            onUpdateRange={quickBehaviorConfig.updateRange}
+            onAddRange={quickBehaviorConfig.addRange}
+            onRemoveRange={quickBehaviorConfig.removeRange}
+            onClose={() => {
+              setDraftBehaviorTarget(null);
+              quickBehaviorConfig.close();
+            }}
+            onConfirm={handleConfirmBehaviorConfig}
+            pipelineRerollFaces={quickBehaviorConfig.pipelineRerollFaces}
+            pipelineRerollOnce={quickBehaviorConfig.pipelineRerollOnce}
+            pipelineExplodeFaces={quickBehaviorConfig.pipelineExplodeFaces}
+            pipelineMaxRerolls={quickBehaviorConfig.pipelineMaxRerolls}
+            pipelineMaxExplosions={quickBehaviorConfig.pipelineMaxExplosions}
+            pipelineKeepHighest={quickBehaviorConfig.pipelineKeepHighest}
+            pipelineKeepLowest={quickBehaviorConfig.pipelineKeepLowest}
+            pipelineDropHighest={quickBehaviorConfig.pipelineDropHighest}
+            pipelineDropLowest={quickBehaviorConfig.pipelineDropLowest}
+            pipelineCountSuccessAtOrAbove={
+              quickBehaviorConfig.pipelineCountSuccessAtOrAbove
+            }
+            pipelineCountEqualFaces={quickBehaviorConfig.pipelineCountEqualFaces}
+            pipelineCountRangeMin={quickBehaviorConfig.pipelineCountRangeMin}
+            pipelineCountRangeMax={quickBehaviorConfig.pipelineCountRangeMax}
+            pipelineOutput={quickBehaviorConfig.pipelineOutput}
+            pipelineSuccessThreshold={
+              quickBehaviorConfig.pipelineSuccessThreshold
+            }
+            pipelineCompare={quickBehaviorConfig.pipelineCompare}
+            pipelineCritSuccessFaces={
+              quickBehaviorConfig.pipelineCritSuccessFaces
+            }
+            pipelineCritFailureFaces={
+              quickBehaviorConfig.pipelineCritFailureFaces
+            }
+            pipelineComplicationFaces={
+              quickBehaviorConfig.pipelineComplicationFaces
+            }
+            pipelineComplicationRule={
+              quickBehaviorConfig.pipelineComplicationRule
+            }
+            pipelineCriticalFailureRule={
+              quickBehaviorConfig.pipelineCriticalFailureRule
+            }
+            pipelineCriticalSuccessRule={
+              quickBehaviorConfig.pipelineCriticalSuccessRule
+            }
+            pipelineCriticalSuccessThreshold={
+              quickBehaviorConfig.pipelineCriticalSuccessThreshold
+            }
+            pipelineCriticalSuccessFaces={
+              quickBehaviorConfig.pipelineCriticalSuccessFaces
+            }
+            pipelineDegreeTarget={quickBehaviorConfig.pipelineDegreeTarget}
+            pipelineDegreeCompare={quickBehaviorConfig.pipelineDegreeCompare}
+            pipelineDegreeStep={quickBehaviorConfig.pipelineDegreeStep}
+            pipelineDegreeCritSuccessMin={
+              quickBehaviorConfig.pipelineDegreeCritSuccessMin
+            }
+            pipelineDegreeCritSuccessMax={
+              quickBehaviorConfig.pipelineDegreeCritSuccessMax
+            }
+            pipelineDegreeCritFailureMin={
+              quickBehaviorConfig.pipelineDegreeCritFailureMin
+            }
+            pipelineDegreeCritFailureMax={
+              quickBehaviorConfig.pipelineDegreeCritFailureMax
+            }
+            onChangePipelineRerollFaces={
+              quickBehaviorConfig.setPipelineRerollFaces
+            }
+            onChangePipelineRerollOnce={quickBehaviorConfig.setPipelineRerollOnce}
+            onChangePipelineExplodeFaces={
+              quickBehaviorConfig.setPipelineExplodeFaces
+            }
+            onChangePipelineMaxRerolls={quickBehaviorConfig.setPipelineMaxRerolls}
+            onChangePipelineMaxExplosions={
+              quickBehaviorConfig.setPipelineMaxExplosions
+            }
+            onChangePipelineKeepHighest={
+              quickBehaviorConfig.setPipelineKeepHighest
+            }
+            onChangePipelineKeepLowest={quickBehaviorConfig.setPipelineKeepLowest}
+            onChangePipelineDropHighest={
+              quickBehaviorConfig.setPipelineDropHighest
+            }
+            onChangePipelineDropLowest={quickBehaviorConfig.setPipelineDropLowest}
+            onChangePipelineCountSuccessAtOrAbove={
+              quickBehaviorConfig.setPipelineCountSuccessAtOrAbove
+            }
+            onChangePipelineCountEqualFaces={
+              quickBehaviorConfig.setPipelineCountEqualFaces
+            }
+            onChangePipelineCountRangeMin={
+              quickBehaviorConfig.setPipelineCountRangeMin
+            }
+            onChangePipelineCountRangeMax={
+              quickBehaviorConfig.setPipelineCountRangeMax
+            }
+            onChangePipelineOutput={quickBehaviorConfig.setPipelineOutput}
+            onChangePipelineSuccessThreshold={
+              quickBehaviorConfig.setPipelineSuccessThreshold
+            }
+            onChangePipelineCompare={quickBehaviorConfig.setPipelineCompare}
+            onChangePipelineCritSuccessFaces={
+              quickBehaviorConfig.setPipelineCritSuccessFaces
+            }
+            onChangePipelineCritFailureFaces={
+              quickBehaviorConfig.setPipelineCritFailureFaces
+            }
+            onChangePipelineComplicationFaces={
+              quickBehaviorConfig.setPipelineComplicationFaces
+            }
+            onChangePipelineComplicationRule={
+              quickBehaviorConfig.setPipelineComplicationRule
+            }
+            onChangePipelineCriticalFailureRule={
+              quickBehaviorConfig.setPipelineCriticalFailureRule
+            }
+            onChangePipelineCriticalSuccessRule={
+              quickBehaviorConfig.setPipelineCriticalSuccessRule
+            }
+            onChangePipelineCriticalSuccessThreshold={
+              quickBehaviorConfig.setPipelineCriticalSuccessThreshold
+            }
+            onChangePipelineCriticalSuccessFaces={
+              quickBehaviorConfig.setPipelineCriticalSuccessFaces
+            }
+            onChangePipelineDegreeTarget={
+              quickBehaviorConfig.setPipelineDegreeTarget
+            }
+            onChangePipelineDegreeCompare={
+              quickBehaviorConfig.setPipelineDegreeCompare
+            }
+            onChangePipelineDegreeStep={quickBehaviorConfig.setPipelineDegreeStep}
+            onChangePipelineDegreeCritSuccessMin={
+              quickBehaviorConfig.setPipelineDegreeCritSuccessMin
+            }
+            onChangePipelineDegreeCritSuccessMax={
+              quickBehaviorConfig.setPipelineDegreeCritSuccessMax
+            }
+            onChangePipelineDegreeCritFailureMin={
+              quickBehaviorConfig.setPipelineDegreeCritFailureMin
+            }
+            onChangePipelineDegreeCritFailureMax={
+              quickBehaviorConfig.setPipelineDegreeCritFailureMax
+            }
+          />
+        ) : null
+      }
 
       <PreparedRollEditSheet
         visible={showPreparedEditSheet}
@@ -2612,6 +2843,6 @@ export default function RollScreen() {
         onConfigureDieBehavior={handleConfigurePreparedDieBehaviorFromGlobal}
         onClearDieBehavior={handleClearPreparedDieBehavior}
       />
-    </View>
+    </View >
   );
 }
