@@ -1,5 +1,6 @@
 // dice-universal/features/roll/premium/index.ts
 
+export { PremiumDiceWheel } from "./PremiumDiceWheel";
 export { PremiumResultCard } from "./PremiumResultCard";
 export { PremiumRollButton } from "./PremiumRollButton";
 export { PremiumRollScreenBackground } from "./PremiumRollScreenBackground";

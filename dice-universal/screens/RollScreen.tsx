@@ -45,7 +45,7 @@ import { ActionRail } from "../features/roll/components/ActionRail";
 
 // import { ResultPanel } from "../features/roll/components/ResultPanel";
 import { PreparedRollEditSheet } from "../features/roll/components/PreparedRollEditSheet";
-import { FreeDicePad } from "../features/roll/components/FreeDicePad";
+// import { FreeDicePad } from "../features/roll/components/FreeDicePad";
 
 import { useDraftTableActions } from "../features/roll/hooks/useDraftTableActions";
 import { useRollExecution } from "../features/roll/hooks/useRollExecution";
@@ -72,6 +72,7 @@ import {
 import { behaviorNeedsSelectionConfig } from "../features/roll/helpers/quickBehaviorConfig";
 
 import {
+  PremiumDiceWheel,
   PremiumResultCard,
   PremiumRollButton,
   PremiumRollScreenBackground,
@@ -1727,11 +1728,11 @@ export default function RollScreen() {
               ],
             }}
           >
-            
+
             <PremiumResultCard result={latestResult} />
 
             <View style={{ marginTop: adaptiveResultToDiceOverlap }}>
-              <FreeDicePad
+              <PremiumDiceWheel
                 dice={STANDARD_DICE}
                 countsBySides={freeDiceCountsBySides}
                 modifierValue={quickModifier}
