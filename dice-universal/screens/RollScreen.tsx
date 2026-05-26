@@ -41,7 +41,8 @@ import {
 
 import { PreparedRollCard } from "../features/roll/components/PreparedRollCard";
 import { ActionRail } from "../features/roll/components/ActionRail";
-import { StickyRollButton } from "../features/roll/components/StickyRollButton";
+// import { StickyRollButton } from "../features/roll/components/StickyRollButton";
+
 import { ResultPanel } from "../features/roll/components/ResultPanel";
 import { PreparedRollEditSheet } from "../features/roll/components/PreparedRollEditSheet";
 import { FreeDicePad } from "../features/roll/components/FreeDicePad";
@@ -70,7 +71,10 @@ import {
 } from "../features/roll/helpers/rollDisplaySummary";
 import { behaviorNeedsSelectionConfig } from "../features/roll/helpers/quickBehaviorConfig";
 
-import { PremiumRollScreenBackground } from "../features/roll/premium";
+import {
+  PremiumRollButton,
+  PremiumRollScreenBackground,
+} from "../features/roll/premium";
 
 function findStandardQuickGroup(groups: DraftGroupSummary[]) {
   return (
@@ -1838,6 +1842,7 @@ export default function RollScreen() {
             maxWidth: layout.maxContentWidth,
             zIndex: 10,
             paddingTop: isVerySmallScreen ? 2 : 4,
+            paddingBottom: Math.max(layout.insets.bottom, 4),
           }}
         >
           {isFocusedLineMode ? (
@@ -1895,10 +1900,12 @@ export default function RollScreen() {
             </View>
           ) : null}
 
-          <StickyRollButton
+          <PremiumRollButton
             disabled={!hasPreparedRoll}
+            focusedLine={isFocusedLineMode}
             onPress={handlePressStickyRollButton}
             label={isFocusedLineMode ? "LANCER LA LIGNE" : "LANCER LE JET"}
+            disabledLabel="AJOUTE DES DÉS"
           />
         </View>
       </View>
