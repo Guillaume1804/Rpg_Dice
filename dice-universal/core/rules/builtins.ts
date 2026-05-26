@@ -132,6 +132,14 @@ const evalSuccessPool: RuleEvaluator<SuccessPoolParams & Record<string, unknown>
     successes,
     fail_count: failCount,
     fail_faces: failFaces,
+    dice_count: input.values.length,
+    success_at_or_above: successAtOrAbove,
+    complication: outcome === "glitch" || outcome === "crit_glitch",
+    critical_success: false,
+    critical_failure: outcome === "crit_glitch",
+    complication_rule: String(params.glitch_rule ?? "none"),
+    critical_failure_rule: "none",
+    critical_success_rule: "none",
     outcome,
   };
 };
