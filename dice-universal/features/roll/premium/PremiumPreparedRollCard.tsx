@@ -414,73 +414,6 @@ function PreparedDieTile({
     );
 }
 
-function PreparedMoreTile({
-    hiddenCount,
-    onPress,
-}: {
-    hiddenCount: number;
-    onPress: () => void;
-}) {
-    const premium = usePremiumTheme();
-
-    return (
-        <Pressable
-            onPress={onPress}
-            style={({ pressed }) => ({
-                width: "23%",
-                minWidth: 0,
-                height: 68,
-                borderRadius: premium.radius.lg,
-                borderWidth: 1,
-                borderColor: premium.colors.border.subtle,
-                backgroundColor: pressed
-                    ? premium.colors.surface.pressed
-                    : premium.colors.surface.subtle,
-                paddingVertical: 6,
-                paddingHorizontal: 5,
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 4,
-                opacity: pressed ? 0.84 : 1,
-                transform: [{ scale: pressed ? premium.animation.pressScale : 1 }],
-            })}
-        >
-            <Text
-                style={{
-                    color: premium.colors.accent.secondary,
-                    fontSize: 20,
-                    fontWeight: "900",
-                    lineHeight: 22,
-                }}
-            >
-                ⋯
-            </Text>
-
-            <Text
-                numberOfLines={1}
-                style={{
-                    color: premium.colors.text.primary,
-                    fontSize: 11,
-                    fontWeight: "900",
-                }}
-            >
-                Voir plus
-            </Text>
-
-            <Text
-                numberOfLines={1}
-                style={{
-                    color: premium.colors.text.secondary,
-                    fontSize: 10,
-                    fontWeight: "800",
-                }}
-            >
-                +{hiddenCount}
-            </Text>
-        </Pressable>
-    );
-}
-
 function CompactStepper({
     label,
     value,
@@ -691,6 +624,334 @@ function EmptyPreparedState() {
     );
 }
 
+function formatCompactLineLabel(line: PremiumPreparedRollCardLine) {
+    const qty = Math.max(1, line.qty ?? 1);
+    const signPrefix = line.sign === -1 ? "−" : "";
+    const dieLabel = getDieDisplayLabel(line);
+    const modifier = line.modifier ?? 0;
+
+    const modifierLabel =
+        modifier > 0 ? ` +${modifier}` : modifier < 0 ? ` ${modifier}` : "";
+
+    return `${signPrefix}${qty}${dieLabel}${modifierLabel}`;
+}
+
+function CompactPreparedLineChip({
+    line,
+    index,
+    focused,
+    onOpenLineConfig,
+    onAdjustQty,
+}: {
+    line: PremiumPreparedRollCardLine;
+    index: number;
+    focused?: boolean;
+    onOpenLineConfig?: (index: number) => void;
+    onAdjustQty?: (index: number, delta: number) => void;
+}) {
+    const premium = usePremiumTheme();
+
+    const qty = Math.max(1, line.qty ?? 1);
+    const isNegative = line.sign === -1;
+    const hasBehavior = !!line.hasBehavior;
+    const canDecrease = !!onAdjustQty && qty > 1;
+
+    const borderColor = focused
+        ? premium.colors.border.accent
+        : isNegative
+            ? "rgba(239, 111, 145, 0.28)"
+            : hasBehavior
+                ? "rgba(124, 92, 255, 0.32)"
+                : premium.colors.border.subtle;
+
+    const backgroundColor = focused
+        ? premium.colors.accent.soft
+        : isNegative
+            ? premium.colors.state.failureSoft
+            : hasBehavior
+                ? "rgba(124, 92, 255, 0.08)"
+                : premium.colors.surface.secondary;
+
+    const accentColor = focused
+        ? premium.colors.accent.primary
+        : isNegative
+            ? premium.colors.state.failure
+            : hasBehavior
+                ? premium.colors.accent.secondary
+                : premium.colors.text.secondary;
+
+    return (
+        <Pressable
+            onPress={() => onOpenLineConfig?.(index)}
+            disabled={!onOpenLineConfig}
+            style={({ pressed }) => ({
+                width: 138,
+                height: 58,
+                borderRadius: premium.radius.lg,
+                borderWidth: 1,
+                borderColor,
+                backgroundColor: pressed ? premium.colors.surface.pressed : backgroundColor,
+                paddingHorizontal: 7,
+                paddingVertical: 5,
+                justifyContent: "space-between",
+                opacity: pressed ? 0.86 : 1,
+                transform: [{ scale: pressed ? premium.animation.pressScale : 1 }],
+            })}
+        >
+            <View
+                style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                    minHeight: 25,
+                }}
+            >
+                <View
+                    style={{
+                        width: 25,
+                        height: 25,
+                        borderRadius: premium.radius.md,
+                        borderWidth: 1,
+                        borderColor,
+                        backgroundColor: premium.colors.surface.primary,
+                        alignItems: "center",
+                        justifyContent: "center",
+                    }}
+                >
+                    <Text
+                        style={{
+                            color: accentColor,
+                            fontSize: line.sides === 100 ? 12 : 13,
+                            fontWeight: "900",
+                            lineHeight: 15,
+                        }}
+                    >
+                        {getDieShapeLabel(line.sides)}
+                    </Text>
+                </View>
+
+                <View style={{ flex: 1, minWidth: 0 }}>
+                    <View
+                        style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 4,
+                        }}
+                    >
+                        <Text
+                            numberOfLines={1}
+                            style={{
+                                color: premium.colors.text.primary,
+                                fontSize: 11,
+                                fontWeight: "900",
+                                lineHeight: 13,
+                                flexShrink: 1,
+                            }}
+                        >
+                            {formatCompactLineLabel(line)}
+                        </Text>
+
+                        {hasBehavior ? (
+                            <View
+                                style={{
+                                    width: 6,
+                                    height: 6,
+                                    borderRadius: premium.radius.pill,
+                                    backgroundColor: premium.colors.accent.secondary,
+                                }}
+                            />
+                        ) : null}
+                    </View>
+
+                    <Text
+                        numberOfLines={1}
+                        style={{
+                            color: focused
+                                ? premium.colors.accent.primary
+                                : premium.colors.text.muted,
+                            fontSize: 8,
+                            fontWeight: "800",
+                            lineHeight: 10,
+                            marginTop: 1,
+                        }}
+                    >
+                        {focused ? "CIBLE" : line.detail ?? "Somme simple"}
+                    </Text>
+                </View>
+            </View>
+
+            <View
+                style={{
+                    height: 22,
+                    borderRadius: premium.radius.pill,
+                    borderWidth: 1,
+                    borderColor: premium.colors.border.subtle,
+                    backgroundColor: premium.colors.surface.primary,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    paddingHorizontal: 10,
+                }}
+            >
+                <Pressable
+                    disabled={!canDecrease}
+                    onPress={(event) => {
+                        event.stopPropagation();
+                        onAdjustQty?.(index, -1);
+                    }}
+                    hitSlop={8}
+                    style={({ pressed }) => ({
+                        minWidth: 28,
+                        height: 22,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        opacity: !canDecrease ? 0.28 : pressed ? 0.68 : 1,
+                        transform: [{ scale: pressed && canDecrease ? 0.9 : 1 }],
+                    })}
+                >
+                    <Text
+                        style={{
+                            color: premium.colors.text.secondary,
+                            fontSize: 15,
+                            fontWeight: "900",
+                            lineHeight: 17,
+                        }}
+                    >
+                        −
+                    </Text>
+                </Pressable>
+
+                <Text
+                    style={{
+                        color: premium.colors.text.primary,
+                        fontSize: 11,
+                        fontWeight: "900",
+                        lineHeight: 13,
+                        minWidth: 18,
+                        textAlign: "center",
+                    }}
+                >
+                    {qty}
+                </Text>
+
+                <Pressable
+                    disabled={!onAdjustQty}
+                    onPress={(event) => {
+                        event.stopPropagation();
+                        onAdjustQty?.(index, 1);
+                    }}
+                    hitSlop={8}
+                    style={({ pressed }) => ({
+                        minWidth: 28,
+                        height: 22,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        opacity: !onAdjustQty ? 0.28 : pressed ? 0.68 : 1,
+                        transform: [{ scale: pressed && onAdjustQty ? 0.9 : 1 }],
+                    })}
+                >
+                    <Text
+                        style={{
+                            color: premium.colors.text.secondary,
+                            fontSize: 15,
+                            fontWeight: "900",
+                            lineHeight: 17,
+                        }}
+                    >
+                        +
+                    </Text>
+                </Pressable>
+            </View>
+        </Pressable>
+    );
+}
+
+function CompactPreparedSummary({
+    lines,
+    focusedLineIndex,
+    onOpenLineConfig,
+    onAdjustLineQty,
+    onOpenAll,
+}: {
+    lines: PremiumPreparedRollCardLine[];
+    focusedLineIndex?: number | null;
+    onOpenLineConfig?: (index: number) => void;
+    onAdjustLineQty?: (index: number, delta: number) => void;
+    onOpenAll: () => void;
+}) {
+    const premium = usePremiumTheme();
+
+    const visibleLines = lines.slice(0, 3);
+    const hiddenCount = Math.max(0, lines.length - visibleLines.length);
+
+    return (
+        <View style={{ gap: 0 }}>
+            <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{
+                    gap: 7,
+                    paddingRight: 2,
+                    alignItems: "center",
+                }}
+            >
+                {visibleLines.map((line, index) => (
+                    <CompactPreparedLineChip
+                        key={`compact-line-chip-${line.id}`}
+                        line={line}
+                        index={index}
+                        focused={focusedLineIndex === index}
+                        onOpenLineConfig={onOpenLineConfig}
+                        onAdjustQty={onAdjustLineQty}
+                    />
+                ))}
+
+                {hiddenCount > 0 ? (
+                    <Pressable
+                        onPress={onOpenAll}
+                        style={({ pressed }) => ({
+                            width: 76,
+                            height: 58,
+                            borderRadius: premium.radius.lg,
+                            borderWidth: 1,
+                            borderColor: premium.colors.border.subtle,
+                            backgroundColor: pressed
+                                ? premium.colors.surface.pressed
+                                : premium.colors.surface.secondary,
+                            alignItems: "center",
+                            justifyContent: "center",
+                            opacity: pressed ? 0.84 : 1,
+                            transform: [{ scale: pressed ? premium.animation.pressScale : 1 }],
+                        })}
+                    >
+                        <Text
+                            style={{
+                                color: premium.colors.text.secondary,
+                                fontSize: 13,
+                                fontWeight: "900",
+                                lineHeight: 16,
+                            }}
+                        >
+                            +{hiddenCount}
+                        </Text>
+
+                        <Text
+                            style={{
+                                color: premium.colors.text.muted,
+                                fontSize: 9,
+                                fontWeight: "800",
+                                lineHeight: 11,
+                            }}
+                        >
+                            autres
+                        </Text>
+                    </Pressable>
+                ) : null}
+            </ScrollView>
+        </View>
+    );
+}
+
 function PreparedDiceListSheet({
     visible,
     lines,
@@ -698,6 +959,7 @@ function PreparedDiceListSheet({
     onAdjustLineQty,
     onOpenLineConfig,
     focusedLineIndex,
+    onEditFull,
 }: {
     visible: boolean;
     lines: PremiumPreparedRollCardLine[];
@@ -705,6 +967,7 @@ function PreparedDiceListSheet({
     onAdjustLineQty?: (index: number, delta: number) => void;
     onOpenLineConfig?: (index: number) => void;
     focusedLineIndex?: number | null;
+    onEditFull?: () => void;
 }) {
     const premium = usePremiumTheme();
 
@@ -717,6 +980,40 @@ function PreparedDiceListSheet({
             maxHeight="74%"
         >
             <View style={{ gap: premium.spacing.md }}>
+                {onEditFull ? (
+                    <Pressable
+                        onPress={() => {
+                            onClose();
+                            onEditFull();
+                        }}
+                        style={({ pressed }) => ({
+                            minHeight: 44,
+                            borderRadius: premium.radius.pill,
+                            borderWidth: 1,
+                            borderColor: premium.colors.border.accent,
+                            backgroundColor: pressed
+                                ? premium.colors.surface.pressed
+                                : premium.colors.accent.soft,
+                            alignItems: "center",
+                            justifyContent: "center",
+                            opacity: pressed ? 0.86 : 1,
+                            transform: [{ scale: pressed ? premium.animation.pressScale : 1 }],
+                        })}
+                    >
+                        <Text
+                            style={{
+                                color: premium.colors.accent.primary,
+                                fontSize: 12,
+                                fontWeight: "900",
+                                textTransform: "uppercase",
+                                letterSpacing: 0.9,
+                            }}
+                        >
+                            Édition complète
+                        </Text>
+                    </Pressable>
+                ) : null}
+
                 <View
                     style={{
                         flexDirection: "row",
@@ -1060,20 +1357,8 @@ export function PremiumPreparedRollCard({
         [lines],
     );
 
-    const maxVisibleTiles = 8;
-    const shouldShowMoreTile = preparedLines.length > maxVisibleTiles;
-
-    const visiblePreparedLines = shouldShowMoreTile
-        ? preparedLines.slice(0, maxVisibleTiles - 1)
-        : preparedLines.slice(0, maxVisibleTiles);
-
-    const hiddenPreparedLineCount =
-        preparedLines.length - visiblePreparedLines.length;
-
     const lineCountLabel = `${preparedLines.length} ligne${preparedLines.length > 1 ? "s" : ""
         }`;
-
-    const hasBehavior = preparedLines.some((line) => line.hasBehavior);
 
     return (
         <>
@@ -1084,9 +1369,9 @@ export function PremiumPreparedRollCard({
                     borderColor: premium.colors.border.subtle,
                     backgroundColor: premium.colors.surface.primary,
                     overflow: "hidden",
-                    paddingVertical: 9,
+                    paddingVertical: 8,
                     paddingHorizontal: 12,
-                    gap: premium.spacing.sm,
+                    gap: 6,
                     ...premium.shadow.card,
                 }}
             >
@@ -1180,7 +1465,7 @@ export function PremiumPreparedRollCard({
 
                     {onEdit ? (
                         <Pressable
-                            onPress={onEdit}
+                            onPress={() => setShowAllDiceModal(true)}
                             style={({ pressed }) => ({
                                 paddingVertical: 6,
                                 paddingHorizontal: 10,
@@ -1211,56 +1496,13 @@ export function PremiumPreparedRollCard({
                     <EmptyPreparedState />
                 ) : (
                     <>
-                        <View
-                            style={{
-                                flexDirection: "row",
-                                flexWrap: "wrap",
-                                gap: 7,
-                                paddingTop: 2,
-                            }}
-                        >
-                            {visiblePreparedLines.map((line, index) => (
-                                <PreparedDieTile
-                                    key={line.id}
-                                    line={line}
-                                    index={index}
-                                    onAdjustQty={onAdjustLineQty}
-                                    onOpenLineConfig={setSelectedLineConfigIndex}
-                                    isFocused={focusedLineIndex === index}
-                                />
-                            ))}
-
-                            {shouldShowMoreTile ? (
-                                <PreparedMoreTile
-                                    hiddenCount={hiddenPreparedLineCount}
-                                    onPress={() => setShowAllDiceModal(true)}
-                                />
-                            ) : null}
-                        </View>
-
-                        {hasBehavior ? (
-                            <View
-                                style={{
-                                    flexDirection: "row",
-                                    alignItems: "center",
-                                    gap: 7,
-                                    marginTop: -1,
-                                }}
-                            >
-                                <View
-                                    style={{
-                                        width: 8,
-                                        height: 8,
-                                        borderRadius: premium.radius.pill,
-                                        backgroundColor: premium.colors.accent.secondary,
-                                    }}
-                                />
-
-                                <PremiumText variant="tiny" tone="muted" numberOfLines={1}>
-                                    Point violet : comportement configuré
-                                </PremiumText>
-                            </View>
-                        ) : null}
+                        <CompactPreparedSummary
+                            lines={preparedLines}
+                            focusedLineIndex={focusedLineIndex}
+                            onOpenLineConfig={setSelectedLineConfigIndex}
+                            onAdjustLineQty={onAdjustLineQty}
+                            onOpenAll={() => setShowAllDiceModal(true)}
+                        />
 
                         <View
                             style={{
@@ -1300,6 +1542,7 @@ export function PremiumPreparedRollCard({
                 onAdjustLineQty={onAdjustLineQty}
                 onOpenLineConfig={setSelectedLineConfigIndex}
                 focusedLineIndex={focusedLineIndex}
+                onEditFull={onEdit}
             />
 
             <PreparedLineConfigSheet
