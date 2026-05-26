@@ -2,3 +2,4 @@
 
 export { PremiumRollButton } from "./PremiumRollButton";
 export { PremiumRollScreenBackground } from "./PremiumRollScreenBackground";
+export { PremiumSessionHeader } from "./PremiumSessionHeader";

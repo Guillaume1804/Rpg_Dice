@@ -33,7 +33,7 @@ import { useArcaneLayout } from "../theme/useArcaneLayout";
 import { useArcaneTheme } from "../theme/ArcaneThemeProvider";
 import { createRollScreenTheme } from "../theme/rollScreenTheme";
 
-import { SessionBar } from "../features/roll/components/SessionBar";
+// import { SessionBar } from "../features/roll/components/SessionBar";
 import {
   SessionMenuModal,
   type SessionMenuItem,
@@ -74,6 +74,7 @@ import { behaviorNeedsSelectionConfig } from "../features/roll/helpers/quickBeha
 import {
   PremiumRollButton,
   PremiumRollScreenBackground,
+  PremiumSessionHeader,
 } from "../features/roll/premium";
 
 function findStandardQuickGroup(groups: DraftGroupSummary[]) {
@@ -1690,9 +1691,10 @@ export default function RollScreen() {
             width: "100%",
             maxWidth: layout.maxContentWidth,
             zIndex: 10,
+            paddingBottom: isVerySmallScreen ? 2 : 4,
           }}
         >
-          <SessionBar
+          <PremiumSessionHeader
             tableName={table?.name ?? null}
             activeProfileName={activeProfile?.name ?? null}
             hasActiveTable={hasActiveTable}
