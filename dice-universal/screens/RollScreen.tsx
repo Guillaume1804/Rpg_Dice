@@ -43,7 +43,7 @@ import { PreparedRollCard } from "../features/roll/components/PreparedRollCard";
 import { ActionRail } from "../features/roll/components/ActionRail";
 // import { StickyRollButton } from "../features/roll/components/StickyRollButton";
 
-import { ResultPanel } from "../features/roll/components/ResultPanel";
+// import { ResultPanel } from "../features/roll/components/ResultPanel";
 import { PreparedRollEditSheet } from "../features/roll/components/PreparedRollEditSheet";
 import { FreeDicePad } from "../features/roll/components/FreeDicePad";
 
@@ -72,6 +72,7 @@ import {
 import { behaviorNeedsSelectionConfig } from "../features/roll/helpers/quickBehaviorConfig";
 
 import {
+  PremiumResultCard,
   PremiumRollButton,
   PremiumRollScreenBackground,
   PremiumSessionHeader,
@@ -1726,7 +1727,8 @@ export default function RollScreen() {
               ],
             }}
           >
-            <ResultPanel result={latestResult} />
+            
+            <PremiumResultCard result={latestResult} />
 
             <View style={{ marginTop: adaptiveResultToDiceOverlap }}>
               <FreeDicePad
