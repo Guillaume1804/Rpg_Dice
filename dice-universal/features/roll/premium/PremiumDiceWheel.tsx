@@ -171,25 +171,27 @@ export function PremiumDiceWheel({
                 pointerEvents="none"
                 style={{
                     position: "absolute",
-                    top: featured ? -8 : -6,
-                    right: featured ? -8 : -6,
-                    minWidth: featured ? 27 : 21,
-                    height: featured ? 27 : 21,
+                    top: featured ? 6 : 5,
+                    right: featured ? 6 : 5,
+                    minWidth: featured ? 25 : 20,
+                    height: featured ? 25 : 20,
                     borderRadius: premium.radius.pill,
-                    backgroundColor: premium.colors.accent.primary,
+                    backgroundColor: "rgba(232, 200, 120, 0.92)",
                     alignItems: "center",
                     justifyContent: "center",
-                    paddingHorizontal: 7,
+                    paddingHorizontal: featured ? 7 : 6,
                     borderWidth: 1,
-                    borderColor: premium.colors.border.accent,
-                    ...premium.shadow.soft,
+                    borderColor: "rgba(255, 255, 255, 0.22)",
+                    zIndex: 8,
+                    elevation: 8,
                 }}
             >
                 <Text
                     style={{
                         color: premium.colors.text.inverse,
-                        fontSize: featured ? 12 : 10,
+                        fontSize: featured ? 11 : 9,
                         fontWeight: "900",
+                        lineHeight: featured ? 13 : 11,
                     }}
                 >
                     {count > 1 ? `x${count}` : "1"}
