@@ -39,7 +39,7 @@ import {
   type SessionMenuItem,
 } from "../features/roll/components/SessionMenuModal";
 
-import { PreparedRollCard } from "../features/roll/components/PreparedRollCard";
+// import { PreparedRollCard } from "../features/roll/components/PreparedRollCard";
 import { ActionRail } from "../features/roll/components/ActionRail";
 // import { StickyRollButton } from "../features/roll/components/StickyRollButton";
 
@@ -73,6 +73,7 @@ import { behaviorNeedsSelectionConfig } from "../features/roll/helpers/quickBeha
 
 import {
   PremiumDiceWheel,
+  PremiumPreparedRollCard,
   PremiumResultCard,
   PremiumRollButton,
   PremiumRollScreenBackground,
@@ -1744,7 +1745,7 @@ export default function RollScreen() {
             </View>
 
             <View style={{ marginTop: adaptiveDiceToPreparedOverlap }}>
-              <PreparedRollCard
+              <PremiumPreparedRollCard
                 title={hasPreparedRoll ? (preparedCardName ?? "Jet préparé") : "Jet préparé"}
                 name={preparedCardName}
                 detail={preparedCardDetail}
