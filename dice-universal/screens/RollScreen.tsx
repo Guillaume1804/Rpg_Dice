@@ -70,6 +70,8 @@ import {
 } from "../features/roll/helpers/rollDisplaySummary";
 import { behaviorNeedsSelectionConfig } from "../features/roll/helpers/quickBehaviorConfig";
 
+import { PremiumRollScreenBackground } from "../features/roll/premium";
+
 function findStandardQuickGroup(groups: DraftGroupSummary[]) {
   return (
     groups.find(
@@ -1661,40 +1663,17 @@ export default function RollScreen() {
     <View
       style={{
         ...styles.screen,
-        backgroundColor: rollTheme.cockpit.background,
+        position: "relative",
+        overflow: "hidden",
+        backgroundColor: "transparent",
       }}
     >
-      <View
-        pointerEvents="none"
-        style={{
-          position: "absolute",
-          top: -90,
-          right: -90,
-          width: 230,
-          height: 230,
-          borderRadius: 999,
-          backgroundColor: rollTheme.cockpit.magicGlow,
-          opacity: 0.16,
-        }}
-      />
-
-      <View
-        pointerEvents="none"
-        style={{
-          position: "absolute",
-          left: -110,
-          bottom: 90,
-          width: 260,
-          height: 260,
-          borderRadius: 999,
-          backgroundColor: rollTheme.cockpit.glow,
-          opacity: 0.11,
-        }}
-      />
+      <PremiumRollScreenBackground />
 
       <View
         style={{
           flex: 1,
+          zIndex: 1,
           paddingTop: screenTopPadding,
           paddingHorizontal: layout.horizontalPadding,
           paddingBottom: theme.spacing.xs,
