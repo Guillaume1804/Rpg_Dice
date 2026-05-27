@@ -1,6 +1,8 @@
 import type { Db } from "../db/database";
 import { newId } from "../../core/types/ids";
 
+import { assertGroupNameAvailable } from "./groupsRepo";
+
 export type DraftDie = {
   sides: number;
   qty: number;
@@ -89,6 +91,11 @@ export async function createGroupFromDraft(
   const createdAt = nowIso();
   const groupId = await newId();
   const tableId = await getTableIdFromProfile(db, params.profileId);
+
+  await assertGroupNameAvailable(db, {
+    profileId: params.profileId,
+    name: params.groupName,
+  });
 
   await db.runAsync(
     `

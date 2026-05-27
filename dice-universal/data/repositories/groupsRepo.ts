@@ -72,6 +72,73 @@ async function getTableIdFromProfile(
   return tableId;
 }
 
+export const DUPLICATE_GROUP_NAME_ERROR_CODE = "DUPLICATE_GROUP_NAME";
+
+type DuplicateGroupNameError = Error & {
+  code: typeof DUPLICATE_GROUP_NAME_ERROR_CODE;
+  actionName: string;
+};
+
+function createDuplicateGroupNameError(actionName: string): DuplicateGroupNameError {
+  const error = new Error(
+    `Une action nommée "${actionName}" existe déjà dans ce profil.`,
+  ) as DuplicateGroupNameError;
+
+  error.name = "DuplicateGroupNameError";
+  error.code = DUPLICATE_GROUP_NAME_ERROR_CODE;
+  error.actionName = actionName;
+
+  return error;
+}
+
+export function isDuplicateGroupNameError(
+  error: unknown,
+): error is DuplicateGroupNameError {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === DUPLICATE_GROUP_NAME_ERROR_CODE
+  );
+}
+
+export async function assertGroupNameAvailable(
+  db: Db,
+  params: {
+    profileId: string;
+    name: string;
+    excludeGroupId?: string | null;
+  },
+): Promise<void> {
+  const actionName = params.name.trim();
+
+  if (!actionName) {
+    return;
+  }
+
+  const queryParams: string[] = [params.profileId, actionName];
+  
+  if (params.excludeGroupId) {
+    queryParams.push(params.excludeGroupId);
+  }
+
+  const rows = await db.getAllAsync<{ id: string }>(
+    `
+    SELECT id
+    FROM groups
+    WHERE profile_id = ?
+      AND LOWER(TRIM(name)) = LOWER(TRIM(?))
+      ${params.excludeGroupId ? "AND id != ?" : ""}
+    LIMIT 1;
+    `,
+    queryParams,
+  );
+
+  if (rows.length > 0) {
+    throw createDuplicateGroupNameError(actionName);
+  }
+}
+
 async function assertTableIsNotSystemFromDie(
   db: Db,
   dieId: string,
@@ -170,6 +237,11 @@ export async function createGroup(
   },
 ): Promise<string> {
   await assertTableIsNotSystemFromProfile(db, params.profileId);
+
+  await assertGroupNameAvailable(db, {
+    profileId: params.profileId,
+    name: params.name,
+  });
 
   const tableId = await getTableIdFromProfile(db, params.profileId);
   const createdAt = nowIso();
@@ -368,6 +440,26 @@ export async function updateGroupName(
   name: string,
 ): Promise<void> {
   await assertTableIsNotSystemFromGroup(db, groupId);
+
+  const groupRows = await db.getAllAsync<{ profile_id: string | null }>(
+    `
+    SELECT profile_id
+    FROM groups
+    WHERE id = ?
+    LIMIT 1;
+    `,
+    [groupId],
+  );
+
+  const profileId = groupRows[0]?.profile_id ?? null;
+
+  if (profileId) {
+    await assertGroupNameAvailable(db, {
+      profileId,
+      name,
+      excludeGroupId: groupId,
+    });
+  }
 
   const now = nowIso();
 

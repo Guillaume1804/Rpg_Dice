@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Alert,
   Animated,
   Easing,
   LayoutAnimation,
@@ -22,6 +23,7 @@ import {
   createGroup,
   createGroupDie,
   deleteGroupDie,
+  isDuplicateGroupNameError,
   updateGroupName,
   updateGroupRuleId,
 } from "../data/repositories/groupsRepo";
@@ -191,6 +193,7 @@ export default function RollScreen() {
 
   const [showActionDraftSaveMenu, setShowActionDraftSaveMenu] = useState(false);
   const [actionCopyName, setActionCopyName] = useState("");
+  const [freeSaveActionName, setFreeSaveActionName] = useState("");
 
   const [allTables, setAllTables] = useState<TableRow[]>([]);
   const [loadingTables, setLoadingTables] = useState(false);
@@ -623,8 +626,13 @@ export default function RollScreen() {
     try {
       const targets = await getAvailableSaveTargets();
       setAvailableSaveTargets(targets);
+      const defaultActionName =
+        editablePreparedDraftGroup?.name?.trim() ||
+        "Jet rapide";
+
       setNewTableName(`Nouvelle table (${new Date().toLocaleDateString()})`);
       setNewProfileName("Profil principal");
+      setFreeSaveActionName(defaultActionName);
       setShowSaveOptions(false);
       setShowNameModal(true);
     } finally {
@@ -643,6 +651,19 @@ export default function RollScreen() {
     }
   }
 
+  function showDuplicateActionNameWarning(error: unknown) {
+    if (!isDuplicateGroupNameError(error)) {
+      return false;
+    }
+
+    Alert.alert(
+      "Nom d’action déjà utilisé",
+      "Une action avec ce nom existe déjà dans ce profil. Choisis un autre nom pour continuer.",
+    );
+
+    return true;
+  }
+
   async function handleSaveDraftTarget(params: {
     mode:
     | "new_table_new_profile"
@@ -653,31 +674,56 @@ export default function RollScreen() {
     tableId?: string;
     profileId?: string;
   }) {
-    if (params.mode === "new_table_new_profile") {
-      await createNewTableFromName(
-        params.tableName ?? "",
-        params.profileName ?? "Profil principal",
-      );
-      return;
-    }
+    try {
+      const trimmedActionName = freeSaveActionName.trim();
 
-    if (params.mode === "existing_table_new_profile") {
-      if (!params.tableId) {
-        throw new Error("Table cible manquante.");
+      if (!trimmedActionName) {
+        Alert.alert(
+          "Nom d’action obligatoire",
+          "Donne un nom à cette action avant de la sauvegarder.",
+        );
+        return;
       }
 
-      await appendDraftToExistingTableNewProfile(
+      if (params.mode === "new_table_new_profile") {
+        await createNewTableFromName(
+          params.tableName ?? "",
+          params.profileName ?? "Profil principal",
+          trimmedActionName,
+        );
+        return;
+      }
+
+      if (params.mode === "existing_table_new_profile") {
+        if (!params.tableId) {
+          throw new Error("Table cible manquante.");
+        }
+
+        await appendDraftToExistingTableNewProfile(
+          params.tableId,
+          params.profileName ?? "Profil principal",
+          trimmedActionName,
+        );
+        return;
+      }
+
+      if (!params.tableId || !params.profileId) {
+        throw new Error("Table ou profil cible manquant.");
+      }
+
+      await appendDraftToExistingProfile(
         params.tableId,
-        params.profileName ?? "Profil principal",
+        params.profileId,
+        trimmedActionName,
       );
-      return;
-    }
 
-    if (!params.tableId || !params.profileId) {
-      throw new Error("Table ou profil cible manquant.");
-    }
+    } catch (error) {
+      if (showDuplicateActionNameWarning(error)) {
+        return;
+      }
 
-    await appendDraftToExistingProfile(params.tableId, params.profileId);
+      throw error;
+    }
   }
 
   function handleConfirmBehaviorConfig() {
@@ -1125,44 +1171,52 @@ export default function RollScreen() {
       return;
     }
 
-    animateCockpitLayout();
+    try {
+      animateCockpitLayout();
 
-    await updateGroupName(
-      db,
-      preparedRoll.groupId,
-      editablePreparedDraftGroup.name.trim() || preparedRoll.label,
-    );
+      await updateGroupName(
+        db,
+        preparedRoll.groupId,
+        editablePreparedDraftGroup.name.trim() || preparedRoll.label,
+      );
 
-    await updateGroupRuleId(
-      db,
-      preparedRoll.groupId,
-      editablePreparedDraftGroup.rule_id ?? null,
-    );
+      await updateGroupRuleId(
+        db,
+        preparedRoll.groupId,
+        editablePreparedDraftGroup.rule_id ?? null,
+      );
 
-    for (const die of sourceAction.dice) {
-      await deleteGroupDie(db, die.id);
-    }
+      for (const die of sourceAction.dice) {
+        await deleteGroupDie(db, die.id);
+      }
 
-    for (const die of editablePreparedDraftGroup.dice) {
-      await createGroupDie(db, {
-        groupId: preparedRoll.groupId,
-        sides: die.sides,
-        qty: die.qty,
-        modifier: die.modifier ?? 0,
-        sign: die.sign ?? 1,
-        rule_id: die.rule_id ?? null,
+      for (const die of editablePreparedDraftGroup.dice) {
+        await createGroupDie(db, {
+          groupId: preparedRoll.groupId,
+          sides: die.sides,
+          qty: die.qty,
+          modifier: die.modifier ?? 0,
+          sign: die.sign ?? 1,
+          rule_id: die.rule_id ?? null,
+        });
+      }
+
+      await reloadGroups();
+
+      setPreparedRoll({
+        ...preparedRoll,
+        label: editablePreparedDraftGroup.name.trim() || preparedRoll.label,
       });
+
+      setLatestResult(null);
+      setShowActionDraftSaveMenu(false);
+    } catch (error) {
+      if (showDuplicateActionNameWarning(error)) {
+        return;
+      }
+
+      throw error;
     }
-
-    await reloadGroups();
-
-    setPreparedRoll({
-      ...preparedRoll,
-      label: editablePreparedDraftGroup.name.trim() || preparedRoll.label,
-    });
-
-    setLatestResult(null);
-    setShowActionDraftSaveMenu(false);
   }
 
   function handlePrepareCreateActionCopyName() {
@@ -1198,39 +1252,46 @@ export default function RollScreen() {
 
     const newActionName = trimmedName;
 
-    animateCockpitLayout();
+    try {
+      animateCockpitLayout();
 
-    const newGroupId = await createGroup(db, {
-      profileId: preparedRoll.profileId,
-      name: newActionName,
-      rule_id: editablePreparedDraftGroup.rule_id ?? null,
-    });
-
-    for (const die of editablePreparedDraftGroup.dice) {
-      await createGroupDie(db, {
-        groupId: newGroupId,
-        sides: die.sides,
-        qty: die.qty,
-        modifier: die.modifier ?? 0,
-        sign: die.sign ?? 1,
-        rule_id: die.rule_id ?? null,
+      const newGroupId = await createGroup(db, {
+        profileId: preparedRoll.profileId,
+        name: newActionName,
+        rule_id: editablePreparedDraftGroup.rule_id ?? null,
       });
+
+      for (const die of editablePreparedDraftGroup.dice) {
+        await createGroupDie(db, {
+          groupId: newGroupId,
+          sides: die.sides,
+          qty: die.qty,
+          modifier: die.modifier ?? 0,
+          sign: die.sign ?? 1,
+          rule_id: die.rule_id ?? null,
+        });
+      }
+
+      await reloadGroups();
+
+      setPreparedRoll({
+        source: "action_draft",
+        profileId: preparedRoll.profileId,
+        groupId: newGroupId,
+        draftGroupId: editablePreparedDraftGroup.id,
+        label: newActionName,
+      });
+
+      setLatestResult(null);
+      setShowActionDraftSaveMenu(false);
+      setActionCopyName("");
+    } catch (error) {
+      if (showDuplicateActionNameWarning(error)) {
+        return;
+      }
+
+      throw error;
     }
-
-    await reloadGroups();
-
-    setPreparedRoll({
-      source: "action_draft",
-      profileId: preparedRoll.profileId,
-      groupId: newGroupId,
-      draftGroupId: editablePreparedDraftGroup.id,
-      label: newActionName,
-    });
-
-    setLatestResult(null);
-    setShowActionDraftSaveMenu(false);
-    setShowActionDraftSaveMenu(false);
-    setActionCopyName("");
   }
 
   const preparedQuickRollDetail = useMemo(
@@ -1922,6 +1983,8 @@ export default function RollScreen() {
         initialProfileName={newProfileName}
         availableTargets={availableSaveTargets}
         loadingTargets={loadingSaveTargets}
+        freeActionName={freeSaveActionName}
+        onChangeFreeActionName={setFreeSaveActionName}
         actionLabel={
           preparedRoll?.source === "action_draft" ? preparedRoll.label : null
         }
@@ -1933,6 +1996,7 @@ export default function RollScreen() {
           closeCreateTableModal();
           setShowActionDraftSaveMenu(false);
           setActionCopyName("");
+          setFreeSaveActionName("");
         }}
         onConfirmFreeSave={handleSaveDraftTarget}
         onUpdateExistingAction={handleUpdateExistingActionFromDraft}

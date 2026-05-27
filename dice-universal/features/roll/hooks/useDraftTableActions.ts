@@ -161,6 +161,7 @@ export function useDraftTableActions({
   async function createNewTableFromName(
     tableName: string,
     profileName = "Profil principal",
+    actionNameOverride?: string
   ) {
     const trimmedTableName = tableName.trim();
     const trimmedProfileName = profileName.trim() || "Profil principal";
@@ -172,6 +173,18 @@ export function useDraftTableActions({
     const nonEmptyGroups = getNonEmptyDraftGroups();
     if (nonEmptyGroups.length === 0) return;
 
+    const groupsToSave =
+      actionNameOverride?.trim()
+        ? nonEmptyGroups.map((group, index) =>
+          index === 0
+            ? {
+              ...group,
+              name: actionNameOverride.trim(),
+            }
+            : group,
+        )
+        : nonEmptyGroups;
+
     const existingTables = await listTables(db);
     const alreadyExists = existingTables.some(
       (t) => t.name.trim().toLowerCase() === trimmedTableName.toLowerCase(),
@@ -181,7 +194,7 @@ export function useDraftTableActions({
       throw new Error("Une table avec ce nom existe déjà.");
     }
 
-    const resolvedGroups = await resolveDraftGroupsForSave(db, nonEmptyGroups);
+    const resolvedGroups = await resolveDraftGroupsForSave(db, groupsToSave);
 
     const newTableId = await createTableWithDraftGroups(db, {
       name: trimmedTableName,
@@ -199,6 +212,7 @@ export function useDraftTableActions({
   async function appendDraftToExistingTableNewProfile(
     tableId: string,
     profileName: string,
+    actionNameOverride?: string,
   ) {
     const trimmedProfileName = profileName.trim();
     if (!trimmedProfileName) {
@@ -208,7 +222,19 @@ export function useDraftTableActions({
     const nonEmptyGroups = getNonEmptyDraftGroups();
     if (nonEmptyGroups.length === 0) return;
 
-    const resolvedGroups = await resolveDraftGroupsForSave(db, nonEmptyGroups);
+    const groupsToSave =
+      actionNameOverride?.trim()
+        ? nonEmptyGroups.map((group, index) =>
+          index === 0
+            ? {
+              ...group,
+              name: actionNameOverride.trim(),
+            }
+            : group,
+        )
+        : nonEmptyGroups;
+
+    const resolvedGroups = await resolveDraftGroupsForSave(db, groupsToSave);
 
     const profileId = await createProfileFromDraft(db, {
       tableId,
@@ -229,11 +255,24 @@ export function useDraftTableActions({
   async function appendDraftToExistingProfile(
     tableId: string,
     profileId: string,
+    actionNameOverride?: string,
   ) {
     const nonEmptyGroups = getNonEmptyDraftGroups();
     if (nonEmptyGroups.length === 0) return;
 
-    const resolvedGroups = await resolveDraftGroupsForSave(db, nonEmptyGroups);
+    const groupsToSave =
+      actionNameOverride?.trim()
+        ? nonEmptyGroups.map((group, index) =>
+          index === 0
+            ? {
+              ...group,
+              name: actionNameOverride.trim(),
+            }
+            : group,
+        )
+        : nonEmptyGroups;
+
+    const resolvedGroups = await resolveDraftGroupsForSave(db, groupsToSave);
 
     await createGroupsFromDraft(db, {
       tableId,

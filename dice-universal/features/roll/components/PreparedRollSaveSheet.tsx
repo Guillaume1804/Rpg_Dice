@@ -36,6 +36,9 @@ type Props = {
     availableTargets: SaveTargetTable[];
     loadingTargets?: boolean;
 
+    freeActionName: string;
+    onChangeFreeActionName: (value: string) => void;
+
     actionLabel?: string | null;
     tableIsSystem?: boolean;
 
@@ -314,6 +317,8 @@ export function PreparedRollSaveSheet({
     initialProfileName,
     availableTargets,
     loadingTargets = false,
+    freeActionName,
+    onChangeFreeActionName,
     actionLabel,
     tableIsSystem = false,
     copyName,
@@ -433,6 +438,7 @@ export function PreparedRollSaveSheet({
                             label="Valider"
                             onPress={handleConfirmFreeSave}
                             variant="accent"
+                            disabled={freeActionName.trim().length === 0}
                         />
                     </View>
                 ) : actionMode === "copy_name" ? (
@@ -460,6 +466,16 @@ export function PreparedRollSaveSheet({
         >
             {source === "free" ? (
                 <View style={{ gap: premium.spacing.md }}>
+                    <View>
+                        <FieldLabel>Nom de l’action</FieldLabel>
+                        <SaveInput
+                            value={freeActionName}
+                            onChangeText={onChangeFreeActionName}
+                            placeholder="Ex: Attaque, Perception, Dégâts..."
+                            autoFocus
+                        />
+                    </View>
+
                     <View style={{ gap: premium.spacing.sm }}>
                         <SectionLabel>Destination</SectionLabel>
 
