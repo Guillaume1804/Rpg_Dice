@@ -26,8 +26,7 @@ import {
   updateGroupRuleId,
 } from "../data/repositories/groupsRepo";
 
-import { RollModals } from "../features/roll/components/RollModals";
-import { QuickRollSection } from "../features/roll/components/QuickRollSection";
+import { PreparedRollSaveSheet } from "../features/roll/components/PreparedRollSaveSheet";
 
 import { useArcaneLayout } from "../theme/useArcaneLayout";
 import { useArcaneTheme } from "../theme/ArcaneThemeProvider";
@@ -191,7 +190,6 @@ export default function RollScreen() {
   const [showProfileSessionMenu, setShowProfileSessionMenu] = useState(false);
 
   const [showActionDraftSaveMenu, setShowActionDraftSaveMenu] = useState(false);
-  const [showActionCopyNameModal, setShowActionCopyNameModal] = useState(false);
   const [actionCopyName, setActionCopyName] = useState("");
 
   const [allTables, setAllTables] = useState<TableRow[]>([]);
@@ -313,38 +311,15 @@ export default function RollScreen() {
   const {
     draftGroups,
     setDraftGroups,
-    draftResults,
     setDraftResults,
     selectedDraftGroupId,
     setSelectedDraftGroupId,
-
-    showRenameDraftGroupModal,
-    renameDraftGroupValue,
-    setRenameDraftGroupValue,
-
-    showDraftGroupRuleModal,
-    closeDraftGroupRuleModal,
-    draftGroupRuleSelection,
     setDraftGroupRuleSelection,
-
-    editingDraftGroupId,
-    editingDraftIndex,
-    draftEditModifier,
-    setDraftEditModifier,
-    draftEditSign,
-    setDraftEditSign,
-    draftEditRuleId,
-    setDraftEditRuleId,
-    draftEditSides,
-    setDraftEditSides,
-    draftEditQty,
-    setDraftEditQty,
 
     resetDraftEditorState,
     resetDraftState,
     getNonEmptyDraftGroups,
 
-    addDraftGroup,
     addQuickStandardDie,
     addQuickPresetDie,
     loadSavedGroupIntoDraft,
@@ -358,22 +333,9 @@ export default function RollScreen() {
     toggleDraftDieSign,
 
     removeDraftDie,
-    removeDraftGroup,
     clearDraft,
 
-    openRenameDraftGroupModal,
-    closeRenameDraftGroupModal,
-    saveRenameDraftGroup,
-
-    openDraftEditor,
-    saveDraftEditor,
-
-    openDraftGroupRuleEditor,
-    saveDraftGroupRuleEditor,
-
-    rollDraft,
     rollSingleDraftGroup,
-    clearDraftGroup,
   } = useQuickRollDraft({
     db,
     table,
@@ -443,7 +405,6 @@ export default function RollScreen() {
       setDraftGroups([]);
       setDraftResults([]);
       setSelectedDraftGroupId(null);
-      setDraftGroupRuleSelection(null);
       setShowAdvanced(false);
       setShowNameModal(false);
       setShowSaveOptions(false);
@@ -479,7 +440,6 @@ export default function RollScreen() {
     clearDraft();
     setDraftResults([]);
     setSelectedDraftGroupId(null);
-    setDraftGroupRuleSelection(null);
     resetDraftEditorState();
   }, [
     clearDraft,
@@ -1205,16 +1165,13 @@ export default function RollScreen() {
     setShowActionDraftSaveMenu(false);
   }
 
-  function handleOpenCreateActionCopyNameModal() {
+  function handlePrepareCreateActionCopyName() {
     if (preparedRoll?.source !== "action_draft") return;
     if (!editablePreparedDraftGroup) return;
 
     setActionCopyName(
       `${editablePreparedDraftGroup.name || preparedRoll.label} — variante`,
     );
-
-    setShowActionDraftSaveMenu(false);
-    setShowActionCopyNameModal(true);
   }
 
   async function handleCreateActionCopyFromDraft() {
@@ -1272,7 +1229,7 @@ export default function RollScreen() {
 
     setLatestResult(null);
     setShowActionDraftSaveMenu(false);
-    setShowActionCopyNameModal(false);
+    setShowActionDraftSaveMenu(false);
     setActionCopyName("");
   }
 
@@ -1618,35 +1575,6 @@ export default function RollScreen() {
     [profiles, activeProfile?.id],
   );
 
-  const actionDraftSaveMenuItems: SessionMenuItem[] = [
-    {
-      id: "update-existing-action",
-      label: "Mettre à jour l’action",
-      description:
-        table?.is_system === 1
-          ? "Impossible sur une table système."
-          : "Remplace l’action existante par cette version modifiée.",
-      icon: "💾",
-      disabled: table?.is_system === 1,
-      onPress: async (): Promise<void> => {
-        await handleUpdateExistingActionFromDraft();
-      },
-    },
-    {
-      id: "create-action-copy",
-      label: "Créer une copie modifiée",
-      description:
-        table?.is_system === 1
-          ? "Impossible sur une table système."
-          : "Crée une nouvelle action sans écraser l’originale.",
-      icon: "✦",
-      disabled: table?.is_system === 1,
-      onPress: (): void => {
-        handleOpenCreateActionCopyNameModal();
-      },
-    },
-  ];
-
   if (error) {
     return (
       <View
@@ -1916,67 +1844,6 @@ export default function RollScreen() {
         </View>
       </View>
 
-      {
-        showAdvanced ? (
-          <View
-            style={{
-              position: "absolute",
-              left: layout.horizontalPadding,
-              right: layout.horizontalPadding,
-              top: screenTopPadding + 72,
-              bottom: theme.spacing.md,
-              zIndex: 50,
-              borderRadius: rollTheme.layout.cockpitRadius,
-              backgroundColor: "rgba(7, 12, 31, 0.96)",
-              borderWidth: 1,
-              borderColor: "rgba(145, 113, 255, 0.24)",
-              overflow: "hidden",
-            }}
-          >
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{
-                padding: theme.spacing.md,
-              }}
-            >
-              <QuickRollSection
-                simplified={true}
-                hideInternalRollControls={true}
-                hideDicePicker={true}
-                hideStandardQuickGroup={true}
-                title="Action temporaire"
-                standardDice={STANDARD_DICE}
-                draftGroups={draftGroups}
-                draftResults={draftResults}
-                selectedDraftGroupId={selectedDraftGroupId}
-                tableIsSystem={table?.is_system === 1}
-                showSaveOptions={showSaveOptions}
-                showAdvanced={showAdvanced}
-                onToggleSaveOptions={() => setShowSaveOptions((v) => !v)}
-                onToggleAdvanced={() => setShowAdvanced((v) => !v)}
-                onAddDraftGroup={addDraftGroup}
-                onAddQuickStandardDie={handleAddQuickStandardDie}
-                onSelectDraftGroup={setSelectedDraftGroupId}
-                onRenameDraftGroup={openRenameDraftGroupModal}
-                onEditDraftGroupRule={openDraftGroupRuleEditor}
-                onRemoveDraftGroup={removeDraftGroup}
-                onEditDraftDie={openDraftEditor}
-                onOpenDieConfig={quickDieBehaviorPicker.open}
-                onRemoveDraftDie={removeDraftDie}
-                onRollDraft={rollDraft}
-                onRollQuickGroup={rollSingleDraftGroup}
-                onClearQuickGroup={clearDraftGroup}
-                onClearDraft={handleClearQuickRoll}
-                onReplaceCurrentTable={replaceCurrentTable}
-                onCreateNewTable={handleOpenSaveDraftModal}
-                availableRules={availableRules}
-                onAdjustQuickDieQty={adjustDraftDieQty}
-              />
-            </ScrollView>
-          </View>
-        ) : null
-      }
-
       <Animated.View
         pointerEvents={isResettingPreparedRoll ? "auto" : "none"}
         style={{
@@ -2042,41 +1909,34 @@ export default function RollScreen() {
         </Animated.View>
       </Animated.View>
 
-      <RollModals
-        draftGroups={draftGroups}
-        editingDraftGroupId={editingDraftGroupId}
-        editingDraftIndex={editingDraftIndex}
-        draftEditSign={draftEditSign}
-        draftEditSides={draftEditSides}
-        draftEditQty={draftEditQty}
-        draftEditModifier={draftEditModifier}
-        draftEditRuleId={draftEditRuleId}
-        modernRules={modernRules}
-        legacyRules={legacyRules}
-        onChangeSign={setDraftEditSign}
-        onChangeSides={setDraftEditSides}
-        onChangeQty={setDraftEditQty}
-        onChangeModifier={setDraftEditModifier}
-        onChangeRuleId={setDraftEditRuleId}
-        onCancelDraftEditor={resetDraftEditorState}
-        onSaveDraftEditor={saveDraftEditor}
-        showDraftGroupRuleModal={showDraftGroupRuleModal}
-        draftGroupRuleSelection={draftGroupRuleSelection}
-        onSelectDraftGroupRule={setDraftGroupRuleSelection}
-        onCancelDraftGroupRule={closeDraftGroupRuleModal}
-        onSaveDraftGroupRule={saveDraftGroupRuleEditor}
-        showRenameDraftGroupModal={showRenameDraftGroupModal}
-        renameDraftGroupValue={renameDraftGroupValue}
-        onChangeRenameDraftGroupValue={setRenameDraftGroupValue}
-        onCancelRenameDraftGroup={closeRenameDraftGroupModal}
-        onSaveRenameDraftGroup={saveRenameDraftGroup}
-        showNameModal={showNameModal}
-        newTableName={newTableName}
-        newProfileName={newProfileName}
-        availableSaveTargets={availableSaveTargets}
-        loadingSaveTargets={loadingSaveTargets}
-        onCancelNewTable={closeCreateTableModal}
-        onSaveDraftTarget={handleSaveDraftTarget}
+      <PreparedRollSaveSheet
+        visible={showNameModal || showActionDraftSaveMenu}
+        source={
+          showNameModal
+            ? "free"
+            : showActionDraftSaveMenu
+              ? "action_draft"
+              : null
+        }
+        initialTableName={newTableName}
+        initialProfileName={newProfileName}
+        availableTargets={availableSaveTargets}
+        loadingTargets={loadingSaveTargets}
+        actionLabel={
+          preparedRoll?.source === "action_draft" ? preparedRoll.label : null
+        }
+        tableIsSystem={table?.is_system === 1}
+        copyName={actionCopyName}
+        onChangeCopyName={setActionCopyName}
+        onPrepareCopyName={handlePrepareCreateActionCopyName}
+        onClose={() => {
+          closeCreateTableModal();
+          setShowActionDraftSaveMenu(false);
+          setActionCopyName("");
+        }}
+        onConfirmFreeSave={handleSaveDraftTarget}
+        onUpdateExistingAction={handleUpdateExistingActionFromDraft}
+        onCreateActionCopy={handleCreateActionCopyFromDraft}
       />
 
       <SessionMenuModal
@@ -2094,190 +1954,6 @@ export default function RollScreen() {
         items={profileSessionMenuItems}
         onClose={() => setShowProfileSessionMenu(false)}
       />
-
-      <SessionMenuModal
-        visible={showActionDraftSaveMenu}
-        title="Sauvegarder l’action"
-        subtitle="Choisis comment conserver cette version modifiée."
-        items={actionDraftSaveMenuItems}
-        onClose={() => setShowActionDraftSaveMenu(false)}
-      />
-
-      {
-        showActionCopyNameModal ? (
-          <View
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: "rgba(0,0,0,0.72)",
-              justifyContent: "center",
-              padding: 18,
-              zIndex: 90,
-            }}
-          >
-            <View
-              style={{
-                borderRadius: rollTheme.layout.cockpitRadius,
-                borderWidth: 1,
-                borderColor: "rgba(217, 160, 55, 0.7)",
-                backgroundColor: rollTheme.cockpit.panel,
-                padding: theme.spacing.md,
-                gap: theme.spacing.md,
-                overflow: "hidden",
-                ...theme.shadow.card,
-              }}
-            >
-              <View
-                pointerEvents="none"
-                style={{
-                  position: "absolute",
-                  top: -70,
-                  right: -60,
-                  width: 170,
-                  height: 170,
-                  borderRadius: 999,
-                  backgroundColor: rollTheme.cockpit.glow,
-                  opacity: 0.16,
-                }}
-              />
-
-              <View style={{ gap: theme.spacing.xs }}>
-                <Text
-                  style={{
-                    color: theme.colors.textSubtle,
-                    fontSize: theme.typography.tiny,
-                    fontWeight: "900",
-                    textTransform: "uppercase",
-                    letterSpacing: 0.9,
-                  }}
-                >
-                  ✦ Nouvelle action
-                </Text>
-
-                <Text
-                  style={{
-                    color: theme.colors.text,
-                    fontSize: 22,
-                    fontWeight: "900",
-                    letterSpacing: -0.3,
-                  }}
-                >
-                  Nommer la copie
-                </Text>
-
-                <Text
-                  style={{
-                    color: theme.colors.textMuted,
-                    lineHeight: 20,
-                    fontWeight: "600",
-                  }}
-                >
-                  Cette copie sera ajoutée au profil actif sans modifier l’action
-                  d’origine.
-                </Text>
-              </View>
-
-              <TextInput
-                value={actionCopyName}
-                onChangeText={setActionCopyName}
-                placeholder="Nom de la nouvelle action"
-                placeholderTextColor={theme.colors.textSubtle}
-                selectionColor={theme.colors.accent}
-                autoFocus
-                style={{
-                  minHeight: 52,
-                  color: theme.colors.text,
-                  backgroundColor: rollTheme.cockpit.panelAlt,
-                  borderWidth: 1,
-                  borderColor: rollTheme.cockpit.borderSoft,
-                  borderRadius: theme.radius.lg,
-                  paddingHorizontal: 14,
-                  paddingVertical: 12,
-                  fontSize: 17,
-                  fontWeight: "800",
-                }}
-              />
-
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "flex-end",
-                  flexWrap: "wrap",
-                  gap: theme.spacing.sm,
-                }}
-              >
-                <Pressable
-                  onPress={() => {
-                    setShowActionCopyNameModal(false);
-                    setActionCopyName("");
-                  }}
-                  style={({ pressed }) => ({
-                    paddingVertical: 11,
-                    paddingHorizontal: 16,
-                    borderWidth: 1,
-                    borderColor: rollTheme.cockpit.borderSoft,
-                    borderRadius: theme.radius.pill,
-                    backgroundColor: pressed
-                      ? theme.colors.surfaceSoft
-                      : rollTheme.cockpit.panelAlt,
-                    opacity: pressed ? 0.84 : 1,
-                  })}
-                >
-                  <Text
-                    style={{
-                      color: theme.colors.text,
-                      fontWeight: "900",
-                    }}
-                  >
-                    Annuler
-                  </Text>
-                </Pressable>
-
-                <Pressable
-                  onPress={handleCreateActionCopyFromDraft}
-                  disabled={actionCopyName.trim().length === 0}
-                  style={({ pressed }) => ({
-                    paddingVertical: 11,
-                    paddingHorizontal: 16,
-                    borderWidth: 1,
-                    borderColor:
-                      actionCopyName.trim().length === 0
-                        ? rollTheme.cockpit.borderSoft
-                        : theme.colors.accent,
-                    borderRadius: theme.radius.pill,
-                    backgroundColor:
-                      actionCopyName.trim().length === 0
-                        ? "rgba(32, 41, 88, 0.36)"
-                        : pressed
-                          ? "rgba(217, 160, 55, 0.2)"
-                          : theme.colors.accentSoft,
-                    opacity: pressed
-                      ? 0.84
-                      : actionCopyName.trim().length === 0
-                        ? 0.5
-                        : 1,
-                  })}
-                >
-                  <Text
-                    style={{
-                      color:
-                        actionCopyName.trim().length === 0
-                          ? theme.colors.textSubtle
-                          : theme.colors.accent,
-                      fontWeight: "900",
-                    }}
-                  >
-                    Créer la copie
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-          </View>
-        ) : null
-      }
 
       {
         !showPreparedEditSheet ? (
