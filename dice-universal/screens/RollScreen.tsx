@@ -28,6 +28,8 @@ import {
   updateGroupRuleId,
 } from "../data/repositories/groupsRepo";
 
+import { createRule } from "../data/repositories/rulesRepo";
+
 import { PreparedRollSaveSheet } from "../features/roll/components/PreparedRollSaveSheet";
 
 import { useArcaneLayout } from "../theme/useArcaneLayout";
@@ -148,6 +150,38 @@ function formatPreparedCardDieLabel(die: {
   sign?: number;
 }) {
   return `${die.qty}d${die.sides}${formatPreparedCardModifier(die.modifier)}`;
+}
+
+async function resolvePreparedRuleId(
+  db: ReturnType<typeof useDb>,
+  ruleId?: string | null,
+  ruleTemp?: {
+    id?: string;
+    name?: string;
+    kind?: string;
+    params_json?: string;
+    paramsJson?: string;
+  } | null,
+): Promise<string | null> {
+  if (ruleId) {
+    return ruleId;
+  }
+
+  if (!ruleTemp) {
+    return null;
+  }
+
+  return createRule(db, {
+    name: ruleTemp.name ?? "Comportement personnalisé",
+    kind: ruleTemp.kind ?? "pipeline",
+    params_json:
+      typeof ruleTemp.params_json === "string"
+        ? ruleTemp.params_json
+        : typeof ruleTemp.paramsJson === "string"
+          ? ruleTemp.paramsJson
+          : "{}",
+    is_system: 0,
+  });
 }
 
 export default function RollScreen() {
@@ -761,13 +795,6 @@ export default function RollScreen() {
       return;
     }
 
-    if (
-      preparedRoll?.source === "action" ||
-      preparedRoll?.source === "action_draft"
-    ) {
-      resetFreeDraftState();
-    }
-
     const tempRule = buildDraftTempRuleFromPreset({
       preset: {
         key: quickBehaviorConfig.pendingBehaviorKey,
@@ -814,6 +841,13 @@ export default function RollScreen() {
       }
 
       return;
+    }
+
+    if (
+      preparedRoll?.source === "action" ||
+      preparedRoll?.source === "action_draft"
+    ) {
+      resetFreeDraftState();
     }
 
     const createdGroupId = addQuickPresetDie(
@@ -1202,6 +1236,12 @@ export default function RollScreen() {
     try {
       animateCockpitLayout();
 
+      const resolvedGroupRuleId = await resolvePreparedRuleId(
+        db,
+        editablePreparedDraftGroup.rule_id ?? null,
+        (editablePreparedDraftGroup as any).rule_temp ?? null,
+      );
+
       await updateGroupName(
         db,
         preparedRoll.groupId,
@@ -1211,7 +1251,7 @@ export default function RollScreen() {
       await updateGroupRuleId(
         db,
         preparedRoll.groupId,
-        editablePreparedDraftGroup.rule_id ?? null,
+        resolvedGroupRuleId,
       );
 
       for (const die of sourceAction.dice) {
@@ -1219,13 +1259,19 @@ export default function RollScreen() {
       }
 
       for (const die of editablePreparedDraftGroup.dice) {
+        const resolvedDieRuleId = await resolvePreparedRuleId(
+          db,
+          die.rule_id ?? null,
+          (die as any).rule_temp ?? null,
+        );
+
         await createGroupDie(db, {
           groupId: preparedRoll.groupId,
           sides: die.sides,
           qty: die.qty,
           modifier: die.modifier ?? 0,
           sign: die.sign ?? 1,
-          rule_id: die.rule_id ?? null,
+          rule_id: resolvedDieRuleId,
         });
       }
 
@@ -1284,20 +1330,32 @@ export default function RollScreen() {
     try {
       animateCockpitLayout();
 
+      const resolvedGroupRuleId = await resolvePreparedRuleId(
+        db,
+        editablePreparedDraftGroup.rule_id ?? null,
+        (editablePreparedDraftGroup as any).rule_temp ?? null,
+      );
+
       const newGroupId = await createGroup(db, {
         profileId: preparedRoll.profileId,
         name: newActionName,
-        rule_id: editablePreparedDraftGroup.rule_id ?? null,
+        rule_id: resolvedGroupRuleId,
       });
 
       for (const die of editablePreparedDraftGroup.dice) {
+        const resolvedDieRuleId = await resolvePreparedRuleId(
+          db,
+          die.rule_id ?? null,
+          (die as any).rule_temp ?? null,
+        );
+
         await createGroupDie(db, {
           groupId: newGroupId,
           sides: die.sides,
           qty: die.qty,
           modifier: die.modifier ?? 0,
           sign: die.sign ?? 1,
-          rule_id: die.rule_id ?? null,
+          rule_id: resolvedDieRuleId,
         });
       }
 
@@ -2598,6 +2656,22 @@ export default function RollScreen() {
           />
         }
         onClose={handleClosePreparedEdit}
+        onBackFromBehaviorConfig={() => {
+          const shouldReturnToMainScreen = preparedBehaviorFlowOrigin === "tile";
+
+          quickBehaviorConfig.close();
+
+          if (shouldReturnToMainScreen) {
+            setPreparedEditMode("dice");
+            setPreparedBehaviorTargetIndex(null);
+            setDraftBehaviorTarget(null);
+            setPreparedBehaviorFlowOrigin(null);
+            setShowPreparedEditSheet(false);
+            return;
+          }
+
+          setPreparedEditMode("behavior_picker");
+        }}
         onAdjustDieQty={handleAdjustPreparedDieQty}
         onAdjustDieModifier={handleAdjustPreparedDieModifier}
         onToggleDieSign={handleTogglePreparedDieSign}

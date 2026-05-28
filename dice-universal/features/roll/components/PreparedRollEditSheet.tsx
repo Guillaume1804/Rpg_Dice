@@ -2,9 +2,7 @@
 
 import { useMemo, type ReactNode } from "react";
 import {
-  Modal,
   Pressable,
-  ScrollView,
   Text,
   TextInput,
   View,
@@ -12,8 +10,8 @@ import {
 import type { RuleBehaviorKey } from "../../../core/rules/behaviorRegistry";
 import type { QuickBehaviorPickerOption } from "../hooks/useQuickDieBehaviorPicker";
 
-import { useArcaneTheme } from "../../../theme/ArcaneThemeProvider";
-import { createRollScreenTheme } from "../../../theme/rollScreenTheme";
+import { PremiumBottomSheet } from "../../../components/premium";
+import { usePremiumTheme } from "../../../theme/premium/usePremiumTheme";
 
 export type PreparedRollEditDie = {
   sides: number;
@@ -51,6 +49,7 @@ type PreparedRollEditSheetProps = {
   behaviorPickerData?: BehaviorPickerData;
   behaviorConfigPanel?: ReactNode;
   onClose: () => void;
+  onBackFromBehaviorConfig?: () => void;
   onAdjustDieQty: (index: number, delta: number) => void;
   onAdjustDieModifier: (index: number, delta: number) => void;
   onToggleDieSign: (index: number) => void;
@@ -125,42 +124,34 @@ function SheetPillButton({
   onPress: () => void;
   variant?: "default" | "danger" | "accent";
 }) {
-  const { theme } = useArcaneTheme();
+  const premium = usePremiumTheme();
 
-  const borderColor =
-    variant === "danger"
-      ? "rgba(255, 92, 122, 0.78)"
-      : variant === "accent"
-        ? "rgba(217, 160, 55, 0.78)"
-        : "rgba(145, 113, 255, 0.22)";
-
-  const backgroundColor =
-    variant === "danger"
-      ? "rgba(255, 92, 122, 0.1)"
-      : variant === "accent"
-        ? "rgba(217, 160, 55, 0.13)"
-        : "rgba(32, 41, 88, 0.52)";
-
-  const textColor =
-    variant === "danger"
-      ? theme.colors.failure
-      : variant === "accent"
-        ? theme.colors.accent
-        : theme.colors.textMuted;
+  const isDanger = variant === "danger";
+  const isAccent = variant === "accent";
 
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        minHeight: 34,
-        paddingVertical: 7,
-        paddingHorizontal: 11,
+        minHeight: 36,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
         borderWidth: 1,
-        borderColor,
-        borderRadius: theme.radius.pill,
-        backgroundColor,
-        opacity: pressed ? 0.82 : 1,
-        transform: [{ scale: pressed ? 0.97 : 1 }],
+        borderColor: isDanger
+          ? "rgba(239, 111, 145, 0.38)"
+          : isAccent
+            ? premium.colors.border.accent
+            : premium.colors.border.subtle,
+        borderRadius: premium.radius.pill,
+        backgroundColor: isDanger
+          ? premium.colors.state.failureSoft
+          : isAccent
+            ? premium.colors.accent.soft
+            : pressed
+              ? premium.colors.surface.pressed
+              : premium.colors.surface.subtle,
+        opacity: pressed ? 0.84 : 1,
+        transform: [{ scale: pressed ? premium.animation.pressScale : 1 }],
         alignItems: "center",
         justifyContent: "center",
       })}
@@ -168,7 +159,11 @@ function SheetPillButton({
       <Text
         numberOfLines={1}
         style={{
-          color: textColor,
+          color: isDanger
+            ? premium.colors.state.failure
+            : isAccent
+              ? premium.colors.accent.primary
+              : premium.colors.text.secondary,
           fontSize: 12,
           fontWeight: "900",
         }}
@@ -182,33 +177,43 @@ function SheetPillButton({
 function QuantityButton({
   label,
   onPress,
+  tone = "default",
 }: {
   label: string;
   onPress: () => void;
+  tone?: "default" | "accent";
 }) {
-  const { theme } = useArcaneTheme();
+  const premium = usePremiumTheme();
+
+  const isAccent = tone === "accent";
 
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        width: 34,
-        height: 34,
+        width: 36,
+        height: 36,
         borderWidth: 1,
-        borderColor: "rgba(145, 113, 255, 0.24)",
-        borderRadius: theme.radius.pill,
+        borderColor: isAccent
+          ? premium.colors.border.accent
+          : premium.colors.border.subtle,
+        borderRadius: premium.radius.pill,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: pressed
-          ? "rgba(32, 41, 88, 0.76)"
-          : "rgba(18, 23, 58, 0.74)",
+        backgroundColor: isAccent
+          ? premium.colors.accent.soft
+          : pressed
+            ? premium.colors.surface.pressed
+            : premium.colors.surface.subtle,
         opacity: pressed ? 0.84 : 1,
-        transform: [{ scale: pressed ? 0.94 : 1 }],
+        transform: [{ scale: pressed ? premium.animation.pressScale : 1 }],
       })}
     >
       <Text
         style={{
-          color: theme.colors.text,
+          color: isAccent
+            ? premium.colors.accent.primary
+            : premium.colors.text.primary,
           fontSize: 18,
           fontWeight: "900",
           lineHeight: 21,
@@ -221,28 +226,28 @@ function QuantityButton({
 }
 
 function SummaryStat({ label, value }: { label: string; value: string }) {
-  const { theme } = useArcaneTheme();
+  const premium = usePremiumTheme();
 
   return (
     <View
       style={{
         flex: 1,
-        minHeight: 48,
+        minHeight: 50,
         borderWidth: 1,
-        borderColor: "rgba(145, 113, 255, 0.18)",
-        borderRadius: 16,
-        backgroundColor: "rgba(18, 23, 58, 0.56)",
-        paddingVertical: 8,
-        paddingHorizontal: 10,
+        borderColor: premium.colors.border.subtle,
+        borderRadius: premium.radius.lg,
+        backgroundColor: premium.colors.surface.subtle,
+        paddingVertical: 9,
+        paddingHorizontal: 11,
         justifyContent: "center",
-        gap: 2,
+        gap: 3,
       }}
     >
       <Text
         numberOfLines={1}
         style={{
-          color: theme.colors.textSubtle,
-          fontSize: 9,
+          color: premium.colors.text.muted,
+          fontSize: premium.typography.tiny,
           fontWeight: "900",
           textTransform: "uppercase",
           letterSpacing: 0.7,
@@ -254,8 +259,8 @@ function SummaryStat({ label, value }: { label: string; value: string }) {
       <Text
         numberOfLines={1}
         style={{
-          color: theme.colors.text,
-          fontSize: 15,
+          color: premium.colors.text.primary,
+          fontSize: 14,
           fontWeight: "900",
         }}
       >
@@ -284,19 +289,33 @@ function PreparedDieRow({
   onConfigureDieBehavior?: (index: number) => void;
   onClearDieBehavior?: (index: number) => void;
 }) {
-  const { theme } = useArcaneTheme();
-  const rollTheme = useMemo(() => createRollScreenTheme(theme), [theme]);
+  const premium = usePremiumTheme();
   const hasBehavior = !!die.ruleLabel && die.ruleLabel !== "Somme simple";
+  const modifier = die.modifier ?? 0;
+  const isNegative = die.sign === -1;
+
+  const signColor = isNegative
+    ? premium.colors.state.failure
+    : premium.colors.state.success;
+
+  const modifierColor =
+    modifier === 0
+      ? premium.colors.text.secondary
+      : modifier > 0
+        ? premium.colors.accent.primary
+        : premium.colors.state.failure;
 
   return (
     <View
       style={{
-        borderRadius: 22,
+        borderRadius: premium.radius.xl,
         borderWidth: 1,
-        borderColor: "rgba(145, 113, 255, 0.2)",
-        backgroundColor: "rgba(18, 23, 58, 0.68)",
-        padding: 11,
-        gap: 10,
+        borderColor: hasBehavior
+          ? premium.colors.border.accent
+          : premium.colors.border.subtle,
+        backgroundColor: premium.colors.surface.elevated,
+        padding: premium.spacing.md,
+        gap: premium.spacing.sm,
         overflow: "hidden",
       }}
     >
@@ -304,13 +323,15 @@ function PreparedDieRow({
         pointerEvents="none"
         style={{
           position: "absolute",
-          right: -46,
-          top: -60,
-          width: 138,
-          height: 138,
+          right: -54,
+          top: -70,
+          width: 150,
+          height: 150,
           borderRadius: 999,
-          backgroundColor: rollTheme.cockpit.magicGlow,
-          opacity: 0.09,
+          backgroundColor: hasBehavior
+            ? premium.colors.accent.soft
+            : premium.colors.surface.subtle,
+          opacity: hasBehavior ? 0.65 : 0.52,
         }}
       />
 
@@ -318,24 +339,30 @@ function PreparedDieRow({
         style={{
           flexDirection: "row",
           alignItems: "center",
-          gap: 10,
+          gap: premium.spacing.sm,
         }}
       >
         <View
           style={{
-            width: 48,
-            height: 48,
-            borderRadius: 17,
+            width: 52,
+            height: 52,
+            borderRadius: premium.radius.lg,
             borderWidth: 1,
-            borderColor: "rgba(217, 160, 55, 0.78)",
-            backgroundColor: "rgba(217, 160, 55, 0.13)",
+            borderColor: hasBehavior
+              ? premium.colors.border.accent
+              : premium.colors.border.subtle,
+            backgroundColor: hasBehavior
+              ? premium.colors.accent.soft
+              : premium.colors.surface.subtle,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
           <Text
             style={{
-              color: theme.colors.accent,
+              color: hasBehavior
+                ? premium.colors.accent.primary
+                : premium.colors.text.primary,
               fontSize: 23,
               fontWeight: "900",
               lineHeight: 27,
@@ -350,7 +377,7 @@ function PreparedDieRow({
             numberOfLines={1}
             ellipsizeMode="tail"
             style={{
-              color: theme.colors.text,
+              color: premium.colors.text.primary,
               fontSize: 18,
               fontWeight: "900",
               letterSpacing: -0.25,
@@ -364,9 +391,11 @@ function PreparedDieRow({
             numberOfLines={1}
             ellipsizeMode="tail"
             style={{
-              color: theme.colors.textMuted,
+              color: hasBehavior
+                ? premium.colors.accent.primary
+                : premium.colors.text.secondary,
               fontSize: 12,
-              fontWeight: "700",
+              fontWeight: "800",
               lineHeight: 15,
             }}
           >
@@ -377,141 +406,118 @@ function PreparedDieRow({
         <View
           style={{
             flexDirection: "row",
-            gap: 7,
+            gap: premium.spacing.xs,
             alignItems: "center",
           }}
         >
           <QuantityButton label="−" onPress={() => onAdjustDieQty(index, -1)} />
-
-          <QuantityButton label="+" onPress={() => onAdjustDieQty(index, 1)} />
+          <QuantityButton
+            label="+"
+            tone="accent"
+            onPress={() => onAdjustDieQty(index, 1)}
+          />
         </View>
       </View>
 
       <View
         style={{
           height: 1,
-          backgroundColor: "rgba(145, 113, 255, 0.14)",
+          backgroundColor: premium.colors.border.subtle,
+          opacity: 0.72,
         }}
       />
 
       <View
         style={{
-          gap: 9,
+          flexDirection: "row",
+          gap: premium.spacing.sm,
         }}
       >
         <View
           style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 10,
-            flexWrap: "wrap",
+            flex: 1,
+            borderRadius: premium.radius.lg,
+            borderWidth: 1,
+            borderColor: premium.colors.border.subtle,
+            backgroundColor: premium.colors.surface.subtle,
+            padding: premium.spacing.sm,
+            gap: 6,
           }}
         >
-          <View style={{ gap: 3 }}>
-            <Text
-              style={{
-                color: theme.colors.textSubtle,
-                fontSize: 9,
-                fontWeight: "900",
-                textTransform: "uppercase",
-                letterSpacing: 0.7,
-              }}
-            >
-              Signe de la ligne
-            </Text>
-
-            <Text
-              style={{
-                color:
-                  die.sign === -1 ? theme.colors.failure : theme.colors.success,
-                fontSize: 15,
-                fontWeight: "900",
-              }}
-            >
-              {die.sign === -1 ? "Malus (-)" : "Bonus (+)"}
-            </Text>
-          </View>
+          <Text
+            style={{
+              color: premium.colors.text.muted,
+              fontSize: premium.typography.tiny,
+              fontWeight: "900",
+              textTransform: "uppercase",
+              letterSpacing: 0.7,
+            }}
+          >
+            Signe
+          </Text>
 
           <Pressable
             onPress={() => onToggleDieSign(index)}
             style={({ pressed }) => ({
-              minHeight: 34,
-              paddingVertical: 7,
-              paddingHorizontal: 11,
+              minHeight: 36,
+              borderRadius: premium.radius.pill,
               borderWidth: 1,
-              borderColor:
-                die.sign === -1
-                  ? "rgba(255, 92, 122, 0.78)"
-                  : "rgba(80, 220, 160, 0.68)",
-              borderRadius: theme.radius.pill,
-              backgroundColor:
-                die.sign === -1
-                  ? "rgba(255, 92, 122, 0.1)"
-                  : "rgba(80, 220, 160, 0.1)",
-              opacity: pressed ? 0.82 : 1,
-              transform: [{ scale: pressed ? 0.97 : 1 }],
+              borderColor: isNegative
+                ? "rgba(239, 111, 145, 0.38)"
+                : "rgba(114, 220, 178, 0.34)",
+              backgroundColor: isNegative
+                ? premium.colors.state.failureSoft
+                : "rgba(114, 220, 178, 0.1)",
               alignItems: "center",
               justifyContent: "center",
+              opacity: pressed ? 0.84 : 1,
+              transform: [
+                { scale: pressed ? premium.animation.pressScale : 1 },
+              ],
             })}
           >
             <Text
               style={{
-                color:
-                  die.sign === -1 ? theme.colors.failure : theme.colors.success,
+                color: signColor,
                 fontSize: 12,
                 fontWeight: "900",
               }}
             >
-              Basculer + / -
+              {isNegative ? "Malus −" : "Bonus +"}
             </Text>
           </Pressable>
         </View>
+
         <View
           style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 10,
-            flexWrap: "wrap",
+            flex: 1,
+            borderRadius: premium.radius.lg,
+            borderWidth: 1,
+            borderColor: premium.colors.border.subtle,
+            backgroundColor: premium.colors.surface.subtle,
+            padding: premium.spacing.sm,
+            gap: 6,
           }}
         >
-          <View style={{ gap: 3 }}>
-            <Text
-              style={{
-                color: theme.colors.textSubtle,
-                fontSize: 9,
-                fontWeight: "900",
-                textTransform: "uppercase",
-                letterSpacing: 0.7,
-              }}
-            >
-              Modificateur
-            </Text>
-
-            <Text
-              style={{
-                color:
-                  (die.modifier ?? 0) === 0
-                    ? theme.colors.textMuted
-                    : (die.modifier ?? 0) > 0
-                      ? theme.colors.accent
-                      : theme.colors.failure,
-                fontSize: 15,
-                fontWeight: "900",
-              }}
-            >
-              {(die.modifier ?? 0) > 0
-                ? `+${die.modifier}`
-                : `${die.modifier ?? 0}`}
-            </Text>
-          </View>
+          <Text
+            style={{
+              color: premium.colors.text.muted,
+              fontSize: premium.typography.tiny,
+              fontWeight: "900",
+              textTransform: "uppercase",
+              letterSpacing: 0.7,
+            }}
+          >
+            Modificateur
+          </Text>
 
           <View
             style={{
+              minHeight: 36,
               flexDirection: "row",
-              gap: 7,
               alignItems: "center",
+              justifyContent: "space-between",
+              gap: premium.spacing.xs,
             }}
           >
             <QuantityButton
@@ -519,78 +525,153 @@ function PreparedDieRow({
               onPress={() => onAdjustDieModifier(index, -1)}
             />
 
+            <Text
+              numberOfLines={1}
+              style={{
+                flex: 1,
+                textAlign: "center",
+                color: modifierColor,
+                fontSize: 15,
+                fontWeight: "900",
+              }}
+            >
+              {modifier > 0 ? `+${modifier}` : `${modifier}`}
+            </Text>
+
             <QuantityButton
               label="+"
+              tone="accent"
               onPress={() => onAdjustDieModifier(index, 1)}
             />
           </View>
         </View>
+      </View>
 
-        <View
-          style={{
-            flexDirection: "row",
-            gap: 8,
-            justifyContent: "flex-end",
-            flexWrap: "wrap",
-          }}
-        >
-          {onConfigureDieBehavior ? (
-            <SheetPillButton
-              label="Comportement"
-              onPress={() => onConfigureDieBehavior(index)}
-              variant="accent"
-            />
-          ) : null}
-
-          {hasBehavior && onClearDieBehavior ? (
-            <SheetPillButton
-              label="Somme simple"
-              onPress={() => onClearDieBehavior(index)}
-            />
-          ) : null}
-
+      <View
+        style={{
+          flexDirection: "row",
+          gap: premium.spacing.sm,
+          justifyContent: "flex-end",
+          flexWrap: "wrap",
+        }}
+      >
+        {onConfigureDieBehavior ? (
           <SheetPillButton
-            label="Retirer"
-            onPress={() => onRemoveDie(index)}
-            variant="danger"
+            label={hasBehavior ? "Changer comportement" : "Comportement"}
+            onPress={() => onConfigureDieBehavior(index)}
+            variant="accent"
           />
-        </View>
+        ) : null}
+
+        {hasBehavior && onClearDieBehavior ? (
+          <SheetPillButton
+            label="Somme simple"
+            onPress={() => onClearDieBehavior(index)}
+          />
+        ) : null}
+
+        <SheetPillButton
+          label="Retirer"
+          onPress={() => onRemoveDie(index)}
+          variant="danger"
+        />
       </View>
     </View>
   );
 }
 
-function PreparedBehaviorPickerPanel({ data }: { data: BehaviorPickerData }) {
-  const { theme } = useArcaneTheme();
-  const rollTheme = useMemo(() => createRollScreenTheme(theme), [theme]);
+function SheetStepIndicator({ mode }: { mode: PreparedRollEditMode }) {
+  const premium = usePremiumTheme();
+
+  const steps: Array<{
+    id: PreparedRollEditMode;
+    label: string;
+  }> = [
+      { id: "dice", label: "Dés" },
+      { id: "behavior_picker", label: "Comportement" },
+      { id: "behavior_config", label: "Configuration" },
+    ];
 
   return (
-    <View style={{ gap: 10 }}>
+    <View
+      style={{
+        flexDirection: "row",
+        gap: premium.spacing.xs,
+      }}
+    >
+      {steps.map((step) => {
+        const active = step.id === mode;
+
+        return (
+          <View
+            key={step.id}
+            style={{
+              flex: 1,
+              minHeight: 30,
+              borderRadius: premium.radius.pill,
+              borderWidth: 1,
+              borderColor: active
+                ? premium.colors.border.accent
+                : premium.colors.border.subtle,
+              backgroundColor: active
+                ? premium.colors.accent.soft
+                : premium.colors.surface.subtle,
+              alignItems: "center",
+              justifyContent: "center",
+              paddingHorizontal: 8,
+            }}
+          >
+            <Text
+              numberOfLines={1}
+              style={{
+                color: active
+                  ? premium.colors.accent.primary
+                  : premium.colors.text.muted,
+                fontSize: 10,
+                fontWeight: "900",
+                textTransform: "uppercase",
+                letterSpacing: 0.55,
+              }}
+            >
+              {step.label}
+            </Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+function PreparedBehaviorPickerPanel({ data }: { data: BehaviorPickerData }) {
+  const premium = usePremiumTheme();
+
+  return (
+    <View style={{ gap: premium.spacing.md }}>
       <View
         style={{
-          borderRadius: 22,
+          borderRadius: premium.radius.xl,
           borderWidth: 1,
-          borderColor: "rgba(217, 160, 55, 0.34)",
-          backgroundColor: "rgba(217, 160, 55, 0.08)",
-          padding: 12,
-          gap: 5,
+          borderColor: premium.colors.border.accent,
+          backgroundColor: premium.colors.accent.soft,
+          padding: premium.spacing.md,
+          gap: premium.spacing.xs,
         }}
       >
         <Text
           style={{
-            color: theme.colors.textSubtle,
-            fontSize: 10,
+            color: premium.colors.text.muted,
+            fontSize: premium.typography.tiny,
             fontWeight: "900",
             textTransform: "uppercase",
             letterSpacing: 0.8,
           }}
         >
-          ✦ Comportement du dé
+          Comportement du dé
         </Text>
 
         <Text
           style={{
-            color: theme.colors.text,
+            color: premium.colors.text.primary,
             fontSize: 18,
             fontWeight: "900",
           }}
@@ -600,7 +681,7 @@ function PreparedBehaviorPickerPanel({ data }: { data: BehaviorPickerData }) {
 
         <Text
           style={{
-            color: theme.colors.textMuted,
+            color: premium.colors.text.secondary,
             fontSize: 12,
             lineHeight: 17,
             fontWeight: "700",
@@ -615,20 +696,22 @@ function PreparedBehaviorPickerPanel({ data }: { data: BehaviorPickerData }) {
         onPress={data.onBack}
         style={({ pressed }) => ({
           alignSelf: "flex-start",
+          minHeight: 36,
           paddingVertical: 8,
           paddingHorizontal: 12,
-          borderRadius: theme.radius.pill,
+          borderRadius: premium.radius.pill,
           borderWidth: 1,
-          borderColor: "rgba(145, 113, 255, 0.24)",
+          borderColor: premium.colors.border.subtle,
           backgroundColor: pressed
-            ? "rgba(32, 41, 88, 0.78)"
-            : "rgba(18, 23, 58, 0.72)",
+            ? premium.colors.surface.pressed
+            : premium.colors.surface.subtle,
           opacity: pressed ? 0.84 : 1,
+          transform: [{ scale: pressed ? premium.animation.pressScale : 1 }],
         })}
       >
         <Text
           style={{
-            color: theme.colors.textMuted,
+            color: premium.colors.text.secondary,
             fontSize: 12,
             fontWeight: "900",
           }}
@@ -640,16 +723,16 @@ function PreparedBehaviorPickerPanel({ data }: { data: BehaviorPickerData }) {
       {data.behaviors.length === 0 ? (
         <View
           style={{
-            borderRadius: 22,
+            borderRadius: premium.radius.lg,
             borderWidth: 1,
-            borderColor: "rgba(145, 113, 255, 0.2)",
-            backgroundColor: "rgba(18, 23, 58, 0.66)",
-            padding: 14,
+            borderColor: premium.colors.border.subtle,
+            backgroundColor: premium.colors.surface.subtle,
+            padding: premium.spacing.md,
           }}
         >
           <Text
             style={{
-              color: theme.colors.textMuted,
+              color: premium.colors.text.secondary,
               fontSize: 13,
               lineHeight: 18,
               fontWeight: "700",
@@ -673,18 +756,25 @@ function PreparedBehaviorPickerPanel({ data }: { data: BehaviorPickerData }) {
             onPress={() => data.onSelectBehavior(behavior)}
             disabled={!behavior.enabled}
             style={({ pressed }) => ({
-              borderRadius: 22,
+              borderRadius: premium.radius.xl,
               borderWidth: 1,
               borderColor: behavior.enabled
-                ? "rgba(145, 113, 255, 0.26)"
-                : "rgba(145, 113, 255, 0.12)",
+                ? premium.colors.border.subtle
+                : premium.colors.border.subtle,
               backgroundColor: pressed
-                ? "rgba(32, 41, 88, 0.82)"
-                : "rgba(18, 23, 58, 0.68)",
-              padding: 12,
+                ? premium.colors.surface.pressed
+                : premium.colors.surface.elevated,
+              padding: premium.spacing.md,
               opacity: behavior.enabled ? (pressed ? 0.86 : 1) : 0.45,
-              transform: [{ scale: pressed && behavior.enabled ? 0.985 : 1 }],
-              gap: 8,
+              transform: [
+                {
+                  scale:
+                    pressed && behavior.enabled
+                      ? premium.animation.pressScale
+                      : 1,
+                },
+              ],
+              gap: premium.spacing.sm,
               overflow: "hidden",
             })}
           >
@@ -692,13 +782,15 @@ function PreparedBehaviorPickerPanel({ data }: { data: BehaviorPickerData }) {
               pointerEvents="none"
               style={{
                 position: "absolute",
-                right: -48,
-                top: -58,
-                width: 136,
-                height: 136,
+                right: -52,
+                top: -64,
+                width: 144,
+                height: 144,
                 borderRadius: 999,
-                backgroundColor: rollTheme.cockpit.magicGlow,
-                opacity: 0.08,
+                backgroundColor: behavior.enabled
+                  ? premium.colors.accent.soft
+                  : premium.colors.surface.subtle,
+                opacity: behavior.enabled ? 0.56 : 0.36,
               }}
             />
 
@@ -706,21 +798,21 @@ function PreparedBehaviorPickerPanel({ data }: { data: BehaviorPickerData }) {
               style={{
                 flexDirection: "row",
                 alignItems: "flex-start",
-                gap: 10,
+                gap: premium.spacing.sm,
               }}
             >
               <View
                 style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 16,
+                  width: 46,
+                  height: 46,
+                  borderRadius: premium.radius.lg,
                   borderWidth: 1,
                   borderColor: behavior.enabled
-                    ? "rgba(217, 160, 55, 0.72)"
-                    : "rgba(145, 113, 255, 0.16)",
+                    ? premium.colors.border.accent
+                    : premium.colors.border.subtle,
                   backgroundColor: behavior.enabled
-                    ? "rgba(217, 160, 55, 0.12)"
-                    : "rgba(32, 41, 88, 0.42)",
+                    ? premium.colors.accent.soft
+                    : premium.colors.surface.subtle,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
@@ -728,8 +820,8 @@ function PreparedBehaviorPickerPanel({ data }: { data: BehaviorPickerData }) {
                 <Text
                   style={{
                     color: behavior.enabled
-                      ? theme.colors.accent
-                      : theme.colors.textSubtle,
+                      ? premium.colors.accent.primary
+                      : premium.colors.text.muted,
                     fontSize: 19,
                     fontWeight: "900",
                   }}
@@ -738,19 +830,19 @@ function PreparedBehaviorPickerPanel({ data }: { data: BehaviorPickerData }) {
                 </Text>
               </View>
 
-              <View style={{ flex: 1, gap: 4 }}>
+              <View style={{ flex: 1, gap: premium.spacing.xs }}>
                 <View
                   style={{
                     flexDirection: "row",
                     alignItems: "flex-start",
                     justifyContent: "space-between",
-                    gap: 8,
+                    gap: premium.spacing.sm,
                   }}
                 >
                   <Text
                     style={{
                       flex: 1,
-                      color: theme.colors.text,
+                      color: premium.colors.text.primary,
                       fontSize: 15,
                       fontWeight: "900",
                     }}
@@ -762,15 +854,15 @@ function PreparedBehaviorPickerPanel({ data }: { data: BehaviorPickerData }) {
                     style={{
                       paddingVertical: 4,
                       paddingHorizontal: 8,
-                      borderRadius: theme.radius.pill,
+                      borderRadius: premium.radius.pill,
                       borderWidth: 1,
-                      borderColor: "rgba(145, 113, 255, 0.18)",
-                      backgroundColor: "rgba(32, 41, 88, 0.46)",
+                      borderColor: premium.colors.border.subtle,
+                      backgroundColor: premium.colors.surface.subtle,
                     }}
                   >
                     <Text
                       style={{
-                        color: theme.colors.textMuted,
+                        color: premium.colors.text.muted,
                         fontSize: 9,
                         fontWeight: "900",
                         textTransform: "uppercase",
@@ -784,7 +876,7 @@ function PreparedBehaviorPickerPanel({ data }: { data: BehaviorPickerData }) {
                 {description ? (
                   <Text
                     style={{
-                      color: theme.colors.textMuted,
+                      color: premium.colors.text.secondary,
                       fontSize: 12,
                       lineHeight: 17,
                       fontWeight: "700",
@@ -797,7 +889,7 @@ function PreparedBehaviorPickerPanel({ data }: { data: BehaviorPickerData }) {
                 {!behavior.enabled ? (
                   <Text
                     style={{
-                      color: theme.colors.textSubtle,
+                      color: premium.colors.text.muted,
                       fontSize: 11,
                       fontWeight: "800",
                     }}
@@ -824,6 +916,7 @@ export function PreparedRollEditSheet({
   behaviorPickerData,
   behaviorConfigPanel,
   onClose,
+  onBackFromBehaviorConfig,
   onAdjustDieQty,
   onAdjustDieModifier,
   onRemoveDie,
@@ -831,324 +924,194 @@ export function PreparedRollEditSheet({
   onConfigureDieBehavior,
   onClearDieBehavior,
 }: PreparedRollEditSheetProps) {
-  const { theme } = useArcaneTheme();
-  const rollTheme = useMemo(() => createRollScreenTheme(theme), [theme]);
+  const premium = usePremiumTheme();
 
   const diceSummary = useMemo(() => getDiceSummary(dice), [dice]);
   const totalDiceCount = useMemo(() => getTotalDiceCount(dice), [dice]);
 
+  const subtitle =
+    mode === "behavior_picker"
+      ? "Choisis le comportement appliqué à cette ligne de dés."
+      : mode === "behavior_config"
+        ? "Ajuste les paramètres du comportement sélectionné."
+        : "Ajuste chaque ligne sans reconstruire tout le jet.";
+
   return (
-    <Modal
+    <PremiumBottomSheet
       visible={visible}
-      transparent
-      animationType="slide"
-      statusBarTranslucent
-      onRequestClose={onClose}
-    >
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: "rgba(0, 0, 0, 0.68)",
-          justifyContent: "flex-end",
-        }}
-      >
-        <Pressable
-          onPress={onClose}
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-          }}
-        />
-
-        <View
-          style={{
-            maxHeight: "84%",
-            backgroundColor: "rgba(8, 12, 31, 0.98)",
-            borderTopLeftRadius: 30,
-            borderTopRightRadius: 30,
-            borderWidth: 1,
-            borderColor: "rgba(145, 113, 255, 0.28)",
-            paddingTop: 10,
-            paddingHorizontal: 14,
-            paddingBottom: 14,
-            gap: 12,
-            overflow: "hidden",
-            ...theme.shadow.card,
-          }}
-        >
-          <View
-            pointerEvents="none"
-            style={{
-              position: "absolute",
-              top: -78,
-              right: -70,
-              width: 190,
-              height: 190,
-              borderRadius: 999,
-              backgroundColor: rollTheme.cockpit.magicGlow,
-              opacity: 0.15,
-            }}
-          />
-
-          <View
-            pointerEvents="none"
-            style={{
-              position: "absolute",
-              bottom: -92,
-              left: -76,
-              width: 210,
-              height: 210,
-              borderRadius: 999,
-              backgroundColor: rollTheme.cockpit.glow,
-              opacity: 0.11,
-            }}
-          />
-
-          <View
-            style={{
-              alignSelf: "center",
-              width: 52,
-              height: 5,
-              borderRadius: theme.radius.pill,
-              backgroundColor: "rgba(145, 113, 255, 0.34)",
-            }}
-          />
-
+      title={title}
+      subtitle={subtitle}
+      onClose={onClose}
+      maxHeight="88%"
+      footer={
+        mode === "behavior_picker" && behaviorPickerData ? (
           <View
             style={{
               flexDirection: "row",
               justifyContent: "space-between",
-              alignItems: "flex-start",
-              gap: 12,
+              gap: premium.spacing.sm,
             }}
           >
-            <View style={{ flex: 1, gap: 3 }}>
-              <Text
-                style={{
-                  color: theme.colors.textSubtle,
-                  fontSize: 10,
-                  fontWeight: "900",
-                  textTransform: "uppercase",
-                  letterSpacing: 0.85,
-                }}
-              >
-                ✦ Jet préparé
-              </Text>
-
-              <Text
-                numberOfLines={1}
-                style={{
-                  color: theme.colors.text,
-                  fontSize: 22,
-                  fontWeight: "900",
-                  letterSpacing: -0.4,
-                  lineHeight: 27,
-                }}
-              >
-                {title}
-              </Text>
-
-              <Text
-                numberOfLines={2}
-                style={{
-                  color: theme.colors.textMuted,
-                  fontSize: 12,
-                  lineHeight: 16,
-                  fontWeight: "700",
-                }}
-              >
-                Ajuste chaque ligne sans reconstruire tout le jet.
-              </Text>
-            </View>
-
             <Pressable
-              onPress={onClose}
+              onPress={behaviorPickerData.onBack}
               style={({ pressed }) => ({
-                width: 40,
-                height: 40,
+                flex: 1,
+                minHeight: 48,
+                borderRadius: premium.radius.pill,
                 borderWidth: 1,
-                borderColor: "rgba(145, 113, 255, 0.22)",
-                borderRadius: theme.radius.pill,
+                borderColor: premium.colors.border.subtle,
+                backgroundColor: pressed
+                  ? premium.colors.surface.pressed
+                  : premium.colors.surface.subtle,
                 alignItems: "center",
                 justifyContent: "center",
-                backgroundColor: pressed
-                  ? "rgba(32, 41, 88, 0.78)"
-                  : "rgba(18, 23, 58, 0.76)",
-                opacity: pressed ? 0.84 : 1,
+                opacity: pressed ? 0.86 : 1,
+                transform: [
+                  {
+                    scale: pressed ? premium.animation.pressScale : 1,
+                  },
+                ],
               })}
             >
               <Text
                 style={{
-                  color: theme.colors.text,
-                  fontSize: 21,
+                  color: premium.colors.text.secondary,
+                  fontSize: 14,
                   fontWeight: "900",
-                  lineHeight: 23,
                 }}
               >
-                ×
+                Retour aux dés
               </Text>
             </Pressable>
-          </View>
 
-          {mode === "dice" && onChangeNameValue ? (
-            <View
-              style={{
-                borderRadius: 20,
+            <Pressable
+              onPress={onClose}
+              style={({ pressed }) => ({
+                flex: 1,
+                minHeight: 48,
+                borderRadius: premium.radius.pill,
                 borderWidth: 1,
-                borderColor: "rgba(145, 113, 255, 0.2)",
-                backgroundColor: "rgba(18, 23, 58, 0.62)",
-                padding: 11,
-                gap: 7,
-              }}
+                borderColor: premium.colors.border.accent,
+                backgroundColor: pressed
+                  ? premium.colors.surface.pressed
+                  : premium.colors.accent.soft,
+                alignItems: "center",
+                justifyContent: "center",
+                opacity: pressed ? 0.86 : 1,
+                transform: [
+                  {
+                    scale: pressed ? premium.animation.pressScale : 1,
+                  },
+                ],
+              })}
             >
               <Text
                 style={{
-                  color: theme.colors.textSubtle,
-                  fontSize: 9,
+                  color: premium.colors.accent.primary,
+                  fontSize: 14,
                   fontWeight: "900",
-                  textTransform: "uppercase",
-                  letterSpacing: 0.75,
                 }}
               >
-                Nom du jet
+                Terminé
               </Text>
-
-              <TextInput
-                value={nameValue}
-                onChangeText={onChangeNameValue}
-                placeholder="Nom du jet"
-                placeholderTextColor={theme.colors.textSubtle}
-                selectionColor={theme.colors.accent}
-                style={{
-                  minHeight: 44,
-                  color: theme.colors.text,
-                  backgroundColor: "rgba(8, 12, 31, 0.68)",
-                  borderWidth: 1,
-                  borderColor: "rgba(145, 113, 255, 0.18)",
-                  borderRadius: theme.radius.lg,
-                  paddingHorizontal: 12,
-                  paddingVertical: 9,
-                  fontSize: 16,
-                  fontWeight: "800",
-                }}
-              />
-            </View>
-          ) : null}
-
+            </Pressable>
+          </View>
+        ) : mode === "behavior_config" && onBackFromBehaviorConfig ? (
           <View
             style={{
               flexDirection: "row",
-              gap: 8,
+              justifyContent: "space-between",
+              gap: premium.spacing.sm,
             }}
           >
-            <SummaryStat label="Composition" value={diceSummary} />
-
-            <SummaryStat label="Total dés" value={`${totalDiceCount}`} />
-          </View>
-
-          <ScrollView
-            contentContainerStyle={{
-              gap: 9,
-              paddingBottom: 4,
-            }}
-            showsVerticalScrollIndicator={false}
-          >
-            {mode === "behavior_picker" && behaviorPickerData ? (
-              <PreparedBehaviorPickerPanel data={behaviorPickerData} />
-            ) : mode === "behavior_config" ? (
-              (behaviorConfigPanel ?? (
-                <View
-                  style={{
-                    borderRadius: 22,
-                    borderWidth: 1,
-                    borderColor: "rgba(217, 160, 55, 0.34)",
-                    backgroundColor: "rgba(217, 160, 55, 0.08)",
-                    padding: 14,
-                    gap: 8,
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: theme.colors.text,
-                      fontSize: 16,
-                      fontWeight: "900",
-                    }}
-                  >
-                    Aucun panneau de configuration disponible.
-                  </Text>
-                </View>
-              ))
-            ) : dice.length === 0 ? (
-              <View
+            <Pressable
+              onPress={onBackFromBehaviorConfig}
+              style={({ pressed }) => ({
+                flex: 1,
+                minHeight: 48,
+                borderRadius: premium.radius.pill,
+                borderWidth: 1,
+                borderColor: premium.colors.border.subtle,
+                backgroundColor: pressed
+                  ? premium.colors.surface.pressed
+                  : premium.colors.surface.subtle,
+                alignItems: "center",
+                justifyContent: "center",
+                opacity: pressed ? 0.86 : 1,
+                transform: [
+                  {
+                    scale: pressed ? premium.animation.pressScale : 1,
+                  },
+                ],
+              })}
+            >
+              <Text
                 style={{
-                  borderRadius: 22,
-                  borderWidth: 1,
-                  borderColor: "rgba(145, 113, 255, 0.2)",
-                  backgroundColor: "rgba(18, 23, 58, 0.66)",
-                  padding: 14,
-                  gap: 5,
+                  color: premium.colors.text.secondary,
+                  fontSize: 14,
+                  fontWeight: "900",
                 }}
               >
-                <Text
-                  style={{
-                    color: theme.colors.text,
-                    fontSize: 16,
-                    fontWeight: "900",
-                  }}
-                >
-                  Aucun dé à modifier
-                </Text>
+                Retour
+              </Text>
+            </Pressable>
 
-                <Text
-                  style={{
-                    color: theme.colors.textMuted,
-                    fontSize: 13,
-                    lineHeight: 18,
-                    fontWeight: "700",
-                  }}
-                >
-                  Ajoute d’abord un dé libre depuis l’écran Jet.
-                </Text>
-              </View>
-            ) : (
-              dice.map((die, index) => (
-                <PreparedDieRow
-                  key={`prepared-die-${index}-${die.sides}-${die.qty}`}
-                  die={die}
-                  index={index}
-                  onAdjustDieQty={onAdjustDieQty}
-                  onAdjustDieModifier={onAdjustDieModifier}
-                  onToggleDieSign={onToggleDieSign}
-                  onRemoveDie={onRemoveDie}
-                  onConfigureDieBehavior={onConfigureDieBehavior}
-                  onClearDieBehavior={onClearDieBehavior}
-                />
-              ))
-            )}
-          </ScrollView>
-
+            <Pressable
+              onPress={onClose}
+              style={({ pressed }) => ({
+                flex: 1,
+                minHeight: 48,
+                borderRadius: premium.radius.pill,
+                borderWidth: 1,
+                borderColor: premium.colors.border.accent,
+                backgroundColor: pressed
+                  ? premium.colors.surface.pressed
+                  : premium.colors.accent.soft,
+                alignItems: "center",
+                justifyContent: "center",
+                opacity: pressed ? 0.86 : 1,
+                transform: [
+                  {
+                    scale: pressed ? premium.animation.pressScale : 1,
+                  },
+                ],
+              })}
+            >
+              <Text
+                style={{
+                  color: premium.colors.accent.primary,
+                  fontSize: 14,
+                  fontWeight: "900",
+                }}
+              >
+                Terminé
+              </Text>
+            </Pressable>
+          </View>
+        ) : (
           <Pressable
             onPress={onClose}
             style={({ pressed }) => ({
-              height: 48,
-              borderRadius: theme.radius.pill,
+              minHeight: 48,
+              borderRadius: premium.radius.pill,
               borderWidth: 1,
-              borderColor: "rgba(217, 160, 55, 0.7)",
+              borderColor: premium.colors.border.accent,
               backgroundColor: pressed
-                ? "rgba(217, 160, 55, 0.2)"
-                : "rgba(217, 160, 55, 0.13)",
+                ? premium.colors.surface.pressed
+                : premium.colors.accent.soft,
               alignItems: "center",
               justifyContent: "center",
               opacity: pressed ? 0.86 : 1,
-              transform: [{ scale: pressed ? 0.985 : 1 }],
+              transform: [
+                {
+                  scale: pressed ? premium.animation.pressScale : 1,
+                },
+              ],
             })}
           >
             <Text
               style={{
-                color: theme.colors.accent,
+                color: premium.colors.accent.primary,
                 fontSize: 15,
                 fontWeight: "900",
                 textTransform: "uppercase",
@@ -1158,8 +1121,156 @@ export function PreparedRollEditSheet({
               Terminé
             </Text>
           </Pressable>
+        )
+      }
+    >
+      <View style={{ gap: premium.spacing.md }}>
+        <SheetStepIndicator mode={mode} />
+        {mode === "dice" && onChangeNameValue ? (
+          <View
+            style={{
+              borderRadius: premium.radius.lg,
+              borderWidth: 1,
+              borderColor: premium.colors.border.subtle,
+              backgroundColor: premium.colors.surface.subtle,
+              padding: premium.spacing.md,
+              gap: premium.spacing.sm,
+            }}
+          >
+            <Text
+              style={{
+                color: premium.colors.text.muted,
+                fontSize: premium.typography.tiny,
+                fontWeight: "900",
+                textTransform: "uppercase",
+                letterSpacing: 0.8,
+              }}
+            >
+              Nom du jet
+            </Text>
+
+            <TextInput
+              value={nameValue}
+              onChangeText={onChangeNameValue}
+              placeholder="Nom du jet"
+              placeholderTextColor={premium.colors.text.muted}
+              selectionColor={premium.colors.accent.primary}
+              style={{
+                minHeight: 48,
+                color: premium.colors.text.primary,
+                backgroundColor: premium.colors.background.primary,
+                borderWidth: 1,
+                borderColor: premium.colors.border.subtle,
+                borderRadius: premium.radius.lg,
+                paddingHorizontal: 14,
+                paddingVertical: 10,
+                fontSize: 16,
+                fontWeight: "800",
+              }}
+            />
+          </View>
+        ) : null}
+
+        <View
+          style={{
+            flexDirection: "row",
+            gap: premium.spacing.sm,
+          }}
+        >
+          <SummaryStat label="Composition" value={diceSummary} />
+          <SummaryStat label="Total dés" value={`${totalDiceCount}`} />
+        </View>
+
+        <View
+          style={{
+            gap: premium.spacing.sm,
+          }}
+        >
+          {mode === "behavior_picker" && behaviorPickerData ? (
+            <PreparedBehaviorPickerPanel data={behaviorPickerData} />
+          ) : mode === "behavior_config" ? (
+            behaviorConfigPanel ?? (
+              <View
+                style={{
+                  borderRadius: premium.radius.lg,
+                  borderWidth: 1,
+                  borderColor: premium.colors.border.accent,
+                  backgroundColor: premium.colors.accent.soft,
+                  padding: premium.spacing.md,
+                  gap: premium.spacing.sm,
+                }}
+              >
+                <Text
+                  style={{
+                    color: premium.colors.text.primary,
+                    fontSize: 16,
+                    fontWeight: "900",
+                  }}
+                >
+                  Aucun panneau de configuration disponible.
+                </Text>
+
+                <Text
+                  style={{
+                    color: premium.colors.text.secondary,
+                    fontSize: 13,
+                    lineHeight: 18,
+                    fontWeight: "700",
+                  }}
+                >
+                  Aucun éditeur n’est disponible pour ce comportement.
+                </Text>
+              </View>
+            )
+          ) : dice.length === 0 ? (
+            <View
+              style={{
+                borderRadius: premium.radius.lg,
+                borderWidth: 1,
+                borderColor: premium.colors.border.subtle,
+                backgroundColor: premium.colors.surface.subtle,
+                padding: premium.spacing.md,
+                gap: premium.spacing.xs,
+              }}
+            >
+              <Text
+                style={{
+                  color: premium.colors.text.primary,
+                  fontSize: 16,
+                  fontWeight: "900",
+                }}
+              >
+                Aucun dé à modifier
+              </Text>
+
+              <Text
+                style={{
+                  color: premium.colors.text.secondary,
+                  fontSize: 13,
+                  lineHeight: 18,
+                  fontWeight: "700",
+                }}
+              >
+                Ajoute d’abord un dé libre depuis l’écran Jet.
+              </Text>
+            </View>
+          ) : (
+            dice.map((die, index) => (
+              <PreparedDieRow
+                key={`prepared-die-${index}-${die.sides}-${die.qty}`}
+                die={die}
+                index={index}
+                onAdjustDieQty={onAdjustDieQty}
+                onAdjustDieModifier={onAdjustDieModifier}
+                onToggleDieSign={onToggleDieSign}
+                onRemoveDie={onRemoveDie}
+                onConfigureDieBehavior={onConfigureDieBehavior}
+                onClearDieBehavior={onClearDieBehavior}
+              />
+            ))
+          )}
         </View>
       </View>
-    </Modal>
+    </PremiumBottomSheet>
   );
 }
