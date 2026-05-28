@@ -59,7 +59,7 @@ type Params = {
   db: Db;
   table: TableRow | null;
   getNonEmptyDraftGroups: () => DraftLikeGroup[];
-  reloadGroups: () => Promise<void>;
+  reloadGroups: (tableId?: string) => Promise<void>;
   setShowSaveOptions: (value: boolean | ((prev: boolean) => boolean)) => void;
   setShowNameModal: (value: boolean) => void;
   setNewTableName: (value: string) => void;
@@ -120,6 +120,33 @@ async function resolveDraftGroupsForSave(
   return resolvedGroups;
 }
 
+function buildGroupsToSave(
+  groups: DraftLikeGroup[],
+  options?: {
+    actionNameOverride?: string;
+    sourceGroupId?: string | null;
+  },
+): DraftLikeGroup[] {
+  const selectedGroups = options?.sourceGroupId
+    ? groups.filter((group) => group.id === options.sourceGroupId)
+    : groups;
+
+  const actionName = options?.actionNameOverride?.trim();
+
+  if (!actionName) {
+    return selectedGroups;
+  }
+
+  return selectedGroups.map((group, index) =>
+    index === 0
+      ? {
+        ...group,
+        name: actionName,
+      }
+      : group,
+  );
+}
+
 export function useDraftTableActions({
   db,
   table,
@@ -161,7 +188,10 @@ export function useDraftTableActions({
   async function createNewTableFromName(
     tableName: string,
     profileName = "Profil principal",
-    actionNameOverride?: string
+    options?: {
+      actionNameOverride?: string;
+      sourceGroupId?: string | null;
+    },
   ) {
     const trimmedTableName = tableName.trim();
     const trimmedProfileName = profileName.trim() || "Profil principal";
@@ -173,17 +203,15 @@ export function useDraftTableActions({
     const nonEmptyGroups = getNonEmptyDraftGroups();
     if (nonEmptyGroups.length === 0) return;
 
-    const groupsToSave =
-      actionNameOverride?.trim()
-        ? nonEmptyGroups.map((group, index) =>
-          index === 0
-            ? {
-              ...group,
-              name: actionNameOverride.trim(),
-            }
-            : group,
-        )
-        : nonEmptyGroups;
+    const groupsToSave = buildGroupsToSave(nonEmptyGroups, options);
+
+    const validGroupsToSave = groupsToSave.filter(
+      (group) => group.dice.length > 0,
+    );
+
+    if (validGroupsToSave.length === 0) {
+      throw new Error("Impossible de sauvegarder une action sans dés.");
+    }
 
     const existingTables = await listTables(db);
     const alreadyExists = existingTables.some(
@@ -194,7 +222,7 @@ export function useDraftTableActions({
       throw new Error("Une table avec ce nom existe déjà.");
     }
 
-    const resolvedGroups = await resolveDraftGroupsForSave(db, groupsToSave);
+    const resolvedGroups = await resolveDraftGroupsForSave(db, validGroupsToSave);
 
     const newTableId = await createTableWithDraftGroups(db, {
       name: trimmedTableName,
@@ -203,16 +231,25 @@ export function useDraftTableActions({
     });
 
     await setActiveTableId(newTableId);
+    await reloadGroups(newTableId);
 
     setShowNameModal(false);
     setNewTableName("");
     resetDraftAfterCreate();
+
+    return {
+      tableId: newTableId,
+      profileId: null,
+    };
   }
 
   async function appendDraftToExistingTableNewProfile(
     tableId: string,
     profileName: string,
-    actionNameOverride?: string,
+    options?: {
+      actionNameOverride?: string;
+      sourceGroupId?: string | null;
+    },
   ) {
     const trimmedProfileName = profileName.trim();
     if (!trimmedProfileName) {
@@ -222,19 +259,17 @@ export function useDraftTableActions({
     const nonEmptyGroups = getNonEmptyDraftGroups();
     if (nonEmptyGroups.length === 0) return;
 
-    const groupsToSave =
-      actionNameOverride?.trim()
-        ? nonEmptyGroups.map((group, index) =>
-          index === 0
-            ? {
-              ...group,
-              name: actionNameOverride.trim(),
-            }
-            : group,
-        )
-        : nonEmptyGroups;
+    const groupsToSave = buildGroupsToSave(nonEmptyGroups, options);
 
-    const resolvedGroups = await resolveDraftGroupsForSave(db, groupsToSave);
+    const validGroupsToSave = groupsToSave.filter(
+      (group) => group.dice.length > 0,
+    );
+
+    if (validGroupsToSave.length === 0) {
+      throw new Error("Impossible de sauvegarder une action sans dés.");
+    }
+
+    const resolvedGroups = await resolveDraftGroupsForSave(db, validGroupsToSave);
 
     const profileId = await createProfileFromDraft(db, {
       tableId,
@@ -248,31 +283,37 @@ export function useDraftTableActions({
     });
 
     await setActiveTableId(tableId);
-    await reloadGroups();
+    await reloadGroups(tableId);
     resetDraftAfterCreate();
+
+    return {
+      tableId,
+      profileId,
+    };
   }
 
   async function appendDraftToExistingProfile(
     tableId: string,
     profileId: string,
-    actionNameOverride?: string,
+    options?: {
+      actionNameOverride?: string;
+      sourceGroupId?: string | null;
+    },
   ) {
     const nonEmptyGroups = getNonEmptyDraftGroups();
     if (nonEmptyGroups.length === 0) return;
 
-    const groupsToSave =
-      actionNameOverride?.trim()
-        ? nonEmptyGroups.map((group, index) =>
-          index === 0
-            ? {
-              ...group,
-              name: actionNameOverride.trim(),
-            }
-            : group,
-        )
-        : nonEmptyGroups;
+    const groupsToSave = buildGroupsToSave(nonEmptyGroups, options);
 
-    const resolvedGroups = await resolveDraftGroupsForSave(db, groupsToSave);
+    const validGroupsToSave = groupsToSave.filter(
+      (group) => group.dice.length > 0,
+    );
+
+    if (validGroupsToSave.length === 0) {
+      throw new Error("Impossible de sauvegarder une action sans dés.");
+    }
+
+    const resolvedGroups = await resolveDraftGroupsForSave(db, validGroupsToSave);
 
     await createGroupsFromDraft(db, {
       tableId,
@@ -281,8 +322,13 @@ export function useDraftTableActions({
     });
 
     await setActiveTableId(tableId);
-    await reloadGroups();
+    await reloadGroups(tableId);
     resetDraftAfterCreate();
+
+    return {
+      tableId,
+      profileId,
+    };
   }
 
   async function getAvailableSaveTargets() {

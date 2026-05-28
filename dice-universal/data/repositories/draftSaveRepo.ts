@@ -88,6 +88,12 @@ export async function createGroupFromDraft(
     sortOrder?: number;
   },
 ): Promise<string> {
+  const safeDice = params.draftDice.filter((die) => die.qty > 0);
+
+  if (safeDice.length === 0) {
+    throw new Error("Impossible de créer une action sans dés.");
+  }
+
   const createdAt = nowIso();
   const groupId = await newId();
   const tableId = await getTableIdFromProfile(db, params.profileId);
@@ -125,7 +131,7 @@ export async function createGroupFromDraft(
 
   let sort = 0;
 
-  for (const d of params.draftDice) {
+  for (const d of safeDice) {
     const dieId = await newId();
 
     await db.runAsync(

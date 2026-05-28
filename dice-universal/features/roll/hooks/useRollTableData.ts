@@ -95,11 +95,17 @@ export function useRollTableData({ db, tableId }: UseRollTableDataParams) {
     setRulesMap(map);
   }, [db]);
 
-  const reloadGroups = useCallback(async () => {
-    if (!tableId) return;
-    await loadTableData(tableId);
-    await loadAvailableRules();
-  }, [tableId, loadTableData, loadAvailableRules]);
+  const reloadGroups = useCallback(
+    async (targetTableId?: string) => {
+      const tableIdToReload = targetTableId ?? tableId;
+
+      if (!tableIdToReload) return;
+
+      await loadTableData(tableIdToReload);
+      await loadAvailableRules();
+    },
+    [tableId, loadTableData, loadAvailableRules],
+  );
 
   useEffect(() => {
     (async () => {

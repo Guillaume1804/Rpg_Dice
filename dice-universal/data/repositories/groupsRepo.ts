@@ -117,20 +117,35 @@ export async function assertGroupNameAvailable(
   }
 
   const queryParams: string[] = [params.profileId, actionName];
-  
+
   if (params.excludeGroupId) {
     queryParams.push(params.excludeGroupId);
   }
 
-  const rows = await db.getAllAsync<{ id: string }>(
+  const rows = await db.getAllAsync<{
+    id: string;
+    name: string;
+    profile_id: string;
+    profile_name: string | null;
+    table_id: string | null;
+    table_name: string | null;
+  }>(
     `
-    SELECT id
-    FROM groups
-    WHERE profile_id = ?
-      AND LOWER(TRIM(name)) = LOWER(TRIM(?))
-      ${params.excludeGroupId ? "AND id != ?" : ""}
-    LIMIT 1;
-    `,
+  SELECT
+    g.id,
+    g.name,
+    g.profile_id,
+    p.name AS profile_name,
+    t.id AS table_id,
+    t.name AS table_name
+  FROM groups g
+  LEFT JOIN profiles p ON p.id = g.profile_id
+  LEFT JOIN tables t ON t.id = p.table_id
+  WHERE g.profile_id = ?
+    AND LOWER(TRIM(g.name)) = LOWER(TRIM(?))
+    ${params.excludeGroupId ? "AND g.id != ?" : ""}
+  LIMIT 1;
+  `,
     queryParams,
   );
 

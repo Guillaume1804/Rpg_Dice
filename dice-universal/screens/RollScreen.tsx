@@ -273,31 +273,20 @@ export default function RollScreen() {
     tableId,
   });
 
-  useEffect(() => {
-    let cancelled = false;
+  const reloadTables = useCallback(async () => {
+    setLoadingTables(true);
 
-    async function loadTables() {
-      setLoadingTables(true);
-
-      try {
-        const rows = await listTables(db);
-
-        if (!cancelled) {
-          setAllTables(rows);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoadingTables(false);
-        }
-      }
+    try {
+      const rows = await listTables(db);
+      setAllTables(rows);
+    } finally {
+      setLoadingTables(false);
     }
+  }, [db]);
 
-    loadTables();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [db, revision]);
+  useEffect(() => {
+    void reloadTables();
+  }, [reloadTables, revision]);
 
   useEffect(() => {
     if (profiles.length === 0) {
@@ -651,7 +640,7 @@ export default function RollScreen() {
     }
   }
 
-  function showDuplicateActionNameWarning(error: unknown) {
+  async function showDuplicateActionNameWarning(error: unknown) {
     if (!isDuplicateGroupNameError(error)) {
       return false;
     }
@@ -677,6 +666,8 @@ export default function RollScreen() {
     try {
       const trimmedActionName = freeSaveActionName.trim();
 
+      const sourceGroupId = editablePreparedDraftGroup?.id ?? null;
+
       if (!trimmedActionName) {
         Alert.alert(
           "Nom d’action obligatoire",
@@ -686,11 +677,22 @@ export default function RollScreen() {
       }
 
       if (params.mode === "new_table_new_profile") {
-        await createNewTableFromName(
+        const result = await createNewTableFromName(
           params.tableName ?? "",
           params.profileName ?? "Profil principal",
-          trimmedActionName,
+          {
+            actionNameOverride: trimmedActionName,
+            sourceGroupId,
+          },
         );
+
+        await reloadTables();
+
+        if (result?.tableId) {
+          await reloadGroups(result.tableId);
+        }
+
+        setSelectedProfileId(null);
         return;
       }
 
@@ -699,11 +701,22 @@ export default function RollScreen() {
           throw new Error("Table cible manquante.");
         }
 
-        await appendDraftToExistingTableNewProfile(
+        const result = await appendDraftToExistingTableNewProfile(
           params.tableId,
           params.profileName ?? "Profil principal",
-          trimmedActionName,
+          {
+            actionNameOverride: trimmedActionName,
+            sourceGroupId,
+          },
         );
+
+        await reloadTables();
+        await reloadGroups(result?.tableId ?? params.tableId);
+
+        if (result?.profileId) {
+          setSelectedProfileId(result.profileId);
+        }
+
         return;
       }
 
@@ -711,14 +724,20 @@ export default function RollScreen() {
         throw new Error("Table ou profil cible manquant.");
       }
 
-      await appendDraftToExistingProfile(
+      const result = await appendDraftToExistingProfile(
         params.tableId,
         params.profileId,
-        trimmedActionName,
+        {
+          actionNameOverride: trimmedActionName,
+          sourceGroupId,
+        },
       );
 
+      await reloadTables();
+      await reloadGroups(result?.tableId ?? params.tableId);
+      setSelectedProfileId(result?.profileId ?? params.profileId);
     } catch (error) {
-      if (showDuplicateActionNameWarning(error)) {
+      if (await showDuplicateActionNameWarning(error)) {
         return;
       }
 
@@ -742,7 +761,10 @@ export default function RollScreen() {
       return;
     }
 
-    if (preparedRoll?.source === "action") {
+    if (
+      preparedRoll?.source === "action" ||
+      preparedRoll?.source === "action_draft"
+    ) {
       resetFreeDraftState();
     }
 
@@ -877,7 +899,10 @@ export default function RollScreen() {
   function handleAddQuickStandardDie(sides: number) {
     animateCockpitLayout();
 
-    if (preparedRoll?.source === "action") {
+    if (
+      preparedRoll?.source === "action" ||
+      preparedRoll?.source === "action_draft"
+    ) {
       resetFreeDraftState();
     }
 
@@ -888,7 +913,10 @@ export default function RollScreen() {
     setPreparedRoll({ source: "free" });
     setLatestResult(null);
 
-    if (preparedRoll?.source === "action") {
+    if (
+      preparedRoll?.source === "action" ||
+      preparedRoll?.source === "action_draft"
+    ) {
       setFocusedPreparedLineIndex(null);
     }
 
@@ -1201,7 +1229,8 @@ export default function RollScreen() {
         });
       }
 
-      await reloadGroups();
+      await reloadGroups(table.id);
+      setSelectedProfileId(preparedRoll.profileId);
 
       setPreparedRoll({
         ...preparedRoll,
@@ -1211,7 +1240,7 @@ export default function RollScreen() {
       setLatestResult(null);
       setShowActionDraftSaveMenu(false);
     } catch (error) {
-      if (showDuplicateActionNameWarning(error)) {
+      if (await showDuplicateActionNameWarning(error)) {
         return;
       }
 
@@ -1272,7 +1301,8 @@ export default function RollScreen() {
         });
       }
 
-      await reloadGroups();
+      await reloadGroups(table.id);
+      setSelectedProfileId(preparedRoll.profileId);
 
       setPreparedRoll({
         source: "action_draft",
@@ -1286,7 +1316,7 @@ export default function RollScreen() {
       setShowActionDraftSaveMenu(false);
       setActionCopyName("");
     } catch (error) {
-      if (showDuplicateActionNameWarning(error)) {
+      if (await showDuplicateActionNameWarning(error)) {
         return;
       }
 
