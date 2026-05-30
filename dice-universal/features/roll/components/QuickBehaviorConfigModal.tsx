@@ -1,14 +1,16 @@
 // dice-universal/features/roll/components/QuickBehaviorConfigModal.tsx
 
-import { useMemo } from "react";
-import { Modal, View, Text, Pressable, TextInput, ScrollView } from "react-native";
+import { View, Text, Pressable } from "react-native";
 import {
   getRuleBehaviorDefinition,
   type RuleBehaviorKey,
 } from "../../../core/rules/behaviorRegistry";
 
-import { useArcaneTheme } from "../../../theme/ArcaneThemeProvider";
-import { createRollScreenTheme } from "../../../theme/rollScreenTheme";
+import {
+  PremiumBottomSheet,
+  PremiumOverlayTextInput,
+} from "../../../components/premium";
+import { usePremiumTheme } from "../../../theme/premium/usePremiumTheme";
 
 type RangeRow = { min: string; max: string; label: string };
 
@@ -111,12 +113,12 @@ type Props = {
   pipelineCountRangeMax: string;
 
   pipelineOutput:
-  | "sum"
-  | "successes"
-  | "count_equal"
-  | "count_range"
-  | "first_value"
-  | "values";
+    | "sum"
+    | "successes"
+    | "count_equal"
+    | "count_range"
+    | "first_value"
+    | "values";
 
   pipelineSuccessThreshold: string;
   pipelineCompare: "gte" | "lte";
@@ -124,32 +126,32 @@ type Props = {
   pipelineCritFailureFaces: string;
   pipelineComplicationFaces: string;
   pipelineComplicationRule:
-  | "none"
-  | "any"
-  | "gt_successes"
-  | "gte_successes"
-  | "zero_successes"
-  | "gt_half_dice"
-  | "gte_half_dice"
-  | "gt_half_successes"
-  | "gte_half_successes";
+    | "none"
+    | "any"
+    | "gt_successes"
+    | "gte_successes"
+    | "zero_successes"
+    | "gt_half_dice"
+    | "gte_half_dice"
+    | "gt_half_successes"
+    | "gte_half_successes";
 
   pipelineCriticalFailureRule:
-  | "none"
-  | "zero_successes"
-  | "all_complication_faces"
-  | "complications_gt_successes"
-  | "complications_gte_successes"
-  | "complication_and_zero_successes"
-  | "complication_and_failed_threshold";
+    | "none"
+    | "zero_successes"
+    | "all_complication_faces"
+    | "complications_gt_successes"
+    | "complications_gte_successes"
+    | "complication_and_zero_successes"
+    | "complication_and_failed_threshold";
 
   pipelineCriticalSuccessRule:
-  | "none"
-  | "successes_gte_threshold"
-  | "all_dice_successes"
-  | "all_dice_max_faces"
-  | "any_max_face"
-  | "any_critical_face";
+    | "none"
+    | "successes_gte_threshold"
+    | "all_dice_successes"
+    | "all_dice_max_faces"
+    | "any_max_face"
+    | "any_critical_face";
 
   pipelineCriticalSuccessThreshold: string;
   pipelineCriticalSuccessFaces: string;
@@ -285,31 +287,31 @@ type Props = {
 };
 
 function SectionTitle({ children }: { children: string }) {
-  const { theme } = useArcaneTheme();
+  const premium = usePremiumTheme();
 
   return (
     <Text
       style={{
-        color: theme.colors.textSubtle,
-        fontSize: theme.typography.tiny,
+        color: premium.colors.text.muted,
+        fontSize: premium.typography.tiny,
         fontWeight: "900",
         textTransform: "uppercase",
         letterSpacing: 0.9,
       }}
     >
-      ✦ {children}
+      {children}
     </Text>
   );
 }
 
 function FieldLabel({ children }: { children: string }) {
-  const { theme } = useArcaneTheme();
+  const premium = usePremiumTheme();
 
   return (
     <Text
       style={{
-        color: theme.colors.textMuted,
-        fontSize: theme.typography.small,
+        color: premium.colors.text.secondary,
+        fontSize: 12,
         fontWeight: "900",
       }}
     >
@@ -317,46 +319,53 @@ function FieldLabel({ children }: { children: string }) {
     </Text>
   );
 }
+
+type ConfigInputMode = "text" | "number" | "number_list";
+
 function ConfigInput(props: {
   label: string;
   value: string;
   onChangeText: (value: string) => void;
   placeholder?: string;
-  keyboardType?:
-  | "default"
-  | "numeric"
-  | "number-pad"
-  | "numbers-and-punctuation";
+  mode?: ConfigInputMode;
 }) {
-  const { theme } = useArcaneTheme();
-  const rollTheme = useMemo(() => createRollScreenTheme(theme), [theme]);
+  const mode = props.mode ?? "text";
 
   return (
-    <View style={{ gap: theme.spacing.xs }}>
-      <FieldLabel>{props.label}</FieldLabel>
-
-      <TextInput
-        value={props.value}
-        onChangeText={props.onChangeText}
-        placeholder={props.placeholder}
-        placeholderTextColor={theme.colors.textSubtle}
-        keyboardType={props.keyboardType ?? "numbers-and-punctuation"}
-        selectionColor={theme.colors.accent}
-        style={{
-          minHeight: 48,
-          color: theme.colors.text,
-          backgroundColor: rollTheme.cockpit.panelAlt,
-          borderWidth: 1,
-          borderColor: rollTheme.cockpit.borderSoft,
-          borderRadius: theme.radius.md,
-          paddingHorizontal: 12,
-          paddingVertical: 11,
-          fontSize: 16,
-          fontWeight: "700",
-        }}
-      />
-    </View>
+    <PremiumOverlayTextInput
+      label={props.label}
+      value={props.value}
+      onChangeText={props.onChangeText}
+      placeholder={props.placeholder}
+      mode={mode}
+      numericOnly={mode === "number" || mode === "number_list"}
+      inputMode={
+        mode === "number" || mode === "number_list" ? "numeric" : undefined
+      }
+    />
   );
+}
+
+const NUMBER_LIST_FIELD_KEYS = new Set([
+  "critSuccessFaces",
+  "critFailureFaces",
+  "failFaces",
+  "criticalSuccessFaces",
+]);
+
+function getDynamicFieldInputMode(field: {
+  key: string;
+  type: string;
+}): ConfigInputMode {
+  if (NUMBER_LIST_FIELD_KEYS.has(field.key)) {
+    return "number_list";
+  }
+
+  if (field.type === "number") {
+    return "number";
+  }
+
+  return "text";
 }
 
 function ChoiceButton({
@@ -368,30 +377,39 @@ function ChoiceButton({
   selected: boolean;
   onPress: () => void;
 }) {
-  const { theme } = useArcaneTheme();
-  const rollTheme = useMemo(() => createRollScreenTheme(theme), [theme]);
+  const premium = usePremiumTheme();
 
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        paddingVertical: 10,
+        minHeight: 38,
+        paddingVertical: 9,
         paddingHorizontal: 13,
         borderWidth: 1,
         borderColor: selected
-          ? theme.colors.accent
-          : rollTheme.cockpit.borderSoft,
-        borderRadius: theme.radius.pill,
+          ? premium.colors.border.accent
+          : premium.colors.border.subtle,
+        borderRadius: premium.radius.pill,
         backgroundColor: selected
-          ? theme.colors.accentSoft
-          : rollTheme.cockpit.panelAlt,
-        opacity: pressed ? 0.84 : selected ? 1 : 0.86,
-        transform: [{ scale: pressed ? 0.97 : 1 }],
+          ? premium.colors.accent.soft
+          : pressed
+            ? premium.colors.surface.pressed
+            : premium.colors.surface.subtle,
+        opacity: pressed ? 0.84 : selected ? 1 : 0.9,
+        transform: [
+          {
+            scale: pressed ? premium.animation.pressScale : 1,
+          },
+        ],
       })}
     >
       <Text
         style={{
-          color: selected ? theme.colors.accent : theme.colors.textMuted,
+          color: selected
+            ? premium.colors.accent.primary
+            : premium.colors.text.secondary,
+          fontSize: 12,
           fontWeight: selected ? "900" : "800",
         }}
       >
@@ -411,41 +429,170 @@ function ActionButton({
   onPress: () => void;
   variant?: "default" | "accent";
 }) {
-  const { theme } = useArcaneTheme();
-  const rollTheme = useMemo(() => createRollScreenTheme(theme), [theme]);
-
+  const premium = usePremiumTheme();
   const isAccent = variant === "accent";
 
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
+        flex: 1,
+        minHeight: 48,
         paddingVertical: 11,
         paddingHorizontal: 16,
         borderWidth: 1,
         borderColor: isAccent
-          ? theme.colors.accent
-          : rollTheme.cockpit.borderSoft,
-        borderRadius: theme.radius.pill,
+          ? premium.colors.border.accent
+          : premium.colors.border.subtle,
+        borderRadius: premium.radius.pill,
         backgroundColor: isAccent
-          ? theme.colors.accentSoft
-          : rollTheme.cockpit.panelAlt,
+          ? premium.colors.accent.soft
+          : pressed
+            ? premium.colors.surface.pressed
+            : premium.colors.surface.subtle,
+        alignItems: "center",
+        justifyContent: "center",
         opacity: pressed ? 0.84 : 1,
-        transform: [{ scale: pressed ? 0.97 : 1 }],
-        shadowColor: isAccent ? rollTheme.cockpit.glow : theme.colors.black,
-        shadowOpacity: isAccent ? 0.2 : 0,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: 5 },
-        elevation: isAccent ? 3 : 0,
+        transform: [
+          {
+            scale: pressed ? premium.animation.pressScale : 1,
+          },
+        ],
       })}
     >
       <Text
         style={{
-          color: isAccent ? theme.colors.accent : theme.colors.text,
+          color: isAccent
+            ? premium.colors.accent.primary
+            : premium.colors.text.secondary,
+          fontSize: 14,
           fontWeight: "900",
         }}
       >
         {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function ChoiceGroup({ children }: { children: React.ReactNode }) {
+  const premium = usePremiumTheme();
+
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: premium.spacing.sm,
+      }}
+    >
+      {children}
+    </View>
+  );
+}
+
+function TwoColumnFields({ children }: { children: React.ReactNode }) {
+  const premium = usePremiumTheme();
+
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        gap: premium.spacing.sm,
+      }}
+    >
+      {children}
+    </View>
+  );
+}
+
+function FieldColumn({ children }: { children: React.ReactNode }) {
+  return <View style={{ flex: 1, minWidth: 0 }}>{children}</View>;
+}
+
+function SmallDangerButton({
+  label,
+  disabled,
+  onPress,
+}: {
+  label: string;
+  disabled?: boolean;
+  onPress: () => void;
+}) {
+  const premium = usePremiumTheme();
+
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => ({
+        minHeight: 32,
+        paddingVertical: 6,
+        paddingHorizontal: 10,
+        borderRadius: premium.radius.pill,
+        borderWidth: 1,
+        borderColor: disabled
+          ? premium.colors.border.subtle
+          : "rgba(239, 111, 145, 0.38)",
+        backgroundColor: disabled
+          ? premium.colors.surface.disabled
+          : premium.colors.state.failureSoft,
+        opacity: disabled ? 0.45 : pressed ? 0.78 : 1,
+        transform: [
+          {
+            scale: pressed && !disabled ? premium.animation.pressScale : 1,
+          },
+        ],
+      })}
+    >
+      <Text
+        style={{
+          color: disabled
+            ? premium.colors.text.muted
+            : premium.colors.state.failure,
+          fontSize: premium.typography.tiny,
+          fontWeight: "900",
+        }}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function AddRangeButton({ onPress }: { onPress: () => void }) {
+  const premium = usePremiumTheme();
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        alignSelf: "flex-start",
+        minHeight: 38,
+        paddingVertical: 9,
+        paddingHorizontal: 13,
+        borderRadius: premium.radius.pill,
+        borderWidth: 1,
+        borderColor: premium.colors.border.accent,
+        backgroundColor: pressed
+          ? premium.colors.surface.pressed
+          : premium.colors.accent.soft,
+        opacity: pressed ? 0.84 : 1,
+        transform: [
+          {
+            scale: pressed ? premium.animation.pressScale : 1,
+          },
+        ],
+      })}
+    >
+      <Text
+        style={{
+          color: premium.colors.accent.primary,
+          fontSize: 12,
+          fontWeight: "900",
+        }}
+      >
+        + Ajouter une plage
       </Text>
     </Pressable>
   );
@@ -460,26 +607,43 @@ function ConfigSection({
   description?: string;
   children: React.ReactNode;
 }) {
-  const { theme, styles } = useArcaneTheme();
-  const rollTheme = useMemo(() => createRollScreenTheme(theme), [theme]);
+  const premium = usePremiumTheme();
 
   return (
     <View
       style={{
-        ...styles.cardSoft,
-        gap: theme.spacing.sm,
-        borderColor: rollTheme.cockpit.borderSoft,
-        backgroundColor: rollTheme.cockpit.panelAlt,
+        borderRadius: premium.radius.xl,
+        borderWidth: 1,
+        borderColor: premium.colors.border.subtle,
+        backgroundColor: premium.colors.surface.elevated,
+        padding: premium.spacing.md,
+        gap: premium.spacing.sm,
+        overflow: "hidden",
       }}
     >
+      <View
+        pointerEvents="none"
+        style={{
+          position: "absolute",
+          right: -58,
+          top: -72,
+          width: 152,
+          height: 152,
+          borderRadius: 999,
+          backgroundColor: premium.colors.surface.subtle,
+          opacity: 0.45,
+        }}
+      />
+
       <SectionTitle>{title}</SectionTitle>
 
       {description ? (
         <Text
           style={{
-            color: theme.colors.textMuted,
-            lineHeight: 19,
-            fontWeight: "600",
+            color: premium.colors.text.secondary,
+            fontSize: 12,
+            lineHeight: 18,
+            fontWeight: "700",
           }}
         >
           {description}
@@ -502,8 +666,7 @@ function ModeIntroCard({
   description: string;
   mode: ConfigMode;
 }) {
-  const { theme } = useArcaneTheme();
-  const rollTheme = useMemo(() => createRollScreenTheme(theme), [theme]);
+  const premium = usePremiumTheme();
 
   const icon =
     mode === "pipeline"
@@ -514,35 +677,27 @@ function ModeIntroCard({
           ? "✦"
           : "🎲";
 
-  const borderColor =
-    mode === "pipeline"
-      ? theme.colors.arcane
-      : mode === "keep_drop"
-        ? theme.colors.accent
-        : rollTheme.cockpit.borderSoft;
-
-  const backgroundColor =
-    mode === "pipeline"
-      ? theme.colors.arcaneSoft
-      : mode === "keep_drop"
-        ? theme.colors.accentSoft
-        : rollTheme.cockpit.panelAlt;
+  const isStrongMode = mode === "pipeline" || mode === "keep_drop";
 
   return (
     <View
       style={{
         borderWidth: 1,
-        borderColor,
-        borderRadius: theme.radius.lg,
-        backgroundColor,
-        padding: theme.spacing.md,
-        gap: theme.spacing.xs,
+        borderColor: isStrongMode
+          ? premium.colors.border.accent
+          : premium.colors.border.subtle,
+        borderRadius: premium.radius.xl,
+        backgroundColor: isStrongMode
+          ? premium.colors.accent.soft
+          : premium.colors.surface.elevated,
+        padding: premium.spacing.md,
+        gap: premium.spacing.xs,
       }}
     >
       <Text
         style={{
-          color: theme.colors.textSubtle,
-          fontSize: theme.typography.tiny,
+          color: premium.colors.text.muted,
+          fontSize: premium.typography.tiny,
           fontWeight: "900",
           textTransform: "uppercase",
           letterSpacing: 0.9,
@@ -553,7 +708,7 @@ function ModeIntroCard({
 
       <Text
         style={{
-          color: theme.colors.text,
+          color: premium.colors.text.primary,
           fontSize: 17,
           fontWeight: "900",
         }}
@@ -563,9 +718,10 @@ function ModeIntroCard({
 
       <Text
         style={{
-          color: theme.colors.textMuted,
-          lineHeight: 19,
-          fontWeight: "600",
+          color: premium.colors.text.secondary,
+          fontSize: 12,
+          lineHeight: 18,
+          fontWeight: "700",
         }}
       >
         {description}
@@ -705,8 +861,7 @@ export function QuickBehaviorConfigModal({
   onClose,
   onConfirm,
 }: Props) {
-  const { theme, styles } = useArcaneTheme();
-  const rollTheme = useMemo(() => createRollScreenTheme(theme), [theme]);
+  const premium = usePremiumTheme();
 
   if (!visible) return null;
 
@@ -836,59 +991,25 @@ export function QuickBehaviorConfigModal({
   const content = (
     <View
       style={{
-        ...styles.card,
-        gap: theme.spacing.md,
-        borderColor: theme.colors.accent,
-        backgroundColor: rollTheme.cockpit.panel,
-        borderRadius: rollTheme.layout.cockpitRadius,
-        maxHeight: presentation === "modal" ? "100%" : undefined,
-        overflow: "hidden",
+        gap: premium.spacing.md,
       }}
     >
-      <View
-        pointerEvents="none"
-        style={{
-          position: "absolute",
-          top: -60,
-          right: -54,
-          width: 160,
-          height: 160,
-          borderRadius: 999,
-          backgroundColor: rollTheme.cockpit.glow,
-          opacity: 0.18,
-        }}
-      />
-
-      <View
-        pointerEvents="none"
-        style={{
-          position: "absolute",
-          bottom: -76,
-          left: -66,
-          width: 170,
-          height: 170,
-          borderRadius: 999,
-          backgroundColor: rollTheme.cockpit.magicGlow,
-          opacity: 0.12,
-        }}
-      />
-
-      <View style={{ gap: theme.spacing.xs }}>
+      <View style={{ gap: premium.spacing.xs }}>
         <Text
           style={{
-            color: theme.colors.textSubtle,
-            fontSize: theme.typography.tiny,
+            color: premium.colors.text.muted,
+            fontSize: premium.typography.tiny,
             fontWeight: "900",
             textTransform: "uppercase",
             letterSpacing: 0.9,
           }}
         >
-          ✦ Configuration rapide
+          Configuration rapide
         </Text>
 
         <Text
           style={{
-            color: theme.colors.text,
+            color: premium.colors.text.primary,
             fontSize: 22,
             fontWeight: "900",
             letterSpacing: -0.3,
@@ -899,9 +1020,10 @@ export function QuickBehaviorConfigModal({
 
         <Text
           style={{
-            color: theme.colors.textMuted,
-            lineHeight: 20,
-            fontWeight: "600",
+            color: premium.colors.text.secondary,
+            fontSize: 13,
+            lineHeight: 19,
+            fontWeight: "700",
           }}
         >
           Ajuste la façon dont ce jet sera interprété au moment du lancer.
@@ -909,8 +1031,25 @@ export function QuickBehaviorConfigModal({
       </View>
 
       {!behavior ? (
-        <View style={styles.cardSoft}>
-          <Text style={styles.muted}>Aucun comportement sélectionné.</Text>
+        <View
+          style={{
+            borderRadius: premium.radius.lg,
+            borderWidth: 1,
+            borderColor: premium.colors.border.subtle,
+            backgroundColor: premium.colors.surface.subtle,
+            padding: premium.spacing.md,
+          }}
+        >
+          <Text
+            style={{
+              color: premium.colors.text.secondary,
+              fontSize: 13,
+              lineHeight: 18,
+              fontWeight: "700",
+            }}
+          >
+            Aucun comportement sélectionné.
+          </Text>
         </View>
       ) : null}
 
@@ -921,16 +1060,9 @@ export function QuickBehaviorConfigModal({
         mode={configMode.mode}
       />
 
-      <ScrollView
-        contentContainerStyle={{
-          gap: theme.spacing.md,
-          paddingBottom: theme.spacing.sm,
-        }}
-        showsVerticalScrollIndicator
-        keyboardShouldPersistTaps="handled"
-      >
+      <View style={{ gap: premium.spacing.md }}>
         {pendingBehaviorKey === "custom_pipeline" &&
-          pendingConfigVariant === "keep_drop" ? (
+        pendingConfigVariant === "keep_drop" ? (
           <>
             <ConfigSection
               title="Garder / retirer"
@@ -938,7 +1070,7 @@ export function QuickBehaviorConfigModal({
             >
               <FieldLabel>Action</FieldLabel>
 
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              <ChoiceGroup>
                 <ChoiceButton
                   label="Garder"
                   selected={keepDropMode === "keep"}
@@ -950,11 +1082,11 @@ export function QuickBehaviorConfigModal({
                   selected={keepDropMode === "drop"}
                   onPress={() => onChangeKeepDropMode("drop")}
                 />
-              </View>
+              </ChoiceGroup>
 
               <FieldLabel>Cible</FieldLabel>
 
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              <ChoiceGroup>
                 <ChoiceButton
                   label="Les meilleurs dés"
                   selected={keepDropTarget === "highest"}
@@ -966,14 +1098,14 @@ export function QuickBehaviorConfigModal({
                   selected={keepDropTarget === "lowest"}
                   onPress={() => onChangeKeepDropTarget("lowest")}
                 />
-              </View>
+              </ChoiceGroup>
 
               <ConfigInput
                 label="Nombre de dés"
                 value={keepDropCount}
                 onChangeText={onChangeKeepDropCount}
                 placeholder="Ex: 1"
-                keyboardType="number-pad"
+                mode="number"
               />
             </ConfigSection>
 
@@ -981,7 +1113,7 @@ export function QuickBehaviorConfigModal({
               title="Résultat"
               description="Détermine si le jet final renvoie une somme ou les valeurs conservées."
             >
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              <ChoiceGroup>
                 <ChoiceButton
                   label="Somme"
                   selected={pipelineOutput === "sum"}
@@ -993,7 +1125,7 @@ export function QuickBehaviorConfigModal({
                   selected={pipelineOutput === "values"}
                   onPress={() => onChangePipelineOutput("values")}
                 />
-              </View>
+              </ChoiceGroup>
             </ConfigSection>
           </>
         ) : pendingBehaviorKey === "custom_pipeline" ? (
@@ -1007,11 +1139,13 @@ export function QuickBehaviorConfigModal({
                 value={pipelineRerollFaces}
                 onChangeText={onChangePipelineRerollFaces}
                 placeholder="Ex: 1 ou 1,2"
+                mode="number_list"
               />
 
               <ChoiceButton
-                label={`Relance une seule fois : ${pipelineRerollOnce ? "Oui" : "Non"
-                  }`}
+                label={`Relance une seule fois : ${
+                  pipelineRerollOnce ? "Oui" : "Non"
+                }`}
                 selected={pipelineRerollOnce}
                 onPress={() => onChangePipelineRerollOnce(!pipelineRerollOnce)}
               />
@@ -1021,14 +1155,15 @@ export function QuickBehaviorConfigModal({
                 value={pipelineMaxRerolls}
                 onChangeText={onChangePipelineMaxRerolls}
                 placeholder="Vide = limite moteur"
-                keyboardType="number-pad"
+                mode="number"
               />
 
               <ConfigInput
                 label="Explosion sur les faces"
                 value={pipelineExplodeFaces}
                 onChangeText={onChangePipelineExplodeFaces}
-                placeholder="Ex: 6"
+                placeholder="Ex: 6 ou 6,10"
+                mode="number_list"
               />
 
               <ConfigInput
@@ -1036,7 +1171,7 @@ export function QuickBehaviorConfigModal({
                 value={pipelineMaxExplosions}
                 onChangeText={onChangePipelineMaxExplosions}
                 placeholder="Vide = limite moteur"
-                keyboardType="number-pad"
+                mode="number"
               />
             </ConfigSection>
 
@@ -1049,7 +1184,7 @@ export function QuickBehaviorConfigModal({
                 value={pipelineKeepHighest}
                 onChangeText={onChangePipelineKeepHighest}
                 placeholder="Ex: 2"
-                keyboardType="number-pad"
+                mode="number"
               />
 
               <ConfigInput
@@ -1057,7 +1192,7 @@ export function QuickBehaviorConfigModal({
                 value={pipelineKeepLowest}
                 onChangeText={onChangePipelineKeepLowest}
                 placeholder="Ex: 2"
-                keyboardType="number-pad"
+                mode="number"
               />
 
               <ConfigInput
@@ -1065,7 +1200,7 @@ export function QuickBehaviorConfigModal({
                 value={pipelineDropHighest}
                 onChangeText={onChangePipelineDropHighest}
                 placeholder="Ex: 1"
-                keyboardType="number-pad"
+                mode="number"
               />
 
               <ConfigInput
@@ -1073,7 +1208,7 @@ export function QuickBehaviorConfigModal({
                 value={pipelineDropLowest}
                 onChangeText={onChangePipelineDropLowest}
                 placeholder="Ex: 1"
-                keyboardType="number-pad"
+                mode="number"
               />
             </ConfigSection>
 
@@ -1086,11 +1221,12 @@ export function QuickBehaviorConfigModal({
                 value={pipelineComplicationFaces}
                 onChangeText={onChangePipelineComplicationFaces}
                 placeholder="Ex: 1 ou 1,2"
+                mode="number_list"
               />
 
               <FieldLabel>Règle de complication</FieldLabel>
 
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              <ChoiceGroup>
                 <ChoiceButton
                   label="Aucune"
                   selected={pipelineComplicationRule === "none"}
@@ -1158,14 +1294,14 @@ export function QuickBehaviorConfigModal({
                     onChangePipelineComplicationRule("gte_half_successes")
                   }
                 />
-              </View>
+              </ChoiceGroup>
 
               <ConfigInput
                 label="Compter les succès à partir de"
                 value={pipelineCountSuccessAtOrAbove}
                 onChangeText={onChangePipelineCountSuccessAtOrAbove}
                 placeholder="Ex: 5"
-                keyboardType="number-pad"
+                mode="number"
               />
 
               <ConfigInput
@@ -1173,29 +1309,30 @@ export function QuickBehaviorConfigModal({
                 value={pipelineCountEqualFaces}
                 onChangeText={onChangePipelineCountEqualFaces}
                 placeholder="Ex: 1 ou 6,10"
+                mode="number_list"
               />
 
-              <View style={{ flexDirection: "row", gap: 8 }}>
-                <View style={{ flex: 1 }}>
+              <TwoColumnFields>
+                <FieldColumn>
                   <ConfigInput
                     label="Plage min"
                     value={pipelineCountRangeMin}
                     onChangeText={onChangePipelineCountRangeMin}
                     placeholder="Ex: 2"
-                    keyboardType="number-pad"
+                    mode="number"
                   />
-                </View>
+                </FieldColumn>
 
-                <View style={{ flex: 1 }}>
+                <FieldColumn>
                   <ConfigInput
                     label="Plage max"
                     value={pipelineCountRangeMax}
                     onChangeText={onChangePipelineCountRangeMax}
                     placeholder="Ex: 5"
-                    keyboardType="number-pad"
+                    mode="number"
                   />
-                </View>
-              </View>
+                </FieldColumn>
+              </TwoColumnFields>
             </ConfigSection>
 
             <ConfigSection
@@ -1204,7 +1341,7 @@ export function QuickBehaviorConfigModal({
             >
               <FieldLabel>Échec critique</FieldLabel>
 
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              <ChoiceGroup>
                 <ChoiceButton
                   label="Aucun"
                   selected={pipelineCriticalFailureRule === "none"}
@@ -1281,11 +1418,11 @@ export function QuickBehaviorConfigModal({
                     )
                   }
                 />
-              </View>
+              </ChoiceGroup>
 
               <FieldLabel>Réussite critique</FieldLabel>
 
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              <ChoiceGroup>
                 <ChoiceButton
                   label="Aucune"
                   selected={pipelineCriticalSuccessRule === "none"}
@@ -1339,14 +1476,14 @@ export function QuickBehaviorConfigModal({
                     onChangePipelineCriticalSuccessRule("any_critical_face")
                   }
                 />
-              </View>
+              </ChoiceGroup>
 
               <ConfigInput
                 label="Seuil de réussite critique"
                 value={pipelineCriticalSuccessThreshold}
                 onChangeText={onChangePipelineCriticalSuccessThreshold}
                 placeholder="Ex: 4"
-                keyboardType="number-pad"
+                mode="number"
               />
 
               <ConfigInput
@@ -1354,6 +1491,7 @@ export function QuickBehaviorConfigModal({
                 value={pipelineCriticalSuccessFaces}
                 onChangeText={onChangePipelineCriticalSuccessFaces}
                 placeholder="Ex: 6 ou 10"
+                mode="number_list"
               />
             </ConfigSection>
 
@@ -1361,7 +1499,7 @@ export function QuickBehaviorConfigModal({
               title="Sortie du pipeline"
               description="Configure la manière dont les résultats du pipeline sont présentés."
             >
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              <ChoiceGroup>
                 <ChoiceButton
                   label="Somme"
                   selected={pipelineOutput === "sum"}
@@ -1397,7 +1535,7 @@ export function QuickBehaviorConfigModal({
                   selected={pipelineOutput === "values"}
                   onPress={() => onChangePipelineOutput("values")}
                 />
-              </View>
+              </ChoiceGroup>
             </ConfigSection>
 
             <ConfigSection
@@ -1409,10 +1547,10 @@ export function QuickBehaviorConfigModal({
                 value={pipelineSuccessThreshold}
                 onChangeText={onChangePipelineSuccessThreshold}
                 placeholder="Ex: 10"
-                keyboardType="number-pad"
+                mode="number"
               />
 
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              <ChoiceGroup>
                 <ChoiceButton
                   label="≥ seuil"
                   selected={pipelineCompare === "gte"}
@@ -1424,20 +1562,22 @@ export function QuickBehaviorConfigModal({
                   selected={pipelineCompare === "lte"}
                   onPress={() => onChangePipelineCompare("lte")}
                 />
-              </View>
+              </ChoiceGroup>
 
               <ConfigInput
                 label="Faces de réussite critique"
                 value={pipelineCritSuccessFaces}
                 onChangeText={onChangePipelineCritSuccessFaces}
                 placeholder="Ex: 20"
+                mode="number_list"
               />
 
               <ConfigInput
                 label="Faces d’échec critique"
                 value={pipelineCritFailureFaces}
                 onChangeText={onChangePipelineCritFailureFaces}
-                placeholder="Ex: 1"
+                placeholder="Ex: 1,2"
+                mode="number_list"
               />
             </ConfigSection>
 
@@ -1450,12 +1590,12 @@ export function QuickBehaviorConfigModal({
                 value={pipelineDegreeTarget}
                 onChangeText={onChangePipelineDegreeTarget}
                 placeholder="Ex: 65"
-                keyboardType="number-pad"
+                mode="number"
               />
 
               <FieldLabel>Type de comparaison</FieldLabel>
 
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              <ChoiceGroup>
                 <ChoiceButton
                   label="Réussir ≥ cible"
                   selected={pipelineDegreeCompare === "gte"}
@@ -1467,59 +1607,59 @@ export function QuickBehaviorConfigModal({
                   selected={pipelineDegreeCompare === "lte"}
                   onPress={() => onChangePipelineDegreeCompare("lte")}
                 />
-              </View>
+              </ChoiceGroup>
 
               <ConfigInput
                 label="Taille d’un degré"
                 value={pipelineDegreeStep}
                 onChangeText={onChangePipelineDegreeStep}
                 placeholder="Ex: 10"
-                keyboardType="number-pad"
+                mode="number"
               />
 
-              <View style={{ flexDirection: "row", gap: 8 }}>
-                <View style={{ flex: 1 }}>
+              <TwoColumnFields>
+                <FieldColumn>
                   <ConfigInput
                     label="Crit. réussite min"
                     value={pipelineDegreeCritSuccessMin}
                     onChangeText={onChangePipelineDegreeCritSuccessMin}
                     placeholder="Ex: 1"
-                    keyboardType="number-pad"
+                    mode="number"
                   />
-                </View>
+                </FieldColumn>
 
-                <View style={{ flex: 1 }}>
+                <FieldColumn>
                   <ConfigInput
                     label="Crit. réussite max"
                     value={pipelineDegreeCritSuccessMax}
                     onChangeText={onChangePipelineDegreeCritSuccessMax}
                     placeholder="Ex: 5"
-                    keyboardType="number-pad"
+                    mode="number"
                   />
-                </View>
-              </View>
+                </FieldColumn>
+              </TwoColumnFields>
 
-              <View style={{ flexDirection: "row", gap: 8 }}>
-                <View style={{ flex: 1 }}>
+              <TwoColumnFields>
+                <FieldColumn>
                   <ConfigInput
                     label="Crit. échec min"
                     value={pipelineDegreeCritFailureMin}
                     onChangeText={onChangePipelineDegreeCritFailureMin}
                     placeholder="Ex: 95"
-                    keyboardType="number-pad"
+                    mode="number"
                   />
-                </View>
+                </FieldColumn>
 
-                <View style={{ flex: 1 }}>
+                <FieldColumn>
                   <ConfigInput
                     label="Crit. échec max"
                     value={pipelineDegreeCritFailureMax}
                     onChangeText={onChangePipelineDegreeCritFailureMax}
                     placeholder="Ex: 100"
-                    keyboardType="number-pad"
+                    mode="number"
                   />
-                </View>
-              </View>
+                </FieldColumn>
+              </TwoColumnFields>
             </ConfigSection>
           </>
         ) : null}
@@ -1529,7 +1669,7 @@ export function QuickBehaviorConfigModal({
             title="Paramètres du comportement"
             description="Ces réglages suffisent pour configurer ce type de jet. Les options avancées restent réservées au pipeline personnalisé."
           >
-            <View style={{ gap: theme.spacing.md }}>
+            <View style={{ gap: premium.spacing.md }}>
               {behavior.fields.map((field) => {
                 if (field.type === "text" || field.type === "number") {
                   return (
@@ -1538,26 +1678,18 @@ export function QuickBehaviorConfigModal({
                       label={field.label}
                       value={getFieldValue(field.key)}
                       onChangeText={(value) => setFieldValue(field.key, value)}
-                      keyboardType={
-                        field.type === "number" ? "number-pad" : "default"
-                      }
                       placeholder={field.placeholder}
+                      mode={getDynamicFieldInputMode(field)}
                     />
                   );
                 }
 
                 if (field.type === "select") {
                   return (
-                    <View key={field.key} style={{ gap: theme.spacing.sm }}>
+                    <View key={field.key} style={{ gap: premium.spacing.sm }}>
                       <FieldLabel>{field.label}</FieldLabel>
 
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          flexWrap: "wrap",
-                          gap: 8,
-                        }}
-                      >
+                      <ChoiceGroup>
                         {field.options.map((option) => (
                           <ChoiceButton
                             key={option.value}
@@ -1568,24 +1700,26 @@ export function QuickBehaviorConfigModal({
                             }
                           />
                         ))}
-                      </View>
+                      </ChoiceGroup>
                     </View>
                   );
                 }
 
                 if (field.type === "ranges") {
                   return (
-                    <View key={field.key} style={{ gap: theme.spacing.sm }}>
+                    <View key={field.key} style={{ gap: premium.spacing.sm }}>
                       <FieldLabel>{field.label}</FieldLabel>
 
                       {configRanges.map((row, index) => (
                         <View
                           key={`${pendingBehaviorKey}-range-${index}`}
                           style={{
-                            ...styles.cardSoft,
-                            gap: theme.spacing.sm,
-                            borderColor: rollTheme.cockpit.borderSoft,
-                            backgroundColor: rollTheme.cockpit.panel,
+                            borderRadius: premium.radius.lg,
+                            borderWidth: 1,
+                            borderColor: premium.colors.border.subtle,
+                            backgroundColor: premium.colors.surface.subtle,
+                            padding: premium.spacing.md,
+                            gap: premium.spacing.sm,
                           }}
                         >
                           <View
@@ -1593,58 +1727,28 @@ export function QuickBehaviorConfigModal({
                               flexDirection: "row",
                               justifyContent: "space-between",
                               alignItems: "center",
-                              gap: theme.spacing.sm,
+                              gap: premium.spacing.sm,
                             }}
                           >
                             <Text
                               style={{
-                                color: theme.colors.text,
+                                color: premium.colors.text.primary,
+                                fontSize: 14,
                                 fontWeight: "900",
                               }}
                             >
                               Plage {index + 1}
                             </Text>
 
-                            <Pressable
-                              onPress={() => onRemoveRange(index)}
+                            <SmallDangerButton
+                              label="Supprimer"
                               disabled={configRanges.length <= 1}
-                              style={({ pressed }) => ({
-                                paddingVertical: 6,
-                                paddingHorizontal: 10,
-                                borderRadius: theme.radius.pill,
-                                borderWidth: 1,
-                                borderColor:
-                                  configRanges.length <= 1
-                                    ? "rgba(145, 113, 255, 0.14)"
-                                    : "rgba(255, 92, 122, 0.52)",
-                                backgroundColor:
-                                  configRanges.length <= 1
-                                    ? "rgba(32, 41, 88, 0.28)"
-                                    : "rgba(255, 92, 122, 0.1)",
-                                opacity: pressed
-                                  ? 0.78
-                                  : configRanges.length <= 1
-                                    ? 0.45
-                                    : 1,
-                              })}
-                            >
-                              <Text
-                                style={{
-                                  color:
-                                    configRanges.length <= 1
-                                      ? theme.colors.textSubtle
-                                      : theme.colors.failure,
-                                  fontSize: theme.typography.tiny,
-                                  fontWeight: "900",
-                                }}
-                              >
-                                Supprimer
-                              </Text>
-                            </Pressable>
+                              onPress={() => onRemoveRange(index)}
+                            />
                           </View>
 
-                          <View style={{ flexDirection: "row", gap: 8 }}>
-                            <View style={{ flex: 1 }}>
+                          <TwoColumnFields>
+                            <FieldColumn>
                               <ConfigInput
                                 label="Min"
                                 value={row.min}
@@ -1652,11 +1756,11 @@ export function QuickBehaviorConfigModal({
                                   onUpdateRange(index, "min", value)
                                 }
                                 placeholder="Min"
-                                keyboardType="number-pad"
+                                mode="number"
                               />
-                            </View>
+                            </FieldColumn>
 
-                            <View style={{ flex: 1 }}>
+                            <FieldColumn>
                               <ConfigInput
                                 label="Max"
                                 value={row.max}
@@ -1664,10 +1768,10 @@ export function QuickBehaviorConfigModal({
                                   onUpdateRange(index, "max", value)
                                 }
                                 placeholder="Max"
-                                keyboardType="number-pad"
+                                mode="number"
                               />
-                            </View>
-                          </View>
+                            </FieldColumn>
+                          </TwoColumnFields>
 
                           <ConfigInput
                             label="Libellé"
@@ -1676,35 +1780,11 @@ export function QuickBehaviorConfigModal({
                               onUpdateRange(index, "label", value)
                             }
                             placeholder="Label"
-                            keyboardType="default"
+                            mode="text"
                           />
                         </View>
                       ))}
-                      <Pressable
-                        onPress={onAddRange}
-                        style={({ pressed }) => ({
-                          alignSelf: "flex-start",
-                          paddingVertical: 9,
-                          paddingHorizontal: 13,
-                          borderRadius: theme.radius.pill,
-                          borderWidth: 1,
-                          borderColor: theme.colors.accent,
-                          backgroundColor: pressed
-                            ? "rgba(217, 160, 55, 0.2)"
-                            : "rgba(217, 160, 55, 0.12)",
-                          opacity: pressed ? 0.84 : 1,
-                        })}
-                      >
-                        <Text
-                          style={{
-                            color: theme.colors.accent,
-                            fontSize: theme.typography.small,
-                            fontWeight: "900",
-                          }}
-                        >
-                          + Ajouter une plage
-                        </Text>
-                      </Pressable>
+                      <AddRangeButton onPress={onAddRange} />
                     </View>
                   );
                 }
@@ -1714,13 +1794,13 @@ export function QuickBehaviorConfigModal({
             </View>
           </ConfigSection>
         ) : null}
-      </ScrollView>
+      </View>
 
       <View
         style={{
           flexDirection: "row",
           justifyContent: "flex-end",
-          gap: theme.spacing.sm,
+          gap: premium.spacing.sm,
         }}
       >
         <ActionButton label="Annuler" onPress={onClose} />
@@ -1734,44 +1814,14 @@ export function QuickBehaviorConfigModal({
   }
 
   return (
-    <Modal
+    <PremiumBottomSheet
       visible={visible}
-      transparent
-      animationType="fade"
-      statusBarTranslucent
-      onRequestClose={onClose}
+      title={pendingBehaviorLabel || "Comportement du jet"}
+      subtitle="Configure la façon dont ce jet sera interprété."
+      onClose={onClose}
+      maxHeight="90%"
     >
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: "rgba(0,0,0,0.74)",
-          justifyContent: "center",
-          paddingHorizontal: 16,
-          paddingTop: 72,
-          paddingBottom: 92,
-        }}
-      >
-        <Pressable
-          onPress={onClose}
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-          }}
-        />
-
-        <View
-          style={{
-            maxHeight: "100%",
-            zIndex: 2,
-            elevation: 12,
-          }}
-        >
-          {content}
-        </View>
-      </View>
-    </Modal>
+      {content}
+    </PremiumBottomSheet>
   );
 }

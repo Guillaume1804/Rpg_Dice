@@ -7,9 +7,7 @@ import {
   Easing,
   LayoutAnimation,
   Pressable,
-  ScrollView,
   Text,
-  TextInput,
   useWindowDimensions,
   View,
 } from "react-native";
@@ -34,7 +32,6 @@ import { PreparedRollSaveSheet } from "../features/roll/components/PreparedRollS
 
 import { useArcaneLayout } from "../theme/useArcaneLayout";
 import { useArcaneTheme } from "../theme/ArcaneThemeProvider";
-import { createRollScreenTheme } from "../theme/rollScreenTheme";
 
 // import { SessionBar } from "../features/roll/components/SessionBar";
 import {
@@ -102,21 +99,21 @@ function findDraftGroupById(
 
 type PreparedRoll =
   | {
-    source: "free";
-  }
+      source: "free";
+    }
   | {
-    source: "action";
-    profileId: string;
-    groupId: string;
-    label: string;
-  }
+      source: "action";
+      profileId: string;
+      groupId: string;
+      label: string;
+    }
   | {
-    source: "action_draft";
-    profileId: string;
-    groupId: string;
-    draftGroupId: string;
-    label: string;
-  };
+      source: "action_draft";
+      profileId: string;
+      groupId: string;
+      draftGroupId: string;
+      label: string;
+    };
 
 function animateCockpitLayout() {
   LayoutAnimation.configureNext({
@@ -187,7 +184,6 @@ async function resolvePreparedRuleId(
 export default function RollScreen() {
   const layout = useArcaneLayout();
   const { theme, styles } = useArcaneTheme();
-  const rollTheme = useMemo(() => createRollScreenTheme(theme), [theme]);
 
   const { height: windowHeight } = useWindowDimensions();
 
@@ -236,7 +232,7 @@ export default function RollScreen() {
   const { activeTableId, setActiveTableId, clearActiveTableId } =
     useActiveTable();
   const [, setResults] = useState<GroupRollResult[]>([]);
-  const [showSaveOptions, setShowSaveOptions] = useState(false);
+  const [, setShowSaveOptions] = useState(false);
   const [showNameModal, setShowNameModal] = useState(false);
   const [newTableName, setNewTableName] = useState("");
   const [newProfileName, setNewProfileName] = useState("Profil principal");
@@ -254,7 +250,7 @@ export default function RollScreen() {
     }[]
   >([]);
   const [loadingSaveTargets, setLoadingSaveTargets] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [, setShowAdvanced] = useState(false);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(
     null,
   );
@@ -293,19 +289,11 @@ export default function RollScreen() {
     [activeTableId],
   );
 
-  const {
-    table,
-    profiles,
-    rulesMap,
-    availableRules,
-    modernRules,
-    legacyRules,
-    error,
-    reloadGroups,
-  } = useRollTableData({
-    db,
-    tableId,
-  });
+  const { table, profiles, rulesMap, availableRules, error, reloadGroups } =
+    useRollTableData({
+      db,
+      tableId,
+    });
 
   const reloadTables = useCallback(async () => {
     setLoadingTables(true);
@@ -340,7 +328,6 @@ export default function RollScreen() {
     setDraftResults,
     selectedDraftGroupId,
     setSelectedDraftGroupId,
-    setDraftGroupRuleSelection,
 
     resetDraftEditorState,
     resetDraftState,
@@ -411,8 +398,6 @@ export default function RollScreen() {
   });
 
   const {
-    replaceCurrentTable,
-    // openCreateTableModal,
     createNewTableFromName,
     appendDraftToExistingTableNewProfile,
     appendDraftToExistingProfile,
@@ -470,22 +455,9 @@ export default function RollScreen() {
   }, [
     clearDraft,
     resetDraftEditorState,
-    setDraftGroupRuleSelection,
     setDraftResults,
     setSelectedDraftGroupId,
   ]);
-
-  function handleClearQuickRoll() {
-    animateCockpitLayout();
-
-    resetFreeDraftState();
-
-    if (preparedRoll?.source === "free") {
-      setPreparedRoll(null);
-      setLatestResult(null);
-      setShowPreparedEditSheet(false);
-    }
-  }
 
   function handleClearPreparedRoll() {
     if (isResettingPreparedRoll) return;
@@ -571,16 +543,16 @@ export default function RollScreen() {
 
     const rule = sourceRule
       ? {
-        id: String(sourceRule.id ?? `temp-line-rule-${index}`),
-        name: String(sourceRule.name ?? "Comportement temporaire"),
-        kind: String(sourceRule.kind ?? "sum"),
-        params_json:
-          typeof sourceRule.params_json === "string"
-            ? sourceRule.params_json
-            : typeof sourceRule.paramsJson === "string"
-              ? sourceRule.paramsJson
-              : JSON.stringify(sourceRule.params_json ?? {}),
-      }
+          id: String(sourceRule.id ?? `temp-line-rule-${index}`),
+          name: String(sourceRule.name ?? "Comportement temporaire"),
+          kind: String(sourceRule.kind ?? "sum"),
+          params_json:
+            typeof sourceRule.params_json === "string"
+              ? sourceRule.params_json
+              : typeof sourceRule.paramsJson === "string"
+                ? sourceRule.paramsJson
+                : JSON.stringify(sourceRule.params_json ?? {}),
+        }
       : null;
 
     const lineLabel = formatPreparedCardDieLabel({
@@ -650,8 +622,7 @@ export default function RollScreen() {
       const targets = await getAvailableSaveTargets();
       setAvailableSaveTargets(targets);
       const defaultActionName =
-        editablePreparedDraftGroup?.name?.trim() ||
-        "Jet rapide";
+        editablePreparedDraftGroup?.name?.trim() || "Jet rapide";
 
       setNewTableName(`Nouvelle table (${new Date().toLocaleDateString()})`);
       setNewProfileName("Profil principal");
@@ -689,9 +660,9 @@ export default function RollScreen() {
 
   async function handleSaveDraftTarget(params: {
     mode:
-    | "new_table_new_profile"
-    | "existing_table_new_profile"
-    | "existing_table_existing_profile";
+      | "new_table_new_profile"
+      | "existing_table_new_profile"
+      | "existing_table_existing_profile";
     tableName?: string;
     profileName?: string;
     tableId?: string;
@@ -1067,6 +1038,8 @@ export default function RollScreen() {
 
     setPreparedBehaviorFlowOrigin(origin);
 
+    quickBehaviorConfig.close();
+
     setDraftBehaviorTarget({
       groupId: editablePreparedDraftGroup.id,
       index,
@@ -1248,11 +1221,7 @@ export default function RollScreen() {
         editablePreparedDraftGroup.name.trim() || preparedRoll.label,
       );
 
-      await updateGroupRuleId(
-        db,
-        preparedRoll.groupId,
-        resolvedGroupRuleId,
-      );
+      await updateGroupRuleId(db, preparedRoll.groupId, resolvedGroupRuleId);
 
       for (const die of sourceAction.dice) {
         await deleteGroupDie(db, die.id);
@@ -1424,7 +1393,7 @@ export default function RollScreen() {
 
   const focusedPreparedLine =
     focusedPreparedLineIndex != null
-      ? preparedCardLines[focusedPreparedLineIndex] ?? null
+      ? (preparedCardLines[focusedPreparedLineIndex] ?? null)
       : null;
 
   const isFocusedLineMode = !!focusedPreparedLine;
@@ -1506,10 +1475,6 @@ export default function RollScreen() {
   const isFreeIdleCockpit = !hasActiveTable && !hasPreparedRoll && !hasResult;
   const isTableIdleCockpit = hasActiveTable && !hasPreparedRoll && !hasResult;
 
-  const isFreePreparedCockpit =
-    !hasActiveTable && hasPreparedRoll && !hasResult;
-  const isTablePreparedCockpit =
-    hasActiveTable && hasPreparedRoll && !hasResult;
   const isResultCockpit = hasResult;
   const isFullCockpit = hasActiveTable && hasPreparedRoll && hasResult;
 
@@ -1518,6 +1483,18 @@ export default function RollScreen() {
     : isCompactScreen
       ? layout.insets.top + 4
       : layout.insets.top + theme.spacing.xs;
+
+  const screenBottomSafePadding = Math.max(
+    layout.insets.bottom + theme.spacing.md,
+    theme.spacing.xl,
+  );
+
+  const cockpitBottomPadding =
+    cockpitDensity === "tight"
+      ? Math.max(layout.insets.bottom + 10, 18)
+      : cockpitDensity === "compact"
+        ? Math.max(layout.insets.bottom + 12, 22)
+        : Math.max(layout.insets.bottom + 14, 26);
 
   /**
    * La scène centrale ne doit pas changer de logique à chaque état.
@@ -1692,35 +1669,35 @@ export default function RollScreen() {
     () =>
       profiles.length > 0
         ? profiles.map(
-          (entry): SessionMenuItem => ({
-            id: entry.profile.id,
-            label: entry.profile.name,
-            description:
-              entry.profile.id === activeProfile?.id
-                ? "Profil actuellement actif."
-                : "Activer ce profil pour ses actions rapides.",
-            icon: entry.profile.id === activeProfile?.id ? "✦" : "◇",
-            selected: entry.profile.id === activeProfile?.id,
-            onPress: (): void => {
-              animateCockpitLayout();
+            (entry): SessionMenuItem => ({
+              id: entry.profile.id,
+              label: entry.profile.name,
+              description:
+                entry.profile.id === activeProfile?.id
+                  ? "Profil actuellement actif."
+                  : "Activer ce profil pour ses actions rapides.",
+              icon: entry.profile.id === activeProfile?.id ? "✦" : "◇",
+              selected: entry.profile.id === activeProfile?.id,
+              onPress: (): void => {
+                animateCockpitLayout();
 
-              setSelectedProfileId(entry.profile.id);
-              setShowProfileSessionMenu(false);
-            },
-          }),
-        )
+                setSelectedProfileId(entry.profile.id);
+                setShowProfileSessionMenu(false);
+              },
+            }),
+          )
         : [
-          {
-            id: "no-profile",
-            label: "Aucun profil disponible",
-            description: "Active une table contenant des profils.",
-            icon: "◇",
-            disabled: true,
-            onPress: (): void => {
-              return;
+            {
+              id: "no-profile",
+              label: "Aucun profil disponible",
+              description: "Active une table contenant des profils.",
+              icon: "◇",
+              disabled: true,
+              onPress: (): void => {
+                return;
+              },
             },
-          },
-        ],
+          ],
     [profiles, activeProfile?.id],
   );
 
@@ -1732,6 +1709,10 @@ export default function RollScreen() {
           {
             paddingTop: layout.insets.top + theme.spacing.lg,
             paddingHorizontal: layout.horizontalPadding,
+            paddingBottom: Math.max(
+              layout.insets.bottom + theme.spacing.md,
+              theme.spacing.lg,
+            ),
             justifyContent: "center",
           },
         ]}
@@ -1761,7 +1742,7 @@ export default function RollScreen() {
           zIndex: 1,
           paddingTop: screenTopPadding,
           paddingHorizontal: layout.horizontalPadding,
-          paddingBottom: theme.spacing.xs,
+          paddingBottom: 0,
         }}
       >
         {/* Zone haute fixe */}
@@ -1793,7 +1774,7 @@ export default function RollScreen() {
             maxWidth: layout.maxContentWidth,
             justifyContent: cockpitStageJustify,
             paddingTop: cockpitDensity === "tight" ? 0 : 3,
-            paddingBottom: cockpitDensity === "tight" ? 8 : 12,
+            paddingBottom: cockpitBottomPadding,
             overflow: "visible",
           }}
         >
@@ -1806,7 +1787,6 @@ export default function RollScreen() {
               ],
             }}
           >
-
             <PremiumResultCard result={latestResult} />
 
             <View style={{ marginTop: adaptiveResultToDiceOverlap }}>
@@ -1823,7 +1803,11 @@ export default function RollScreen() {
 
             <View style={{ marginTop: adaptiveDiceToPreparedOverlap }}>
               <PremiumPreparedRollCard
-                title={hasPreparedRoll ? (preparedCardName ?? "Jet préparé") : "Jet préparé"}
+                title={
+                  hasPreparedRoll
+                    ? (preparedCardName ?? "Jet préparé")
+                    : "Jet préparé"
+                }
                 name={preparedCardName}
                 detail={preparedCardDetail}
                 lines={preparedCardLines}
@@ -1832,49 +1816,49 @@ export default function RollScreen() {
                 onEdit={
                   (preparedRoll?.source === "free" ||
                     preparedRoll?.source === "action_draft") &&
-                    hasPreparedRoll
+                  hasPreparedRoll
                     ? handleOpenPreparedEdit
                     : undefined
                 }
                 onAdjustLineQty={
                   (preparedRoll?.source === "free" ||
                     preparedRoll?.source === "action_draft") &&
-                    hasPreparedRoll
+                  hasPreparedRoll
                     ? handleAdjustPreparedDieQty
                     : undefined
                 }
                 onAdjustLineModifier={
                   (preparedRoll?.source === "free" ||
                     preparedRoll?.source === "action_draft") &&
-                    hasPreparedRoll
+                  hasPreparedRoll
                     ? handleAdjustPreparedDieModifier
                     : undefined
                 }
                 onToggleLineSign={
                   (preparedRoll?.source === "free" ||
                     preparedRoll?.source === "action_draft") &&
-                    hasPreparedRoll
+                  hasPreparedRoll
                     ? handleTogglePreparedDieSign
                     : undefined
                 }
                 onRemoveLine={
                   (preparedRoll?.source === "free" ||
                     preparedRoll?.source === "action_draft") &&
-                    hasPreparedRoll
+                  hasPreparedRoll
                     ? handleRemovePreparedDie
                     : undefined
                 }
                 onConfigureLineBehavior={
                   (preparedRoll?.source === "free" ||
                     preparedRoll?.source === "action_draft") &&
-                    hasPreparedRoll
+                  hasPreparedRoll
                     ? handleConfigurePreparedDieBehaviorFromTile
                     : undefined
                 }
                 onRollLine={
                   (preparedRoll?.source === "free" ||
                     preparedRoll?.source === "action_draft") &&
-                    hasPreparedRoll
+                  hasPreparedRoll
                     ? handleRollPreparedLine
                     : undefined
                 }
@@ -1886,14 +1870,14 @@ export default function RollScreen() {
                 onSave={
                   (preparedRoll?.source === "free" ||
                     preparedRoll?.source === "action_draft") &&
-                    hasPreparedRoll
+                  hasPreparedRoll
                     ? handleOpenPreparedSave
                     : undefined
                 }
                 onFocusLine={
                   (preparedRoll?.source === "free" ||
                     preparedRoll?.source === "action_draft") &&
-                    hasPreparedRoll
+                  hasPreparedRoll
                     ? handleFocusPreparedLine
                     : undefined
                 }
@@ -1925,7 +1909,7 @@ export default function RollScreen() {
             maxWidth: layout.maxContentWidth,
             zIndex: 10,
             paddingTop: isVerySmallScreen ? 2 : 4,
-            paddingBottom: Math.max(layout.insets.bottom, 4),
+            paddingBottom: screenBottomSafePadding,
           }}
         >
           {isFocusedLineMode ? (
@@ -2107,250 +2091,246 @@ export default function RollScreen() {
         onClose={() => setShowProfileSessionMenu(false)}
       />
 
-      {
-        !showPreparedEditSheet ? (
-          <QuickDieBehaviorPickerModal
-            visible={quickDieBehaviorPicker.visible}
-            editingDieSides={quickDieBehaviorPicker.editingDieSides}
-            behaviors={quickDieBehaviorPicker.behaviors}
-            getDefinition={quickDieBehaviorPicker.getDefinition}
-            onSelectBehavior={quickDieBehaviorPicker.select}
-            onClose={() => {
-              setDraftBehaviorTarget(null);
-              setPreparedBehaviorTargetIndex(null);
-              quickDieBehaviorPicker.close();
-            }}
-          />
-        ) : null
-      }
+      {!showPreparedEditSheet ? (
+        <QuickDieBehaviorPickerModal
+          visible={quickDieBehaviorPicker.visible}
+          editingDieSides={quickDieBehaviorPicker.editingDieSides}
+          behaviors={quickDieBehaviorPicker.behaviors}
+          getDefinition={quickDieBehaviorPicker.getDefinition}
+          onSelectBehavior={quickDieBehaviorPicker.select}
+          onClose={() => {
+            setDraftBehaviorTarget(null);
+            setPreparedBehaviorTargetIndex(null);
+            quickDieBehaviorPicker.close();
+          }}
+        />
+      ) : null}
 
-      {
-        !showPreparedEditSheet ? (
-          <QuickBehaviorConfigModal
-            visible={quickBehaviorConfig.visible}
-            pendingBehaviorKey={quickBehaviorConfig.pendingBehaviorKey}
-            pendingBehaviorLabel={quickBehaviorConfig.pendingBehaviorLabel}
-            pendingConfigVariant={quickBehaviorConfig.pendingConfigVariant}
-            keepDropMode={quickBehaviorConfig.keepDropMode}
-            keepDropTarget={quickBehaviorConfig.keepDropTarget}
-            keepDropCount={quickBehaviorConfig.keepDropCount}
-            onChangeKeepDropMode={quickBehaviorConfig.setKeepDropMode}
-            onChangeKeepDropTarget={quickBehaviorConfig.setKeepDropTarget}
-            onChangeKeepDropCount={quickBehaviorConfig.setKeepDropCount}
-            configKeepCount={quickBehaviorConfig.configKeepCount}
-            configDropCount={quickBehaviorConfig.configDropCount}
-            configResultMode={quickBehaviorConfig.configResultMode}
-            configCompare={quickBehaviorConfig.configCompare}
-            configSuccessThreshold={quickBehaviorConfig.configSuccessThreshold}
-            configCritSuccessFaces={quickBehaviorConfig.configCritSuccessFaces}
-            configCritFailureFaces={quickBehaviorConfig.configCritFailureFaces}
-            configTargetValue={quickBehaviorConfig.configTargetValue}
-            configDegreeStep={quickBehaviorConfig.configDegreeStep}
-            configCritSuccessMin={quickBehaviorConfig.configCritSuccessMin}
-            configCritSuccessMax={quickBehaviorConfig.configCritSuccessMax}
-            configCritFailureMin={quickBehaviorConfig.configCritFailureMin}
-            configCritFailureMax={quickBehaviorConfig.configCritFailureMax}
-            onChangeTargetValue={quickBehaviorConfig.setConfigTargetValue}
-            onChangeDegreeStep={quickBehaviorConfig.setConfigDegreeStep}
-            onChangeCritSuccessMin={quickBehaviorConfig.setConfigCritSuccessMin}
-            onChangeCritSuccessMax={quickBehaviorConfig.setConfigCritSuccessMax}
-            onChangeCritFailureMin={quickBehaviorConfig.setConfigCritFailureMin}
-            onChangeCritFailureMax={quickBehaviorConfig.setConfigCritFailureMax}
-            configSuccessAtOrAbove={quickBehaviorConfig.configSuccessAtOrAbove}
-            configFailFaces={quickBehaviorConfig.configFailFaces}
-            configGlitchRule={quickBehaviorConfig.configGlitchRule}
-            configCriticalFailureRule={
-              quickBehaviorConfig.configCriticalFailureRule
-            }
-            configCriticalSuccessRule={
-              quickBehaviorConfig.configCriticalSuccessRule
-            }
-            configCriticalSuccessThreshold={
-              quickBehaviorConfig.configCriticalSuccessThreshold
-            }
-            configCriticalSuccessFaces={
-              quickBehaviorConfig.configCriticalSuccessFaces
-            }
-            configRanges={quickBehaviorConfig.configRanges}
-            onChangeKeepCount={quickBehaviorConfig.setConfigKeepCount}
-            onChangeDropCount={quickBehaviorConfig.setConfigDropCount}
-            onChangeResultMode={quickBehaviorConfig.setConfigResultMode}
-            onChangeCompare={quickBehaviorConfig.setConfigCompare}
-            onChangeSuccessThreshold={
-              quickBehaviorConfig.setConfigSuccessThreshold
-            }
-            onChangeCritSuccessFaces={
-              quickBehaviorConfig.setConfigCritSuccessFaces
-            }
-            onChangeCritFailureFaces={
-              quickBehaviorConfig.setConfigCritFailureFaces
-            }
-            onChangeSuccessAtOrAbove={
-              quickBehaviorConfig.setConfigSuccessAtOrAbove
-            }
-            onChangeFailFaces={quickBehaviorConfig.setConfigFailFaces}
-            onChangeGlitchRule={quickBehaviorConfig.setConfigGlitchRule}
-            onChangeCriticalFailureRule={
-              quickBehaviorConfig.setConfigCriticalFailureRule
-            }
-            onChangeCriticalSuccessRule={
-              quickBehaviorConfig.setConfigCriticalSuccessRule
-            }
-            onChangeCriticalSuccessThreshold={
-              quickBehaviorConfig.setConfigCriticalSuccessThreshold
-            }
-            onChangeCriticalSuccessFaces={
-              quickBehaviorConfig.setConfigCriticalSuccessFaces
-            }
-            onUpdateRange={quickBehaviorConfig.updateRange}
-            onAddRange={quickBehaviorConfig.addRange}
-            onRemoveRange={quickBehaviorConfig.removeRange}
-            onClose={() => {
-              setDraftBehaviorTarget(null);
-              quickBehaviorConfig.close();
-            }}
-            onConfirm={handleConfirmBehaviorConfig}
-            pipelineRerollFaces={quickBehaviorConfig.pipelineRerollFaces}
-            pipelineRerollOnce={quickBehaviorConfig.pipelineRerollOnce}
-            pipelineExplodeFaces={quickBehaviorConfig.pipelineExplodeFaces}
-            pipelineMaxRerolls={quickBehaviorConfig.pipelineMaxRerolls}
-            pipelineMaxExplosions={quickBehaviorConfig.pipelineMaxExplosions}
-            pipelineKeepHighest={quickBehaviorConfig.pipelineKeepHighest}
-            pipelineKeepLowest={quickBehaviorConfig.pipelineKeepLowest}
-            pipelineDropHighest={quickBehaviorConfig.pipelineDropHighest}
-            pipelineDropLowest={quickBehaviorConfig.pipelineDropLowest}
-            pipelineCountSuccessAtOrAbove={
-              quickBehaviorConfig.pipelineCountSuccessAtOrAbove
-            }
-            pipelineCountEqualFaces={quickBehaviorConfig.pipelineCountEqualFaces}
-            pipelineCountRangeMin={quickBehaviorConfig.pipelineCountRangeMin}
-            pipelineCountRangeMax={quickBehaviorConfig.pipelineCountRangeMax}
-            pipelineOutput={quickBehaviorConfig.pipelineOutput}
-            pipelineSuccessThreshold={
-              quickBehaviorConfig.pipelineSuccessThreshold
-            }
-            pipelineCompare={quickBehaviorConfig.pipelineCompare}
-            pipelineCritSuccessFaces={
-              quickBehaviorConfig.pipelineCritSuccessFaces
-            }
-            pipelineCritFailureFaces={
-              quickBehaviorConfig.pipelineCritFailureFaces
-            }
-            pipelineComplicationFaces={
-              quickBehaviorConfig.pipelineComplicationFaces
-            }
-            pipelineComplicationRule={
-              quickBehaviorConfig.pipelineComplicationRule
-            }
-            pipelineCriticalFailureRule={
-              quickBehaviorConfig.pipelineCriticalFailureRule
-            }
-            pipelineCriticalSuccessRule={
-              quickBehaviorConfig.pipelineCriticalSuccessRule
-            }
-            pipelineCriticalSuccessThreshold={
-              quickBehaviorConfig.pipelineCriticalSuccessThreshold
-            }
-            pipelineCriticalSuccessFaces={
-              quickBehaviorConfig.pipelineCriticalSuccessFaces
-            }
-            pipelineDegreeTarget={quickBehaviorConfig.pipelineDegreeTarget}
-            pipelineDegreeCompare={quickBehaviorConfig.pipelineDegreeCompare}
-            pipelineDegreeStep={quickBehaviorConfig.pipelineDegreeStep}
-            pipelineDegreeCritSuccessMin={
-              quickBehaviorConfig.pipelineDegreeCritSuccessMin
-            }
-            pipelineDegreeCritSuccessMax={
-              quickBehaviorConfig.pipelineDegreeCritSuccessMax
-            }
-            pipelineDegreeCritFailureMin={
-              quickBehaviorConfig.pipelineDegreeCritFailureMin
-            }
-            pipelineDegreeCritFailureMax={
-              quickBehaviorConfig.pipelineDegreeCritFailureMax
-            }
-            onChangePipelineRerollFaces={
-              quickBehaviorConfig.setPipelineRerollFaces
-            }
-            onChangePipelineRerollOnce={quickBehaviorConfig.setPipelineRerollOnce}
-            onChangePipelineExplodeFaces={
-              quickBehaviorConfig.setPipelineExplodeFaces
-            }
-            onChangePipelineMaxRerolls={quickBehaviorConfig.setPipelineMaxRerolls}
-            onChangePipelineMaxExplosions={
-              quickBehaviorConfig.setPipelineMaxExplosions
-            }
-            onChangePipelineKeepHighest={
-              quickBehaviorConfig.setPipelineKeepHighest
-            }
-            onChangePipelineKeepLowest={quickBehaviorConfig.setPipelineKeepLowest}
-            onChangePipelineDropHighest={
-              quickBehaviorConfig.setPipelineDropHighest
-            }
-            onChangePipelineDropLowest={quickBehaviorConfig.setPipelineDropLowest}
-            onChangePipelineCountSuccessAtOrAbove={
-              quickBehaviorConfig.setPipelineCountSuccessAtOrAbove
-            }
-            onChangePipelineCountEqualFaces={
-              quickBehaviorConfig.setPipelineCountEqualFaces
-            }
-            onChangePipelineCountRangeMin={
-              quickBehaviorConfig.setPipelineCountRangeMin
-            }
-            onChangePipelineCountRangeMax={
-              quickBehaviorConfig.setPipelineCountRangeMax
-            }
-            onChangePipelineOutput={quickBehaviorConfig.setPipelineOutput}
-            onChangePipelineSuccessThreshold={
-              quickBehaviorConfig.setPipelineSuccessThreshold
-            }
-            onChangePipelineCompare={quickBehaviorConfig.setPipelineCompare}
-            onChangePipelineCritSuccessFaces={
-              quickBehaviorConfig.setPipelineCritSuccessFaces
-            }
-            onChangePipelineCritFailureFaces={
-              quickBehaviorConfig.setPipelineCritFailureFaces
-            }
-            onChangePipelineComplicationFaces={
-              quickBehaviorConfig.setPipelineComplicationFaces
-            }
-            onChangePipelineComplicationRule={
-              quickBehaviorConfig.setPipelineComplicationRule
-            }
-            onChangePipelineCriticalFailureRule={
-              quickBehaviorConfig.setPipelineCriticalFailureRule
-            }
-            onChangePipelineCriticalSuccessRule={
-              quickBehaviorConfig.setPipelineCriticalSuccessRule
-            }
-            onChangePipelineCriticalSuccessThreshold={
-              quickBehaviorConfig.setPipelineCriticalSuccessThreshold
-            }
-            onChangePipelineCriticalSuccessFaces={
-              quickBehaviorConfig.setPipelineCriticalSuccessFaces
-            }
-            onChangePipelineDegreeTarget={
-              quickBehaviorConfig.setPipelineDegreeTarget
-            }
-            onChangePipelineDegreeCompare={
-              quickBehaviorConfig.setPipelineDegreeCompare
-            }
-            onChangePipelineDegreeStep={quickBehaviorConfig.setPipelineDegreeStep}
-            onChangePipelineDegreeCritSuccessMin={
-              quickBehaviorConfig.setPipelineDegreeCritSuccessMin
-            }
-            onChangePipelineDegreeCritSuccessMax={
-              quickBehaviorConfig.setPipelineDegreeCritSuccessMax
-            }
-            onChangePipelineDegreeCritFailureMin={
-              quickBehaviorConfig.setPipelineDegreeCritFailureMin
-            }
-            onChangePipelineDegreeCritFailureMax={
-              quickBehaviorConfig.setPipelineDegreeCritFailureMax
-            }
-          />
-        ) : null
-      }
+      {!showPreparedEditSheet ? (
+        <QuickBehaviorConfigModal
+          visible={quickBehaviorConfig.visible}
+          pendingBehaviorKey={quickBehaviorConfig.pendingBehaviorKey}
+          pendingBehaviorLabel={quickBehaviorConfig.pendingBehaviorLabel}
+          pendingConfigVariant={quickBehaviorConfig.pendingConfigVariant}
+          keepDropMode={quickBehaviorConfig.keepDropMode}
+          keepDropTarget={quickBehaviorConfig.keepDropTarget}
+          keepDropCount={quickBehaviorConfig.keepDropCount}
+          onChangeKeepDropMode={quickBehaviorConfig.setKeepDropMode}
+          onChangeKeepDropTarget={quickBehaviorConfig.setKeepDropTarget}
+          onChangeKeepDropCount={quickBehaviorConfig.setKeepDropCount}
+          configKeepCount={quickBehaviorConfig.configKeepCount}
+          configDropCount={quickBehaviorConfig.configDropCount}
+          configResultMode={quickBehaviorConfig.configResultMode}
+          configCompare={quickBehaviorConfig.configCompare}
+          configSuccessThreshold={quickBehaviorConfig.configSuccessThreshold}
+          configCritSuccessFaces={quickBehaviorConfig.configCritSuccessFaces}
+          configCritFailureFaces={quickBehaviorConfig.configCritFailureFaces}
+          configTargetValue={quickBehaviorConfig.configTargetValue}
+          configDegreeStep={quickBehaviorConfig.configDegreeStep}
+          configCritSuccessMin={quickBehaviorConfig.configCritSuccessMin}
+          configCritSuccessMax={quickBehaviorConfig.configCritSuccessMax}
+          configCritFailureMin={quickBehaviorConfig.configCritFailureMin}
+          configCritFailureMax={quickBehaviorConfig.configCritFailureMax}
+          onChangeTargetValue={quickBehaviorConfig.setConfigTargetValue}
+          onChangeDegreeStep={quickBehaviorConfig.setConfigDegreeStep}
+          onChangeCritSuccessMin={quickBehaviorConfig.setConfigCritSuccessMin}
+          onChangeCritSuccessMax={quickBehaviorConfig.setConfigCritSuccessMax}
+          onChangeCritFailureMin={quickBehaviorConfig.setConfigCritFailureMin}
+          onChangeCritFailureMax={quickBehaviorConfig.setConfigCritFailureMax}
+          configSuccessAtOrAbove={quickBehaviorConfig.configSuccessAtOrAbove}
+          configFailFaces={quickBehaviorConfig.configFailFaces}
+          configGlitchRule={quickBehaviorConfig.configGlitchRule}
+          configCriticalFailureRule={
+            quickBehaviorConfig.configCriticalFailureRule
+          }
+          configCriticalSuccessRule={
+            quickBehaviorConfig.configCriticalSuccessRule
+          }
+          configCriticalSuccessThreshold={
+            quickBehaviorConfig.configCriticalSuccessThreshold
+          }
+          configCriticalSuccessFaces={
+            quickBehaviorConfig.configCriticalSuccessFaces
+          }
+          configRanges={quickBehaviorConfig.configRanges}
+          onChangeKeepCount={quickBehaviorConfig.setConfigKeepCount}
+          onChangeDropCount={quickBehaviorConfig.setConfigDropCount}
+          onChangeResultMode={quickBehaviorConfig.setConfigResultMode}
+          onChangeCompare={quickBehaviorConfig.setConfigCompare}
+          onChangeSuccessThreshold={
+            quickBehaviorConfig.setConfigSuccessThreshold
+          }
+          onChangeCritSuccessFaces={
+            quickBehaviorConfig.setConfigCritSuccessFaces
+          }
+          onChangeCritFailureFaces={
+            quickBehaviorConfig.setConfigCritFailureFaces
+          }
+          onChangeSuccessAtOrAbove={
+            quickBehaviorConfig.setConfigSuccessAtOrAbove
+          }
+          onChangeFailFaces={quickBehaviorConfig.setConfigFailFaces}
+          onChangeGlitchRule={quickBehaviorConfig.setConfigGlitchRule}
+          onChangeCriticalFailureRule={
+            quickBehaviorConfig.setConfigCriticalFailureRule
+          }
+          onChangeCriticalSuccessRule={
+            quickBehaviorConfig.setConfigCriticalSuccessRule
+          }
+          onChangeCriticalSuccessThreshold={
+            quickBehaviorConfig.setConfigCriticalSuccessThreshold
+          }
+          onChangeCriticalSuccessFaces={
+            quickBehaviorConfig.setConfigCriticalSuccessFaces
+          }
+          onUpdateRange={quickBehaviorConfig.updateRange}
+          onAddRange={quickBehaviorConfig.addRange}
+          onRemoveRange={quickBehaviorConfig.removeRange}
+          onClose={() => {
+            setDraftBehaviorTarget(null);
+            quickBehaviorConfig.close();
+          }}
+          onConfirm={handleConfirmBehaviorConfig}
+          pipelineRerollFaces={quickBehaviorConfig.pipelineRerollFaces}
+          pipelineRerollOnce={quickBehaviorConfig.pipelineRerollOnce}
+          pipelineExplodeFaces={quickBehaviorConfig.pipelineExplodeFaces}
+          pipelineMaxRerolls={quickBehaviorConfig.pipelineMaxRerolls}
+          pipelineMaxExplosions={quickBehaviorConfig.pipelineMaxExplosions}
+          pipelineKeepHighest={quickBehaviorConfig.pipelineKeepHighest}
+          pipelineKeepLowest={quickBehaviorConfig.pipelineKeepLowest}
+          pipelineDropHighest={quickBehaviorConfig.pipelineDropHighest}
+          pipelineDropLowest={quickBehaviorConfig.pipelineDropLowest}
+          pipelineCountSuccessAtOrAbove={
+            quickBehaviorConfig.pipelineCountSuccessAtOrAbove
+          }
+          pipelineCountEqualFaces={quickBehaviorConfig.pipelineCountEqualFaces}
+          pipelineCountRangeMin={quickBehaviorConfig.pipelineCountRangeMin}
+          pipelineCountRangeMax={quickBehaviorConfig.pipelineCountRangeMax}
+          pipelineOutput={quickBehaviorConfig.pipelineOutput}
+          pipelineSuccessThreshold={
+            quickBehaviorConfig.pipelineSuccessThreshold
+          }
+          pipelineCompare={quickBehaviorConfig.pipelineCompare}
+          pipelineCritSuccessFaces={
+            quickBehaviorConfig.pipelineCritSuccessFaces
+          }
+          pipelineCritFailureFaces={
+            quickBehaviorConfig.pipelineCritFailureFaces
+          }
+          pipelineComplicationFaces={
+            quickBehaviorConfig.pipelineComplicationFaces
+          }
+          pipelineComplicationRule={
+            quickBehaviorConfig.pipelineComplicationRule
+          }
+          pipelineCriticalFailureRule={
+            quickBehaviorConfig.pipelineCriticalFailureRule
+          }
+          pipelineCriticalSuccessRule={
+            quickBehaviorConfig.pipelineCriticalSuccessRule
+          }
+          pipelineCriticalSuccessThreshold={
+            quickBehaviorConfig.pipelineCriticalSuccessThreshold
+          }
+          pipelineCriticalSuccessFaces={
+            quickBehaviorConfig.pipelineCriticalSuccessFaces
+          }
+          pipelineDegreeTarget={quickBehaviorConfig.pipelineDegreeTarget}
+          pipelineDegreeCompare={quickBehaviorConfig.pipelineDegreeCompare}
+          pipelineDegreeStep={quickBehaviorConfig.pipelineDegreeStep}
+          pipelineDegreeCritSuccessMin={
+            quickBehaviorConfig.pipelineDegreeCritSuccessMin
+          }
+          pipelineDegreeCritSuccessMax={
+            quickBehaviorConfig.pipelineDegreeCritSuccessMax
+          }
+          pipelineDegreeCritFailureMin={
+            quickBehaviorConfig.pipelineDegreeCritFailureMin
+          }
+          pipelineDegreeCritFailureMax={
+            quickBehaviorConfig.pipelineDegreeCritFailureMax
+          }
+          onChangePipelineRerollFaces={
+            quickBehaviorConfig.setPipelineRerollFaces
+          }
+          onChangePipelineRerollOnce={quickBehaviorConfig.setPipelineRerollOnce}
+          onChangePipelineExplodeFaces={
+            quickBehaviorConfig.setPipelineExplodeFaces
+          }
+          onChangePipelineMaxRerolls={quickBehaviorConfig.setPipelineMaxRerolls}
+          onChangePipelineMaxExplosions={
+            quickBehaviorConfig.setPipelineMaxExplosions
+          }
+          onChangePipelineKeepHighest={
+            quickBehaviorConfig.setPipelineKeepHighest
+          }
+          onChangePipelineKeepLowest={quickBehaviorConfig.setPipelineKeepLowest}
+          onChangePipelineDropHighest={
+            quickBehaviorConfig.setPipelineDropHighest
+          }
+          onChangePipelineDropLowest={quickBehaviorConfig.setPipelineDropLowest}
+          onChangePipelineCountSuccessAtOrAbove={
+            quickBehaviorConfig.setPipelineCountSuccessAtOrAbove
+          }
+          onChangePipelineCountEqualFaces={
+            quickBehaviorConfig.setPipelineCountEqualFaces
+          }
+          onChangePipelineCountRangeMin={
+            quickBehaviorConfig.setPipelineCountRangeMin
+          }
+          onChangePipelineCountRangeMax={
+            quickBehaviorConfig.setPipelineCountRangeMax
+          }
+          onChangePipelineOutput={quickBehaviorConfig.setPipelineOutput}
+          onChangePipelineSuccessThreshold={
+            quickBehaviorConfig.setPipelineSuccessThreshold
+          }
+          onChangePipelineCompare={quickBehaviorConfig.setPipelineCompare}
+          onChangePipelineCritSuccessFaces={
+            quickBehaviorConfig.setPipelineCritSuccessFaces
+          }
+          onChangePipelineCritFailureFaces={
+            quickBehaviorConfig.setPipelineCritFailureFaces
+          }
+          onChangePipelineComplicationFaces={
+            quickBehaviorConfig.setPipelineComplicationFaces
+          }
+          onChangePipelineComplicationRule={
+            quickBehaviorConfig.setPipelineComplicationRule
+          }
+          onChangePipelineCriticalFailureRule={
+            quickBehaviorConfig.setPipelineCriticalFailureRule
+          }
+          onChangePipelineCriticalSuccessRule={
+            quickBehaviorConfig.setPipelineCriticalSuccessRule
+          }
+          onChangePipelineCriticalSuccessThreshold={
+            quickBehaviorConfig.setPipelineCriticalSuccessThreshold
+          }
+          onChangePipelineCriticalSuccessFaces={
+            quickBehaviorConfig.setPipelineCriticalSuccessFaces
+          }
+          onChangePipelineDegreeTarget={
+            quickBehaviorConfig.setPipelineDegreeTarget
+          }
+          onChangePipelineDegreeCompare={
+            quickBehaviorConfig.setPipelineDegreeCompare
+          }
+          onChangePipelineDegreeStep={quickBehaviorConfig.setPipelineDegreeStep}
+          onChangePipelineDegreeCritSuccessMin={
+            quickBehaviorConfig.setPipelineDegreeCritSuccessMin
+          }
+          onChangePipelineDegreeCritSuccessMax={
+            quickBehaviorConfig.setPipelineDegreeCritSuccessMax
+          }
+          onChangePipelineDegreeCritFailureMin={
+            quickBehaviorConfig.setPipelineDegreeCritFailureMin
+          }
+          onChangePipelineDegreeCritFailureMax={
+            quickBehaviorConfig.setPipelineDegreeCritFailureMax
+          }
+        />
+      ) : null}
 
       <PreparedRollEditSheet
         visible={showPreparedEditSheet}
@@ -2387,7 +2367,8 @@ export default function RollScreen() {
             setPreparedEditMode("dice");
           },
           onBack: () => {
-            const shouldReturnToMainScreen = preparedBehaviorFlowOrigin === "tile";
+            const shouldReturnToMainScreen =
+              preparedBehaviorFlowOrigin === "tile";
 
             setPreparedEditMode("dice");
             setPreparedBehaviorTargetIndex(null);
@@ -2487,20 +2468,15 @@ export default function RollScreen() {
             onAddRange={quickBehaviorConfig.addRange}
             onRemoveRange={quickBehaviorConfig.removeRange}
             onClose={() => {
-              const shouldReturnToMainScreen = preparedBehaviorFlowOrigin === "tile";
+              const editingDieSides = quickDieBehaviorPicker.editingDieSides;
 
               quickBehaviorConfig.close();
 
-              if (shouldReturnToMainScreen) {
-                setPreparedEditMode("dice");
-                setPreparedBehaviorTargetIndex(null);
-                setDraftBehaviorTarget(null);
-                setPreparedBehaviorFlowOrigin(null);
-                setShowPreparedEditSheet(false);
-                return;
-              }
-
               setPreparedEditMode("behavior_picker");
+
+              if (editingDieSides != null) {
+                quickDieBehaviorPicker.open(editingDieSides);
+              }
             }}
             onConfirm={handleConfirmBehaviorConfig}
             pipelineRerollFaces={quickBehaviorConfig.pipelineRerollFaces}
@@ -2657,9 +2633,13 @@ export default function RollScreen() {
         }
         onClose={handleClosePreparedEdit}
         onBackFromBehaviorConfig={() => {
-          const shouldReturnToMainScreen = preparedBehaviorFlowOrigin === "tile";
+          const shouldReturnToMainScreen =
+            preparedBehaviorFlowOrigin === "tile";
+
+          const editingDieSides = quickDieBehaviorPicker.editingDieSides;
 
           quickBehaviorConfig.close();
+          quickDieBehaviorPicker.close();
 
           if (shouldReturnToMainScreen) {
             setPreparedEditMode("dice");
@@ -2671,6 +2651,10 @@ export default function RollScreen() {
           }
 
           setPreparedEditMode("behavior_picker");
+
+          if (editingDieSides != null) {
+            quickDieBehaviorPicker.open(editingDieSides);
+          }
         }}
         onAdjustDieQty={handleAdjustPreparedDieQty}
         onAdjustDieModifier={handleAdjustPreparedDieModifier}
@@ -2679,6 +2663,6 @@ export default function RollScreen() {
         onConfigureDieBehavior={handleConfigurePreparedDieBehaviorFromGlobal}
         onClearDieBehavior={handleClearPreparedDieBehavior}
       />
-    </View >
+    </View>
   );
 }

@@ -7,3 +7,5 @@ export { PremiumPressable } from "./PremiumPressable";
 export { PremiumScreen } from "./PremiumScreen";
 export { PremiumSurface } from "./PremiumSurface";
 export { PremiumText } from "./PremiumText";
+export { PremiumKeyboardInputOverlay } from "./PremiumKeyboardInputOverlay";
+export { PremiumOverlayTextInput } from "./PremiumOverlayTextInput";
