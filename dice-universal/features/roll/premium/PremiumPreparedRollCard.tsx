@@ -675,11 +675,11 @@ function CompactPreparedLineChip({
 
     Animated.timing(entryAnim, {
       toValue: 1,
-      duration: 240,
+      duration: premium.animation.normal,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
-  }, [highlighted, entryAnim]);
+  }, [highlighted, entryAnim, premium.animation.normal]);
 
   const entryOpacity = entryAnim.interpolate({
     inputRange: [0, 1],
@@ -688,7 +688,7 @@ function CompactPreparedLineChip({
 
   const entryTranslateY = entryAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [8, 0],
+    outputRange: [premium.animation.translateMedium, 0],
   });
 
   const entryScale = entryAnim.interpolate({
@@ -941,11 +941,11 @@ function CompactOverflowChip({
 
     Animated.timing(bumpAnim, {
       toValue: 1,
-      duration: 220,
+      duration: premium.animation.normal,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
-  }, [animationKey, hiddenCount, bumpAnim]);
+  }, [animationKey, hiddenCount, bumpAnim, premium.animation.normal]);
 
   const opacity = bumpAnim.interpolate({
     inputRange: [0, 1],
@@ -959,7 +959,7 @@ function CompactOverflowChip({
 
   const translateY = bumpAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [6, 0],
+    outputRange: [premium.animation.translateMedium - premium.animation.translateSmall, 0],
   });
 
   return (
@@ -1496,11 +1496,11 @@ export function PremiumPreparedRollCard({
 
     Animated.timing(preparedContentAnim, {
       toValue: 1,
-      duration: 220,
+      duration: premium.animation.normal,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
-  }, [isEmpty, preparedContentAnim]);
+  }, [isEmpty, premium.animation.normal, preparedContentAnim]);
 
   useEffect(() => {
     const currentIds = preparedLines.map((line) => line.id);
@@ -1547,12 +1547,12 @@ export function PremiumPreparedRollCard({
 
   const preparedContentTranslateY = preparedContentAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [8, 0],
+    outputRange: [premium.animation.translateMedium, 0],
   });
 
   const preparedContentScale = preparedContentAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.985, 1],
+    outputRange: [premium.animation.pressScale, 1],
   });
 
   return (

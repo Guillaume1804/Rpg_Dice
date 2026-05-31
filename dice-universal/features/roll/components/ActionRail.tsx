@@ -233,11 +233,15 @@ export function ActionRail({
       Animated.spring(floatingPressAnim, {
         toValue,
         useNativeDriver: true,
-        friction: 7,
-        tension: 140,
+        friction: premium.animation.spring.press.friction,
+        tension: premium.animation.spring.press.tension,
       }).start();
     },
-    [floatingPressAnim],
+    [
+      floatingPressAnim,
+      premium.animation.spring.press.friction,
+      premium.animation.spring.press.tension,
+    ],
   );
 
   const getSubtleInertiaOffset = useCallback(
@@ -296,14 +300,14 @@ export function ActionRail({
         Animated.spring(floatingPosition, {
           toValue: safePosition,
           useNativeDriver: true,
-          friction: 9,
-          tension: 78,
+          friction: premium.animation.spring.softSettle.friction,
+          tension: premium.animation.spring.softSettle.tension,
         }),
         Animated.spring(floatingInertiaOffset, {
           toValue: { x: 0, y: 0 },
           useNativeDriver: true,
-          friction: 5,
-          tension: 58,
+          friction: premium.animation.spring.inertia.friction,
+          tension: premium.animation.spring.inertia.tension,
         }),
       ]).start();
 
@@ -316,6 +320,10 @@ export function ActionRail({
       floatingInertiaOffset,
       floatingPosition,
       getSubtleInertiaOffset,
+      premium.animation.spring.inertia.friction,
+      premium.animation.spring.inertia.tension,
+      premium.animation.spring.softSettle.friction,
+      premium.animation.spring.softSettle.tension,
     ],
   );
 
@@ -382,11 +390,11 @@ export function ActionRail({
 
     Animated.timing(floatingAppearAnim, {
       toValue: 1,
-      duration: 260,
+      duration: premium.animation.entrance,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
-  }, [profileName, floatingAppearAnim]);
+  }, [profileName, floatingAppearAnim, premium.animation.entrance]);
 
   if (!profileName) return null;
 
@@ -405,17 +413,20 @@ export function ActionRail({
 
   const floatingAppearTranslateY = floatingAppearAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [10, 0],
+    outputRange: [
+      premium.animation.translateMedium + premium.animation.translateSmall,
+      0,
+    ],
   });
 
   const floatingPressScale = floatingPressAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [1, 0.955],
+    outputRange: [1, premium.animation.deepPressScale],
   });
 
   const floatingPressTranslateY = floatingPressAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 2],
+    outputRange: [0, premium.animation.translateSmall],
   });
 
   const floatingTranslateX = Animated.add(

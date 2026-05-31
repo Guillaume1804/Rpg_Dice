@@ -153,11 +153,11 @@ export function PremiumDiceWheel({
 
     Animated.timing(appearAnim, {
       toValue: 1,
-      duration: 420,
+      duration: premium.animation.slow,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
-  }, [appearAnim]);
+  }, [appearAnim, premium.animation.slow]);
 
   const getDiePressAnim = useCallback(
     (sides: number) => {
@@ -175,11 +175,15 @@ export function PremiumDiceWheel({
       Animated.spring(getDiePressAnim(sides), {
         toValue,
         useNativeDriver: true,
-        friction: 6,
-        tension: 150,
+        friction: premium.animation.spring.press.friction,
+        tension: premium.animation.spring.press.tension,
       }).start();
     },
-    [getDiePressAnim],
+    [
+      getDiePressAnim,
+      premium.animation.spring.press.friction,
+      premium.animation.spring.press.tension,
+    ],
   );
 
   function getDiePosition(layout: DiceLayout) {
@@ -280,7 +284,11 @@ export function PremiumDiceWheel({
 
     const dieTranslateY = appearAnim.interpolate({
       inputRange: [0, appearDelay, 1],
-      outputRange: [10, 10, 0],
+      outputRange: [
+        premium.animation.translateMedium,
+        premium.animation.translateMedium,
+        0,
+      ],
       extrapolate: "clamp",
     });
 
@@ -297,7 +305,7 @@ export function PremiumDiceWheel({
 
     const diePressTranslateY = pressAnim.interpolate({
       inputRange: [0, 1],
-      outputRange: [0, 2],
+      outputRange: [0, premium.animation.translateSmall],
     });
 
     return (
@@ -414,12 +422,12 @@ export function PremiumDiceWheel({
 
   const wheelAppearScale = appearAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.985, 1],
+    outputRange: [premium.animation.pressScale, 1],
   });
 
   const wheelAppearTranslateY = appearAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [8, 0],
+    outputRange: [premium.animation.translateMedium, 0],
   });
 
   return (

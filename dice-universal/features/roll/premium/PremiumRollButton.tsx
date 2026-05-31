@@ -43,11 +43,11 @@ export function PremiumRollButton({
       Animated.spring(pressAnim, {
         toValue,
         useNativeDriver: true,
-        friction: 7,
-        tension: 120,
+        friction: premium.animation.spring.press.friction,
+        tension: premium.animation.spring.press.tension,
       }).start();
     },
-    [pressAnim],
+    [premium.animation.spring.press.friction, premium.animation.spring.press.tension, pressAnim],
   );
 
   useEffect(() => {
@@ -59,12 +59,12 @@ export function PremiumRollButton({
 
   const buttonScale = pressAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [1, 0.982],
+    outputRange: [1, premium.animation.subtleScale],
   });
 
   const buttonTranslateY = pressAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 2],
+    outputRange: [0, premium.animation.translateSmall],
   });
 
   const innerHighlightOpacity = pressAnim.interpolate({
