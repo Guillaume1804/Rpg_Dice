@@ -1,10 +1,17 @@
 // dice-universal/features/roll/components/ActionRail.tsx
 
-import { useMemo } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Animated,
+  PanResponder,
+  Pressable,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 
-import { useArcaneTheme } from "../../../theme/ArcaneThemeProvider";
-import { createRollScreenTheme } from "../../../theme/rollScreenTheme";
+import { PremiumBottomSheet } from "../../../components/premium";
+import { usePremiumTheme } from "../../../theme/premium/usePremiumTheme";
 
 export type ActionRailItem = {
   id: string;
@@ -17,22 +24,21 @@ type ActionRailProps = {
   actions: ActionRailItem[];
   selectedActionId: string | null;
   onPrepareAction: (actionId: string) => void;
+  floatingAnchorRight?: number;
+  floatingAnchorBottom?: number;
+  floatingTopLimit?: number;
+  floatingBottomLimit?: number;
 };
 
+const FLOATING_BUTTON_SIZE = 56;
+const FLOATING_MARGIN = 12;
+
 function getActionIcon(index: number) {
-  const icons = ["📖", "🎒", "🎯", "✦", "⏳", "⋯"];
+  const icons = ["📖", "🎒", "🎯", "✦", "⏳", "◇"];
   return icons[index % icons.length];
 }
 
-function compactActionName(name: string) {
-  const trimmed = name.trim();
-
-  if (trimmed.length <= 13) return trimmed;
-
-  return `${trimmed.slice(0, 11).trim()}…`;
-}
-
-function ActionTile({
+function ActionListRow({
   action,
   index,
   selected,
@@ -43,176 +49,99 @@ function ActionTile({
   selected: boolean;
   onPress: () => void;
 }) {
-  const { theme } = useArcaneTheme();
-  const rollTheme = useMemo(() => createRollScreenTheme(theme), [theme]);
+  const premium = usePremiumTheme();
 
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        width: 72,
-        height: 72,
-        paddingVertical: 6,
-        paddingHorizontal: 6,
+        minHeight: 68,
+        borderRadius: premium.radius.lg,
         borderWidth: 1,
         borderColor: selected
-          ? "rgba(217, 160, 55, 0.76)"
-          : "rgba(145, 113, 255, 0.2)",
-        borderRadius: 15,
+          ? premium.colors.border.accent
+          : premium.colors.border.subtle,
         backgroundColor: selected
-          ? "rgba(217, 160, 55, 0.15)"
-          : "rgba(18, 23, 58, 0.58)",
+          ? premium.colors.accent.soft
+          : pressed
+            ? premium.colors.surface.pressed
+            : premium.colors.surface.subtle,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        flexDirection: "row",
         alignItems: "center",
-        justifyContent: "center",
-        gap: 6,
-        opacity: pressed ? 0.82 : selected ? 1 : 0.92,
-        transform: [{ scale: pressed ? 0.96 : 1 }],
-        shadowColor: selected ? theme.colors.accent : rollTheme.cockpit.glow,
-        shadowOpacity: selected ? 0.22 : 0.06,
-        shadowRadius: selected ? 12 : 6,
-        shadowOffset: { width: 0, height: selected ? 5 : 3 },
-        elevation: selected ? 4 : 1,
+        gap: premium.spacing.sm,
+        opacity: pressed ? 0.86 : 1,
+        transform: [{ scale: pressed ? premium.animation.pressScale : 1 }],
       })}
     >
       <View
         style={{
-          width: 32,
-          height: 32,
-          borderRadius: 13,
+          width: 38,
+          height: 38,
+          borderRadius: premium.radius.md,
           borderWidth: 1,
           borderColor: selected
-            ? "rgba(217, 160, 55, 0.74)"
-            : "rgba(173, 102, 255, 0.48)",
+            ? premium.colors.border.accent
+            : premium.colors.border.subtle,
           backgroundColor: selected
-            ? "rgba(217, 160, 55, 0.14)"
-            : "rgba(90, 55, 170, 0.14)",
+            ? premium.colors.accent.softer
+            : premium.colors.surface.secondary,
           alignItems: "center",
           justifyContent: "center",
         }}
       >
         <Text
           style={{
+            color: selected
+              ? premium.colors.accent.primary
+              : premium.colors.text.secondary,
             fontSize: 18,
-            color: selected ? theme.colors.accent : theme.colors.arcane,
           }}
         >
           {getActionIcon(index)}
         </Text>
       </View>
 
-      <Text
-        numberOfLines={2}
-        style={{
-          color: theme.colors.text,
-          fontSize: 10,
-          lineHeight: 12,
-          fontWeight: "800",
-          textAlign: "center",
-        }}
-      >
-        {compactActionName(action.name)}
-      </Text>
-    </Pressable>
-  );
-}
-
-function MoreActionTile() {
-  const { theme } = useArcaneTheme();
-
-  return (
-    <View
-      style={{
-        width: 72,
-        height: 72,
-        paddingVertical: 6,
-        paddingHorizontal: 6,
-        borderWidth: 1,
-        borderColor: "rgba(145, 113, 255, 0.16)",
-        borderRadius: 15,
-        backgroundColor: "rgba(18, 23, 58, 0.42)",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 6,
-        opacity: 0.78,
-      }}
-    >
-      <View
-        style={{
-          width: 32,
-          height: 32,
-          borderRadius: 13,
-          borderWidth: 1,
-          borderColor: "rgba(145, 113, 255, 0.24)",
-          backgroundColor: "rgba(90, 55, 170, 0.08)",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
+      <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
         <Text
+          numberOfLines={1}
           style={{
-            color: theme.colors.textMuted,
-            fontSize: 21,
+            color: selected
+              ? premium.colors.accent.primary
+              : premium.colors.text.primary,
+            fontSize: 15,
             fontWeight: "900",
-            lineHeight: 24,
           }}
         >
-          ⋯
+          {action.name}
+        </Text>
+
+        <Text
+          numberOfLines={2}
+          style={{
+            color: premium.colors.text.secondary,
+            fontSize: 12,
+            lineHeight: 16,
+            fontWeight: "700",
+          }}
+        >
+          {action.detail}
         </Text>
       </View>
 
-      <Text
-        style={{
-          color: theme.colors.textMuted,
-          fontSize: 11,
-          fontWeight: "800",
-          textAlign: "center",
-        }}
-      >
-        Plus
-      </Text>
-    </View>
-  );
-}
-
-function EmptyActionTile() {
-  const { theme } = useArcaneTheme();
-
-  return (
-    <View
-      style={{
-        minHeight: 64,
-        paddingVertical: 10,
-        paddingHorizontal: 12,
-        borderWidth: 1,
-        borderColor: "rgba(145, 113, 255, 0.16)",
-        borderRadius: 16,
-        backgroundColor: "rgba(18, 23, 58, 0.48)",
-        justifyContent: "center",
-        gap: 3,
-      }}
-    >
-      <Text
-        style={{
-          color: theme.colors.text,
-          fontSize: 14,
-          fontWeight: "900",
-        }}
-      >
-        Aucune action rapide
-      </Text>
-
-      <Text
-        numberOfLines={1}
-        style={{
-          color: theme.colors.textMuted,
-          fontSize: 12,
-          lineHeight: 16,
-          fontWeight: "600",
-        }}
-      >
-        Crée des actions depuis l’écran Tables.
-      </Text>
-    </View>
+      {selected ? (
+        <Text
+          style={{
+            color: premium.colors.accent.primary,
+            fontSize: 16,
+            fontWeight: "900",
+          }}
+        >
+          ✓
+        </Text>
+      ) : null}
+    </Pressable>
   );
 }
 
@@ -221,89 +150,304 @@ export function ActionRail({
   actions,
   selectedActionId,
   onPrepareAction,
+  floatingAnchorRight = 16,
+  floatingAnchorBottom = 96,
+  floatingTopLimit = 92,
+  floatingBottomLimit = 86,
 }: ActionRailProps) {
-  const { theme } = useArcaneTheme();
+  const premium = usePremiumTheme();
+  const [showAllActions, setShowAllActions] = useState(false);
+
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+
+  const floatingPosition = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+
+  const floatingPositionRef = useRef({
+    x: 0,
+    y: 0,
+  });
+
+  const dragStartPositionRef = useRef({
+    x: 0,
+    y: 0,
+  });
+
+  const floatingInitialLeft =
+    windowWidth - floatingAnchorRight - FLOATING_BUTTON_SIZE;
+
+  const floatingInitialTop =
+    windowHeight - floatingAnchorBottom - FLOATING_BUTTON_SIZE;
+
+  const floatingBounds = {
+    minX: FLOATING_MARGIN - floatingInitialLeft,
+    maxX:
+      windowWidth -
+      FLOATING_MARGIN -
+      FLOATING_BUTTON_SIZE -
+      floatingInitialLeft,
+
+    minY: floatingTopLimit - floatingInitialTop,
+    maxY:
+      windowHeight -
+      floatingBottomLimit -
+      FLOATING_BUTTON_SIZE -
+      floatingInitialTop,
+  };
+
+  const clampFloatingPosition = useCallback(
+    (x: number, y: number) => {
+      const safeX = Math.min(
+        Math.max(x, floatingBounds.minX),
+        floatingBounds.maxX,
+      );
+
+      const safeY = Math.min(
+        Math.max(y, floatingBounds.minY),
+        floatingBounds.maxY,
+      );
+
+      return {
+        x: safeX,
+        y: safeY,
+      };
+    },
+    [
+      floatingBounds.minX,
+      floatingBounds.maxX,
+      floatingBounds.minY,
+      floatingBounds.maxY,
+    ],
+  );
+
+  const floatingPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+
+      onMoveShouldSetPanResponder: (_, gestureState) =>
+        Math.abs(gestureState.dx) > 5 || Math.abs(gestureState.dy) > 5,
+
+      onPanResponderGrant: () => {
+        dragStartPositionRef.current = {
+          ...floatingPositionRef.current,
+        };
+      },
+
+      onPanResponderMove: (_, gestureState) => {
+        const nextPosition = {
+          x: dragStartPositionRef.current.x + gestureState.dx,
+          y: dragStartPositionRef.current.y + gestureState.dy,
+        };
+
+        floatingPositionRef.current = nextPosition;
+        floatingPosition.setValue(nextPosition);
+      },
+
+      onPanResponderRelease: () => {
+        const safePosition = clampFloatingPosition(
+          floatingPositionRef.current.x,
+          floatingPositionRef.current.y,
+        );
+
+        floatingPositionRef.current = safePosition;
+
+        Animated.spring(floatingPosition, {
+          toValue: safePosition,
+          useNativeDriver: true,
+          friction: 8,
+          tension: 70,
+        }).start();
+      },
+
+      onPanResponderTerminate: () => {
+        const safePosition = clampFloatingPosition(
+          floatingPositionRef.current.x,
+          floatingPositionRef.current.y,
+        );
+
+        floatingPositionRef.current = safePosition;
+
+        Animated.spring(floatingPosition, {
+          toValue: safePosition,
+          useNativeDriver: true,
+          friction: 8,
+          tension: 70,
+        }).start();
+      },
+    }),
+  ).current;
+
+  useEffect(() => {
+    const safePosition = clampFloatingPosition(
+      floatingPositionRef.current.x,
+      floatingPositionRef.current.y,
+    );
+
+    floatingPositionRef.current = safePosition;
+    floatingPosition.setValue(safePosition);
+  }, [clampFloatingPosition, floatingPosition]);
 
   if (!profileName) return null;
 
+  const selectedAction =
+    actions.find((action) => action.id === selectedActionId) ?? null;
+
   return (
-    <View
-      style={{
-        gap: 5,
-        marginTop: -2,
-      }}
-    >
-      <View
+    <>
+      <Animated.View
+        {...floatingPanResponder.panHandlers}
         style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "flex-end",
-          gap: theme.spacing.sm,
-          paddingHorizontal: 2,
+          transform: floatingPosition.getTranslateTransform(),
         }}
       >
-        <View style={{ flex: 1 }}>
+        <Pressable
+          onPress={() => setShowAllActions(true)}
+          disabled={actions.length === 0}
+          style={({ pressed }) => ({
+            width: FLOATING_BUTTON_SIZE,
+            height: FLOATING_BUTTON_SIZE,
+            borderRadius: premium.radius.pill,
+            borderWidth: 1,
+            borderColor: selectedAction
+              ? premium.colors.border.accent
+              : premium.colors.border.subtle,
+            backgroundColor: selectedAction
+              ? premium.colors.accent.soft
+              : pressed
+                ? premium.colors.surface.pressed
+                : premium.colors.surface.elevated,
+            alignItems: "center",
+            justifyContent: "center",
+            opacity: actions.length === 0 ? 0.48 : pressed ? 0.88 : 0.96,
+            transform: [
+              {
+                scale:
+                  pressed && actions.length > 0
+                    ? premium.animation.pressScale
+                    : 1,
+              },
+            ],
+            ...premium.shadow.card,
+          })}
+        >
           <Text
             style={{
-              color: theme.colors.textMuted,
-              fontSize: 12,
+              color: selectedAction
+                ? premium.colors.accent.primary
+                : premium.colors.text.primary,
+              fontSize: 18,
+              fontWeight: "900",
+              lineHeight: 21,
+            }}
+          >
+            ✦
+          </Text>
+
+          <Text
+            style={{
+              marginTop: -1,
+              color: selectedAction
+                ? premium.colors.accent.primary
+                : premium.colors.text.secondary,
+              fontSize: 8,
               fontWeight: "900",
               textTransform: "uppercase",
-              letterSpacing: 0.65,
+              letterSpacing: 0.5,
             }}
           >
-            Actions rapides
+            Actions
           </Text>
 
-          <Text
-            numberOfLines={1}
-            style={{
-              marginTop: 0,
-              color: theme.colors.textSubtle,
-              fontSize: 10,
-              fontWeight: "700",
-            }}
-          >
-            {profileName}
-          </Text>
+          {actions.length > 0 ? (
+            <View
+              pointerEvents="none"
+              style={{
+                position: "absolute",
+                top: -4,
+                right: -4,
+                minWidth: 21,
+                height: 21,
+                paddingHorizontal: 5,
+                borderRadius: premium.radius.pill,
+                borderWidth: 1,
+                borderColor: "rgba(255,255,255,0.22)",
+                backgroundColor: premium.colors.accent.primary,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text
+                style={{
+                  color: premium.colors.text.inverse,
+                  fontSize: 9,
+                  fontWeight: "900",
+                  lineHeight: 11,
+                }}
+              >
+                {actions.length}
+              </Text>
+            </View>
+          ) : null}
+        </Pressable>
+      </Animated.View>
+
+      <PremiumBottomSheet
+        visible={showAllActions}
+        title="Toutes les actions"
+        subtitle={`${actions.length} action${actions.length > 1 ? "s" : ""} dans ${profileName}.`}
+        onClose={() => setShowAllActions(false)}
+        maxHeight="78%"
+      >
+        <View style={{ gap: premium.spacing.sm }}>
+          {actions.length === 0 ? (
+            <View
+              style={{
+                minHeight: 64,
+                borderRadius: premium.radius.lg,
+                borderWidth: 1,
+                borderColor: premium.colors.border.subtle,
+                backgroundColor: premium.colors.surface.subtle,
+                padding: premium.spacing.md,
+                justifyContent: "center",
+                gap: premium.spacing.xs,
+              }}
+            >
+              <Text
+                style={{
+                  color: premium.colors.text.primary,
+                  fontSize: 15,
+                  fontWeight: "900",
+                }}
+              >
+                Aucune action disponible
+              </Text>
+
+              <Text
+                style={{
+                  color: premium.colors.text.secondary,
+                  fontSize: 12,
+                  lineHeight: 16,
+                  fontWeight: "700",
+                }}
+              >
+                Crée des actions depuis l’écran Tables pour les retrouver ici.
+              </Text>
+            </View>
+          ) : (
+            actions.map((action, index) => (
+              <ActionListRow
+                key={`all-action-${action.id}`}
+                action={action}
+                index={index}
+                selected={selectedActionId === action.id}
+                onPress={() => {
+                  setShowAllActions(false);
+                  onPrepareAction(action.id);
+                }}
+              />
+            ))
+          )}
         </View>
-
-        <Text
-          style={{
-            color: theme.colors.textMuted,
-            fontSize: 11,
-            fontWeight: "800",
-          }}
-        >
-          {actions.length} action{actions.length > 1 ? "s" : ""}
-        </Text>
-      </View>
-
-      {actions.length === 0 ? (
-        <EmptyActionTile />
-      ) : (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{
-            gap: 8,
-            paddingHorizontal: 2,
-            paddingBottom: 1,
-          }}
-        >
-          {actions.map((action, index) => (
-            <ActionTile
-              key={action.id}
-              action={action}
-              index={index}
-              selected={selectedActionId === action.id}
-              onPress={() => onPrepareAction(action.id)}
-            />
-          ))}
-
-          <MoreActionTile />
-        </ScrollView>
-      )}
-    </View>
+      </PremiumBottomSheet>
+    </>
   );
 }

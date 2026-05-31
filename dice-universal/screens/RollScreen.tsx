@@ -6,7 +6,6 @@ import {
   Animated,
   Easing,
   LayoutAnimation,
-  Pressable,
   Text,
   useWindowDimensions,
   View,
@@ -204,9 +203,6 @@ export default function RollScreen() {
 
   const diceToPreparedOverlap =
     cockpitDensity === "tight" ? -18 : cockpitDensity === "compact" ? -16 : -12;
-
-  const preparedToActionsOverlap =
-    cockpitDensity === "tight" ? -8 : cockpitDensity === "compact" ? -6 : -4;
 
   const [preparedRoll, setPreparedRoll] = useState<PreparedRoll | null>(null);
   const [latestResult, setLatestResult] = useState<GroupRollResult | null>(
@@ -1541,10 +1537,6 @@ export default function RollScreen() {
         ? diceToPreparedOverlap
         : diceToPreparedOverlap - 2;
 
-  const adaptivePreparedToActionsOverlap = hasActiveTable
-    ? preparedToActionsOverlap
-    : 0;
-
   useEffect(() => {
     if (preparedRoll?.source !== "free") return;
 
@@ -1883,21 +1875,6 @@ export default function RollScreen() {
                 }
               />
             </View>
-
-            {hasActiveTable ? (
-              <View style={{ marginTop: adaptivePreparedToActionsOverlap }}>
-                <ActionRail
-                  profileName={activeProfile?.name ?? null}
-                  actions={actionRailItems}
-                  selectedActionId={
-                    preparedRoll?.source === "action"
-                      ? preparedRoll.groupId
-                      : null
-                  }
-                  onPrepareAction={handlePrepareSavedAction}
-                />
-              </View>
-            ) : null}
           </View>
         </View>
 
@@ -1912,70 +1889,64 @@ export default function RollScreen() {
             paddingBottom: screenBottomSafePadding,
           }}
         >
-          {isFocusedLineMode ? (
-            <View
-              style={{
-                marginBottom: 7,
-                borderRadius: theme.radius.pill,
-                borderWidth: 1,
-                borderColor: "rgba(217, 160, 55, 0.42)",
-                backgroundColor: "rgba(217, 160, 55, 0.1)",
-                paddingVertical: 6,
-                paddingHorizontal: 10,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 10,
-              }}
-            >
-              <Text
-                numberOfLines={1}
-                style={{
-                  flex: 1,
-                  color: theme.colors.accent,
-                  fontSize: 11,
-                  fontWeight: "900",
-                }}
-              >
-                Ligne ciblée · {focusedPreparedLine?.label}
-              </Text>
-
-              <Pressable
-                onPress={handleClearFocusedPreparedLine}
-                style={({ pressed }) => ({
-                  paddingVertical: 5,
-                  paddingHorizontal: 9,
-                  borderRadius: theme.radius.pill,
-                  borderWidth: 1,
-                  borderColor: "rgba(145, 113, 255, 0.2)",
-                  backgroundColor: pressed
-                    ? "rgba(32, 41, 88, 0.66)"
-                    : "rgba(32, 41, 88, 0.44)",
-                  opacity: pressed ? 0.82 : 1,
-                })}
-              >
-                <Text
-                  style={{
-                    color: theme.colors.textMuted,
-                    fontSize: 10,
-                    fontWeight: "900",
-                  }}
-                >
-                  Jet complet
-                </Text>
-              </Pressable>
-            </View>
-          ) : null}
-
           <PremiumRollButton
             disabled={!hasPreparedRoll}
             focusedLine={isFocusedLineMode}
+            focusedLineLabel={focusedPreparedLine?.label ?? null}
+            onClearFocusedLine={handleClearFocusedPreparedLine}
             onPress={handlePressStickyRollButton}
             label={isFocusedLineMode ? "LANCER LA LIGNE" : "LANCER LE JET"}
             disabledLabel="AJOUTE DES DÉS"
           />
         </View>
       </View>
+
+      {hasActiveTable
+        ? (() => {
+            const floatingAnchorRight = layout.horizontalPadding + 2;
+
+            const floatingAnchorBottom =
+              screenBottomSafePadding +
+              (isFocusedLineMode
+                ? 104
+                : hasPreparedRoll || hasResult
+                  ? 84
+                  : 118);
+
+            const floatingTopLimit =
+              screenTopPadding + (isVerySmallScreen ? 76 : 88);
+
+            const floatingBottomLimit = Math.max(layout.insets.bottom + 14, 34);
+
+            return (
+              <View
+                pointerEvents="box-none"
+                style={{
+                  position: "absolute",
+                  right: floatingAnchorRight,
+                  bottom: floatingAnchorBottom,
+                  zIndex: 35,
+                  elevation: 35,
+                }}
+              >
+                <ActionRail
+                  profileName={activeProfile?.name ?? null}
+                  actions={actionRailItems}
+                  selectedActionId={
+                    preparedRoll?.source === "action"
+                      ? preparedRoll.groupId
+                      : null
+                  }
+                  onPrepareAction={handlePrepareSavedAction}
+                  floatingAnchorRight={floatingAnchorRight}
+                  floatingAnchorBottom={floatingAnchorBottom}
+                  floatingTopLimit={floatingTopLimit}
+                  floatingBottomLimit={floatingBottomLimit}
+                />
+              </View>
+            );
+          })()
+        : null}
 
       <Animated.View
         pointerEvents={isResettingPreparedRoll ? "auto" : "none"}

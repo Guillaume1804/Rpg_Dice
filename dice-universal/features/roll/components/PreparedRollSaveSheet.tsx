@@ -422,7 +422,6 @@ export function PreparedRollSaveSheet({
               value={freeActionName}
               onChangeText={onChangeFreeActionName}
               placeholder="Ex: Attaque, Perception, Dégâts..."
-              autoFocus
             />
           </View>
 
@@ -459,7 +458,6 @@ export function PreparedRollSaveSheet({
                   value={tableName}
                   onChangeText={setTableName}
                   placeholder="Ex: Cthulu, Warhammer, D&D..."
-                  autoFocus
                 />
               </View>
 
@@ -469,7 +467,6 @@ export function PreparedRollSaveSheet({
                   value={profileName}
                   onChangeText={setProfileName}
                   placeholder="Nom du profil"
-                  autoFocus
                 />
               </View>
             </View>
@@ -517,7 +514,6 @@ export function PreparedRollSaveSheet({
                   value={profileName}
                   onChangeText={setProfileName}
                   placeholder="Nom du profil"
-                  autoFocus
                 />
               </View>
             </View>
@@ -630,7 +626,6 @@ export function PreparedRollSaveSheet({
               value={copyName}
               onChangeText={onChangeCopyName}
               placeholder="Nom de la nouvelle action"
-              autoFocus
             />
           </View>
         </View>
