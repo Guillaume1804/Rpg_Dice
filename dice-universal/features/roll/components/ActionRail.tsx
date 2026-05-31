@@ -1,8 +1,9 @@
 // dice-universal/features/roll/components/ActionRail.tsx
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
+  Easing,
   PanResponder,
   Pressable,
   Text,
@@ -162,6 +163,14 @@ export function ActionRail({
 
   const floatingPosition = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
 
+  const floatingAppearAnim = useRef(new Animated.Value(0)).current;
+  const floatingPressAnim = useRef(new Animated.Value(0)).current;
+  const hasDraggedFloatingButtonRef = useRef(false);
+
+  const floatingInertiaOffset = useRef(
+    new Animated.ValueXY({ x: 0, y: 0 }),
+  ).current;
+
   const floatingPositionRef = useRef({
     x: 0,
     y: 0,
@@ -219,62 +228,139 @@ export function ActionRail({
     ],
   );
 
-  const floatingPanResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
+  const animateFloatingPress = useCallback(
+    (toValue: number) => {
+      Animated.spring(floatingPressAnim, {
+        toValue,
+        useNativeDriver: true,
+        friction: 7,
+        tension: 140,
+      }).start();
+    },
+    [floatingPressAnim],
+  );
 
-      onMoveShouldSetPanResponder: (_, gestureState) =>
-        Math.abs(gestureState.dx) > 5 || Math.abs(gestureState.dy) > 5,
+  const getSubtleInertiaOffset = useCallback(
+    (safePosition: { x: number; y: number }, velocityX = 0, velocityY = 0) => {
+      let inertiaX = Math.max(-6, Math.min(6, velocityX * 10));
+      let inertiaY = Math.max(-6, Math.min(6, velocityY * 10));
 
-      onPanResponderGrant: () => {
-        dragStartPositionRef.current = {
-          ...floatingPositionRef.current,
-        };
-      },
+      if (
+        (safePosition.x <= floatingBounds.minX && inertiaX < 0) ||
+        (safePosition.x >= floatingBounds.maxX && inertiaX > 0)
+      ) {
+        inertiaX = 0;
+      }
 
-      onPanResponderMove: (_, gestureState) => {
-        const nextPosition = {
-          x: dragStartPositionRef.current.x + gestureState.dx,
-          y: dragStartPositionRef.current.y + gestureState.dy,
-        };
+      if (
+        (safePosition.y <= floatingBounds.minY && inertiaY < 0) ||
+        (safePosition.y >= floatingBounds.maxY && inertiaY > 0)
+      ) {
+        inertiaY = 0;
+      }
 
-        floatingPositionRef.current = nextPosition;
-        floatingPosition.setValue(nextPosition);
-      },
+      return {
+        x: inertiaX,
+        y: inertiaY,
+      };
+    },
+    [
+      floatingBounds.minX,
+      floatingBounds.maxX,
+      floatingBounds.minY,
+      floatingBounds.maxY,
+    ],
+  );
 
-      onPanResponderRelease: () => {
-        const safePosition = clampFloatingPosition(
-          floatingPositionRef.current.x,
-          floatingPositionRef.current.y,
-        );
+  const releaseFloatingButton = useCallback(
+    (gestureState?: { vx?: number; vy?: number }) => {
+      const safePosition = clampFloatingPosition(
+        floatingPositionRef.current.x,
+        floatingPositionRef.current.y,
+      );
 
-        floatingPositionRef.current = safePosition;
+      const inertiaOffset = hasDraggedFloatingButtonRef.current
+        ? getSubtleInertiaOffset(
+            safePosition,
+            gestureState?.vx ?? 0,
+            gestureState?.vy ?? 0,
+          )
+        : { x: 0, y: 0 };
 
+      floatingPositionRef.current = safePosition;
+
+      floatingInertiaOffset.stopAnimation();
+      floatingInertiaOffset.setValue(inertiaOffset);
+
+      Animated.parallel([
         Animated.spring(floatingPosition, {
           toValue: safePosition,
           useNativeDriver: true,
-          friction: 8,
-          tension: 70,
-        }).start();
-      },
-
-      onPanResponderTerminate: () => {
-        const safePosition = clampFloatingPosition(
-          floatingPositionRef.current.x,
-          floatingPositionRef.current.y,
-        );
-
-        floatingPositionRef.current = safePosition;
-
-        Animated.spring(floatingPosition, {
-          toValue: safePosition,
+          friction: 9,
+          tension: 78,
+        }),
+        Animated.spring(floatingInertiaOffset, {
+          toValue: { x: 0, y: 0 },
           useNativeDriver: true,
-          friction: 8,
-          tension: 70,
-        }).start();
-      },
-    }),
-  ).current;
+          friction: 5,
+          tension: 58,
+        }),
+      ]).start();
+
+      setTimeout(() => {
+        hasDraggedFloatingButtonRef.current = false;
+      }, 100);
+    },
+    [
+      clampFloatingPosition,
+      floatingInertiaOffset,
+      floatingPosition,
+      getSubtleInertiaOffset,
+    ],
+  );
+
+  const floatingPanResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => false,
+
+        onMoveShouldSetPanResponder: (_, gestureState) =>
+          Math.abs(gestureState.dx) > 5 || Math.abs(gestureState.dy) > 5,
+
+        onPanResponderGrant: () => {
+          hasDraggedFloatingButtonRef.current = false;
+          floatingInertiaOffset.stopAnimation();
+          floatingInertiaOffset.setValue({ x: 0, y: 0 });
+
+          dragStartPositionRef.current = {
+            ...floatingPositionRef.current,
+          };
+        },
+
+        onPanResponderMove: (_, gestureState) => {
+          if (Math.abs(gestureState.dx) > 5 || Math.abs(gestureState.dy) > 5) {
+            hasDraggedFloatingButtonRef.current = true;
+          }
+
+          const nextPosition = {
+            x: dragStartPositionRef.current.x + gestureState.dx,
+            y: dragStartPositionRef.current.y + gestureState.dy,
+          };
+
+          floatingPositionRef.current = nextPosition;
+          floatingPosition.setValue(nextPosition);
+        },
+
+        onPanResponderRelease: (_, gestureState) => {
+          releaseFloatingButton(gestureState);
+        },
+
+        onPanResponderTerminate: (_, gestureState) => {
+          releaseFloatingButton(gestureState);
+        },
+      }),
+    [floatingInertiaOffset, floatingPosition, releaseFloatingButton],
+  );
 
   useEffect(() => {
     const safePosition = clampFloatingPosition(
@@ -286,22 +372,97 @@ export function ActionRail({
     floatingPosition.setValue(safePosition);
   }, [clampFloatingPosition, floatingPosition]);
 
+  useEffect(() => {
+    if (!profileName) {
+      floatingAppearAnim.setValue(0);
+      return;
+    }
+
+    floatingAppearAnim.setValue(0);
+
+    Animated.timing(floatingAppearAnim, {
+      toValue: 1,
+      duration: 260,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [profileName, floatingAppearAnim]);
+
   if (!profileName) return null;
 
   const selectedAction =
     actions.find((action) => action.id === selectedActionId) ?? null;
+
+  const floatingAppearOpacity = floatingAppearAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+  });
+
+  const floatingAppearScale = floatingAppearAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.88, 1],
+  });
+
+  const floatingAppearTranslateY = floatingAppearAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [10, 0],
+  });
+
+  const floatingPressScale = floatingPressAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0.955],
+  });
+
+  const floatingPressTranslateY = floatingPressAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 2],
+  });
+
+  const floatingTranslateX = Animated.add(
+    floatingPosition.x,
+    floatingInertiaOffset.x,
+  );
+
+  const floatingTranslateY = Animated.add(
+    Animated.add(floatingPosition.y, floatingInertiaOffset.y),
+    Animated.add(floatingAppearTranslateY, floatingPressTranslateY),
+  );
+
+  const floatingScale = Animated.multiply(
+    floatingAppearScale,
+    floatingPressScale,
+  );
 
   return (
     <>
       <Animated.View
         {...floatingPanResponder.panHandlers}
         style={{
-          transform: floatingPosition.getTranslateTransform(),
+          opacity: floatingAppearOpacity,
+          transform: [
+            { translateX: floatingTranslateX },
+            { translateY: floatingTranslateY },
+            { scale: floatingScale },
+          ],
         }}
       >
         <Pressable
-          onPress={() => setShowAllActions(true)}
+          onPress={() => {
+            if (hasDraggedFloatingButtonRef.current) {
+              hasDraggedFloatingButtonRef.current = false;
+              return;
+            }
+
+            setShowAllActions(true);
+          }}
           disabled={actions.length === 0}
+          onPressIn={() => {
+            if (actions.length === 0) return;
+            animateFloatingPress(1);
+          }}
+          onPressOut={() => {
+            animateFloatingPress(0);
+          }}
           style={({ pressed }) => ({
             width: FLOATING_BUTTON_SIZE,
             height: FLOATING_BUTTON_SIZE,
@@ -318,14 +479,6 @@ export function ActionRail({
             alignItems: "center",
             justifyContent: "center",
             opacity: actions.length === 0 ? 0.48 : pressed ? 0.88 : 0.96,
-            transform: [
-              {
-                scale:
-                  pressed && actions.length > 0
-                    ? premium.animation.pressScale
-                    : 1,
-              },
-            ],
             ...premium.shadow.card,
           })}
         >
