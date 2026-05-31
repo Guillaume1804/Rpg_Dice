@@ -37,26 +37,26 @@ export function PremiumRollScreenBackground() {
       <View
         style={{
           position: "absolute",
-          top: 110,
+          top: 118,
           alignSelf: "center",
-          width: 310,
-          height: 310,
+          width: 300,
+          height: 300,
           borderRadius: premium.radius.pill,
-          backgroundColor: premium.colors.accent.softer,
-          opacity: 0.72,
+          backgroundColor: premium.colors.surface.subtle,
+          opacity: 0.22,
         }}
       />
 
       <View
         style={{
           position: "absolute",
-          top: 190,
+          top: 198,
           alignSelf: "center",
-          width: 190,
-          height: 190,
+          width: 180,
+          height: 180,
           borderRadius: premium.radius.pill,
-          backgroundColor: premium.colors.accent.soft,
-          opacity: 0.18,
+          backgroundColor: premium.colors.surface.elevated,
+          opacity: 0.12,
         }}
       />
 
@@ -119,8 +119,8 @@ export function PremiumRollScreenBackground() {
           bottom: 120,
           height: 180,
           borderRadius: premium.radius.pill,
-          backgroundColor: premium.colors.accent.softer,
-          opacity: 0.045,
+          backgroundColor: premium.colors.surface.subtle,
+          opacity: 0.035,
         }}
       />
     </View>

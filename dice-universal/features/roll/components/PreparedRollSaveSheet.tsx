@@ -34,6 +34,9 @@ type Props = {
   visible: boolean;
   source: PreparedRollSaveSource | null;
 
+  defaultTableId?: string | null;
+  defaultProfileId?: string | null;
+
   initialTableName: string;
   initialProfileName: string;
   availableTargets: SaveTargetTable[];
@@ -267,6 +270,8 @@ function SheetButton({
 export function PreparedRollSaveSheet({
   visible,
   source,
+  defaultTableId = null,
+  defaultProfileId = null,
   initialTableName,
   initialProfileName,
   availableTargets,
@@ -297,17 +302,49 @@ export function PreparedRollSaveSheet({
   useEffect(() => {
     if (!visible) return;
 
-    setFreeMode("new_table_new_profile");
     setTableName(initialTableName);
     setProfileName(initialProfileName);
     setActionMode("menu");
 
-    const firstTable = availableTargets[0]?.table.id ?? null;
-    setSelectedTableId(firstTable);
+    const defaultTarget =
+      availableTargets.find((entry) => entry.table.id === defaultTableId) ??
+      availableTargets[0] ??
+      null;
 
-    const firstProfile = availableTargets[0]?.profiles[0]?.id ?? null;
-    setSelectedProfileId(firstProfile);
-  }, [visible, initialTableName, initialProfileName, availableTargets]);
+    const nextTableId = defaultTarget?.table.id ?? null;
+
+    const defaultProfile =
+      defaultTarget?.profiles.find(
+        (profile) => profile.id === defaultProfileId,
+      ) ??
+      defaultTarget?.profiles[0] ??
+      null;
+
+    const nextProfileId = defaultProfile?.id ?? null;
+
+    setSelectedTableId(nextTableId);
+    setSelectedProfileId(nextProfileId);
+
+    if (source === "free" && nextTableId && nextProfileId) {
+      setFreeMode("existing_table_existing_profile");
+      return;
+    }
+
+    if (source === "free" && nextTableId) {
+      setFreeMode("existing_table_new_profile");
+      return;
+    }
+
+    setFreeMode("new_table_new_profile");
+  }, [
+    visible,
+    source,
+    initialTableName,
+    initialProfileName,
+    availableTargets,
+    defaultTableId,
+    defaultProfileId,
+  ]);
 
   const selectedTable = useMemo(
     () =>

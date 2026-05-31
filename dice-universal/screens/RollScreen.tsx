@@ -883,6 +883,7 @@ export default function RollScreen() {
     });
 
     setQuickModifier(0);
+    setSelectedDraftGroupId(draftGroupId);
 
     setPreparedRoll({
       source: "action_draft",
@@ -1415,12 +1416,16 @@ export default function RollScreen() {
   const freeDiceCountsBySides = useMemo(() => {
     const counts: Record<number, number> = {};
 
+    if (preparedRoll?.source !== "free") {
+      return counts;
+    }
+
     for (const die of standardPreparedQuickGroup?.dice ?? []) {
       counts[die.sides] = (counts[die.sides] ?? 0) + die.qty;
     }
 
     return counts;
-  }, [standardPreparedQuickGroup]);
+  }, [preparedRoll?.source, standardPreparedQuickGroup]);
 
   const hasPreparedQuickRoll = !!preparedQuickRollDetail;
 
@@ -2022,6 +2027,8 @@ export default function RollScreen() {
               ? "action_draft"
               : null
         }
+        defaultTableId={table?.id ?? null}
+        defaultProfileId={activeProfile?.id ?? null}
         initialTableName={newTableName}
         initialProfileName={newProfileName}
         availableTargets={availableSaveTargets}
