@@ -212,6 +212,8 @@ export default function RollScreen() {
 
   const resetOverlayAnim = useRef(new Animated.Value(0)).current;
   const resetSpinnerAnim = useRef(new Animated.Value(0)).current;
+  const resultAppearAnim = useRef(new Animated.Value(1)).current;
+
   const [isResettingPreparedRoll, setIsResettingPreparedRoll] = useState(false);
 
   const [showTableSessionMenu, setShowTableSessionMenu] = useState(false);
@@ -1473,6 +1475,22 @@ export default function RollScreen() {
 
   const hasResult = !!latestResult;
 
+  useEffect(() => {
+    if (!latestResult) {
+      resultAppearAnim.setValue(1);
+      return;
+    }
+
+    resultAppearAnim.setValue(0);
+
+    Animated.timing(resultAppearAnim, {
+      toValue: 1,
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [latestResult, resultAppearAnim]);
+
   const isFreeIdleCockpit = !hasActiveTable && !hasPreparedRoll && !hasResult;
   const isTableIdleCockpit = hasActiveTable && !hasPreparedRoll && !hasResult;
 
@@ -1784,7 +1802,27 @@ export default function RollScreen() {
               ],
             }}
           >
-            <PremiumResultCard result={latestResult} />
+            <Animated.View
+              style={{
+                opacity: resultAppearAnim,
+                transform: [
+                  {
+                    translateY: resultAppearAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [10, 0],
+                    }),
+                  },
+                  {
+                    scale: resultAppearAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.985, 1],
+                    }),
+                  },
+                ],
+              }}
+            >
+              <PremiumResultCard result={latestResult} />
+            </Animated.View>
 
             <View style={{ marginTop: adaptiveResultToDiceOverlap }}>
               <PremiumDiceWheel
