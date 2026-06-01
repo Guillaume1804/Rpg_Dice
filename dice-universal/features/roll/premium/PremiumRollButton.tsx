@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef } from "react";
 import { Animated, Pressable, Text, View } from "react-native";
 
 import { usePremiumTheme } from "../../../theme/premium/usePremiumTheme";
+import type { PremiumDiceSkinId } from "../../../theme/premium/premiumTypes";
+import { usePremiumDiceSkin } from "../../../theme/premium/usePremiumDiceSkin";
 import { runPremiumSpring } from "../../../theme/premium/premiumAnimation";
 
 type PremiumRollButtonProps = {
@@ -17,6 +19,32 @@ type PremiumRollButtonProps = {
   onClearFocusedLine?: () => void;
 };
 
+function getRollButtonSkinStyle(skinId: PremiumDiceSkinId) {
+  /**
+   * Pour l’instant, tous les skins conservent le rendu Graphite Astral actuel.
+   * Plus tard, ce helper permettra de router vers des variantes visuelles :
+   * dragon, arcane, metal, cosmic, etc.
+   */
+  switch (skinId) {
+    case "default_2d":
+    case "graphite_2d":
+    case "dragon":
+    case "arcane":
+    case "metal":
+    case "cosmic":
+    default:
+      return {
+        idleBackground: "#05060B",
+        pressedBackground: "#10121B",
+        borderColor: "rgba(255, 255, 255, 0.14)",
+        topHighlightBackground: "rgba(255, 255, 255, 0.055)",
+        disabledTopHighlightBackground: "rgba(255, 255, 255, 0.025)",
+        bottomLineColor: "rgba(232, 200, 120, 0.32)",
+        disabledBottomLineColor: "rgba(255, 255, 255, 0.04)",
+      };
+  }
+}
+
 export function PremiumRollButton({
   disabled,
   rolling = false,
@@ -28,6 +56,9 @@ export function PremiumRollButton({
   onClearFocusedLine,
 }: PremiumRollButtonProps) {
   const premium = usePremiumTheme();
+
+  const { skinId } = usePremiumDiceSkin();
+  const skinStyle = getRollButtonSkinStyle(skinId);
 
   const pressAnim = useRef(new Animated.Value(0)).current;
 
@@ -170,12 +201,12 @@ export function PremiumRollButton({
               ? premium.colors.border.subtle
               : focusedLine
                 ? premium.colors.border.accent
-                : "rgba(255, 255, 255, 0.14)",
+                : skinStyle.borderColor,
             backgroundColor: disabled
               ? premium.colors.surface.disabled
               : pressed
-                ? "#10121B"
-                : "#05060B",
+                ? skinStyle.pressedBackground
+                : skinStyle.idleBackground,
             alignItems: "center",
             justifyContent: "center",
             paddingHorizontal: premium.spacing.lg,
@@ -194,8 +225,8 @@ export function PremiumRollButton({
               borderTopLeftRadius: premium.radius.pill,
               borderTopRightRadius: premium.radius.pill,
               backgroundColor: disabled
-                ? "rgba(255, 255, 255, 0.025)"
-                : "rgba(255, 255, 255, 0.055)",
+                ? skinStyle.disabledTopHighlightBackground
+                : skinStyle.topHighlightBackground,
               opacity: innerHighlightOpacity,
             }}
           />
@@ -209,10 +240,10 @@ export function PremiumRollButton({
               bottom: 0,
               height: 1,
               backgroundColor: disabled
-                ? "rgba(255, 255, 255, 0.04)"
+                ? skinStyle.disabledBottomLineColor
                 : focusedLine
                   ? premium.colors.accent.primary
-                  : "rgba(232, 200, 120, 0.32)",
+                  : skinStyle.bottomLineColor,
               opacity: bottomLineOpacity,
             }}
           />
