@@ -13,6 +13,8 @@ import {
   runPremiumSpring,
   runPremiumTiming,
 } from "../../../theme/premium/premiumAnimation";
+import type { PremiumDiceSkinId } from "../../../theme/premium/premiumTypes";
+import { usePremiumDiceSkin } from "../../../theme/premium/usePremiumDiceSkin";
 import { usePremiumTheme } from "../../../theme/premium/usePremiumTheme";
 
 type PremiumDiceWheelProps = {
@@ -35,15 +37,29 @@ type DiceLayout = {
   zIndex: number;
 };
 
-function getDieShapeLabel(sides: number) {
-  if (sides === 4) return "△";
-  if (sides === 6) return "□";
-  if (sides === 8) return "◇";
-  if (sides === 10) return "⬟";
-  if (sides === 12) return "⬢";
-  if (sides === 20) return "✦";
-  if (sides === 100) return "%";
-  return "◈";
+function getDieShapeLabel(sides: number, skinId: PremiumDiceSkinId) {
+  /**
+   * Pour l’instant, tous les skins utilisent le rendu glyphes par défaut.
+   * Plus tard, ce switch permettra de router vers des formes, images ou composants
+   * différents selon le skin actif : dragon, arcane, metal, cosmic, etc.
+   */
+  switch (skinId) {
+    case "default_2d":
+    case "graphite_2d":
+    case "dragon":
+    case "arcane":
+    case "metal":
+    case "cosmic":
+    default:
+      if (sides === 4) return "△";
+      if (sides === 6) return "□";
+      if (sides === 8) return "◇";
+      if (sides === 10) return "⬟";
+      if (sides === 12) return "⬢";
+      if (sides === 20) return "✦";
+      if (sides === 100) return "%";
+      return "◈";
+  }
 }
 
 function getDieDisplayLabel(sides: number) {
@@ -101,6 +117,7 @@ export function PremiumDiceWheel({
 }: PremiumDiceWheelProps) {
   const { width, height } = useWindowDimensions();
   const premium = usePremiumTheme();
+  const { skinId } = usePremiumDiceSkin();
 
   const appearAnim = useRef(new Animated.Value(0)).current;
   const dicePressAnims = useRef<Record<number, Animated.Value>>({}).current;
@@ -390,7 +407,7 @@ export function PremiumDiceWheel({
               fontWeight: "900",
             }}
           >
-            {getDieShapeLabel(sides)}
+            {getDieShapeLabel(sides, skinId)}
           </Text>
 
           <Text
