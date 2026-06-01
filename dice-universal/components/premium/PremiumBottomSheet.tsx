@@ -76,7 +76,7 @@ export function PremiumBottomSheet({
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType={premium.animation.normal <= 0 ? "none" : "fade"}
       statusBarTranslucent
       onRequestClose={onClose}
     >

@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
     Animated,
-    Easing,
     ScrollView,
     Text,
     View,
@@ -17,6 +16,8 @@ import {
     PremiumSurface,
     PremiumText,
 } from "../../../components/premium";
+
+import { runPremiumTiming } from "../../../theme/premium/premiumAnimation";
 import { usePremiumTheme } from "../../../theme/premium/usePremiumTheme";
 import { RollResultCard } from "../components/RollResultCard";
 import { renderRollResult } from "../renderers/rollResultRenderer";
@@ -1033,23 +1034,20 @@ export function PremiumResultCard({ result }: PremiumResultCardProps) {
         pulseAnim.setValue(0);
 
         Animated.parallel([
-            Animated.timing(appearAnim, {
+            runPremiumTiming(premium, appearAnim, {
                 toValue: 1,
                 duration: premium.animation.normal,
-                easing: Easing.out(Easing.cubic),
                 useNativeDriver: true,
             }),
             Animated.sequence([
-                Animated.timing(pulseAnim, {
+                runPremiumTiming(premium, pulseAnim, {
                     toValue: 1,
                     duration: premium.animation.fast,
-                    easing: Easing.out(Easing.quad),
                     useNativeDriver: true,
                 }),
-                Animated.timing(pulseAnim, {
+                runPremiumTiming(premium, pulseAnim, {
                     toValue: 0,
                     duration: premium.animation.normal,
-                    easing: Easing.out(Easing.cubic),
                     useNativeDriver: true,
                 }),
             ]),
@@ -1059,8 +1057,7 @@ export function PremiumResultCard({ result }: PremiumResultCardProps) {
         result,
         appearAnim,
         pulseAnim,
-        premium.animation.fast,
-        premium.animation.normal,
+        premium,
     ]);
 
     const animatedPanelStyle = result
