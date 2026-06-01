@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { Animated, Pressable, Text, View } from "react-native";
 
 import { usePremiumTheme } from "../../../theme/premium/usePremiumTheme";
+import { runPremiumSpring } from "../../../theme/premium/premiumAnimation";
 
 type PremiumRollButtonProps = {
   disabled: boolean;
@@ -40,14 +41,17 @@ export function PremiumRollButton({
 
   const animatePress = useCallback(
     (toValue: number) => {
-      Animated.spring(pressAnim, {
+      runPremiumSpring(premium, pressAnim, {
         toValue,
-        useNativeDriver: true,
         friction: premium.animation.spring.press.friction,
         tension: premium.animation.spring.press.tension,
+        useNativeDriver: true,
       }).start();
     },
-    [premium.animation.spring.press.friction, premium.animation.spring.press.tension, pressAnim],
+    [
+      premium,
+      pressAnim,
+    ],
   );
 
   useEffect(() => {
