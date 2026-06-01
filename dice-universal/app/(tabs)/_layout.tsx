@@ -2,6 +2,7 @@
 
 import { Tabs } from "expo-router";
 import { Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { usePremiumTheme } from "../../theme/premium/usePremiumTheme";
 
@@ -45,6 +46,10 @@ function TabIcon({ label, focused }: TabIconProps) {
 
 export default function TabsLayout() {
   const premium = usePremiumTheme();
+  const insets = useSafeAreaInsets();
+
+  const bottomInset = Math.max(insets.bottom, 10);
+  const tabBarHeight = 64 + bottomInset;
 
   return (
     <Tabs
@@ -53,9 +58,9 @@ export default function TabsLayout() {
         tabBarHideOnKeyboard: true,
 
         tabBarStyle: {
-          minHeight: 74,
+          height: tabBarHeight,
           paddingTop: 8,
-          paddingBottom: 10,
+          paddingBottom: bottomInset,
           borderTopWidth: 1,
           borderTopColor: premium.colors.border.subtle,
           backgroundColor: premium.colors.background.secondary,
@@ -67,7 +72,8 @@ export default function TabsLayout() {
         },
 
         tabBarItemStyle: {
-          paddingVertical: 4,
+          paddingTop: 4,
+          paddingBottom: 2,
         },
 
         tabBarLabelStyle: {
@@ -122,7 +128,7 @@ export default function TabsLayout() {
         options={{
           title: "Paramètres",
           tabBarLabel: "Réglages",
-          tabBarIcon: ({ focused }) => <TabIcon label="⚙" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon label="◎" focused={focused} />,
         }}
       />
     </Tabs>
