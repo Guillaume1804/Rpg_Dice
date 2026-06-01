@@ -3,13 +3,16 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   Animated,
-  Easing,
   Pressable,
   Text,
   useWindowDimensions,
   View,
 } from "react-native";
 
+import {
+  runPremiumSpring,
+  runPremiumTiming,
+} from "../../../theme/premium/premiumAnimation";
 import { usePremiumTheme } from "../../../theme/premium/usePremiumTheme";
 
 type PremiumDiceWheelProps = {
@@ -151,13 +154,12 @@ export function PremiumDiceWheel({
   useEffect(() => {
     appearAnim.setValue(0);
 
-    Animated.timing(appearAnim, {
+    runPremiumTiming(premium, appearAnim, {
       toValue: 1,
       duration: premium.animation.slow,
-      easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
-  }, [appearAnim, premium.animation.slow]);
+  }, [appearAnim, premium]);
 
   const getDiePressAnim = useCallback(
     (sides: number) => {
@@ -172,18 +174,14 @@ export function PremiumDiceWheel({
 
   const animateDiePress = useCallback(
     (sides: number, toValue: number) => {
-      Animated.spring(getDiePressAnim(sides), {
+      runPremiumSpring(premium, getDiePressAnim(sides), {
         toValue,
-        useNativeDriver: true,
         friction: premium.animation.spring.press.friction,
         tension: premium.animation.spring.press.tension,
+        useNativeDriver: true,
       }).start();
     },
-    [
-      getDiePressAnim,
-      premium.animation.spring.press.friction,
-      premium.animation.spring.press.tension,
-    ],
+    [getDiePressAnim, premium],
   );
 
   function getDiePosition(layout: DiceLayout) {
