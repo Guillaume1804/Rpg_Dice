@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
-  Easing,
   PanResponder,
   Pressable,
   Text,
@@ -12,6 +11,11 @@ import {
 } from "react-native";
 
 import { PremiumBottomSheet } from "../../../components/premium";
+import {
+  runPremiumSpring,
+  runPremiumTiming,
+  runPremiumVectorSpring,
+} from "../../../theme/premium/premiumAnimation";
 import { usePremiumTheme } from "../../../theme/premium/usePremiumTheme";
 
 export type ActionRailItem = {
@@ -230,18 +234,14 @@ export function ActionRail({
 
   const animateFloatingPress = useCallback(
     (toValue: number) => {
-      Animated.spring(floatingPressAnim, {
+      runPremiumSpring(premium, floatingPressAnim, {
         toValue,
-        useNativeDriver: true,
         friction: premium.animation.spring.press.friction,
         tension: premium.animation.spring.press.tension,
+        useNativeDriver: true,
       }).start();
     },
-    [
-      floatingPressAnim,
-      premium.animation.spring.press.friction,
-      premium.animation.spring.press.tension,
-    ],
+    [floatingPressAnim, premium],
   );
 
   const getSubtleInertiaOffset = useCallback(
@@ -285,10 +285,10 @@ export function ActionRail({
 
       const inertiaOffset = hasDraggedFloatingButtonRef.current
         ? getSubtleInertiaOffset(
-            safePosition,
-            gestureState?.vx ?? 0,
-            gestureState?.vy ?? 0,
-          )
+          safePosition,
+          gestureState?.vx ?? 0,
+          gestureState?.vy ?? 0,
+        )
         : { x: 0, y: 0 };
 
       floatingPositionRef.current = safePosition;
@@ -297,17 +297,17 @@ export function ActionRail({
       floatingInertiaOffset.setValue(inertiaOffset);
 
       Animated.parallel([
-        Animated.spring(floatingPosition, {
+        runPremiumVectorSpring(premium, floatingPosition, {
           toValue: safePosition,
-          useNativeDriver: true,
           friction: premium.animation.spring.softSettle.friction,
           tension: premium.animation.spring.softSettle.tension,
-        }),
-        Animated.spring(floatingInertiaOffset, {
-          toValue: { x: 0, y: 0 },
           useNativeDriver: true,
+        }),
+        runPremiumVectorSpring(premium, floatingInertiaOffset, {
+          toValue: { x: 0, y: 0 },
           friction: premium.animation.spring.inertia.friction,
           tension: premium.animation.spring.inertia.tension,
+          useNativeDriver: true,
         }),
       ]).start();
 
@@ -320,10 +320,7 @@ export function ActionRail({
       floatingInertiaOffset,
       floatingPosition,
       getSubtleInertiaOffset,
-      premium.animation.spring.inertia.friction,
-      premium.animation.spring.inertia.tension,
-      premium.animation.spring.softSettle.friction,
-      premium.animation.spring.softSettle.tension,
+      premium,
     ],
   );
 
@@ -388,13 +385,12 @@ export function ActionRail({
 
     floatingAppearAnim.setValue(0);
 
-    Animated.timing(floatingAppearAnim, {
+    runPremiumTiming(premium, floatingAppearAnim, {
       toValue: 1,
       duration: premium.animation.entrance,
-      easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
-  }, [profileName, floatingAppearAnim, premium.animation.entrance]);
+  }, [profileName, floatingAppearAnim, premium]);
 
   if (!profileName) return null;
 
