@@ -79,6 +79,9 @@ import {
   PremiumSessionHeader,
 } from "../features/roll/premium";
 
+import { runPremiumTiming } from "../theme/premium/premiumAnimation";
+import { usePremiumTheme } from "../theme/premium/usePremiumTheme";
+
 function findStandardQuickGroup(groups: DraftGroupSummary[]) {
   return (
     groups.find(
@@ -98,21 +101,21 @@ function findDraftGroupById(
 
 type PreparedRoll =
   | {
-      source: "free";
-    }
+    source: "free";
+  }
   | {
-      source: "action";
-      profileId: string;
-      groupId: string;
-      label: string;
-    }
+    source: "action";
+    profileId: string;
+    groupId: string;
+    label: string;
+  }
   | {
-      source: "action_draft";
-      profileId: string;
-      groupId: string;
-      draftGroupId: string;
-      label: string;
-    };
+    source: "action_draft";
+    profileId: string;
+    groupId: string;
+    draftGroupId: string;
+    label: string;
+  };
 
 function animateCockpitLayout() {
   LayoutAnimation.configureNext({
@@ -183,6 +186,7 @@ async function resolvePreparedRuleId(
 export default function RollScreen() {
   const layout = useArcaneLayout();
   const { theme, styles } = useArcaneTheme();
+  const premium = usePremiumTheme();
 
   const { height: windowHeight } = useWindowDimensions();
 
@@ -463,10 +467,9 @@ export default function RollScreen() {
     setIsResettingPreparedRoll(true);
     resetOverlayAnim.setValue(0);
 
-    Animated.timing(resetOverlayAnim, {
+    runPremiumTiming(premium, resetOverlayAnim, {
       toValue: 1,
-      duration: 180,
-      easing: Easing.out(Easing.quad),
+      duration: premium.animation.feedback,
       useNativeDriver: true,
     }).start(() => {
       setTimeout(() => {
@@ -482,10 +485,9 @@ export default function RollScreen() {
 
         requestAnimationFrame(() => {
           setTimeout(() => {
-            Animated.timing(resetOverlayAnim, {
+            runPremiumTiming(premium, resetOverlayAnim, {
               toValue: 0,
-              duration: 260,
-              easing: Easing.out(Easing.cubic),
+              duration: premium.animation.entrance,
               useNativeDriver: true,
             }).start(() => {
               setIsResettingPreparedRoll(false);
@@ -541,16 +543,16 @@ export default function RollScreen() {
 
     const rule = sourceRule
       ? {
-          id: String(sourceRule.id ?? `temp-line-rule-${index}`),
-          name: String(sourceRule.name ?? "Comportement temporaire"),
-          kind: String(sourceRule.kind ?? "sum"),
-          params_json:
-            typeof sourceRule.params_json === "string"
-              ? sourceRule.params_json
-              : typeof sourceRule.paramsJson === "string"
-                ? sourceRule.paramsJson
-                : JSON.stringify(sourceRule.params_json ?? {}),
-        }
+        id: String(sourceRule.id ?? `temp-line-rule-${index}`),
+        name: String(sourceRule.name ?? "Comportement temporaire"),
+        kind: String(sourceRule.kind ?? "sum"),
+        params_json:
+          typeof sourceRule.params_json === "string"
+            ? sourceRule.params_json
+            : typeof sourceRule.paramsJson === "string"
+              ? sourceRule.paramsJson
+              : JSON.stringify(sourceRule.params_json ?? {}),
+      }
       : null;
 
     const lineLabel = formatPreparedCardDieLabel({
@@ -658,9 +660,9 @@ export default function RollScreen() {
 
   async function handleSaveDraftTarget(params: {
     mode:
-      | "new_table_new_profile"
-      | "existing_table_new_profile"
-      | "existing_table_existing_profile";
+    | "new_table_new_profile"
+    | "existing_table_new_profile"
+    | "existing_table_existing_profile";
     tableName?: string;
     profileName?: string;
     tableId?: string;
@@ -1483,13 +1485,12 @@ export default function RollScreen() {
 
     resultAppearAnim.setValue(0);
 
-    Animated.timing(resultAppearAnim, {
+    runPremiumTiming(premium, resultAppearAnim, {
       toValue: 1,
-      duration: 220,
-      easing: Easing.out(Easing.cubic),
+      duration: premium.animation.normal,
       useNativeDriver: true,
     }).start();
-  }, [latestResult, resultAppearAnim]);
+  }, [latestResult, resultAppearAnim, premium]);
 
   const isFreeIdleCockpit = !hasActiveTable && !hasPreparedRoll && !hasResult;
   const isTableIdleCockpit = hasActiveTable && !hasPreparedRoll && !hasResult;
@@ -1578,10 +1579,14 @@ export default function RollScreen() {
 
     resetSpinnerAnim.setValue(0);
 
+    if (premium.animation.normal <= 0) {
+      return;
+    }
+
     const loop = Animated.loop(
       Animated.timing(resetSpinnerAnim, {
         toValue: 1,
-        duration: 850,
+        duration: premium.animation.slow * 2.4,
         easing: Easing.linear,
         useNativeDriver: true,
       }),
@@ -1592,7 +1597,7 @@ export default function RollScreen() {
     return () => {
       loop.stop();
     };
-  }, [isResettingPreparedRoll, resetSpinnerAnim]);
+  }, [isResettingPreparedRoll, resetSpinnerAnim, premium]);
 
   const tableSessionMenuItems = useMemo<SessionMenuItem[]>(() => {
     const freeModeItem: SessionMenuItem = {
@@ -1684,35 +1689,35 @@ export default function RollScreen() {
     () =>
       profiles.length > 0
         ? profiles.map(
-            (entry): SessionMenuItem => ({
-              id: entry.profile.id,
-              label: entry.profile.name,
-              description:
-                entry.profile.id === activeProfile?.id
-                  ? "Profil actuellement actif."
-                  : "Activer ce profil pour ses actions rapides.",
-              icon: entry.profile.id === activeProfile?.id ? "✦" : "◇",
-              selected: entry.profile.id === activeProfile?.id,
-              onPress: (): void => {
-                animateCockpitLayout();
+          (entry): SessionMenuItem => ({
+            id: entry.profile.id,
+            label: entry.profile.name,
+            description:
+              entry.profile.id === activeProfile?.id
+                ? "Profil actuellement actif."
+                : "Activer ce profil pour ses actions rapides.",
+            icon: entry.profile.id === activeProfile?.id ? "✦" : "◇",
+            selected: entry.profile.id === activeProfile?.id,
+            onPress: (): void => {
+              animateCockpitLayout();
 
-                setSelectedProfileId(entry.profile.id);
-                setShowProfileSessionMenu(false);
-              },
-            }),
-          )
-        : [
-            {
-              id: "no-profile",
-              label: "Aucun profil disponible",
-              description: "Active une table contenant des profils.",
-              icon: "◇",
-              disabled: true,
-              onPress: (): void => {
-                return;
-              },
+              setSelectedProfileId(entry.profile.id);
+              setShowProfileSessionMenu(false);
             },
-          ],
+          }),
+        )
+        : [
+          {
+            id: "no-profile",
+            label: "Aucun profil disponible",
+            description: "Active une table contenant des profils.",
+            icon: "◇",
+            disabled: true,
+            onPress: (): void => {
+              return;
+            },
+          },
+        ],
     [profiles, activeProfile?.id],
   );
 
@@ -1851,49 +1856,49 @@ export default function RollScreen() {
                 onEdit={
                   (preparedRoll?.source === "free" ||
                     preparedRoll?.source === "action_draft") &&
-                  hasPreparedRoll
+                    hasPreparedRoll
                     ? handleOpenPreparedEdit
                     : undefined
                 }
                 onAdjustLineQty={
                   (preparedRoll?.source === "free" ||
                     preparedRoll?.source === "action_draft") &&
-                  hasPreparedRoll
+                    hasPreparedRoll
                     ? handleAdjustPreparedDieQty
                     : undefined
                 }
                 onAdjustLineModifier={
                   (preparedRoll?.source === "free" ||
                     preparedRoll?.source === "action_draft") &&
-                  hasPreparedRoll
+                    hasPreparedRoll
                     ? handleAdjustPreparedDieModifier
                     : undefined
                 }
                 onToggleLineSign={
                   (preparedRoll?.source === "free" ||
                     preparedRoll?.source === "action_draft") &&
-                  hasPreparedRoll
+                    hasPreparedRoll
                     ? handleTogglePreparedDieSign
                     : undefined
                 }
                 onRemoveLine={
                   (preparedRoll?.source === "free" ||
                     preparedRoll?.source === "action_draft") &&
-                  hasPreparedRoll
+                    hasPreparedRoll
                     ? handleRemovePreparedDie
                     : undefined
                 }
                 onConfigureLineBehavior={
                   (preparedRoll?.source === "free" ||
                     preparedRoll?.source === "action_draft") &&
-                  hasPreparedRoll
+                    hasPreparedRoll
                     ? handleConfigurePreparedDieBehaviorFromTile
                     : undefined
                 }
                 onRollLine={
                   (preparedRoll?.source === "free" ||
                     preparedRoll?.source === "action_draft") &&
-                  hasPreparedRoll
+                    hasPreparedRoll
                     ? handleRollPreparedLine
                     : undefined
                 }
@@ -1905,14 +1910,14 @@ export default function RollScreen() {
                 onSave={
                   (preparedRoll?.source === "free" ||
                     preparedRoll?.source === "action_draft") &&
-                  hasPreparedRoll
+                    hasPreparedRoll
                     ? handleOpenPreparedSave
                     : undefined
                 }
                 onFocusLine={
                   (preparedRoll?.source === "free" ||
                     preparedRoll?.source === "action_draft") &&
-                  hasPreparedRoll
+                    hasPreparedRoll
                     ? handleFocusPreparedLine
                     : undefined
                 }
@@ -1946,49 +1951,49 @@ export default function RollScreen() {
 
       {hasActiveTable
         ? (() => {
-            const floatingAnchorRight = layout.horizontalPadding + 2;
+          const floatingAnchorRight = layout.horizontalPadding + 2;
 
-            const floatingAnchorBottom =
-              screenBottomSafePadding +
-              (isFocusedLineMode
-                ? 104
-                : hasPreparedRoll || hasResult
-                  ? 84
-                  : 118);
+          const floatingAnchorBottom =
+            screenBottomSafePadding +
+            (isFocusedLineMode
+              ? 104
+              : hasPreparedRoll || hasResult
+                ? 84
+                : 118);
 
-            const floatingTopLimit =
-              screenTopPadding + (isVerySmallScreen ? 76 : 88);
+          const floatingTopLimit =
+            screenTopPadding + (isVerySmallScreen ? 76 : 88);
 
-            const floatingBottomLimit = Math.max(layout.insets.bottom + 14, 34);
+          const floatingBottomLimit = Math.max(layout.insets.bottom + 14, 34);
 
-            return (
-              <View
-                pointerEvents="box-none"
-                style={{
-                  position: "absolute",
-                  right: floatingAnchorRight,
-                  bottom: floatingAnchorBottom,
-                  zIndex: 35,
-                  elevation: 35,
-                }}
-              >
-                <ActionRail
-                  profileName={activeProfile?.name ?? null}
-                  actions={actionRailItems}
-                  selectedActionId={
-                    preparedRoll?.source === "action"
-                      ? preparedRoll.groupId
-                      : null
-                  }
-                  onPrepareAction={handlePrepareSavedAction}
-                  floatingAnchorRight={floatingAnchorRight}
-                  floatingAnchorBottom={floatingAnchorBottom}
-                  floatingTopLimit={floatingTopLimit}
-                  floatingBottomLimit={floatingBottomLimit}
-                />
-              </View>
-            );
-          })()
+          return (
+            <View
+              pointerEvents="box-none"
+              style={{
+                position: "absolute",
+                right: floatingAnchorRight,
+                bottom: floatingAnchorBottom,
+                zIndex: 35,
+                elevation: 35,
+              }}
+            >
+              <ActionRail
+                profileName={activeProfile?.name ?? null}
+                actions={actionRailItems}
+                selectedActionId={
+                  preparedRoll?.source === "action"
+                    ? preparedRoll.groupId
+                    : null
+                }
+                onPrepareAction={handlePrepareSavedAction}
+                floatingAnchorRight={floatingAnchorRight}
+                floatingAnchorBottom={floatingAnchorBottom}
+                floatingTopLimit={floatingTopLimit}
+                floatingBottomLimit={floatingBottomLimit}
+              />
+            </View>
+          );
+        })()
         : null}
 
       <Animated.View
