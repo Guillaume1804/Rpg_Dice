@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
-  Easing,
   Pressable,
   ScrollView,
   Text,
@@ -15,6 +14,8 @@ import {
   PremiumPill,
   PremiumText,
 } from "../../../components/premium";
+
+import { runPremiumTiming } from "../../../theme/premium/premiumAnimation";
 import { usePremiumTheme } from "../../../theme/premium/usePremiumTheme";
 
 export type PremiumPreparedRollCardLine = {
@@ -666,20 +667,31 @@ function CompactPreparedLineChip({
 }) {
   const premium = usePremiumTheme();
 
-  const entryAnim = useRef(new Animated.Value(1)).current;
+  const entryAnim = useRef(new Animated.Value(highlighted ? 0 : 1)).current;
+  const wasHighlightedRef = useRef(false);
 
   useEffect(() => {
-    if (!highlighted) return;
+    if (!highlighted) {
+      wasHighlightedRef.current = false;
+      entryAnim.stopAnimation();
+      entryAnim.setValue(1);
+      return;
+    }
 
+    if (wasHighlightedRef.current) return;
+
+    wasHighlightedRef.current = true;
+    entryAnim.stopAnimation();
     entryAnim.setValue(0);
 
-    Animated.timing(entryAnim, {
-      toValue: 1,
-      duration: premium.animation.normal,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-  }, [highlighted, entryAnim, premium.animation.normal]);
+    requestAnimationFrame(() => {
+      runPremiumTiming(premium, entryAnim, {
+        toValue: 1,
+        duration: premium.animation.normal,
+        useNativeDriver: true,
+      }).start();
+    });
+  }, [highlighted, entryAnim, premium]);
 
   const entryOpacity = entryAnim.interpolate({
     inputRange: [0, 1],
@@ -932,20 +944,26 @@ function CompactOverflowChip({
   onPress: () => void;
 }) {
   const premium = usePremiumTheme();
-  const bumpAnim = useRef(new Animated.Value(1)).current;
+  const bumpAnim = useRef(new Animated.Value(hiddenCount > 0 ? 0 : 1)).current;
 
   useEffect(() => {
-    if (hiddenCount <= 0) return;
+    if (hiddenCount <= 0) {
+      bumpAnim.stopAnimation();
+      bumpAnim.setValue(1);
+      return;
+    }
 
+    bumpAnim.stopAnimation();
     bumpAnim.setValue(0);
 
-    Animated.timing(bumpAnim, {
-      toValue: 1,
-      duration: premium.animation.normal,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-  }, [animationKey, hiddenCount, bumpAnim, premium.animation.normal]);
+    requestAnimationFrame(() => {
+      runPremiumTiming(premium, bumpAnim, {
+        toValue: 1,
+        duration: premium.animation.normal,
+        useNativeDriver: true,
+      }).start();
+    });
+  }, [animationKey, hiddenCount, bumpAnim, premium]);
 
   const opacity = bumpAnim.interpolate({
     inputRange: [0, 1],
@@ -1332,9 +1350,9 @@ function PreparedLineConfigSheet({
             onPress={
               onRollLine
                 ? () => {
-                    onClose();
-                    void onRollLine(index);
-                  }
+                  onClose();
+                  void onRollLine(index);
+                }
                 : undefined
             }
           />
@@ -1487,20 +1505,40 @@ export function PremiumPreparedRollCard({
     [lines],
   );
 
-  const lineCountLabel = `${preparedLines.length} ligne${
-    preparedLines.length > 1 ? "s" : ""
-  }`;
+  const immediateHighlightedPreparedLineId = useMemo(() => {
+    const currentIds = preparedLines.map((line) => line.id);
+    const previousIds = previousPreparedLineIdsRef.current;
+    const previousCount = previousPreparedLineCountRef.current;
+
+    if (currentIds.length <= previousCount) return null;
+
+    const addedId =
+      currentIds.find((id) => !previousIds.includes(id)) ??
+      currentIds[currentIds.length - 1] ??
+      null;
+
+    if (!addedId) return null;
+
+    const addedIndex = currentIds.indexOf(addedId);
+
+    return addedIndex >= 0 && addedIndex < 2 ? addedId : null;
+  }, [preparedLines]);
+
+  const effectiveHighlightedPreparedLineId =
+    immediateHighlightedPreparedLineId ?? highlightedPreparedLineId;
+
+  const lineCountLabel = `${preparedLines.length} ligne${preparedLines.length > 1 ? "s" : ""
+    }`;
 
   useEffect(() => {
     preparedContentAnim.setValue(0);
 
-    Animated.timing(preparedContentAnim, {
+    runPremiumTiming(premium, preparedContentAnim, {
       toValue: 1,
       duration: premium.animation.normal,
-      easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
-  }, [isEmpty, premium.animation.normal, preparedContentAnim]);
+  }, [isEmpty, premium, preparedContentAnim]);
 
   useEffect(() => {
     const currentIds = preparedLines.map((line) => line.id);
@@ -1675,7 +1713,7 @@ export function PremiumPreparedRollCard({
               <CompactPreparedSummary
                 lines={preparedLines}
                 focusedLineIndex={focusedLineIndex}
-                highlightedLineId={highlightedPreparedLineId}
+                highlightedLineId={effectiveHighlightedPreparedLineId}
                 overflowAnimationKey={overflowAnimationKey}
                 onOpenLineConfig={setSelectedLineConfigIndex}
                 onAdjustLineQty={onAdjustLineQty}
