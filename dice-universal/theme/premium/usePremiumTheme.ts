@@ -3,19 +3,21 @@
 import { useMemo } from "react";
 
 import { useAppSettings } from "../../data/state/AppSettingsProvider";
-import { GRAPHITE_ASTRAL_THEME } from "./themes";
+import { getPremiumThemeById } from "./premiumThemeRegistry";
 import type { PremiumTheme } from "./premiumTypes";
 
 function createMotionAwareTheme({
+  selectedThemeId,
   animationsEnabled,
   reduceMotion,
   batterySaver,
 }: {
+  selectedThemeId: string;
   animationsEnabled: boolean;
   reduceMotion: boolean;
   batterySaver: boolean;
 }): PremiumTheme {
-  const baseTheme = GRAPHITE_ASTRAL_THEME;
+  const baseTheme = getPremiumThemeById(selectedThemeId);
 
   if (!animationsEnabled) {
     return {
@@ -108,11 +110,13 @@ export function usePremiumTheme() {
   return useMemo(
     () =>
       createMotionAwareTheme({
+        selectedThemeId: settings.selectedThemeId,
         animationsEnabled: settings.animationsEnabled,
         reduceMotion: settings.reduceMotion,
         batterySaver: settings.batterySaver,
       }),
     [
+      settings.selectedThemeId,
       settings.animationsEnabled,
       settings.reduceMotion,
       settings.batterySaver,

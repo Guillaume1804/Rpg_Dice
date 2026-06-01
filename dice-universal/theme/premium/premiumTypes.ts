@@ -1,6 +1,35 @@
 // dice-universal/theme/premium/premiumTypes.ts
 
+export type PremiumAvailability = "free" | "premium" | "locked";
+
 export type PremiumThemeId = "graphite_astral";
+
+export type PremiumDiceSkinId =
+  | "default_2d"
+  | "graphite_2d"
+  | "dragon"
+  | "arcane"
+  | "metal"
+  | "cosmic";
+
+export type PremiumThemeDefinition = {
+  id: PremiumThemeId;
+  label: string;
+  description: string;
+  availability: PremiumAvailability;
+  isDefault: boolean;
+};
+
+export type PremiumDiceSkinDefinition = {
+  id: PremiumDiceSkinId;
+  label: string;
+  description: string;
+  availability: PremiumAvailability;
+  isDefault: boolean;
+  supports2d: boolean;
+  supports3d: boolean;
+  supportsResultEffects: boolean;
+};
 
 export type PremiumRollTone =
   | "neutral"
