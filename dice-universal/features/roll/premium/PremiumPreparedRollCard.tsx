@@ -16,6 +16,8 @@ import {
 } from "../../../components/premium";
 
 import { runPremiumTiming } from "../../../theme/premium/premiumAnimation";
+import type { PremiumDiceSkinId } from "../../../theme/premium/premiumTypes";
+import { usePremiumDiceSkin } from "../../../theme/premium/usePremiumDiceSkin";
 import { usePremiumTheme } from "../../../theme/premium/usePremiumTheme";
 
 export type PremiumPreparedRollCardLine = {
@@ -48,15 +50,32 @@ type PremiumPreparedRollCardProps = {
   onFocusLine?: (index: number) => void;
 };
 
-function getDieShapeLabel(sides?: number) {
-  if (sides === 4) return "△";
-  if (sides === 6) return "□";
-  if (sides === 8) return "◇";
-  if (sides === 10) return "⬟";
-  if (sides === 12) return "⬢";
-  if (sides === 20) return "✦";
-  if (sides === 100) return "%";
-  return "◈";
+function getDieShapeLabel(
+  sides: number | undefined,
+  skinId: PremiumDiceSkinId,
+) {
+  /**
+   * Pour l’instant, tous les skins utilisent le rendu glyphes par défaut.
+   * Plus tard, ce switch permettra de remplacer les glyphes par des images,
+   * formes ou composants propres au skin actif.
+   */
+  switch (skinId) {
+    case "default_2d":
+    case "graphite_2d":
+    case "dragon":
+    case "arcane":
+    case "metal":
+    case "cosmic":
+    default:
+      if (sides === 4) return "△";
+      if (sides === 6) return "□";
+      if (sides === 8) return "◇";
+      if (sides === 10) return "⬟";
+      if (sides === 12) return "⬢";
+      if (sides === 20) return "✦";
+      if (sides === 100) return "%";
+      return "◈";
+  }
 }
 
 function getDieDisplayLabel(line: PremiumPreparedRollCardLine) {
@@ -129,12 +148,14 @@ function PreparedActionButton({
 function PreparedDieTile({
   line,
   index,
+  skinId,
   onAdjustQty,
   onOpenLineConfig,
   isFocused,
 }: {
   line: PremiumPreparedRollCardLine;
   index: number;
+  skinId: PremiumDiceSkinId;
   onAdjustQty?: (index: number, delta: number) => void;
   onOpenLineConfig?: (index: number) => void;
   isFocused?: boolean;
@@ -285,7 +306,7 @@ function PreparedDieTile({
             lineHeight: 18,
           }}
         >
-          {getDieShapeLabel(line.sides)}
+          {getDieShapeLabel(line.sides, skinId)}
         </Text>
 
         <View
@@ -653,6 +674,7 @@ function formatCompactLineLabel(line: PremiumPreparedRollCardLine) {
 function CompactPreparedLineChip({
   line,
   index,
+  skinId,
   focused,
   highlighted,
   onOpenLineConfig,
@@ -660,6 +682,7 @@ function CompactPreparedLineChip({
 }: {
   line: PremiumPreparedRollCardLine;
   index: number;
+  skinId: PremiumDiceSkinId;
   focused?: boolean;
   highlighted?: boolean;
   onOpenLineConfig?: (index: number) => void;
@@ -793,7 +816,7 @@ function CompactPreparedLineChip({
                 lineHeight: 15,
               }}
             >
-              {getDieShapeLabel(line.sides)}
+              {getDieShapeLabel(line.sides, skinId)}
             </Text>
           </View>
 
@@ -1034,6 +1057,7 @@ function CompactOverflowChip({
 
 function CompactPreparedSummary({
   lines,
+  skinId,
   focusedLineIndex,
   highlightedLineId,
   overflowAnimationKey,
@@ -1042,6 +1066,7 @@ function CompactPreparedSummary({
   onOpenAll,
 }: {
   lines: PremiumPreparedRollCardLine[];
+  skinId: PremiumDiceSkinId;
   focusedLineIndex?: number | null;
   highlightedLineId?: string | null;
   overflowAnimationKey: number;
@@ -1068,6 +1093,7 @@ function CompactPreparedSummary({
             key={`compact-line-chip-${line.id}`}
             line={line}
             index={index}
+            skinId={skinId}
             focused={focusedLineIndex === index}
             highlighted={highlightedLineId === line.id}
             onOpenLineConfig={onOpenLineConfig}
@@ -1090,6 +1116,7 @@ function CompactPreparedSummary({
 function PreparedDiceListSheet({
   visible,
   lines,
+  skinId,
   onClose,
   onAdjustLineQty,
   onOpenLineConfig,
@@ -1098,6 +1125,7 @@ function PreparedDiceListSheet({
 }: {
   visible: boolean;
   lines: PremiumPreparedRollCardLine[];
+  skinId: PremiumDiceSkinId;
   onClose: () => void;
   onAdjustLineQty?: (index: number, delta: number) => void;
   onOpenLineConfig?: (index: number) => void;
@@ -1165,6 +1193,7 @@ function PreparedDiceListSheet({
               key={`all-premium-prepared-${line.id}`}
               line={line}
               index={index}
+              skinId={skinId}
               onAdjustQty={onAdjustLineQty}
               onOpenLineConfig={(lineIndex) => {
                 onClose();
@@ -1187,6 +1216,7 @@ function PreparedLineConfigSheet({
   visible,
   line,
   index,
+  skinId,
   onClose,
   onAdjustQty,
   onAdjustModifier,
@@ -1200,6 +1230,7 @@ function PreparedLineConfigSheet({
   visible: boolean;
   line: PremiumPreparedRollCardLine | null;
   index: number | null;
+  skinId: PremiumDiceSkinId;
   onClose: () => void;
   onAdjustQty?: (index: number, delta: number) => void;
   onAdjustModifier?: (index: number, delta: number) => void;
@@ -1279,7 +1310,7 @@ function PreparedLineConfigSheet({
                   lineHeight: 28,
                 }}
               >
-                {getDieShapeLabel(line.sides)}
+                {getDieShapeLabel(line.sides, skinId)}
               </Text>
 
               <Text
@@ -1486,6 +1517,7 @@ export function PremiumPreparedRollCard({
   onFocusLine,
 }: PremiumPreparedRollCardProps) {
   const premium = usePremiumTheme();
+  const { skinId } = usePremiumDiceSkin();
   const [showAllDiceModal, setShowAllDiceModal] = useState(false);
   const [selectedLineConfigIndex, setSelectedLineConfigIndex] = useState<
     number | null
@@ -1712,6 +1744,7 @@ export function PremiumPreparedRollCard({
             <View style={{ gap: 6 }}>
               <CompactPreparedSummary
                 lines={preparedLines}
+                skinId={skinId}
                 focusedLineIndex={focusedLineIndex}
                 highlightedLineId={effectiveHighlightedPreparedLineId}
                 overflowAnimationKey={overflowAnimationKey}
@@ -1755,6 +1788,7 @@ export function PremiumPreparedRollCard({
       <PreparedDiceListSheet
         visible={showAllDiceModal}
         lines={preparedLines}
+        skinId={skinId}
         onClose={() => setShowAllDiceModal(false)}
         onAdjustLineQty={onAdjustLineQty}
         onOpenLineConfig={setSelectedLineConfigIndex}
@@ -1770,6 +1804,7 @@ export function PremiumPreparedRollCard({
             : null
         }
         index={selectedLineConfigIndex}
+        skinId={skinId}
         onClose={() => setSelectedLineConfigIndex(null)}
         onAdjustQty={onAdjustLineQty}
         onAdjustModifier={onAdjustLineModifier}
