@@ -1,26 +1,50 @@
 // dice-universal/app/(tabs)/_layout.tsx
 
 import { Tabs } from "expo-router";
-import { Text } from "react-native";
+import { Text, View } from "react-native";
 
-import { useArcaneTheme } from "../../theme/ArcaneThemeProvider";
+import { usePremiumTheme } from "../../theme/premium/usePremiumTheme";
 
-function TabIcon({ label, focused }: { label: string; focused: boolean }) {
+type TabIconProps = {
+  label: string;
+  focused: boolean;
+};
+
+function TabIcon({ label, focused }: TabIconProps) {
+  const premium = usePremiumTheme();
+
   return (
-    <Text
+    <View
       style={{
-        fontSize: 18,
-        fontWeight: "900",
-        opacity: focused ? 1 : 0.58,
+        width: 32,
+        height: 26,
+        borderRadius: premium.radius.pill,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: focused ? premium.colors.accent.soft : "transparent",
+        borderWidth: focused ? 1 : 0,
+        borderColor: focused ? premium.colors.border.accent : "transparent",
       }}
     >
-      {label}
-    </Text>
+      <Text
+        style={{
+          color: focused
+            ? premium.colors.accent.primary
+            : premium.colors.text.muted,
+          fontSize: 15,
+          fontWeight: "900",
+          lineHeight: 18,
+          opacity: focused ? 1 : 0.72,
+        }}
+      >
+        {label}
+      </Text>
+    </View>
   );
 }
 
 export default function TabsLayout() {
-  const { theme } = useArcaneTheme();
+  const premium = usePremiumTheme();
 
   return (
     <Tabs
@@ -29,22 +53,32 @@ export default function TabsLayout() {
         tabBarHideOnKeyboard: true,
 
         tabBarStyle: {
-          minHeight: 72,
+          minHeight: 74,
           paddingTop: 8,
           paddingBottom: 10,
           borderTopWidth: 1,
-          borderTopColor: theme.colors.borderSoft,
-          backgroundColor: theme.colors.backgroundElevated,
+          borderTopColor: premium.colors.border.subtle,
+          backgroundColor: premium.colors.background.secondary,
+          elevation: 0,
+          shadowColor: "#000",
+          shadowOpacity: 0.22,
+          shadowRadius: 18,
+          shadowOffset: { width: 0, height: -8 },
+        },
+
+        tabBarItemStyle: {
+          paddingVertical: 4,
         },
 
         tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: "800",
+          fontSize: 10,
+          fontWeight: "900",
           marginTop: 2,
+          letterSpacing: 0.2,
         },
 
-        tabBarActiveTintColor: theme.colors.accent,
-        tabBarInactiveTintColor: theme.colors.textSubtle,
+        tabBarActiveTintColor: premium.colors.accent.primary,
+        tabBarInactiveTintColor: premium.colors.text.muted,
       }}
     >
       <Tabs.Screen
@@ -52,7 +86,7 @@ export default function TabsLayout() {
         options={{
           title: "Jet",
           tabBarLabel: "Jet",
-          tabBarIcon: ({ focused }) => <TabIcon label="🎲" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon label="◆" focused={focused} />,
         }}
       />
 
@@ -87,7 +121,7 @@ export default function TabsLayout() {
         name="settings"
         options={{
           title: "Paramètres",
-          tabBarLabel: "Paramètres",
+          tabBarLabel: "Réglages",
           tabBarIcon: ({ focused }) => <TabIcon label="⚙" focused={focused} />,
         }}
       />
