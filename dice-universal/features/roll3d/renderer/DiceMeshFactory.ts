@@ -118,23 +118,5 @@ export function createDiceMesh({
     const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
     group.add(edges);
 
-    /**
-     * Petit halo sous le dé.
-     * Ce n’est pas une ombre physique, mais un repère visuel premium léger.
-     */
-    const haloGeometry = new THREE.CircleGeometry(0.82, 32);
-    const haloMaterial = new THREE.MeshBasicMaterial({
-        color: colors.edge,
-        transparent: true,
-        opacity: 0.1,
-        side: THREE.DoubleSide,
-    });
-
-    const halo = new THREE.Mesh(haloGeometry, haloMaterial);
-    halo.rotation.x = -Math.PI / 2;
-    halo.position.y = -0.66;
-
-    group.add(halo);
-
     return group;
 }
