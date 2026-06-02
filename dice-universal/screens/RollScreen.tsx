@@ -1772,7 +1772,7 @@ export default function RollScreen() {
           elevation: 50,
         }}
       >
-        <DiceTable3D height={320} />
+        <DiceTable3D height={320} previewSides={20} />
       </View>
       {/* FIN AJOUT TEMPORAIRE */}
 

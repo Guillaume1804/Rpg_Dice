@@ -6,11 +6,18 @@ import { GLView, type ExpoWebGLRenderingContext } from "expo-gl";
 import { Renderer } from "expo-three";
 import * as THREE from "three";
 
+import { createDiceMesh } from "../renderer/DiceMeshFactory";
+import type { Roll3DDieSides } from "../types";
+
 type DiceTable3DProps = {
     height?: number;
+    previewSides?: Roll3DDieSides;
 };
 
-export function DiceTable3D({ height = 320 }: DiceTable3DProps) {
+export function DiceTable3D({
+    height = 320,
+    previewSides = 20,
+}: DiceTable3DProps) {
     const animationFrameRef = useRef<number | null>(null);
 
     useEffect(() => {
@@ -64,28 +71,13 @@ export function DiceTable3D({ height = 320 }: DiceTable3DProps) {
         table.position.y = -1.05;
         scene.add(table);
 
-        const diceGeometry = new THREE.BoxGeometry(1.2, 1.2, 1.2);
-        const diceMaterial = new THREE.MeshStandardMaterial({
-            color: "#101321",
-            roughness: 0.48,
-            metalness: 0.18,
-            emissive: "#241A05",
-            emissiveIntensity: 0.16,
+        const dice = createDiceMesh({
+            sides: previewSides,
+            skinId: "graphite_default",
         });
 
-        const dice = new THREE.Mesh(diceGeometry, diceMaterial);
         dice.position.set(0, 0.05, 0);
         scene.add(dice);
-
-        const edgeGeometry = new THREE.EdgesGeometry(diceGeometry);
-        const edgeMaterial = new THREE.LineBasicMaterial({
-            color: "#E8C878",
-            transparent: true,
-            opacity: 0.72,
-        });
-
-        const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
-        dice.add(edges);
 
         const clock = new THREE.Clock();
 
