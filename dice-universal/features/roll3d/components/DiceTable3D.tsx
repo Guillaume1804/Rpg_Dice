@@ -10,164 +10,207 @@ import { createDiceMesh } from "../renderer/DiceMeshFactory";
 import type { Roll3DDieSides } from "../types";
 
 type DiceTable3DProps = {
-    height?: number;
-    previewSides?: Roll3DDieSides;
+  height?: number;
+  previewSides?: Roll3DDieSides;
 };
 
 function disposeObject3D(object: THREE.Object3D) {
-    object.traverse((child) => {
-        const mesh = child as THREE.Mesh;
+  object.traverse((child) => {
+    const mesh = child as THREE.Mesh;
 
-        if (mesh.geometry) {
-            mesh.geometry.dispose();
-        }
+    if (mesh.geometry) {
+      mesh.geometry.dispose();
+    }
 
-        const material = mesh.material;
+    const material = mesh.material;
 
-        if (Array.isArray(material)) {
-            material.forEach((item) => item.dispose());
-        } else if (material) {
-            material.dispose();
-        }
-    });
+    if (Array.isArray(material)) {
+      material.forEach((item) => item.dispose());
+    } else if (material) {
+      material.dispose();
+    }
+  });
+}
+
+const DICE_SETTLED_Y = 0.18;
+const DICE_DROP_START_Y = 3.4;
+const DICE_DROP_DURATION_MS = 620;
+
+function easeOutBack(t: number) {
+  const c1 = 1.70158;
+  const c3 = c1 + 1;
+
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
 }
 
 export function DiceTable3D({
-    height = 320,
-    previewSides = 20,
+  height = 320,
+  previewSides = 20,
 }: DiceTable3DProps) {
-    const animationFrameRef = useRef<number | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
 
-    const sceneRef = useRef<THREE.Scene | null>(null);
-    const diceRef = useRef<THREE.Group | null>(null);
-    const currentPreviewSidesRef = useRef<Roll3DDieSides | null>(null);
+  const sceneRef = useRef<THREE.Scene | null>(null);
+  const diceRef = useRef<THREE.Group | null>(null);
+  const currentPreviewSidesRef = useRef<Roll3DDieSides | null>(null);
 
-    useEffect(() => {
-        return () => {
-            if (animationFrameRef.current != null) {
-                cancelAnimationFrame(animationFrameRef.current);
-            }
-        };
-    }, []);
+  const dropStartedAtRef = useRef<number | null>(null);
 
-    useEffect(() => {
-        const scene = sceneRef.current;
+  useEffect(() => {
+    return () => {
+      if (animationFrameRef.current != null) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, []);
 
-        if (!scene) return;
-        if (currentPreviewSidesRef.current === previewSides) return;
+  useEffect(() => {
+    const scene = sceneRef.current;
 
-        if (diceRef.current) {
-            scene.remove(diceRef.current);
-            disposeObject3D(diceRef.current);
-        }
+    if (!scene) return;
+    if (currentPreviewSidesRef.current === previewSides) return;
 
-        const nextDice = createDiceMesh({
-            sides: previewSides,
-            skinId: "graphite_default",
-        });
-
-        nextDice.position.set(0, 0.05, 0);
-
-        scene.add(nextDice);
-
-        diceRef.current = nextDice;
-        currentPreviewSidesRef.current = previewSides;
-    }, [previewSides]);
-
-    function handleContextCreate(gl: ExpoWebGLRenderingContext) {
-        const { drawingBufferWidth: width, drawingBufferHeight: bufferHeight } = gl;
-
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color("#060812");
-
-        sceneRef.current = scene;
-
-        const camera = new THREE.PerspectiveCamera(
-            45,
-            width / bufferHeight,
-            0.1,
-            100,
-        );
-
-        camera.position.set(0, 3.2, 6.2);
-        camera.lookAt(0, 0, 0);
-
-        const renderer = new Renderer({ gl });
-        renderer.setSize(width, bufferHeight);
-        renderer.setClearColor("#060812");
-
-        const ambientLight = new THREE.AmbientLight("#E8C878", 0.42);
-        scene.add(ambientLight);
-
-        const keyLight = new THREE.DirectionalLight("#FFFFFF", 1.35);
-        keyLight.position.set(3, 5, 4);
-        scene.add(keyLight);
-
-        const rimLight = new THREE.DirectionalLight("#7C5CFF", 0.85);
-        rimLight.position.set(-4, 2.5, -3);
-        scene.add(rimLight);
-
-        const tableGeometry = new THREE.PlaneGeometry(8, 8);
-        const tableMaterial = new THREE.MeshStandardMaterial({
-            color: "#0B0E1A",
-            roughness: 0.86,
-            metalness: 0.08,
-        });
-
-        const table = new THREE.Mesh(tableGeometry, tableMaterial);
-        table.rotation.x = -Math.PI / 2;
-        table.position.y = -1.05;
-        scene.add(table);
-
-        const dice = createDiceMesh({
-            sides: previewSides,
-            skinId: "graphite_default",
-        });
-
-        dice.position.set(0, 0.05, 0);
-        scene.add(dice);
-
-        diceRef.current = dice;
-        currentPreviewSidesRef.current = previewSides;
-
-        const clock = new THREE.Clock();
-
-        const render = () => {
-            const elapsed = clock.getElapsedTime();
-
-            const currentDice = diceRef.current;
-
-            if (currentDice) {
-                currentDice.rotation.x = elapsed * 0.42;
-                currentDice.rotation.y = elapsed * 0.62;
-                currentDice.rotation.z = Math.sin(elapsed * 0.7) * 0.08;
-            }
-
-            renderer.render(scene, camera);
-            gl.endFrameEXP();
-
-            animationFrameRef.current = requestAnimationFrame(render);
-        };
-
-        render();
+    if (diceRef.current) {
+      scene.remove(diceRef.current);
+      disposeObject3D(diceRef.current);
     }
 
-    return (
-        <View
-            style={{
-                height,
-                width: "100%",
-                borderRadius: 28,
-                overflow: "hidden",
-                backgroundColor: "#060812",
-            }}
-        >
-            <GLView
-                style={{
-                    flex: 1,
-                }}
-                onContextCreate={handleContextCreate}
-            />
-        </View>
+    const nextDice = createDiceMesh({
+      sides: previewSides,
+      skinId: "graphite_default",
+    });
+
+    nextDice.position.set(0, DICE_DROP_START_Y, 0);
+    nextDice.rotation.set(
+      Math.random() * Math.PI,
+      Math.random() * Math.PI,
+      Math.random() * Math.PI,
     );
+    nextDice.scale.setScalar(0.92);
+
+    scene.add(nextDice);
+
+    diceRef.current = nextDice;
+    currentPreviewSidesRef.current = previewSides;
+    dropStartedAtRef.current = performance.now();
+  }, [previewSides]);
+
+  function handleContextCreate(gl: ExpoWebGLRenderingContext) {
+    const { drawingBufferWidth: width, drawingBufferHeight: bufferHeight } = gl;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color("#060812");
+
+    sceneRef.current = scene;
+
+    const camera = new THREE.PerspectiveCamera(
+      45,
+      width / bufferHeight,
+      0.1,
+      100,
+    );
+
+    camera.position.set(0, 3.2, 6.2);
+    camera.lookAt(0, 0, 0);
+
+    const renderer = new Renderer({ gl });
+    renderer.setSize(width, bufferHeight);
+    renderer.setClearColor("#060812");
+
+    const ambientLight = new THREE.AmbientLight("#E8C878", 0.42);
+    scene.add(ambientLight);
+
+    const keyLight = new THREE.DirectionalLight("#FFFFFF", 1.35);
+    keyLight.position.set(3, 5, 4);
+    scene.add(keyLight);
+
+    const rimLight = new THREE.DirectionalLight("#7C5CFF", 0.85);
+    rimLight.position.set(-4, 2.5, -3);
+    scene.add(rimLight);
+
+    const tableGeometry = new THREE.PlaneGeometry(8, 8);
+    const tableMaterial = new THREE.MeshStandardMaterial({
+      color: "#0B0E1A",
+      roughness: 0.86,
+      metalness: 0.08,
+    });
+
+    const table = new THREE.Mesh(tableGeometry, tableMaterial);
+    table.rotation.x = -Math.PI / 2;
+    table.position.y = -1.05;
+    scene.add(table);
+
+    const dice = createDiceMesh({
+      sides: previewSides,
+      skinId: "graphite_default",
+    });
+
+    dice.position.set(0, DICE_SETTLED_Y, 0);
+    scene.add(dice);
+
+    diceRef.current = dice;
+    currentPreviewSidesRef.current = previewSides;
+
+    const clock = new THREE.Clock();
+
+    const render = () => {
+      const elapsed = clock.getElapsedTime();
+
+      const currentDice = diceRef.current;
+
+      if (currentDice) {
+        const dropStartedAt = dropStartedAtRef.current;
+
+        if (dropStartedAt != null) {
+          const elapsedDrop = performance.now() - dropStartedAt;
+          const progress = Math.min(1, elapsedDrop / DICE_DROP_DURATION_MS);
+          const eased = easeOutBack(progress);
+
+          currentDice.position.y =
+            DICE_DROP_START_Y + (DICE_SETTLED_Y - DICE_DROP_START_Y) * eased;
+
+          currentDice.rotation.x += 0.13 * (1 - progress);
+          currentDice.rotation.y += 0.18 * (1 - progress);
+          currentDice.rotation.z += 0.11 * (1 - progress);
+
+          currentDice.scale.setScalar(0.92 + 0.08 * progress);
+
+          if (progress >= 1) {
+            currentDice.position.y = DICE_SETTLED_Y;
+            currentDice.scale.setScalar(1);
+            dropStartedAtRef.current = null;
+          }
+        } else {
+          currentDice.rotation.x = elapsed * 0.42;
+          currentDice.rotation.y = elapsed * 0.62;
+          currentDice.rotation.z = Math.sin(elapsed * 0.7) * 0.08;
+        }
+      }
+
+      renderer.render(scene, camera);
+      gl.endFrameEXP();
+
+      animationFrameRef.current = requestAnimationFrame(render);
+    };
+
+    render();
+  }
+
+  return (
+    <View
+      style={{
+        height,
+        width: "100%",
+        borderRadius: 28,
+        overflow: "hidden",
+        backgroundColor: "#060812",
+      }}
+    >
+      <GLView
+        style={{
+          flex: 1,
+        }}
+        onContextCreate={handleContextCreate}
+      />
+    </View>
+  );
 }
