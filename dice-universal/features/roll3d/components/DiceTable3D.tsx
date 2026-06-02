@@ -14,11 +14,33 @@ type DiceTable3DProps = {
     previewSides?: Roll3DDieSides;
 };
 
+function disposeObject3D(object: THREE.Object3D) {
+    object.traverse((child) => {
+        const mesh = child as THREE.Mesh;
+
+        if (mesh.geometry) {
+            mesh.geometry.dispose();
+        }
+
+        const material = mesh.material;
+
+        if (Array.isArray(material)) {
+            material.forEach((item) => item.dispose());
+        } else if (material) {
+            material.dispose();
+        }
+    });
+}
+
 export function DiceTable3D({
     height = 320,
     previewSides = 20,
 }: DiceTable3DProps) {
     const animationFrameRef = useRef<number | null>(null);
+
+    const sceneRef = useRef<THREE.Scene | null>(null);
+    const diceRef = useRef<THREE.Group | null>(null);
+    const currentPreviewSidesRef = useRef<Roll3DDieSides | null>(null);
 
     useEffect(() => {
         return () => {
@@ -28,11 +50,37 @@ export function DiceTable3D({
         };
     }, []);
 
+    useEffect(() => {
+        const scene = sceneRef.current;
+
+        if (!scene) return;
+        if (currentPreviewSidesRef.current === previewSides) return;
+
+        if (diceRef.current) {
+            scene.remove(diceRef.current);
+            disposeObject3D(diceRef.current);
+        }
+
+        const nextDice = createDiceMesh({
+            sides: previewSides,
+            skinId: "graphite_default",
+        });
+
+        nextDice.position.set(0, 0.05, 0);
+
+        scene.add(nextDice);
+
+        diceRef.current = nextDice;
+        currentPreviewSidesRef.current = previewSides;
+    }, [previewSides]);
+
     function handleContextCreate(gl: ExpoWebGLRenderingContext) {
         const { drawingBufferWidth: width, drawingBufferHeight: bufferHeight } = gl;
 
         const scene = new THREE.Scene();
         scene.background = new THREE.Color("#060812");
+
+        sceneRef.current = scene;
 
         const camera = new THREE.PerspectiveCamera(
             45,
@@ -79,14 +127,21 @@ export function DiceTable3D({
         dice.position.set(0, 0.05, 0);
         scene.add(dice);
 
+        diceRef.current = dice;
+        currentPreviewSidesRef.current = previewSides;
+
         const clock = new THREE.Clock();
 
         const render = () => {
             const elapsed = clock.getElapsedTime();
 
-            dice.rotation.x = elapsed * 0.42;
-            dice.rotation.y = elapsed * 0.62;
-            dice.rotation.z = Math.sin(elapsed * 0.7) * 0.08;
+            const currentDice = diceRef.current;
+
+            if (currentDice) {
+                currentDice.rotation.x = elapsed * 0.42;
+                currentDice.rotation.y = elapsed * 0.62;
+                currentDice.rotation.z = Math.sin(elapsed * 0.7) * 0.08;
+            }
 
             renderer.render(scene, camera);
             gl.endFrameEXP();

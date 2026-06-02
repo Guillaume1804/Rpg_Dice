@@ -84,7 +84,11 @@ import { usePremiumTheme } from "../theme/premium/usePremiumTheme";
 
 
 // PROVISOIRE POUR TESTER ECRAN DE LANCER 
-import { DiceTable3D } from "../features/roll3d";
+import {
+  DiceTable3D,
+  Roll3DDiceSelector,
+  type Roll3DDieSides,
+} from "../features/roll3d";
 // FIN AJOUT IMPORT PROVISOIRE 
 
 function findStandardQuickGroup(groups: DraftGroupSummary[]) {
@@ -192,6 +196,11 @@ export default function RollScreen() {
   const layout = useArcaneLayout();
   const { theme, styles } = useArcaneTheme();
   const premium = usePremiumTheme();
+
+  //PROVISOIRE
+  const [roll3DPreviewSides, setRoll3DPreviewSides] =
+    useState<Roll3DDieSides>(20);
+  // FIN PROVISOIRE
 
   const { height: windowHeight } = useWindowDimensions();
 
@@ -1761,7 +1770,7 @@ export default function RollScreen() {
     >
       <PremiumRollScreenBackground />
 
-      {/* AJOUT TEMPORAIRE POUR TEST ECRAN LANCER */}
+      {/* AJOUT TEMPORAIRE POUR TEST TABLE 3D */}
       <View
         style={{
           position: "absolute",
@@ -1770,9 +1779,15 @@ export default function RollScreen() {
           right: 16,
           zIndex: 50,
           elevation: 50,
+          gap: 10,
         }}
       >
-        <DiceTable3D height={320} previewSides={20} />
+        <DiceTable3D height={300} previewSides={roll3DPreviewSides} />
+
+        <Roll3DDiceSelector
+          selectedSides={roll3DPreviewSides}
+          onSelectSides={setRoll3DPreviewSides}
+        />
       </View>
       {/* FIN AJOUT TEMPORAIRE */}
 
