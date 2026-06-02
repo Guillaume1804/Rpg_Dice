@@ -82,6 +82,11 @@ import {
 import { runPremiumTiming } from "../theme/premium/premiumAnimation";
 import { usePremiumTheme } from "../theme/premium/usePremiumTheme";
 
+
+// PROVISOIRE POUR TESTER ECRAN DE LANCER 
+import { DiceTable3D } from "../features/roll3d";
+// FIN AJOUT IMPORT PROVISOIRE 
+
 function findStandardQuickGroup(groups: DraftGroupSummary[]) {
   return (
     groups.find(
@@ -1755,6 +1760,21 @@ export default function RollScreen() {
       }}
     >
       <PremiumRollScreenBackground />
+
+      {/* AJOUT TEMPORAIRE POUR TEST ECRAN LANCER */}
+      <View
+        style={{
+          position: "absolute",
+          top: 90,
+          left: 16,
+          right: 16,
+          zIndex: 50,
+          elevation: 50,
+        }}
+      >
+        <DiceTable3D height={320} />
+      </View>
+      {/* FIN AJOUT TEMPORAIRE */}
 
       <View
         style={{
