@@ -16,3 +16,5 @@ export type Roll3DDieSkinId =
     | "arcane"
     | "metal"
     | "cosmic";
+
+export type Roll3DD100DisplayMode = "percentile_pair" | "single_oracle";
