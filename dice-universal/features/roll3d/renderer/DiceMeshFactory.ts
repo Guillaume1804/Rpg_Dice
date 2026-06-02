@@ -70,7 +70,7 @@ function getSkinColors(skinId: Roll3DDieSkinId): DiceSkinColors {
  * Ce n’est pas encore le modèle final gravé/chiffré,
  * mais c’est une base correcte pour le renderer 3D V1.
  */
-function createD10Geometry(radius = 0.88, height = 1.58): THREE.BufferGeometry {
+function createD10Geometry(radius = 0.92, height = 1.72): THREE.BufferGeometry {
     const vertices: number[] = [];
     const indices: number[] = [];
 
@@ -80,56 +80,41 @@ function createD10Geometry(radius = 0.88, height = 1.58): THREE.BufferGeometry {
     vertices.push(0, height / 2, 0);
     vertices.push(0, -height / 2, 0);
 
-    const upperRingStart = 2;
-    const lowerRingStart = 7;
+    const ringStart = 2;
+    const ringY = 0;
+    const ringCount = 10;
 
-    /**
-     * Anneau supérieur : 5 points.
-     */
-    for (let i = 0; i < 5; i++) {
-        const angle = (i / 5) * Math.PI * 2;
+    for (let i = 0; i < ringCount; i++) {
+        const angle = (i / ringCount) * Math.PI * 2 + Math.PI / 10;
+        const yOffset = i % 2 === 0 ? height * 0.12 : -height * 0.12;
 
         vertices.push(
             Math.cos(angle) * radius,
-            height * 0.16,
+            ringY + yOffset,
             Math.sin(angle) * radius,
         );
     }
 
     /**
-     * Anneau inférieur : 5 points décalés d’un demi-segment.
-     * C’est ce décalage qui donne l’effet “d10” plutôt qu’une simple bipyramide.
+     * D10 / pentagonal trapezohedron :
+     * - 5 faces autour de la pointe haute
+     * - 5 faces autour de la pointe basse
+     *
+     * Chaque face réelle est un losange/kite.
+     * On la triangule pour Three.js, mais on évitera ensuite
+     * d’afficher les diagonales internes comme des arêtes.
      */
-    for (let i = 0; i < 5; i++) {
-        const angle = ((i + 0.5) / 5) * Math.PI * 2;
+    for (let i = 0; i < ringCount; i += 2) {
+        const a = ringStart + i;
+        const b = ringStart + ((i + 1) % ringCount);
+        const c = ringStart + ((i + 2) % ringCount);
+        const previous = ringStart + ((i + ringCount - 1) % ringCount);
 
-        vertices.push(
-            Math.cos(angle) * radius,
-            -height * 0.16,
-            Math.sin(angle) * radius,
-        );
-    }
+        indices.push(topIndex, a, b);
+        indices.push(topIndex, b, c);
 
-    /**
-     * Chaque face “kite” du d10 est triangulée.
-     * EdgesGeometry masquera normalement les diagonales internes
-     * si les triangles sont coplanaires ou quasi-coplanaires.
-     */
-    for (let i = 0; i < 5; i++) {
-        const next = (i + 1) % 5;
-        const previous = (i + 4) % 5;
-
-        const upperA = upperRingStart + i;
-        const upperB = upperRingStart + next;
-
-        const lowerA = lowerRingStart + i;
-        const lowerPrevious = lowerRingStart + previous;
-
-        indices.push(topIndex, upperA, lowerA);
-        indices.push(topIndex, lowerA, upperB);
-
-        indices.push(bottomIndex, lowerPrevious, upperA);
-        indices.push(bottomIndex, upperA, lowerA);
+        indices.push(bottomIndex, previous, a);
+        indices.push(bottomIndex, a, b);
     }
 
     const geometry = new THREE.BufferGeometry();
@@ -141,8 +126,73 @@ function createD10Geometry(radius = 0.88, height = 1.58): THREE.BufferGeometry {
 
     geometry.setIndex(indices);
     geometry.computeVertexNormals();
+    geometry.normalizeNormals();
 
     return geometry;
+}
+
+function createD10EdgeLines(
+    radius = 0.92,
+    height = 1.72,
+    color = "#E8C878",
+): THREE.LineSegments {
+    const points: number[] = [];
+
+    const top = new THREE.Vector3(0, height / 2, 0);
+    const bottom = new THREE.Vector3(0, -height / 2, 0);
+
+    const ring: THREE.Vector3[] = [];
+
+    for (let i = 0; i < 10; i++) {
+        const angle = (i / 10) * Math.PI * 2 + Math.PI / 10;
+        const yOffset = i % 2 === 0 ? height * 0.12 : -height * 0.12;
+
+        ring.push(
+            new THREE.Vector3(
+                Math.cos(angle) * radius,
+                yOffset,
+                Math.sin(angle) * radius,
+            ),
+        );
+    }
+
+    function addLine(a: THREE.Vector3, b: THREE.Vector3) {
+        points.push(a.x, a.y, a.z);
+        points.push(b.x, b.y, b.z);
+    }
+
+    for (let i = 0; i < 10; i++) {
+        const current = ring[i];
+        const next = ring[(i + 1) % 10];
+
+        addLine(current, next);
+
+        if (i % 2 === 0) {
+            addLine(top, current);
+            addLine(top, next);
+        } else {
+            addLine(bottom, current);
+            addLine(bottom, next);
+        }
+    }
+
+    const geometry = new THREE.BufferGeometry();
+
+    geometry.setAttribute(
+        "position",
+        new THREE.Float32BufferAttribute(points, 3),
+    );
+
+    const material = new THREE.LineBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0.72,
+    });
+
+    const lines = new THREE.LineSegments(geometry, material);
+    lines.name = "d10-clean-edges";
+
+    return lines;
 }
 
 function createGeometryForSides(sides: Exclude<Roll3DDieSides, 100>) {
@@ -197,17 +247,23 @@ function createSingleDiceMesh(params: {
 
     group.add(body);
 
-    const edgeGeometry = new THREE.EdgesGeometry(geometry);
-    const edgeMaterial = new THREE.LineBasicMaterial({
-        color: colors.edge,
-        transparent: true,
-        opacity: 0.74,
-    });
+    if (sides === 10) {
+        const edges = createD10EdgeLines(0.92, 1.72, colors.edge);
+        edges.name = `d${sides}-edges`;
+        group.add(edges);
+    } else {
+        const edgeGeometry = new THREE.EdgesGeometry(geometry);
+        const edgeMaterial = new THREE.LineBasicMaterial({
+            color: colors.edge,
+            transparent: true,
+            opacity: 0.74,
+        });
 
-    const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
-    edges.name = `d${sides}-edges`;
+        const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
+        edges.name = `d${sides}-edges`;
 
-    group.add(edges);
+        group.add(edges);
+    }
 
     return group;
 }
@@ -277,17 +333,19 @@ function createPercentileD100Group(params: {
      * - gauche : dizaines, futur marquage 00-90
      * - droite : unités, futur marquage 0-9
      */
-    tensDie.position.set(-0.72, 0, 0);
-    unitsDie.position.set(0.72, 0, 0);
+    tensDie.position.set(-0.78, 0.18, 0);
+    unitsDie.position.set(0.78, 0.18, 0);
 
-    tensDie.rotation.set(0.16, -0.22, -0.18);
-    unitsDie.rotation.set(-0.12, 0.24, 0.18);
+    tensDie.rotation.set(0.12, -0.26, -0.12);
+    unitsDie.rotation.set(-0.1, 0.26, 0.12);
 
-    tensDie.scale.setScalar(0.82);
-    unitsDie.scale.setScalar(0.82);
+    tensDie.scale.setScalar(0.74);
+    unitsDie.scale.setScalar(0.74);
 
     group.add(tensDie);
     group.add(unitsDie);
+
+    group.position.y = 0.12;
 
     return group;
 }
