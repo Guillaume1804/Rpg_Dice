@@ -82,13 +82,8 @@ import {
 import { runPremiumTiming } from "../theme/premium/premiumAnimation";
 import { usePremiumTheme } from "../theme/premium/usePremiumTheme";
 
-// PROVISOIRE POUR TESTER ECRAN DE LANCER
-import {
-  DiceTable3D,
-  Roll3DDiceSelector,
-  type Roll3DDieInstance,
-  type Roll3DDieSides,
-} from "../features/roll3d";
+// PROVISOIRE POUR TESTER NOUVEL ECRAN ROLL3D
+import { Roll3DLauncherSurface } from "../features/roll3d";
 // FIN AJOUT IMPORT PROVISOIRE
 
 function findStandardQuickGroup(groups: DraftGroupSummary[]) {
@@ -196,40 +191,6 @@ export default function RollScreen() {
   const layout = useArcaneLayout();
   const { theme, styles } = useArcaneTheme();
   const premium = usePremiumTheme();
-
-  // PROVISOIRE TABLE 3D
-  const ROLL_3D_MAX_DICE = 12;
-
-  const [roll3DSelectedSides, setRoll3DSelectedSides] =
-    useState<Roll3DDieSides>(20);
-
-  const [roll3DDiceInstances, setRoll3DDiceInstances] = useState<
-    Roll3DDieInstance[]
-  >([]);
-
-  function handleAddRoll3DDie(sides: Roll3DDieSides) {
-    setRoll3DSelectedSides(sides);
-
-    setRoll3DDiceInstances((current) => {
-      if (current.length >= ROLL_3D_MAX_DICE) {
-        return current;
-      }
-
-      return [
-        ...current,
-        {
-          id: `roll-3d-die-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-          sides,
-          createdAt: Date.now(),
-        },
-      ];
-    });
-  }
-
-  function handleClearRoll3DDice() {
-    setRoll3DDiceInstances([]);
-  }
-  // FIN PROVISOIRE TABLE 3D
 
   const { height: windowHeight } = useWindowDimensions();
 
@@ -1799,7 +1760,7 @@ export default function RollScreen() {
     >
       <PremiumRollScreenBackground />
 
-      {/* AJOUT TEMPORAIRE POUR TEST TABLE 3D */}
+      {/* AJOUT TEMPORAIRE POUR TEST NOUVEL ECRAN ROLL3D */}
       <View
         style={{
           position: "absolute",
@@ -1808,18 +1769,9 @@ export default function RollScreen() {
           right: 16,
           zIndex: 50,
           elevation: 50,
-          gap: 10,
         }}
       >
-        <DiceTable3D height={300} diceInstances={roll3DDiceInstances} />
-
-        <Roll3DDiceSelector
-          selectedSides={roll3DSelectedSides}
-          diceCount={roll3DDiceInstances.length}
-          maxDice={ROLL_3D_MAX_DICE}
-          onSelectSides={handleAddRoll3DDie}
-          onClearDice={handleClearRoll3DDice}
-        />
+        <Roll3DLauncherSurface height={300} maxDice={12} />
       </View>
       {/* FIN AJOUT TEMPORAIRE */}
 
