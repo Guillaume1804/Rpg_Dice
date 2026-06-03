@@ -82,10 +82,6 @@ import {
 import { runPremiumTiming } from "../theme/premium/premiumAnimation";
 import { usePremiumTheme } from "../theme/premium/usePremiumTheme";
 
-// PROVISOIRE POUR TESTER NOUVEL ECRAN ROLL3D
-import { Roll3DLauncherSurface } from "../features/roll3d";
-// FIN AJOUT IMPORT PROVISOIRE
-
 function findStandardQuickGroup(groups: DraftGroupSummary[]) {
   return (
     groups.find(
@@ -1759,21 +1755,6 @@ export default function RollScreen() {
       }}
     >
       <PremiumRollScreenBackground />
-
-      {/* AJOUT TEMPORAIRE POUR TEST NOUVEL ECRAN ROLL3D */}
-      <View
-        style={{
-          position: "absolute",
-          top: 90,
-          left: 16,
-          right: 16,
-          zIndex: 50,
-          elevation: 50,
-        }}
-      >
-        <Roll3DLauncherSurface height={300} maxDice={12} />
-      </View>
-      {/* FIN AJOUT TEMPORAIRE */}
 
       <View
         style={{

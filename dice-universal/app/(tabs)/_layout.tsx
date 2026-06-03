@@ -1,7 +1,7 @@
 // dice-universal/app/(tabs)/_layout.tsx
 
-import { Tabs } from "expo-router";
-import { Text, View } from "react-native";
+import { Tabs, router, usePathname, type Href } from "expo-router";
+import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { usePremiumTheme } from "../../theme/premium/usePremiumTheme";
@@ -44,12 +44,91 @@ function TabIcon({ label, focused }: TabIconProps) {
   );
 }
 
+function CentralRollToggleButton() {
+  const premium = usePremiumTheme();
+  const pathname = usePathname();
+
+  const isRoll3D = pathname.includes("/roll");
+  const isPrepare = pathname.includes("/prepare");
+
+  const label = isRoll3D ? "Préparer" : "Lancer";
+  const icon = isRoll3D ? "⚙" : "◆";
+  const target = (isRoll3D ? "/prepare" : "/roll") as Href;
+
+  const focused = isRoll3D || isPrepare;
+
+  return (
+    <Pressable
+      onPress={() => router.replace(target)}
+      style={({ pressed }) => ({
+        alignItems: "center",
+        justifyContent: "center",
+        minWidth: 74,
+        transform: [
+          {
+            translateY: -10,
+          },
+          {
+            scale: pressed ? premium.animation.pressScale : 1,
+          },
+        ],
+        opacity: pressed ? 0.86 : 1,
+      })}
+    >
+      <View
+        style={{
+          width: 58,
+          height: 58,
+          borderRadius: 999,
+          alignItems: "center",
+          justifyContent: "center",
+          borderWidth: 1,
+          borderColor: focused
+            ? premium.colors.border.accent
+            : premium.colors.border.subtle,
+          backgroundColor: premium.colors.background.primary,
+          shadowColor: "#000",
+          shadowOpacity: 0.34,
+          shadowRadius: 18,
+          shadowOffset: { width: 0, height: 8 },
+          elevation: 12,
+        }}
+      >
+        <Text
+          style={{
+            color: premium.colors.accent.primary,
+            fontSize: 22,
+            fontWeight: "900",
+            lineHeight: 26,
+          }}
+        >
+          {icon}
+        </Text>
+      </View>
+
+      <Text
+        style={{
+          color: focused
+            ? premium.colors.accent.primary
+            : premium.colors.text.muted,
+          fontSize: 10,
+          fontWeight: "900",
+          marginTop: 3,
+          letterSpacing: 0.2,
+        }}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
 export default function TabsLayout() {
   const premium = usePremiumTheme();
   const insets = useSafeAreaInsets();
 
   const bottomInset = Math.max(insets.bottom, 10);
-  const tabBarHeight = 64 + bottomInset;
+  const tabBarHeight = 72 + bottomInset;
 
   return (
     <Tabs
@@ -90,9 +169,8 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="roll"
         options={{
-          title: "Jet",
-          tabBarLabel: "Jet",
-          tabBarIcon: ({ focused }) => <TabIcon label="◆" focused={focused} />,
+          href: null,
+          title: "Lancer",
         }}
       />
 
@@ -111,6 +189,15 @@ export default function TabsLayout() {
           title: "Historique",
           tabBarLabel: "Historique",
           tabBarIcon: ({ focused }) => <TabIcon label="↺" focused={focused} />,
+        }}
+      />
+
+      <Tabs.Screen
+        name="prepare"
+        options={{
+          title: "Préparer",
+          tabBarLabel: "",
+          tabBarButton: () => <CentralRollToggleButton />,
         }}
       />
 
