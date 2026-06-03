@@ -99,8 +99,8 @@ export function Roll3DResultPanel({ result }: Roll3DResultPanelProps) {
                 }}
               >
                 {result.modifierTotal !== 0
-                  ? "Total avec modificateurs"
-                  : "Total simple"}
+                  ? "Moteur officiel · modificateurs"
+                  : "Moteur officiel · somme"}
               </Text>
             </View>
 

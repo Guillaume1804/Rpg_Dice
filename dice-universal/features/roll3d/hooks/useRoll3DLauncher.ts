@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 
 import type { Roll3DDraft, Roll3DDieSides, Roll3DRollSummary } from "../types";
-import { buildRoll3DSummary } from "../logic/roll3DRandom";
+import { buildOfficialRoll3DSummary } from "../logic/roll3DEngine";
 import {
   addDieToRoll3DDraft,
   clearRoll3DDraft,
@@ -61,7 +61,7 @@ export function useRoll3DLauncher({
   const rollDice = useCallback(() => {
     if (diceInstances.length === 0) return;
 
-    setLatestResult(buildRoll3DSummary(diceInstances));
+    setLatestResult(buildOfficialRoll3DSummary(diceInstances));
     setRollRequestId((current) => current + 1);
   }, [diceInstances]);
 

@@ -1,5 +1,7 @@
 // dice-universal/features/roll3d/types.ts
 
+import type { GroupRollResult } from "../../core/roll/roll";
+
 export type Roll3DDieSides = 4 | 6 | 8 | 10 | 12 | 20 | 100;
 
 export type Roll3DDieVisualState =
@@ -73,4 +75,10 @@ export type Roll3DRollSummary = {
   rawTotal: number;
   modifierTotal: number;
   total: number;
+
+  /**
+   * Résultat officiel produit par le moteur Dice Universal.
+   * Roll3D garde son modèle d’affichage, mais le calcul vient du moteur central.
+   */
+  officialResult: GroupRollResult;
 };
