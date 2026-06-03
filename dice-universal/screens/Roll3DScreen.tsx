@@ -15,9 +15,8 @@ export default function Roll3DScreen() {
   const isSmallScreen = windowHeight < 780;
   const isVerySmallScreen = windowHeight < 720;
 
-  const tableHeight = isVerySmallScreen ? 260 : isSmallScreen ? 292 : 330;
-
-  const bottomNavigationClearance = isVerySmallScreen ? 124 : 138;
+  const tableHeight = isVerySmallScreen ? 250 : isSmallScreen ? 286 : 336;
+  const bottomNavigationClearance = isVerySmallScreen ? 118 : 132;
 
   return (
     <View
@@ -39,7 +38,7 @@ export default function Roll3DScreen() {
           paddingTop: layout.insets.top + (isSmallScreen ? 8 : 12),
           paddingHorizontal: layout.horizontalPadding,
           paddingBottom:
-            layout.insets.bottom + theme.spacing.xl + bottomNavigationClearance,
+            layout.insets.bottom + theme.spacing.lg + bottomNavigationClearance,
         }}
         showsVerticalScrollIndicator={false}
       >
@@ -48,17 +47,17 @@ export default function Roll3DScreen() {
             alignSelf: "center",
             width: "100%",
             maxWidth: layout.maxContentWidth,
-            gap: isSmallScreen ? 10 : 12,
+            gap: isSmallScreen ? 9 : 11,
           }}
         >
           <View
             style={{
               borderRadius: 22,
               borderWidth: 1,
-              borderColor: "rgba(232, 200, 120, 0.16)",
-              backgroundColor: "rgba(5, 6, 11, 0.54)",
+              borderColor: "rgba(232, 200, 120, 0.14)",
+              backgroundColor: "rgba(5, 6, 11, 0.48)",
               paddingHorizontal: 14,
-              paddingVertical: isSmallScreen ? 10 : 12,
+              paddingVertical: isSmallScreen ? 9 : 11,
             }}
           >
             <View
@@ -85,13 +84,13 @@ export default function Roll3DScreen() {
                 <Text
                   style={{
                     color: theme.colors.text,
-                    fontSize: isSmallScreen ? 19 : 21,
+                    fontSize: isSmallScreen ? 18 : 20,
                     fontWeight: "900",
-                    marginTop: 3,
+                    marginTop: 2,
                     letterSpacing: -0.35,
                   }}
                 >
-                  Roll3D
+                  Lancez vos dés
                 </Text>
               </View>
 
@@ -114,7 +113,7 @@ export default function Roll3DScreen() {
                     letterSpacing: 0.8,
                   }}
                 >
-                  Accueil
+                  3D
                 </Text>
               </View>
             </View>
@@ -126,10 +125,11 @@ export default function Roll3DScreen() {
                   fontSize: 11,
                   fontWeight: "700",
                   lineHeight: 16,
-                  marginTop: 7,
+                  marginTop: 6,
                 }}
               >
-                Ajoute des dés, lance-les sur la table 3D, puis lis le résultat.
+                Ajoutez des dés, lancez-les sur la table, puis lisez le
+                résultat.
               </Text>
             ) : null}
           </View>

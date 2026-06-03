@@ -34,20 +34,26 @@ export function Roll3DLauncherSurface({
         rollRequestId={launcher.rollRequestId}
       />
 
-      <Roll3DDiceSelector
-        selectedSides={launcher.selectedSides}
-        diceCount={launcher.diceCount}
-        maxDice={launcher.maxDice}
-        onSelectSides={launcher.addDie}
-        onClearDice={launcher.clearDice}
-      />
+      <View
+        style={{
+          gap: 8,
+        }}
+      >
+        <Roll3DDiceSelector
+          selectedSides={launcher.selectedSides}
+          diceCount={launcher.diceCount}
+          maxDice={launcher.maxDice}
+          onSelectSides={launcher.addDie}
+          onClearDice={launcher.clearDice}
+        />
 
-      <Roll3DRollButton
-        diceCount={launcher.diceCount}
-        onPress={launcher.rollDice}
-      />
+        <Roll3DRollButton
+          diceCount={launcher.diceCount}
+          onPress={launcher.rollDice}
+        />
 
-      <Roll3DResultPanel result={launcher.latestResult} />
+        <Roll3DResultPanel result={launcher.latestResult} />
+      </View>
     </View>
   );
 }

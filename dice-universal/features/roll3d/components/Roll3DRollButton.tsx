@@ -43,7 +43,7 @@ export function Roll3DRollButton({
         start={{ x: 0.2, y: 0 }}
         end={{ x: 0.85, y: 1 }}
         style={{
-          minHeight: 58,
+          minHeight: 62,
           borderRadius: premium.radius.xl,
           borderWidth: 1,
           borderColor: isDisabled
@@ -73,13 +73,13 @@ export function Roll3DRollButton({
             color: isDisabled
               ? premium.colors.text.muted
               : premium.colors.text.primary,
-            fontSize: 16,
+            fontSize: 15,
             fontWeight: "900",
             textTransform: "uppercase",
             letterSpacing: 1.6,
           }}
         >
-          {isDisabled ? "Ajoute des dés" : "Lancer"}
+          {isDisabled ? "Ajoute des dés" : "Lancer les dés"}
         </Text>
 
         <Text
@@ -94,7 +94,9 @@ export function Roll3DRollButton({
             marginTop: 3,
           }}
         >
-          {diceCount} dé{diceCount > 1 ? "s" : ""} sur la table
+          {isDisabled
+            ? "Touchez un dé pour commencer"
+            : `${diceCount} dé${diceCount > 1 ? "s" : ""} prêts`}
         </Text>
       </LinearGradient>
     </Pressable>

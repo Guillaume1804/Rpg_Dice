@@ -20,6 +20,8 @@ function formatRollTime(timestamp: number) {
 export function Roll3DResultPanel({ result }: Roll3DResultPanelProps) {
   const premium = usePremiumTheme();
 
+  const hasResult = !!result;
+
   return (
     <LinearGradient
       colors={["rgba(255,255,255,0.08)", "rgba(5,6,11,0.94)"]}
@@ -29,10 +31,10 @@ export function Roll3DResultPanel({ result }: Roll3DResultPanelProps) {
         width: "100%",
         borderRadius: premium.radius.xl,
         borderWidth: 1,
-        borderColor: result
+        borderColor: hasResult
           ? premium.colors.border.accent
           : premium.colors.border.subtle,
-        padding: 14,
+        padding: hasResult ? 14 : 11,
         overflow: "hidden",
       }}
     >
@@ -65,7 +67,7 @@ export function Roll3DResultPanel({ result }: Roll3DResultPanelProps) {
         Résultat Roll3D
       </Text>
 
-      {result ? (
+      {hasResult ? (
         <>
           <View
             style={{
@@ -163,13 +165,12 @@ export function Roll3DResultPanel({ result }: Roll3DResultPanelProps) {
         <Text
           style={{
             color: premium.colors.text.secondary,
-            fontSize: 12,
+            fontSize: 11,
             fontWeight: "700",
-            lineHeight: 18,
+            lineHeight: 16,
           }}
         >
-          Ajoute des dés sur la table, puis appuie sur Lancer pour afficher le
-          résultat.
+          AAjoute des dés, puis lance la table.
         </Text>
       )}
     </LinearGradient>

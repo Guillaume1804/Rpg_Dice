@@ -44,8 +44,8 @@ export function Roll3DDiceSelector({
         borderWidth: 1,
         borderColor: premium.colors.border.subtle,
         backgroundColor: "rgba(5, 6, 11, 0.72)",
-        paddingVertical: 10,
-        paddingHorizontal: 10,
+        paddingVertical: 9,
+        paddingHorizontal: 9,
         overflow: "hidden",
       }}
     >
@@ -68,7 +68,7 @@ export function Roll3DDiceSelector({
               letterSpacing: 1.2,
             }}
           >
-            Table 3D
+            Ajouter des dés
           </Text>
 
           <Text
@@ -81,7 +81,7 @@ export function Roll3DDiceSelector({
               marginTop: 3,
             }}
           >
-            {diceCount}/{maxDice} dés posés
+            {diceCount}/{maxDice} sur la table
           </Text>
         </View>
 
@@ -139,9 +139,9 @@ export function Roll3DDiceSelector({
               disabled={isFull}
               onPress={() => onSelectSides(sides)}
               style={({ pressed }) => ({
-                width: 58,
-                height: 66,
-                borderRadius: 18,
+                width: 54,
+                height: 62,
+                borderRadius: 17,
                 opacity: isFull ? 0.42 : pressed ? 0.82 : 1,
                 transform: [
                   {
@@ -164,7 +164,7 @@ export function Roll3DDiceSelector({
                 end={{ x: 0.8, y: 1 }}
                 style={{
                   flex: 1,
-                  borderRadius: 18,
+                  borderRadius: 17,
                   borderWidth: 1,
                   borderColor: selected
                     ? premium.colors.border.accent
