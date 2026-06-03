@@ -18,16 +18,27 @@ export function roll3DDieValue(sides: Roll3DDieSides) {
 export function buildRoll3DSummary(
   diceInstances: Roll3DDieInstance[],
 ): Roll3DRollSummary {
-  const dice: Roll3DDieResult[] = diceInstances.map((instance) => ({
-    id: instance.id,
-    sides: instance.sides,
-    value: roll3DDieValue(instance.sides),
-  }));
+  const dice: Roll3DDieResult[] = diceInstances.map((instance) => {
+    const value = roll3DDieValue(instance.sides);
+    const signedValue = value * instance.sign;
+    const modifier = instance.modifier * instance.sign;
+
+    return {
+      id: instance.id,
+      sides: instance.sides,
+      value,
+      sign: instance.sign,
+      modifier: instance.modifier,
+      total: signedValue + modifier,
+    };
+  });
 
   return {
     id: createRoll3DId("roll-3d-result"),
     createdAt: Date.now(),
     dice,
-    total: dice.reduce((sum, die) => sum + die.value, 0),
+    rawTotal: dice.reduce((sum, die) => sum + die.value * die.sign, 0),
+    modifierTotal: dice.reduce((sum, die) => sum + die.modifier * die.sign, 0),
+    total: dice.reduce((sum, die) => sum + die.total, 0),
   };
 }

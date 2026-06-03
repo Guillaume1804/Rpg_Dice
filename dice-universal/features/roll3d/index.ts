@@ -12,10 +12,14 @@ export { STANDARD_ROLL_3D_DICE } from "./constants";
 
 export type {
   Roll3DD100DisplayMode,
+  Roll3DDraft,
+  Roll3DDieBehaviorRef,
   Roll3DDieInstance,
   Roll3DDieResult,
   Roll3DDieSides,
+  Roll3DDieSign,
   Roll3DDieSkinId,
+  Roll3DDieSource,
   Roll3DDieVisualState,
   Roll3DRollSummary,
 } from "./types";

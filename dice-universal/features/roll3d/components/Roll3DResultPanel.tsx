@@ -98,7 +98,9 @@ export function Roll3DResultPanel({ result }: Roll3DResultPanelProps) {
                   marginTop: 2,
                 }}
               >
-                Total simple
+                {result.modifierTotal !== 0
+                  ? "Total avec modificateurs"
+                  : "Total simple"}
               </Text>
             </View>
 
@@ -155,7 +157,11 @@ export function Roll3DResultPanel({ result }: Roll3DResultPanelProps) {
                     fontWeight: "900",
                   }}
                 >
-                  d{die.sides}: {die.value}
+                  {die.sign < 0 ? "-" : ""}d{die.sides}: {die.value}
+                  {die.modifier !== 0
+                    ? ` ${die.modifier > 0 ? "+" : "-"} ${Math.abs(die.modifier)}`
+                    : ""}{" "}
+                  = {die.total}
                 </Text>
               </View>
             ))}
