@@ -95,13 +95,6 @@ export function Roll3DLauncherSurface({
         rollRequestId={rollRequestId}
       />
 
-      <Roll3DRollButton
-        diceCount={diceInstances.length}
-        onPress={handleRollDice}
-      />
-
-      <Roll3DResultPanel result={latestResult} />
-
       <Roll3DDiceSelector
         selectedSides={selectedSides}
         diceCount={diceInstances.length}
@@ -109,6 +102,13 @@ export function Roll3DLauncherSurface({
         onSelectSides={handleAddDie}
         onClearDice={handleClearDice}
       />
+
+      <Roll3DRollButton
+        diceCount={diceInstances.length}
+        onPress={handleRollDice}
+      />
+
+      <Roll3DResultPanel result={latestResult} />
     </View>
   );
 }
