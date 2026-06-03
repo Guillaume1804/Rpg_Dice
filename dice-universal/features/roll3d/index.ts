@@ -6,6 +6,8 @@ export { Roll3DLauncherSurface } from "./components/Roll3DLauncherSurface";
 export { Roll3DRollButton } from "./components/Roll3DRollButton";
 export { Roll3DResultPanel } from "./components/Roll3DResultPanel";
 
+export { useRoll3DLauncher } from "./hooks/useRoll3DLauncher";
+
 export { STANDARD_ROLL_3D_DICE } from "./constants";
 
 export type {
