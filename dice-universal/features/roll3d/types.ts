@@ -24,3 +24,16 @@ export type Roll3DDieInstance = {
   sides: Roll3DDieSides;
   createdAt: number;
 };
+
+export type Roll3DDieResult = {
+  id: string;
+  sides: Roll3DDieSides;
+  value: number;
+};
+
+export type Roll3DRollSummary = {
+  id: string;
+  createdAt: number;
+  dice: Roll3DDieResult[];
+  total: number;
+};
