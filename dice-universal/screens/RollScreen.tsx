@@ -198,6 +198,8 @@ export default function RollScreen() {
   const premium = usePremiumTheme();
 
   // PROVISOIRE TABLE 3D
+  const ROLL_3D_MAX_DICE = 12;
+
   const [roll3DSelectedSides, setRoll3DSelectedSides] =
     useState<Roll3DDieSides>(20);
 
@@ -208,14 +210,24 @@ export default function RollScreen() {
   function handleAddRoll3DDie(sides: Roll3DDieSides) {
     setRoll3DSelectedSides(sides);
 
-    setRoll3DDiceInstances((current) => [
-      ...current,
-      {
-        id: `roll-3d-die-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        sides,
-        createdAt: Date.now(),
-      },
-    ]);
+    setRoll3DDiceInstances((current) => {
+      if (current.length >= ROLL_3D_MAX_DICE) {
+        return current;
+      }
+
+      return [
+        ...current,
+        {
+          id: `roll-3d-die-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          sides,
+          createdAt: Date.now(),
+        },
+      ];
+    });
+  }
+
+  function handleClearRoll3DDice() {
+    setRoll3DDiceInstances([]);
   }
   // FIN PROVISOIRE TABLE 3D
 
@@ -1803,7 +1815,10 @@ export default function RollScreen() {
 
         <Roll3DDiceSelector
           selectedSides={roll3DSelectedSides}
+          diceCount={roll3DDiceInstances.length}
+          maxDice={ROLL_3D_MAX_DICE}
           onSelectSides={handleAddRoll3DDie}
+          onClearDice={handleClearRoll3DDice}
         />
       </View>
       {/* FIN AJOUT TEMPORAIRE */}
