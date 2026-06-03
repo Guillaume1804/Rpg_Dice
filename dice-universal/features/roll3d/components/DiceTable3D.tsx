@@ -12,6 +12,7 @@ import type { Roll3DDieInstance } from "../types";
 type DiceTable3DProps = {
   height?: number;
   diceInstances?: Roll3DDieInstance[];
+  rollRequestId?: number;
 };
 
 type DiceDropState = {
@@ -280,26 +281,14 @@ function updateContactShadow(params: {
 export function DiceTable3D({
   height = 320,
   diceInstances = [],
+  rollRequestId = 0,
 }: DiceTable3DProps) {
   const animationFrameRef = useRef<number | null>(null);
 
   const sceneRef = useRef<THREE.Scene | null>(null);
   const diceItemsRef = useRef<Map<string, DiceSceneItem>>(new Map());
 
-  function addDiceInstanceToScene(
-    scene: THREE.Scene,
-    instance: Roll3DDieInstance,
-    animate = true,
-  ) {
-    if (diceItemsRef.current.has(instance.id)) return;
-
-    const mesh = createDiceMesh({
-      sides: instance.sides,
-      skinId: "graphite_default",
-    });
-
-    const shadow = createContactShadow();
-
+  function createDropStateForMesh(mesh: THREE.Group): DiceDropState {
     const targetXZ = createRandomTargetXZ();
     const targetRotation = createRandomRotation();
 
@@ -322,9 +311,39 @@ export function DiceTable3D({
       randomBetween(-Math.PI, Math.PI),
     );
 
+    return {
+      startedAt: Date.now(),
+      startPosition,
+      targetPosition,
+      startRotation,
+      targetRotation,
+      spinTurns: new THREE.Vector3(
+        randomBetween(0.65, 1.15),
+        randomBetween(0.85, 1.35),
+        randomBetween(0.35, 0.85),
+      ),
+    };
+  }
+
+  function addDiceInstanceToScene(
+    scene: THREE.Scene,
+    instance: Roll3DDieInstance,
+    animate = true,
+  ) {
+    if (diceItemsRef.current.has(instance.id)) return;
+
+    const mesh = createDiceMesh({
+      sides: instance.sides,
+      skinId: "graphite_default",
+    });
+
+    const shadow = createContactShadow();
+
+    const dropState = createDropStateForMesh(mesh);
+
     if (animate) {
-      mesh.position.copy(startPosition);
-      mesh.rotation.copy(startRotation);
+      mesh.position.copy(dropState.startPosition);
+      mesh.rotation.copy(dropState.startRotation);
       mesh.scale.setScalar(DROP_START_SCALE);
 
       updateContactShadow({
@@ -334,8 +353,8 @@ export function DiceTable3D({
         visible: false,
       });
     } else {
-      mesh.position.copy(targetPosition);
-      mesh.rotation.copy(targetRotation);
+      mesh.position.copy(dropState.targetPosition);
+      mesh.rotation.copy(dropState.targetRotation);
       mesh.scale.setScalar(DROP_TARGET_SCALE);
 
       updateContactShadow({
@@ -353,20 +372,7 @@ export function DiceTable3D({
       id: instance.id,
       mesh,
       shadow,
-      drop: animate
-        ? {
-            startedAt: Date.now(),
-            startPosition,
-            targetPosition,
-            startRotation,
-            targetRotation,
-            spinTurns: new THREE.Vector3(
-              randomBetween(0.45, 0.85),
-              randomBetween(0.65, 1.05),
-              randomBetween(0.25, 0.65),
-            ),
-          }
-        : null,
+      drop: animate ? dropState : null,
     });
   }
 
@@ -407,6 +413,27 @@ export function DiceTable3D({
       addDiceInstanceToScene(scene, instance, true);
     }
   }, [diceInstances]);
+
+  useEffect(() => {
+    if (rollRequestId <= 0) return;
+
+    for (const item of diceItemsRef.current.values()) {
+      const dropState = createDropStateForMesh(item.mesh);
+
+      item.mesh.position.copy(dropState.startPosition);
+      item.mesh.rotation.copy(dropState.startRotation);
+      item.mesh.scale.setScalar(DROP_START_SCALE);
+
+      updateContactShadow({
+        shadow: item.shadow,
+        dice: item.mesh,
+        progress: 0,
+        visible: false,
+      });
+
+      item.drop = dropState;
+    }
+  }, [rollRequestId]);
 
   function handleContextCreate(gl: ExpoWebGLRenderingContext) {
     const { drawingBufferWidth: width, drawingBufferHeight: bufferHeight } = gl;

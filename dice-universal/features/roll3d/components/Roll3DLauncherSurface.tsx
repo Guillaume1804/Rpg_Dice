@@ -6,6 +6,7 @@ import { View } from "react-native";
 import { DiceTable3D } from "./DiceTable3D";
 import { Roll3DDiceSelector } from "./Roll3DDiceSelector";
 import type { Roll3DDieInstance, Roll3DDieSides } from "../types";
+import { Roll3DRollButton } from "./Roll3DRollButton";
 
 type Roll3DLauncherSurfaceProps = {
   height?: number;
@@ -19,6 +20,8 @@ export function Roll3DLauncherSurface({
   const [selectedSides, setSelectedSides] = useState<Roll3DDieSides>(20);
 
   const [diceInstances, setDiceInstances] = useState<Roll3DDieInstance[]>([]);
+
+  const [rollRequestId, setRollRequestId] = useState(0);
 
   function handleAddDie(sides: Roll3DDieSides) {
     setSelectedSides(sides);
@@ -45,6 +48,12 @@ export function Roll3DLauncherSurface({
     setDiceInstances([]);
   }
 
+  function handleRollDice() {
+    if (diceInstances.length === 0) return;
+
+    setRollRequestId((current) => current + 1);
+  }
+
   return (
     <View
       style={{
@@ -52,7 +61,16 @@ export function Roll3DLauncherSurface({
         gap: 10,
       }}
     >
-      <DiceTable3D height={height} diceInstances={diceInstances} />
+      <DiceTable3D
+        height={height}
+        diceInstances={diceInstances}
+        rollRequestId={rollRequestId}
+      />
+
+      <Roll3DRollButton
+        diceCount={diceInstances.length}
+        onPress={handleRollDice}
+      />
 
       <Roll3DDiceSelector
         selectedSides={selectedSides}
