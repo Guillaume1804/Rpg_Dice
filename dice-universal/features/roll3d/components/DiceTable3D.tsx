@@ -7,11 +7,11 @@ import { Renderer } from "expo-three";
 import * as THREE from "three";
 
 import { createDiceMesh } from "../renderer/DiceMeshFactory";
-import type { Roll3DDieSides } from "../types";
+import type { Roll3DDieInstance } from "../types";
 
 type DiceTable3DProps = {
   height?: number;
-  previewSides?: Roll3DDieSides;
+  diceInstances?: Roll3DDieInstance[];
 };
 
 type DiceDropState = {
@@ -26,11 +26,18 @@ type DiceDropState = {
   spinTurns: THREE.Vector3;
 };
 
+type DiceSceneItem = {
+  id: string;
+  mesh: THREE.Group;
+  shadow: THREE.Mesh;
+  drop: DiceDropState | null;
+};
+
 /**
  * Scène cible :
  * le smartphone est une ouverture vue du dessus.
  * La table est le fond du téléphone.
- * Le dé tombe droit dans cette "boîte/table" intérieure.
+ * Les dés tombent dans cette "boîte/table" intérieure.
  */
 const TABLE_SURFACE_Y = -1.15;
 
@@ -45,8 +52,8 @@ const DROP_START_Y = 3.2;
 const DROP_START_SCALE = 1.18;
 const DROP_TARGET_SCALE = 1;
 
-const TARGET_X_RANGE = 1.25;
-const TARGET_Z_RANGE = 1.75;
+const TARGET_X_RANGE = 1.35;
+const TARGET_Z_RANGE = 1.95;
 
 function disposeObject3D(object: THREE.Object3D) {
   object.traverse((child) => {
@@ -103,8 +110,7 @@ function createRandomTargetXZ() {
 
 /**
  * Départ presque au-dessus de la position finale.
- * Ça donne une vraie chute droite vue du dessus,
- * au lieu d’une trajectoire qui fuit vers l’horizon.
+ * Ça donne une chute droite vue du dessus.
  */
 function createDropStartPosition(targetX: number, targetZ: number) {
   return new THREE.Vector3(targetX * 0.15, DROP_START_Y, targetZ * 0.15);
@@ -207,10 +213,6 @@ function createInteriorTable() {
   );
   group.add(bottomWall);
 
-  /**
-   * Léger cadre intérieur lumineux.
-   * Il aide à lire les limites de la "boîte téléphone".
-   */
   const borderGeometry = new THREE.EdgesGeometry(
     new THREE.BoxGeometry(TABLE_WIDTH, 0.04, TABLE_DEPTH),
   );
@@ -248,14 +250,12 @@ function createContactShadow() {
 }
 
 function updateContactShadow(params: {
-  shadow: THREE.Mesh | null;
+  shadow: THREE.Mesh;
   dice: THREE.Group;
   progress: number;
   visible: boolean;
 }) {
   const { shadow, dice, progress, visible } = params;
-
-  if (!shadow) return;
 
   const material = shadow.material as THREE.MeshBasicMaterial;
 
@@ -279,46 +279,32 @@ function updateContactShadow(params: {
 
 export function DiceTable3D({
   height = 320,
-  previewSides = 20,
+  diceInstances = [],
 }: DiceTable3DProps) {
   const animationFrameRef = useRef<number | null>(null);
 
   const sceneRef = useRef<THREE.Scene | null>(null);
-  const diceRef = useRef<THREE.Group | null>(null);
-  const contactShadowRef = useRef<THREE.Mesh | null>(null);
+  const diceItemsRef = useRef<Map<string, DiceSceneItem>>(new Map());
 
-  const currentPreviewSidesRef = useRef<Roll3DDieSides | null>(null);
-  const diceDropRef = useRef<DiceDropState | null>(null);
+  function addDiceInstanceToScene(
+    scene: THREE.Scene,
+    instance: Roll3DDieInstance,
+    animate = true,
+  ) {
+    if (diceItemsRef.current.has(instance.id)) return;
 
-  useEffect(() => {
-    return () => {
-      if (animationFrameRef.current != null) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    const scene = sceneRef.current;
-
-    if (!scene) return;
-    if (currentPreviewSidesRef.current === previewSides) return;
-
-    if (diceRef.current) {
-      scene.remove(diceRef.current);
-      disposeObject3D(diceRef.current);
-    }
-
-    const nextDice = createDiceMesh({
-      sides: previewSides,
+    const mesh = createDiceMesh({
+      sides: instance.sides,
       skinId: "graphite_default",
     });
+
+    const shadow = createContactShadow();
 
     const targetXZ = createRandomTargetXZ();
     const targetRotation = createRandomRotation();
 
     const targetPosition = computeRestingPosition({
-      dice: nextDice,
+      dice: mesh,
       x: targetXZ.x,
       z: targetXZ.z,
       rotation: targetRotation,
@@ -336,28 +322,91 @@ export function DiceTable3D({
       randomBetween(-Math.PI, Math.PI),
     );
 
-    nextDice.position.copy(startPosition);
-    nextDice.rotation.copy(startRotation);
-    nextDice.scale.setScalar(DROP_START_SCALE);
+    if (animate) {
+      mesh.position.copy(startPosition);
+      mesh.rotation.copy(startRotation);
+      mesh.scale.setScalar(DROP_START_SCALE);
 
-    scene.add(nextDice);
+      updateContactShadow({
+        shadow,
+        dice: mesh,
+        progress: 0,
+        visible: false,
+      });
+    } else {
+      mesh.position.copy(targetPosition);
+      mesh.rotation.copy(targetRotation);
+      mesh.scale.setScalar(DROP_TARGET_SCALE);
 
-    diceRef.current = nextDice;
-    currentPreviewSidesRef.current = previewSides;
+      updateContactShadow({
+        shadow,
+        dice: mesh,
+        progress: 1,
+        visible: true,
+      });
+    }
 
-    diceDropRef.current = {
-      startedAt: Date.now(),
-      startPosition,
-      targetPosition,
-      startRotation,
-      targetRotation,
-      spinTurns: new THREE.Vector3(
-        randomBetween(0.45, 0.85),
-        randomBetween(0.65, 1.05),
-        randomBetween(0.25, 0.65),
-      ),
+    scene.add(shadow);
+    scene.add(mesh);
+
+    diceItemsRef.current.set(instance.id, {
+      id: instance.id,
+      mesh,
+      shadow,
+      drop: animate
+        ? {
+            startedAt: Date.now(),
+            startPosition,
+            targetPosition,
+            startRotation,
+            targetRotation,
+            spinTurns: new THREE.Vector3(
+              randomBetween(0.45, 0.85),
+              randomBetween(0.65, 1.05),
+              randomBetween(0.25, 0.65),
+            ),
+          }
+        : null,
+    });
+  }
+
+  useEffect(() => {
+    return () => {
+      if (animationFrameRef.current != null) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+
+      for (const item of diceItemsRef.current.values()) {
+        disposeObject3D(item.mesh);
+        disposeObject3D(item.shadow);
+      }
+
+      diceItemsRef.current.clear();
     };
-  }, [previewSides]);
+  }, []);
+
+  useEffect(() => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+
+    const nextIds = new Set(diceInstances.map((instance) => instance.id));
+
+    for (const [id, item] of diceItemsRef.current.entries()) {
+      if (!nextIds.has(id)) {
+        scene.remove(item.mesh);
+        scene.remove(item.shadow);
+
+        disposeObject3D(item.mesh);
+        disposeObject3D(item.shadow);
+
+        diceItemsRef.current.delete(id);
+      }
+    }
+
+    for (const instance of diceInstances) {
+      addDiceInstanceToScene(scene, instance, true);
+    }
+  }, [diceInstances]);
 
   function handleContextCreate(gl: ExpoWebGLRenderingContext) {
     const { drawingBufferWidth: width, drawingBufferHeight: bufferHeight } = gl;
@@ -374,10 +423,6 @@ export function DiceTable3D({
       100,
     );
 
-    /**
-     * Caméra presque verticale :
-     * on regarde le fond du smartphone depuis le dessus.
-     */
     camera.position.set(0, 6.8, 0.18);
     camera.lookAt(0, TABLE_SURFACE_Y, 0);
 
@@ -399,69 +444,34 @@ export function DiceTable3D({
     const table = createInteriorTable();
     scene.add(table);
 
-    const contactShadow = createContactShadow();
-    scene.add(contactShadow);
-    contactShadowRef.current = contactShadow;
-
-    const dice = createDiceMesh({
-      sides: previewSides,
-      skinId: "graphite_default",
-    });
-
-    const initialRotation = new THREE.Euler(0.18, -0.28, 0.08);
-
-    const initialPosition = computeRestingPosition({
-      dice,
-      x: 0,
-      z: 0,
-      rotation: initialRotation,
-      scale: DROP_TARGET_SCALE,
-    });
-
-    dice.position.copy(initialPosition);
-    dice.rotation.copy(initialRotation);
-    dice.scale.setScalar(DROP_TARGET_SCALE);
-
-    scene.add(dice);
-
-    diceRef.current = dice;
-    currentPreviewSidesRef.current = previewSides;
-
-    updateContactShadow({
-      shadow: contactShadowRef.current,
-      dice,
-      progress: 1,
-      visible: true,
-    });
+    /**
+     * Si des dés existent déjà côté React au moment où GLView se monte,
+     * on les ajoute sans animation initiale pour éviter un double drop au chargement.
+     */
+    for (const instance of diceInstances) {
+      addDiceInstanceToScene(scene, instance, false);
+    }
 
     const render = () => {
-      const currentDice = diceRef.current;
+      for (const item of diceItemsRef.current.values()) {
+        const { mesh, shadow, drop } = item;
 
-      if (currentDice) {
-        const diceDrop = diceDropRef.current;
-
-        if (diceDrop) {
-          const rawProgress =
-            (Date.now() - diceDrop.startedAt) / DROP_DURATION_MS;
-
+        if (drop) {
+          const rawProgress = (Date.now() - drop.startedAt) / DROP_DURATION_MS;
           const progress = clamp01(rawProgress);
 
-          /**
-           * Chute droite dans la boîte téléphone :
-           * le dé part au-dessus et tombe vers le fond.
-           */
           const fallProgress = easeInOutCubic(progress);
           const lateralProgress = easeOutCubic(progress);
 
-          currentDice.position.x = lerp(
-            diceDrop.startPosition.x,
-            diceDrop.targetPosition.x,
+          mesh.position.x = lerp(
+            drop.startPosition.x,
+            drop.targetPosition.x,
             lateralProgress,
           );
 
-          currentDice.position.z = lerp(
-            diceDrop.startPosition.z,
-            diceDrop.targetPosition.z,
+          mesh.position.z = lerp(
+            drop.startPosition.z,
+            drop.targetPosition.z,
             lateralProgress,
           );
 
@@ -474,79 +484,67 @@ export function DiceTable3D({
                 (1 - impactProgress)
               : 0;
 
-          currentDice.position.y =
-            lerp(
-              diceDrop.startPosition.y,
-              diceDrop.targetPosition.y,
-              fallProgress,
-            ) + bounce;
+          mesh.position.y =
+            lerp(drop.startPosition.y, drop.targetPosition.y, fallProgress) +
+            bounce;
 
-          currentDice.scale.setScalar(
+          mesh.scale.setScalar(
             lerp(DROP_START_SCALE, DROP_TARGET_SCALE, fallProgress),
           );
 
-          /**
-           * Rotation lisible et non chaotique.
-           * La rotation est calculée depuis le temps,
-           * pas accumulée frame par frame.
-           */
           const spinAmount =
             Math.sin(progress * Math.PI) * (1 - progress * 0.35);
           const rotationProgress = easeOutCubic(progress);
 
-          currentDice.rotation.x =
+          mesh.rotation.x =
             lerp(
-              diceDrop.startRotation.x,
-              diceDrop.targetRotation.x,
+              drop.startRotation.x,
+              drop.targetRotation.x,
               rotationProgress,
             ) +
-            diceDrop.spinTurns.x * Math.PI * 2 * spinAmount;
+            drop.spinTurns.x * Math.PI * 2 * spinAmount;
 
-          currentDice.rotation.y =
+          mesh.rotation.y =
             lerp(
-              diceDrop.startRotation.y,
-              diceDrop.targetRotation.y,
+              drop.startRotation.y,
+              drop.targetRotation.y,
               rotationProgress,
             ) +
-            diceDrop.spinTurns.y * Math.PI * 2 * spinAmount;
+            drop.spinTurns.y * Math.PI * 2 * spinAmount;
 
-          currentDice.rotation.z =
+          mesh.rotation.z =
             lerp(
-              diceDrop.startRotation.z,
-              diceDrop.targetRotation.z,
+              drop.startRotation.z,
+              drop.targetRotation.z,
               rotationProgress,
             ) +
-            diceDrop.spinTurns.z * Math.PI * 2 * spinAmount;
+            drop.spinTurns.z * Math.PI * 2 * spinAmount;
 
           updateContactShadow({
-            shadow: contactShadowRef.current,
-            dice: currentDice,
+            shadow,
+            dice: mesh,
             progress: fallProgress,
             visible: progress > 0.18,
           });
 
           if (progress >= 1) {
-            currentDice.position.copy(diceDrop.targetPosition);
-            currentDice.rotation.copy(diceDrop.targetRotation);
-            currentDice.scale.setScalar(DROP_TARGET_SCALE);
+            mesh.position.copy(drop.targetPosition);
+            mesh.rotation.copy(drop.targetRotation);
+            mesh.scale.setScalar(DROP_TARGET_SCALE);
 
             updateContactShadow({
-              shadow: contactShadowRef.current,
-              dice: currentDice,
+              shadow,
+              dice: mesh,
               progress: 1,
               visible: true,
             });
 
-            diceDropRef.current = null;
+            item.drop = null;
           }
         } else {
-          /**
-           * Une fois posé, le dé ne tourne plus.
-           * C’est important pour l’illusion physique.
-           */
           updateContactShadow({
-            shadow: contactShadowRef.current,
-            dice: currentDice,
+            shadow,
+            dice: mesh,
             progress: 1,
             visible: true,
           });
