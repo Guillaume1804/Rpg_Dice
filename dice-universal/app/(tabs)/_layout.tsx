@@ -175,20 +175,20 @@ export default function TabsLayout() {
       />
 
       <Tabs.Screen
+        name="collection"
+        options={{
+          title: "Collection",
+          tabBarLabel: "Collection",
+          tabBarIcon: ({ focused }) => <TabIcon label="◇" focused={focused} />,
+        }}
+      />
+
+      <Tabs.Screen
         name="tables"
         options={{
           title: "Tables",
           tabBarLabel: "Tables",
           tabBarIcon: ({ focused }) => <TabIcon label="▦" focused={focused} />,
-        }}
-      />
-
-      <Tabs.Screen
-        name="history"
-        options={{
-          title: "Historique",
-          tabBarLabel: "Historique",
-          tabBarIcon: ({ focused }) => <TabIcon label="↺" focused={focused} />,
         }}
       />
 
@@ -204,8 +204,8 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="rules"
         options={{
-          title: "Règles",
-          tabBarLabel: "Règles",
+          title: "Comportements",
+          tabBarLabel: "Comportements",
           tabBarIcon: ({ focused }) => <TabIcon label="✦" focused={focused} />,
         }}
       />
@@ -216,6 +216,14 @@ export default function TabsLayout() {
           title: "Paramètres",
           tabBarLabel: "Réglages",
           tabBarIcon: ({ focused }) => <TabIcon label="◎" focused={focused} />,
+        }}
+      />
+
+      <Tabs.Screen
+        name="history"
+        options={{
+          href: null,
+          title: "Historique",
         }}
       />
     </Tabs>
