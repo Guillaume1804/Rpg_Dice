@@ -1,5 +1,15 @@
 // dice-universal\screens\RollScreen.tsx
 
+// NOTE PRODUIT / TRANSITION :
+// Cet écran est désormais la base temporaire de "Préparation du jeu".
+// Il doit conserver les fonctionnalités de préparation, sauvegarde,
+// modification d’actions, profils/tables et comportements.
+//
+// Le lancer principal et le rendu final du résultat migrent vers Roll3D.
+// Les fonctions de lancer encore présentes ici doivent être considérées comme
+// une prévisualisation technique/test de configuration, tant que Roll3D n’a pas
+// encore absorbé toute la logique de jets rapides, actions de table et comportements.
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
@@ -1807,6 +1817,10 @@ export default function RollScreen() {
               ],
             }}
           >
+            
+            {/* Résultat temporaire de prévisualisation.
+            Le rendu final de résultat doit migrer vers Roll3D. */}
+
             <Animated.View
               style={{
                 opacity: resultAppearAnim,
@@ -1943,7 +1957,7 @@ export default function RollScreen() {
             focusedLineLabel={focusedPreparedLine?.label ?? null}
             onClearFocusedLine={handleClearFocusedPreparedLine}
             onPress={handlePressStickyRollButton}
-            label={isFocusedLineMode ? "LANCER LA LIGNE" : "LANCER LE JET"}
+            label={isFocusedLineMode ? "TESTER LA LIGNE" : "TESTER LE JET"}
             disabledLabel="AJOUTE DES DÉS"
           />
         </View>
