@@ -46,19 +46,19 @@ type DiceSceneItem = {
  */
 const TABLE_SURFACE_Y = -1.15;
 
-const TABLE_WIDTH = 4.8;
-const TABLE_DEPTH = 6.9;
-const TABLE_WALL_HEIGHT = 0.34;
+const TABLE_WIDTH = 5.8;
+const TABLE_DEPTH = 8.4;
+const TABLE_WALL_HEIGHT = 0.46;
 const TABLE_WALL_THICKNESS = 0.12;
 
 const DROP_DURATION_MS = 860;
 
 const DROP_START_Y = 3.2;
-const DROP_TARGET_SCALE = 0.48;
-const DROP_START_SCALE = 0.56;
+const DROP_TARGET_SCALE = 0.4;
+const DROP_START_SCALE = 0.46;
 
-const TARGET_X_RANGE = 1.05;
-const TARGET_Z_RANGE = 1.52;
+const TARGET_X_RANGE = 1.45;
+const TARGET_Z_RANGE = 2.25;
 
 function disposeObject3D(object: THREE.Object3D) {
   object.traverse((child) => {
@@ -339,6 +339,7 @@ export function DiceTable3D({
   );
   const onPhysicsRollSettledRef = useRef(onPhysicsRollSettled);
   const activePhysicsRollIdRef = useRef(0);
+  const lastHandledRollRequestIdRef = useRef(0);
 
   useEffect(() => {
     onPhysicsRollSettledRef.current = onPhysicsRollSettled;
@@ -560,6 +561,11 @@ export function DiceTable3D({
   useEffect(() => {
     if (rollRequestId <= 0) return;
 
+    if (lastHandledRollRequestIdRef.current === rollRequestId) {
+      return;
+    }
+
+    lastHandledRollRequestIdRef.current = rollRequestId;
     startPhysicsRoll();
   }, [rollRequestId, startPhysicsRoll]);
 
@@ -573,13 +579,13 @@ export function DiceTable3D({
     physicsWorldRef.current = new Roll3DPhysicsWorld();
 
     const camera = new THREE.PerspectiveCamera(
-      34,
+      38,
       width / bufferHeight,
       0.1,
       100,
     );
 
-    camera.position.set(0, 6.8, 0.18);
+    camera.position.set(0, 8.4, 0.28);
     camera.lookAt(0, TABLE_SURFACE_Y, 0);
 
     const renderer = new Renderer({ gl });
@@ -667,7 +673,7 @@ export function DiceTable3D({
               }
 
               onPhysicsRollSettledRef.current?.();
-            }, 100);
+            }, 700);
           }
         }
       } else {

@@ -13,10 +13,10 @@ const PHYSICS_MAX_SUB_STEPS = 3;
 
 const TABLE_SURFACE_Y = -1.15;
 
-const TABLE_WIDTH = 4.8;
-const TABLE_DEPTH = 6.9;
-const TABLE_WALL_HEIGHT = 0.34;
-const TABLE_WALL_THICKNESS = 0.12;
+const TABLE_WIDTH = 5.8;
+const TABLE_DEPTH = 8.4;
+const TABLE_WALL_HEIGHT = 4.8;
+const TABLE_WALL_THICKNESS = 0.18;
 
 const FLOOR_ID = "roll-3d-physics-floor";
 
@@ -76,56 +76,56 @@ function toPhysicsTransform(body: CANNON.Body): Roll3DPhysicsTransform {
 function createDieShape(sides: Roll3DDieSides): CANNON.Shape {
   switch (sides) {
     case 4:
-      return new CANNON.Box(new CANNON.Vec3(0.22, 0.22, 0.22));
+      return new CANNON.Box(new CANNON.Vec3(0.19, 0.19, 0.19));
 
     case 6:
-      return new CANNON.Box(new CANNON.Vec3(0.27, 0.27, 0.27));
+      return new CANNON.Box(new CANNON.Vec3(0.23, 0.23, 0.23));
 
     case 8:
-      return new CANNON.Box(new CANNON.Vec3(0.26, 0.26, 0.26));
+      return new CANNON.Box(new CANNON.Vec3(0.22, 0.22, 0.22));
 
     case 10:
-      return new CANNON.Box(new CANNON.Vec3(0.25, 0.33, 0.25));
+      return new CANNON.Box(new CANNON.Vec3(0.22, 0.29, 0.22));
 
     case 12:
-      return new CANNON.Box(new CANNON.Vec3(0.27, 0.27, 0.27));
+      return new CANNON.Box(new CANNON.Vec3(0.23, 0.23, 0.23));
 
     case 20:
-      return new CANNON.Box(new CANNON.Vec3(0.27, 0.27, 0.27));
+      return new CANNON.Box(new CANNON.Vec3(0.23, 0.23, 0.23));
 
     case 100:
-      return new CANNON.Box(new CANNON.Vec3(0.5, 0.26, 0.27));
+      return new CANNON.Box(new CANNON.Vec3(0.42, 0.22, 0.23));
 
     default:
-      return new CANNON.Box(new CANNON.Vec3(0.27, 0.27, 0.27));
+      return new CANNON.Box(new CANNON.Vec3(0.23, 0.23, 0.23));
   }
 }
 
 function createInitialVelocity(mode: Roll3DPhysicsLaunchMode) {
   if (mode === "surface_roll") {
     const angle = Math.random() * Math.PI * 2;
-    const strength = 12 + Math.random() * 7;
+    const strength = 9 + Math.random() * 5;
 
     return new CANNON.Vec3(
       Math.cos(angle) * strength,
-      0.35 + Math.random() * 0.35,
+      0.22 + Math.random() * 0.26,
       Math.sin(angle) * strength,
     );
   }
 
   return new CANNON.Vec3(
-    (Math.random() - 0.5) * 0.5,
-    -4.2 - Math.random() * 1.2,
-    (Math.random() - 0.5) * 0.5,
+    (Math.random() - 0.5) * 0.42,
+    -5.4 - Math.random() * 1.4,
+    (Math.random() - 0.5) * 0.42,
   );
 }
 
 function createInitialAngularVelocity(mode: Roll3DPhysicsLaunchMode) {
   if (mode === "surface_roll") {
     return new CANNON.Vec3(
-      (Math.random() - 0.5) * 32,
-      (Math.random() - 0.5) * 38,
-      (Math.random() - 0.5) * 32,
+      (Math.random() - 0.5) * 26,
+      (Math.random() - 0.5) * 31,
+      (Math.random() - 0.5) * 26,
     );
   }
 
