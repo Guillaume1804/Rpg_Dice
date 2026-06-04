@@ -8,6 +8,20 @@ export { Roll3DResultOverlay } from "./components/Roll3DResultOverlay";
 
 export { useRoll3DLauncher } from "./hooks/useRoll3DLauncher";
 
+export { Roll3DPhysicsWorld } from "./physics/Roll3DPhysicsWorld";
+
+export type {
+  Roll3DPhysicsBodyDescriptor,
+  Roll3DPhysicsBodyId,
+  Roll3DPhysicsBodyKind,
+  Roll3DPhysicsDieBody,
+  Roll3DPhysicsDieSnapshot,
+  Roll3DPhysicsQuaternion,
+  Roll3DPhysicsStaticBody,
+  Roll3DPhysicsTransform,
+  Roll3DPhysicsVector3,
+} from "./physics/Roll3DPhysicsTypes";
+
 export { STANDARD_ROLL_3D_DICE } from "./constants";
 
 export type {
