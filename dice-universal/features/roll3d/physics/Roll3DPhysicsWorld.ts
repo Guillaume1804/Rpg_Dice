@@ -6,6 +6,8 @@ import type {
 } from "./Roll3DPhysicsTypes";
 import type { Roll3DDieInstance } from "../types";
 
+import * as CANNON from "cannon-es";
+
 /**
  * Interface cible du futur monde physique Roll3D.
  *
@@ -13,6 +15,10 @@ import type { Roll3DDieInstance } from "../types";
  * Elle permettra ensuite de brancher cannon-es sans polluer DiceTable3D.
  */
 export class Roll3DPhysicsWorld {
+  private readonly world = new CANNON.World({
+    gravity: new CANNON.Vec3(0, -9.82, 0),
+  });
+
   private readonly diceSnapshots = new Map<string, Roll3DPhysicsDieSnapshot>();
 
   reset() {
@@ -35,11 +41,8 @@ export class Roll3DPhysicsWorld {
     this.diceSnapshots.clear();
   }
 
-  step(_deltaSeconds: number) {
-    /**
-     * Phase 2.0B/2.0C :
-     * ici on appellera world.step(...) de cannon-es.
-     */
+  step(deltaSeconds: number) {
+    this.world.step(1 / 60, deltaSeconds, 3);
   }
 
   getDiceSnapshots() {
