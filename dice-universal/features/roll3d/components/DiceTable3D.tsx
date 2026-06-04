@@ -450,29 +450,32 @@ export function DiceTable3D({
       const item = diceItemsRef.current.get(instance.id);
       if (!item) continue;
 
-      const dropState = createDropStateForMesh(item.mesh);
-
-      item.mesh.position.copy(dropState.startPosition);
-      item.mesh.rotation.copy(dropState.startRotation);
-      item.mesh.scale.setScalar(DROP_TARGET_SCALE);
-      item.mesh.updateMatrixWorld(true);
-
+      /**
+       * 2.0H :
+       * Le lancer repart depuis la position actuelle du dé sur la table.
+       * On ne le replace plus en hauteur.
+       */
       item.drop = null;
       item.physicsActive = true;
+
+      item.mesh.scale.setScalar(DROP_TARGET_SCALE);
+      item.mesh.updateMatrixWorld(true);
 
       updateContactShadow({
         shadow: item.shadow,
         dice: item.mesh,
-        progress: 0,
-        visible: false,
+        progress: 1,
+        visible: true,
       });
 
-      physicsWorld.addDie(instance, toPhysicsTransform(item.mesh));
+      physicsWorld.addDie(instance, toPhysicsTransform(item.mesh), {
+        launchMode: "surface_roll",
+      });
     }
 
     physicsActiveRef.current = true;
     lastFrameAtRef.current = Date.now();
-  }, [createDropStateForMesh, diceInstances]);
+  }, [diceInstances]);
 
   useEffect(() => {
     const diceItems = diceItemsRef.current;

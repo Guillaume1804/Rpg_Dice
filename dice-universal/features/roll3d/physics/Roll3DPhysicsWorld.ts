@@ -27,6 +27,12 @@ const WALL_IDS = {
   bottom: "roll-3d-physics-wall-bottom",
 } as const;
 
+type Roll3DPhysicsLaunchMode = "drop" | "surface_roll";
+
+type Roll3DPhysicsAddDieOptions = {
+  launchMode?: Roll3DPhysicsLaunchMode;
+};
+
 function createCannonVec3(transform: Roll3DPhysicsTransform["position"]) {
   return new CANNON.Vec3(transform.x, transform.y, transform.z);
 }
@@ -95,7 +101,18 @@ function createDieShape(sides: Roll3DDieSides): CANNON.Shape {
   }
 }
 
-function createInitialVelocity() {
+function createInitialVelocity(mode: Roll3DPhysicsLaunchMode) {
+  if (mode === "surface_roll") {
+    const angle = Math.random() * Math.PI * 2;
+    const strength = 1.05 + Math.random() * 0.55;
+
+    return new CANNON.Vec3(
+      Math.cos(angle) * strength,
+      0.08 + Math.random() * 0.12,
+      Math.sin(angle) * strength,
+    );
+  }
+
   return new CANNON.Vec3(
     (Math.random() - 0.5) * 0.62,
     -0.72 - Math.random() * 0.32,
@@ -103,7 +120,15 @@ function createInitialVelocity() {
   );
 }
 
-function createInitialAngularVelocity() {
+function createInitialAngularVelocity(mode: Roll3DPhysicsLaunchMode) {
+  if (mode === "surface_roll") {
+    return new CANNON.Vec3(
+      (Math.random() - 0.5) * 6.4,
+      (Math.random() - 0.5) * 7.2,
+      (Math.random() - 0.5) * 6.4,
+    );
+  }
+
   return new CANNON.Vec3(
     (Math.random() - 0.5) * 4.2,
     (Math.random() - 0.5) * 4.8,
@@ -180,11 +205,17 @@ export class Roll3DPhysicsWorld {
      */
   }
 
-  addDie(instance: Roll3DDieInstance, transform: Roll3DPhysicsTransform) {
+  addDie(
+    instance: Roll3DDieInstance,
+    transform: Roll3DPhysicsTransform,
+    options: Roll3DPhysicsAddDieOptions = {},
+  ) {
     /**
      * Si un corps existe déjà pour ce dé, on le remplace proprement.
      */
     this.removeDie(instance.id);
+
+    const launchMode = options.launchMode ?? "drop";
 
     const body = new CANNON.Body({
       mass: this.getDieMass(instance.sides),
@@ -199,8 +230,9 @@ export class Roll3DPhysicsWorld {
       sleepTimeLimit: 0.28,
     });
 
-    body.velocity.copy(createInitialVelocity());
-    body.angularVelocity.copy(createInitialAngularVelocity());
+    body.velocity.copy(createInitialVelocity(launchMode));
+    body.angularVelocity.copy(createInitialAngularVelocity(launchMode));
+    body.wakeUp();
 
     this.world.addBody(body);
     this.diceBodies.set(instance.id, body);
