@@ -5,7 +5,7 @@ import { View } from "react-native";
 import { useRoll3DLauncher } from "../hooks/useRoll3DLauncher";
 import { DiceTable3D } from "./DiceTable3D";
 import { Roll3DDiceSelector } from "./Roll3DDiceSelector";
-import { Roll3DResultPanel } from "./Roll3DResultPanel";
+import { Roll3DResultOverlay } from "./Roll3DResultOverlay";
 import { Roll3DRollButton } from "./Roll3DRollButton";
 
 type Roll3DLauncherSurfaceProps = {
@@ -51,8 +51,14 @@ export function Roll3DLauncherSurface({
           diceCount={launcher.diceCount}
           onPress={launcher.rollDice}
         />
+        
+        <Roll3DResultOverlay
+          visible={!!launcher.latestResult}
+          result={launcher.latestResult}
+          onClose={launcher.clearResult}
+          onRollAgain={launcher.rollDice}
+        />
 
-        <Roll3DResultPanel result={launcher.latestResult} />
       </View>
     </View>
   );

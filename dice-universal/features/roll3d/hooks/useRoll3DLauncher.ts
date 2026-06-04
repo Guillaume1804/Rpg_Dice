@@ -58,6 +58,10 @@ export function useRoll3DLauncher({
     setLatestResult(null);
   }, []);
 
+  const clearResult = useCallback(() => {
+    setLatestResult(null);
+  }, []);
+
   const rollDice = useCallback(() => {
     if (diceInstances.length === 0) return;
 
@@ -78,6 +82,7 @@ export function useRoll3DLauncher({
       rollRequestId,
       addDie,
       clearDice,
+      clearResult,
       rollDice,
     }),
     [
@@ -92,6 +97,7 @@ export function useRoll3DLauncher({
       rollRequestId,
       addDie,
       clearDice,
+      clearResult,
       rollDice,
     ],
   );
