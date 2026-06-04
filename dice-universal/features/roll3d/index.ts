@@ -4,7 +4,6 @@ export { DiceTable3D } from "./components/DiceTable3D";
 export { Roll3DDiceSelector } from "./components/Roll3DDiceSelector";
 export { Roll3DLauncherSurface } from "./components/Roll3DLauncherSurface";
 export { Roll3DRollButton } from "./components/Roll3DRollButton";
-export { Roll3DResultPanel } from "./components/Roll3DResultPanel";
 export { Roll3DResultOverlay } from "./components/Roll3DResultOverlay";
 
 export { useRoll3DLauncher } from "./hooks/useRoll3DLauncher";
