@@ -54,8 +54,8 @@ const TABLE_WALL_THICKNESS = 0.12;
 const DROP_DURATION_MS = 860;
 
 const DROP_START_Y = 3.2;
-const DROP_TARGET_SCALE = 0.72;
-const DROP_START_SCALE = 0.86;
+const DROP_TARGET_SCALE = 0.62;
+const DROP_START_SCALE = 0.72;
 
 const TARGET_X_RANGE = 1.05;
 const TARGET_Z_RANGE = 1.52;
@@ -338,6 +338,7 @@ export function DiceTable3D({
     null,
   );
   const onPhysicsRollSettledRef = useRef(onPhysicsRollSettled);
+  const activePhysicsRollIdRef = useRef(0);
 
   useEffect(() => {
     onPhysicsRollSettledRef.current = onPhysicsRollSettled;
@@ -452,6 +453,9 @@ export function DiceTable3D({
     const physicsWorld = physicsWorldRef.current;
     if (!physicsWorld) return;
 
+    const currentRollId = activePhysicsRollIdRef.current + 1;
+    activePhysicsRollIdRef.current = currentRollId;
+
     physicsWorld.clearDice();
 
     physicsSettledNotifiedRef.current = false;
@@ -541,6 +545,7 @@ export function DiceTable3D({
     }
 
     if (diceInstances.length === 0) {
+      activePhysicsRollIdRef.current += 1;
       physicsWorldRef.current?.clearDice();
       physicsActiveRef.current = false;
       physicsRollModeRef.current = "idle";
@@ -652,10 +657,17 @@ export function DiceTable3D({
           ) {
             physicsSettledNotifiedRef.current = true;
 
+            const settledRollId = activePhysicsRollIdRef.current;
+
             settleDelayTimeoutRef.current = setTimeout(() => {
               settleDelayTimeoutRef.current = null;
+
+              if (activePhysicsRollIdRef.current !== settledRollId) {
+                return;
+              }
+
               onPhysicsRollSettledRef.current?.();
-            }, 2000);
+            }, 100);
           }
         }
       } else {

@@ -1,5 +1,6 @@
 // dice-universal/features/roll3d/components/Roll3DLauncherSurface.tsx
 
+import { useEffect } from "react";
 import { View } from "react-native";
 
 import { useRoll3DLauncher } from "../hooks/useRoll3DLauncher";
@@ -15,11 +16,19 @@ type Roll3DLauncherSurfaceProps = {
 
 export function Roll3DLauncherSurface({
   height = 300,
-  maxDice = 12,
+  maxDice = 99,
 }: Roll3DLauncherSurfaceProps) {
   const launcher = useRoll3DLauncher({
     maxDice,
   });
+
+  const { resetLauncher } = launcher;
+
+  useEffect(() => {
+    return () => {
+      resetLauncher();
+    };
+  }, [resetLauncher]);
 
   return (
     <View

@@ -58,6 +58,12 @@ export function useRoll3DLauncher({
     setLatestResult(null);
   }, []);
 
+  const resetLauncher = useCallback(() => {
+    setDraft(createEmptyRoll3DDraft());
+    setLatestResult(null);
+    setRollRequestId(0);
+  }, []);
+
   const clearResult = useCallback(() => {
     setLatestResult(null);
   }, []);
@@ -88,6 +94,7 @@ export function useRoll3DLauncher({
       rollRequestId,
       addDie,
       clearDice,
+      resetLauncher,
       clearResult,
       rollDice,
       completeRollAfterPhysics,
@@ -104,6 +111,7 @@ export function useRoll3DLauncher({
       rollRequestId,
       addDie,
       clearDice,
+      resetLauncher,
       clearResult,
       rollDice,
       completeRollAfterPhysics,
