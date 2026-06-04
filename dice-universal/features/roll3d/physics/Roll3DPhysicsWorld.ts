@@ -70,48 +70,44 @@ function toPhysicsTransform(body: CANNON.Body): Roll3DPhysicsTransform {
 function createDieShape(sides: Roll3DDieSides): CANNON.Shape {
   switch (sides) {
     case 4:
-      return new CANNON.Box(new CANNON.Vec3(0.48, 0.48, 0.48));
+      return new CANNON.Box(new CANNON.Vec3(0.34, 0.34, 0.34));
 
     case 6:
-      return new CANNON.Box(new CANNON.Vec3(0.58, 0.58, 0.58));
+      return new CANNON.Box(new CANNON.Vec3(0.4, 0.4, 0.4));
 
     case 8:
-      return new CANNON.Box(new CANNON.Vec3(0.54, 0.54, 0.54));
+      return new CANNON.Box(new CANNON.Vec3(0.38, 0.38, 0.38));
 
     case 10:
-      return new CANNON.Box(new CANNON.Vec3(0.52, 0.68, 0.52));
+      return new CANNON.Box(new CANNON.Vec3(0.37, 0.48, 0.37));
 
     case 12:
-      return new CANNON.Box(new CANNON.Vec3(0.56, 0.56, 0.56));
+      return new CANNON.Box(new CANNON.Vec3(0.39, 0.39, 0.39));
 
     case 20:
-      return new CANNON.Box(new CANNON.Vec3(0.56, 0.56, 0.56));
+      return new CANNON.Box(new CANNON.Vec3(0.39, 0.39, 0.39));
 
     case 100:
-      /**
-       * d100 visuel = paire de d10.
-       * Physiquement, on commence avec un volume plus large.
-       */
-      return new CANNON.Box(new CANNON.Vec3(0.98, 0.54, 0.56));
+      return new CANNON.Box(new CANNON.Vec3(0.72, 0.38, 0.4));
 
     default:
-      return new CANNON.Box(new CANNON.Vec3(0.56, 0.56, 0.56));
+      return new CANNON.Box(new CANNON.Vec3(0.39, 0.39, 0.39));
   }
 }
 
 function createInitialVelocity() {
   return new CANNON.Vec3(
-    (Math.random() - 0.5) * 1.4,
-    -1.2 - Math.random() * 0.8,
-    (Math.random() - 0.5) * 1.4,
+    (Math.random() - 0.5) * 0.62,
+    -0.72 - Math.random() * 0.32,
+    (Math.random() - 0.5) * 0.62,
   );
 }
 
 function createInitialAngularVelocity() {
   return new CANNON.Vec3(
-    (Math.random() - 0.5) * 7,
-    (Math.random() - 0.5) * 8,
-    (Math.random() - 0.5) * 7,
+    (Math.random() - 0.5) * 4.2,
+    (Math.random() - 0.5) * 4.8,
+    (Math.random() - 0.5) * 4.2,
   );
 }
 
@@ -144,15 +140,15 @@ export class Roll3DPhysicsWorld {
 
     this.world.allowSleep = true;
 
-    this.world.defaultContactMaterial.friction = 0.46;
-    this.world.defaultContactMaterial.restitution = 0.28;
+    this.world.defaultContactMaterial.friction = 0.68;
+    this.world.defaultContactMaterial.restitution = 0.12;
 
     const diceTableContact = new CANNON.ContactMaterial(
       this.diceMaterial,
       this.tableMaterial,
       {
-        friction: 0.52,
-        restitution: 0.32,
+        friction: 0.74,
+        restitution: 0.14,
       },
     );
 
@@ -160,8 +156,8 @@ export class Roll3DPhysicsWorld {
       this.diceMaterial,
       this.diceMaterial,
       {
-        friction: 0.44,
-        restitution: 0.26,
+        friction: 0.62,
+        restitution: 0.1,
       },
     );
 
@@ -196,11 +192,11 @@ export class Roll3DPhysicsWorld {
       position: createCannonVec3(transform.position),
       quaternion: createCannonQuaternion(transform.quaternion),
       shape: createDieShape(instance.sides),
-      linearDamping: 0.18,
-      angularDamping: 0.22,
+      linearDamping: 0.42,
+      angularDamping: 0.48,
       allowSleep: true,
-      sleepSpeedLimit: 0.12,
-      sleepTimeLimit: 0.35,
+      sleepSpeedLimit: 0.18,
+      sleepTimeLimit: 0.28,
     });
 
     body.velocity.copy(createInitialVelocity());
@@ -257,7 +253,7 @@ export class Roll3DPhysicsWorld {
 
   private getDieMass(sides: Roll3DDieSides) {
     if (sides === 100) {
-      return 1.55;
+      return 1.25;
     }
 
     if (sides === 4) {
