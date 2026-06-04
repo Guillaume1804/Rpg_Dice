@@ -6,7 +6,7 @@ import type {
   Roll3DPhysicsDieSnapshot,
   Roll3DPhysicsTransform,
 } from "./Roll3DPhysicsTypes";
-import type { Roll3DDieInstance } from "../types";
+import type { Roll3DDieInstance, Roll3DDieSides } from "../types";
 
 const PHYSICS_TIME_STEP = 1 / 60;
 const PHYSICS_MAX_SUB_STEPS = 3;
@@ -27,12 +27,100 @@ const WALL_IDS = {
   bottom: "roll-3d-physics-wall-bottom",
 } as const;
 
+function createCannonVec3(transform: Roll3DPhysicsTransform["position"]) {
+  return new CANNON.Vec3(transform.x, transform.y, transform.z);
+}
+
+function createCannonQuaternion(
+  transform: Roll3DPhysicsTransform["quaternion"],
+) {
+  return new CANNON.Quaternion(
+    transform.x,
+    transform.y,
+    transform.z,
+    transform.w,
+  );
+}
+
+function toPhysicsTransform(body: CANNON.Body): Roll3DPhysicsTransform {
+  return {
+    position: {
+      x: body.position.x,
+      y: body.position.y,
+      z: body.position.z,
+    },
+    quaternion: {
+      x: body.quaternion.x,
+      y: body.quaternion.y,
+      z: body.quaternion.z,
+      w: body.quaternion.w,
+    },
+  };
+}
+
+/**
+ * Approximation temporaire des formes de collision.
+ *
+ * Les meshes visuels restent précis côté Three.js.
+ * Côté physique, on commence avec des volumes simples et stables.
+ *
+ * Plus tard, on pourra remplacer certains dés par des convex polyhedrons
+ * plus proches de leur vraie géométrie.
+ */
+function createDieShape(sides: Roll3DDieSides): CANNON.Shape {
+  switch (sides) {
+    case 4:
+      return new CANNON.Box(new CANNON.Vec3(0.48, 0.48, 0.48));
+
+    case 6:
+      return new CANNON.Box(new CANNON.Vec3(0.58, 0.58, 0.58));
+
+    case 8:
+      return new CANNON.Box(new CANNON.Vec3(0.54, 0.54, 0.54));
+
+    case 10:
+      return new CANNON.Box(new CANNON.Vec3(0.52, 0.68, 0.52));
+
+    case 12:
+      return new CANNON.Box(new CANNON.Vec3(0.56, 0.56, 0.56));
+
+    case 20:
+      return new CANNON.Box(new CANNON.Vec3(0.56, 0.56, 0.56));
+
+    case 100:
+      /**
+       * d100 visuel = paire de d10.
+       * Physiquement, on commence avec un volume plus large.
+       */
+      return new CANNON.Box(new CANNON.Vec3(0.98, 0.54, 0.56));
+
+    default:
+      return new CANNON.Box(new CANNON.Vec3(0.56, 0.56, 0.56));
+  }
+}
+
+function createInitialVelocity() {
+  return new CANNON.Vec3(
+    (Math.random() - 0.5) * 1.4,
+    -1.2 - Math.random() * 0.8,
+    (Math.random() - 0.5) * 1.4,
+  );
+}
+
+function createInitialAngularVelocity() {
+  return new CANNON.Vec3(
+    (Math.random() - 0.5) * 7,
+    (Math.random() - 0.5) * 8,
+    (Math.random() - 0.5) * 7,
+  );
+}
+
 /**
  * Monde physique Roll3D.
  *
  * Rôle :
  * - isoler cannon-es
- * - gérer gravité, sol, murs et futurs corps de dés
+ * - gérer gravité, sol, murs et corps de dés
  * - fournir des snapshots exploitables par Three.js
  *
  * Important :
@@ -68,7 +156,17 @@ export class Roll3DPhysicsWorld {
       },
     );
 
+    const diceDiceContact = new CANNON.ContactMaterial(
+      this.diceMaterial,
+      this.diceMaterial,
+      {
+        friction: 0.44,
+        restitution: 0.26,
+      },
+    );
+
     this.world.addContactMaterial(diceTableContact);
+    this.world.addContactMaterial(diceDiceContact);
 
     this.createStaticTableBodies();
   }
@@ -88,16 +186,33 @@ export class Roll3DPhysicsWorld {
 
   addDie(instance: Roll3DDieInstance, transform: Roll3DPhysicsTransform) {
     /**
-     * Phase 2.0D :
-     * ici on créera un vrai CANNON.Body dynamique pour le dé.
-     *
-     * Pour l’instant, on conserve seulement le snapshot afin de ne pas
-     * casser l’interface existante.
+     * Si un corps existe déjà pour ce dé, on le remplace proprement.
      */
+    this.removeDie(instance.id);
+
+    const body = new CANNON.Body({
+      mass: this.getDieMass(instance.sides),
+      material: this.diceMaterial,
+      position: createCannonVec3(transform.position),
+      quaternion: createCannonQuaternion(transform.quaternion),
+      shape: createDieShape(instance.sides),
+      linearDamping: 0.18,
+      angularDamping: 0.22,
+      allowSleep: true,
+      sleepSpeedLimit: 0.12,
+      sleepTimeLimit: 0.35,
+    });
+
+    body.velocity.copy(createInitialVelocity());
+    body.angularVelocity.copy(createInitialAngularVelocity());
+
+    this.world.addBody(body);
+    this.diceBodies.set(instance.id, body);
+
     this.diceSnapshots.set(instance.id, {
       id: instance.id,
-      transform,
-      sleeping: false,
+      transform: toPhysicsTransform(body),
+      sleeping: body.sleepState === CANNON.Body.SLEEPING,
     });
   }
 
@@ -123,10 +238,33 @@ export class Roll3DPhysicsWorld {
 
   step(deltaSeconds: number) {
     this.world.step(PHYSICS_TIME_STEP, deltaSeconds, PHYSICS_MAX_SUB_STEPS);
+    this.updateSnapshotsFromBodies();
   }
 
   getDiceSnapshots() {
     return Array.from(this.diceSnapshots.values());
+  }
+
+  private updateSnapshotsFromBodies() {
+    for (const [id, body] of this.diceBodies.entries()) {
+      this.diceSnapshots.set(id, {
+        id,
+        transform: toPhysicsTransform(body),
+        sleeping: body.sleepState === CANNON.Body.SLEEPING,
+      });
+    }
+  }
+
+  private getDieMass(sides: Roll3DDieSides) {
+    if (sides === 100) {
+      return 1.55;
+    }
+
+    if (sides === 4) {
+      return 0.75;
+    }
+
+    return 1;
   }
 
   private createStaticTableBodies() {
