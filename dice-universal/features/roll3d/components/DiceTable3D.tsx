@@ -332,6 +332,7 @@ export function DiceTable3D({
   const physicsWorldRef = useRef<Roll3DPhysicsWorld | null>(null);
   const lastFrameAtRef = useRef<number | null>(null);
   const physicsActiveRef = useRef(false);
+  const physicsRollModeRef = useRef<"idle" | "adding" | "rolling">("idle");
   const physicsSettledNotifiedRef = useRef(false);
   const settleDelayTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
@@ -398,7 +399,7 @@ export function DiceTable3D({
       if (animate) {
         mesh.position.copy(dropState.startPosition);
         mesh.rotation.copy(dropState.startRotation);
-        mesh.scale.setScalar(DROP_START_SCALE);
+        mesh.scale.setScalar(DROP_TARGET_SCALE);
 
         updateContactShadow({
           shadow,
@@ -426,9 +427,23 @@ export function DiceTable3D({
         id: instance.id,
         mesh,
         shadow,
-        drop: animate ? dropState : null,
-        physicsActive: false,
+        drop: null,
+        physicsActive: animate,
       });
+
+      if (animate) {
+        const physicsWorld = physicsWorldRef.current;
+
+        if (physicsWorld) {
+          physicsWorld.addDie(instance, toPhysicsTransform(mesh), {
+            launchMode: "drop",
+          });
+
+          physicsActiveRef.current = true;
+          physicsRollModeRef.current = "adding";
+          lastFrameAtRef.current = Date.now();
+        }
+      }
     },
     [createDropStateForMesh],
   );
@@ -474,6 +489,7 @@ export function DiceTable3D({
     }
 
     physicsActiveRef.current = true;
+    physicsRollModeRef.current = "rolling";
     lastFrameAtRef.current = Date.now();
   }, [diceInstances]);
 
@@ -527,6 +543,12 @@ export function DiceTable3D({
     if (diceInstances.length === 0) {
       physicsWorldRef.current?.clearDice();
       physicsActiveRef.current = false;
+      physicsRollModeRef.current = "idle";
+
+      if (settleDelayTimeoutRef.current != null) {
+        clearTimeout(settleDelayTimeoutRef.current);
+        settleDelayTimeoutRef.current = null;
+      }
     }
   }, [diceInstances, addDiceInstanceToScene]);
 
@@ -615,13 +637,19 @@ export function DiceTable3D({
         }
 
         if (allSleeping) {
+          const completedMode = physicsRollModeRef.current;
+
           physicsActiveRef.current = false;
+          physicsRollModeRef.current = "idle";
 
           for (const item of diceItemsRef.current.values()) {
             item.physicsActive = false;
           }
 
-          if (!physicsSettledNotifiedRef.current) {
+          if (
+            completedMode === "rolling" &&
+            !physicsSettledNotifiedRef.current
+          ) {
             physicsSettledNotifiedRef.current = true;
 
             settleDelayTimeoutRef.current = setTimeout(() => {

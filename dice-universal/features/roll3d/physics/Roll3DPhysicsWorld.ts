@@ -114,9 +114,9 @@ function createInitialVelocity(mode: Roll3DPhysicsLaunchMode) {
   }
 
   return new CANNON.Vec3(
-    (Math.random() - 0.5) * 0.62,
-    -0.72 - Math.random() * 0.32,
-    (Math.random() - 0.5) * 0.62,
+    (Math.random() - 0.5) * 0.42,
+    -0.62 - Math.random() * 0.24,
+    (Math.random() - 0.5) * 0.42,
   );
 }
 
@@ -130,9 +130,9 @@ function createInitialAngularVelocity(mode: Roll3DPhysicsLaunchMode) {
   }
 
   return new CANNON.Vec3(
-    (Math.random() - 0.5) * 4.2,
-    (Math.random() - 0.5) * 4.8,
-    (Math.random() - 0.5) * 4.2,
+    (Math.random() - 0.5) * 3.2,
+    (Math.random() - 0.5) * 3.8,
+    (Math.random() - 0.5) * 3.2,
   );
 }
 
