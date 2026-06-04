@@ -15,6 +15,7 @@ type DiceTable3DProps = {
   height?: number;
   diceInstances?: Roll3DDieInstance[];
   rollRequestId?: number;
+  onPhysicsRollSettled?: () => void;
 };
 
 type DiceDropState = {
@@ -321,6 +322,7 @@ export function DiceTable3D({
   height = 320,
   diceInstances = [],
   rollRequestId = 0,
+  onPhysicsRollSettled,
 }: DiceTable3DProps) {
   const animationFrameRef = useRef<number | null>(null);
 
@@ -330,6 +332,15 @@ export function DiceTable3D({
   const physicsWorldRef = useRef<Roll3DPhysicsWorld | null>(null);
   const lastFrameAtRef = useRef<number | null>(null);
   const physicsActiveRef = useRef(false);
+  const physicsSettledNotifiedRef = useRef(false);
+  const settleDelayTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const onPhysicsRollSettledRef = useRef(onPhysicsRollSettled);
+
+  useEffect(() => {
+    onPhysicsRollSettledRef.current = onPhysicsRollSettled;
+  }, [onPhysicsRollSettled]);
 
   const createDropStateForMesh = useCallback(
     (mesh: THREE.Group): DiceDropState => {
@@ -428,6 +439,13 @@ export function DiceTable3D({
 
     physicsWorld.clearDice();
 
+    physicsSettledNotifiedRef.current = false;
+
+    if (settleDelayTimeoutRef.current != null) {
+      clearTimeout(settleDelayTimeoutRef.current);
+      settleDelayTimeoutRef.current = null;
+    }
+
     for (const instance of diceInstances) {
       const item = diceItemsRef.current.get(instance.id);
       if (!item) continue;
@@ -462,6 +480,11 @@ export function DiceTable3D({
     return () => {
       if (animationFrameRef.current != null) {
         cancelAnimationFrame(animationFrameRef.current);
+      }
+
+      if (settleDelayTimeoutRef.current != null) {
+        clearTimeout(settleDelayTimeoutRef.current);
+        settleDelayTimeoutRef.current = null;
       }
 
       physicsWorldRef.current?.reset();
@@ -593,6 +616,15 @@ export function DiceTable3D({
 
           for (const item of diceItemsRef.current.values()) {
             item.physicsActive = false;
+          }
+
+          if (!physicsSettledNotifiedRef.current) {
+            physicsSettledNotifiedRef.current = true;
+
+            settleDelayTimeoutRef.current = setTimeout(() => {
+              settleDelayTimeoutRef.current = null;
+              onPhysicsRollSettledRef.current?.();
+            }, 2000);
           }
         }
       } else {

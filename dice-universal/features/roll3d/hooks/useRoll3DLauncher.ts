@@ -63,11 +63,17 @@ export function useRoll3DLauncher({
   }, []);
 
   const rollDice = useCallback(() => {
-    if (diceInstances.length === 0) return;
+    if (draft.dice.length === 0) return;
 
-    setLatestResult(buildOfficialRoll3DSummary(diceInstances));
+    setLatestResult(null);
     setRollRequestId((current) => current + 1);
-  }, [diceInstances]);
+  }, [draft.dice.length]);
+
+  const completeRollAfterPhysics = useCallback(() => {
+    if (draft.dice.length === 0) return;
+
+    setLatestResult(buildOfficialRoll3DSummary(draft.dice));
+  }, [draft.dice]);
 
   return useMemo(
     () => ({
@@ -84,6 +90,7 @@ export function useRoll3DLauncher({
       clearDice,
       clearResult,
       rollDice,
+      completeRollAfterPhysics,
     }),
     [
       selectedSides,
@@ -99,6 +106,7 @@ export function useRoll3DLauncher({
       clearDice,
       clearResult,
       rollDice,
+      completeRollAfterPhysics,
     ],
   );
 }

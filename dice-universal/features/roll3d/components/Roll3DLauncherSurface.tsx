@@ -32,6 +32,7 @@ export function Roll3DLauncherSurface({
         height={height}
         diceInstances={launcher.diceInstances}
         rollRequestId={launcher.rollRequestId}
+        onPhysicsRollSettled={launcher.completeRollAfterPhysics}
       />
 
       <View
@@ -51,14 +52,13 @@ export function Roll3DLauncherSurface({
           diceCount={launcher.diceCount}
           onPress={launcher.rollDice}
         />
-        
+
         <Roll3DResultOverlay
           visible={!!launcher.latestResult}
           result={launcher.latestResult}
           onClose={launcher.clearResult}
           onRollAgain={launcher.rollDice}
         />
-
       </View>
     </View>
   );
