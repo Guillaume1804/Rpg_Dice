@@ -76,63 +76,63 @@ function toPhysicsTransform(body: CANNON.Body): Roll3DPhysicsTransform {
 function createDieShape(sides: Roll3DDieSides): CANNON.Shape {
   switch (sides) {
     case 4:
-      return new CANNON.Box(new CANNON.Vec3(0.29, 0.29, 0.29));
+      return new CANNON.Box(new CANNON.Vec3(0.22, 0.22, 0.22));
 
     case 6:
-      return new CANNON.Box(new CANNON.Vec3(0.34, 0.34, 0.34));
+      return new CANNON.Box(new CANNON.Vec3(0.27, 0.27, 0.27));
 
     case 8:
-      return new CANNON.Box(new CANNON.Vec3(0.33, 0.33, 0.33));
+      return new CANNON.Box(new CANNON.Vec3(0.26, 0.26, 0.26));
 
     case 10:
-      return new CANNON.Box(new CANNON.Vec3(0.32, 0.41, 0.32));
+      return new CANNON.Box(new CANNON.Vec3(0.25, 0.33, 0.25));
 
     case 12:
-      return new CANNON.Box(new CANNON.Vec3(0.34, 0.34, 0.34));
+      return new CANNON.Box(new CANNON.Vec3(0.27, 0.27, 0.27));
 
     case 20:
-      return new CANNON.Box(new CANNON.Vec3(0.34, 0.34, 0.34));
+      return new CANNON.Box(new CANNON.Vec3(0.27, 0.27, 0.27));
 
     case 100:
-      return new CANNON.Box(new CANNON.Vec3(0.62, 0.33, 0.34));
+      return new CANNON.Box(new CANNON.Vec3(0.5, 0.26, 0.27));
 
     default:
-      return new CANNON.Box(new CANNON.Vec3(0.34, 0.34, 0.34));
+      return new CANNON.Box(new CANNON.Vec3(0.27, 0.27, 0.27));
   }
 }
 
 function createInitialVelocity(mode: Roll3DPhysicsLaunchMode) {
   if (mode === "surface_roll") {
     const angle = Math.random() * Math.PI * 2;
-    const strength = 2.35 + Math.random() * 1.15;
+    const strength = 12 + Math.random() * 7;
 
     return new CANNON.Vec3(
       Math.cos(angle) * strength,
-      0.12 + Math.random() * 0.18,
+      0.35 + Math.random() * 0.35,
       Math.sin(angle) * strength,
     );
   }
 
   return new CANNON.Vec3(
-    (Math.random() - 0.5) * 0.38,
-    -1.45 - Math.random() * 0.45,
-    (Math.random() - 0.5) * 0.38,
+    (Math.random() - 0.5) * 0.5,
+    -4.2 - Math.random() * 1.2,
+    (Math.random() - 0.5) * 0.5,
   );
 }
 
 function createInitialAngularVelocity(mode: Roll3DPhysicsLaunchMode) {
   if (mode === "surface_roll") {
     return new CANNON.Vec3(
-      (Math.random() - 0.5) * 11,
-      (Math.random() - 0.5) * 13,
-      (Math.random() - 0.5) * 11,
+      (Math.random() - 0.5) * 32,
+      (Math.random() - 0.5) * 38,
+      (Math.random() - 0.5) * 32,
     );
   }
 
   return new CANNON.Vec3(
-    (Math.random() - 0.5) * 3.2,
-    (Math.random() - 0.5) * 3.8,
-    (Math.random() - 0.5) * 3.2,
+    (Math.random() - 0.5) * 5.5,
+    (Math.random() - 0.5) * 6.5,
+    (Math.random() - 0.5) * 5.5,
   );
 }
 
@@ -223,8 +223,8 @@ export class Roll3DPhysicsWorld {
       position: createCannonVec3(transform.position),
       quaternion: createCannonQuaternion(transform.quaternion),
       shape: createDieShape(instance.sides),
-      linearDamping: 0.42,
-      angularDamping: 0.48,
+      linearDamping: 0.18,
+      angularDamping: 0.22,
       allowSleep: true,
       sleepSpeedLimit: 0.18,
       sleepTimeLimit: 0.28,

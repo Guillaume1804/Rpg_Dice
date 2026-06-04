@@ -1,6 +1,7 @@
 // dice-universal/features/roll3d/components/Roll3DLauncherSurface.tsx
 
-import { useEffect } from "react";
+import { useCallback } from "react";
+import { useFocusEffect } from "expo-router";
 import { View } from "react-native";
 
 import { useRoll3DLauncher } from "../hooks/useRoll3DLauncher";
@@ -24,11 +25,13 @@ export function Roll3DLauncherSurface({
 
   const { resetLauncher } = launcher;
 
-  useEffect(() => {
-    return () => {
-      resetLauncher();
-    };
-  }, [resetLauncher]);
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        resetLauncher();
+      };
+    }, [resetLauncher]),
+  );
 
   return (
     <View

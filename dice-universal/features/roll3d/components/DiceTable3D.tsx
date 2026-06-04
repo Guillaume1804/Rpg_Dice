@@ -54,8 +54,8 @@ const TABLE_WALL_THICKNESS = 0.12;
 const DROP_DURATION_MS = 860;
 
 const DROP_START_Y = 3.2;
-const DROP_TARGET_SCALE = 0.62;
-const DROP_START_SCALE = 0.72;
+const DROP_TARGET_SCALE = 0.48;
+const DROP_START_SCALE = 0.56;
 
 const TARGET_X_RANGE = 1.05;
 const TARGET_Z_RANGE = 1.52;
@@ -273,7 +273,7 @@ function createInteriorTable() {
 }
 
 function createContactShadow() {
-  const geometry = new THREE.CircleGeometry(0.52, 36);
+  const geometry = new THREE.CircleGeometry(0.4, 36);
   const material = new THREE.MeshBasicMaterial({
     color: "#000000",
     transparent: true,
@@ -285,7 +285,7 @@ function createContactShadow() {
   shadow.name = "dice-contact-shadow";
   shadow.rotation.x = -Math.PI / 2;
   shadow.position.set(0, TABLE_SURFACE_Y + 0.006, 0);
-  shadow.scale.set(0.62, 0.62, 0.62);
+  shadow.scale.set(0.48, 0.48, 0.48);
 
   return shadow;
 }
@@ -312,7 +312,7 @@ function updateContactShadow(params: {
   shadow.position.y = TABLE_SURFACE_Y + 0.006;
 
   const opacity = lerp(0.035, 0.22, progress);
-  const scale = lerp(0.28, 0.66, progress);
+  const scale = lerp(0.2, 0.48, progress);
 
   material.opacity = opacity;
   shadow.scale.set(scale, scale * 0.72, scale);
