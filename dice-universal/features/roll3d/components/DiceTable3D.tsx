@@ -1,13 +1,15 @@
 // dice-universal/features/roll3d/components/DiceTable3D.tsx
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { View } from "react-native";
 import { GLView, type ExpoWebGLRenderingContext } from "expo-gl";
 import { Renderer } from "expo-three";
 import * as THREE from "three";
 
 import { createDiceMesh } from "../renderer/DiceMeshFactory";
+import { Roll3DPhysicsWorld } from "../physics/Roll3DPhysicsWorld";
 import type { Roll3DDieInstance } from "../types";
+import type { Roll3DPhysicsTransform } from "../physics/Roll3DPhysicsTypes";
 
 type DiceTable3DProps = {
   height?: number;
@@ -32,6 +34,7 @@ type DiceSceneItem = {
   mesh: THREE.Group;
   shadow: THREE.Mesh;
   drop: DiceDropState | null;
+  physicsActive: boolean;
 };
 
 /**
@@ -50,8 +53,8 @@ const TABLE_WALL_THICKNESS = 0.12;
 const DROP_DURATION_MS = 860;
 
 const DROP_START_Y = 3.2;
-const DROP_START_SCALE = 1.18;
 const DROP_TARGET_SCALE = 1;
+const DROP_START_SCALE = 1.18;
 
 const TARGET_X_RANGE = 1.35;
 const TARGET_Z_RANGE = 1.95;
@@ -139,6 +142,42 @@ function computeRestingPosition(params: {
   const bottomY = box.min.y;
 
   return new THREE.Vector3(x, TABLE_SURFACE_Y - bottomY, z);
+}
+
+function toPhysicsTransform(mesh: THREE.Object3D): Roll3DPhysicsTransform {
+  mesh.updateMatrixWorld(true);
+
+  return {
+    position: {
+      x: mesh.position.x,
+      y: mesh.position.y,
+      z: mesh.position.z,
+    },
+    quaternion: {
+      x: mesh.quaternion.x,
+      y: mesh.quaternion.y,
+      z: mesh.quaternion.z,
+      w: mesh.quaternion.w,
+    },
+  };
+}
+
+function applyPhysicsTransform(
+  mesh: THREE.Object3D,
+  transform: Roll3DPhysicsTransform,
+) {
+  mesh.position.set(
+    transform.position.x,
+    transform.position.y,
+    transform.position.z,
+  );
+
+  mesh.quaternion.set(
+    transform.quaternion.x,
+    transform.quaternion.y,
+    transform.quaternion.z,
+    transform.quaternion.w,
+  );
 }
 
 function createInteriorTable() {
@@ -288,106 +327,151 @@ export function DiceTable3D({
   const sceneRef = useRef<THREE.Scene | null>(null);
   const diceItemsRef = useRef<Map<string, DiceSceneItem>>(new Map());
 
-  function createDropStateForMesh(mesh: THREE.Group): DiceDropState {
-    const targetXZ = createRandomTargetXZ();
-    const targetRotation = createRandomRotation();
+  const physicsWorldRef = useRef<Roll3DPhysicsWorld | null>(null);
+  const lastFrameAtRef = useRef<number | null>(null);
+  const physicsActiveRef = useRef(false);
 
-    const targetPosition = computeRestingPosition({
-      dice: mesh,
-      x: targetXZ.x,
-      z: targetXZ.z,
-      rotation: targetRotation,
-      scale: DROP_TARGET_SCALE,
-    });
+  const createDropStateForMesh = useCallback(
+    (mesh: THREE.Group): DiceDropState => {
+      const targetXZ = createRandomTargetXZ();
+      const targetRotation = createRandomRotation();
 
-    const startPosition = createDropStartPosition(
-      targetPosition.x,
-      targetPosition.z,
-    );
+      const targetPosition = computeRestingPosition({
+        dice: mesh,
+        x: targetXZ.x,
+        z: targetXZ.z,
+        rotation: targetRotation,
+        scale: DROP_TARGET_SCALE,
+      });
 
-    const startRotation = new THREE.Euler(
-      randomBetween(-Math.PI, Math.PI),
-      randomBetween(-Math.PI, Math.PI),
-      randomBetween(-Math.PI, Math.PI),
-    );
+      const startPosition = createDropStartPosition(
+        targetPosition.x,
+        targetPosition.z,
+      );
 
-    return {
-      startedAt: Date.now(),
-      startPosition,
-      targetPosition,
-      startRotation,
-      targetRotation,
-      spinTurns: new THREE.Vector3(
-        randomBetween(0.65, 1.15),
-        randomBetween(0.85, 1.35),
-        randomBetween(0.35, 0.85),
-      ),
-    };
-  }
+      const startRotation = new THREE.Euler(
+        randomBetween(-Math.PI, Math.PI),
+        randomBetween(-Math.PI, Math.PI),
+        randomBetween(-Math.PI, Math.PI),
+      );
 
-  function addDiceInstanceToScene(
-    scene: THREE.Scene,
-    instance: Roll3DDieInstance,
-    animate = true,
-  ) {
-    if (diceItemsRef.current.has(instance.id)) return;
+      return {
+        startedAt: Date.now(),
+        startPosition,
+        targetPosition,
+        startRotation,
+        targetRotation,
+        spinTurns: new THREE.Vector3(
+          randomBetween(0.45, 0.85),
+          randomBetween(0.65, 1.05),
+          randomBetween(0.25, 0.65),
+        ),
+      };
+    },
+    [],
+  );
 
-    const mesh = createDiceMesh({
-      sides: instance.sides,
-      skinId: "graphite_default",
-    });
+  const addDiceInstanceToScene = useCallback(
+    (scene: THREE.Scene, instance: Roll3DDieInstance, animate = true) => {
+      if (diceItemsRef.current.has(instance.id)) return;
 
-    const shadow = createContactShadow();
+      const mesh = createDiceMesh({
+        sides: instance.sides,
+        skinId: "graphite_default",
+      });
 
-    const dropState = createDropStateForMesh(mesh);
+      const shadow = createContactShadow();
 
-    if (animate) {
-      mesh.position.copy(dropState.startPosition);
-      mesh.rotation.copy(dropState.startRotation);
-      mesh.scale.setScalar(DROP_START_SCALE);
+      const dropState = createDropStateForMesh(mesh);
+
+      if (animate) {
+        mesh.position.copy(dropState.startPosition);
+        mesh.rotation.copy(dropState.startRotation);
+        mesh.scale.setScalar(DROP_START_SCALE);
+
+        updateContactShadow({
+          shadow,
+          dice: mesh,
+          progress: 0,
+          visible: false,
+        });
+      } else {
+        mesh.position.copy(dropState.targetPosition);
+        mesh.rotation.copy(dropState.targetRotation);
+        mesh.scale.setScalar(DROP_TARGET_SCALE);
+
+        updateContactShadow({
+          shadow,
+          dice: mesh,
+          progress: 1,
+          visible: true,
+        });
+      }
+
+      scene.add(shadow);
+      scene.add(mesh);
+
+      diceItemsRef.current.set(instance.id, {
+        id: instance.id,
+        mesh,
+        shadow,
+        drop: animate ? dropState : null,
+        physicsActive: false,
+      });
+    },
+    [createDropStateForMesh],
+  );
+
+  const startPhysicsRoll = useCallback(() => {
+    const physicsWorld = physicsWorldRef.current;
+    if (!physicsWorld) return;
+
+    physicsWorld.clearDice();
+
+    for (const instance of diceInstances) {
+      const item = diceItemsRef.current.get(instance.id);
+      if (!item) continue;
+
+      const dropState = createDropStateForMesh(item.mesh);
+
+      item.mesh.position.copy(dropState.startPosition);
+      item.mesh.rotation.copy(dropState.startRotation);
+      item.mesh.scale.setScalar(DROP_TARGET_SCALE);
+      item.mesh.updateMatrixWorld(true);
+
+      item.drop = null;
+      item.physicsActive = true;
 
       updateContactShadow({
-        shadow,
-        dice: mesh,
+        shadow: item.shadow,
+        dice: item.mesh,
         progress: 0,
         visible: false,
       });
-    } else {
-      mesh.position.copy(dropState.targetPosition);
-      mesh.rotation.copy(dropState.targetRotation);
-      mesh.scale.setScalar(DROP_TARGET_SCALE);
 
-      updateContactShadow({
-        shadow,
-        dice: mesh,
-        progress: 1,
-        visible: true,
-      });
+      physicsWorld.addDie(instance, toPhysicsTransform(item.mesh));
     }
 
-    scene.add(shadow);
-    scene.add(mesh);
-
-    diceItemsRef.current.set(instance.id, {
-      id: instance.id,
-      mesh,
-      shadow,
-      drop: animate ? dropState : null,
-    });
-  }
+    physicsActiveRef.current = true;
+    lastFrameAtRef.current = Date.now();
+  }, [createDropStateForMesh, diceInstances]);
 
   useEffect(() => {
+    const diceItems = diceItemsRef.current;
+
     return () => {
       if (animationFrameRef.current != null) {
         cancelAnimationFrame(animationFrameRef.current);
       }
 
-      for (const item of diceItemsRef.current.values()) {
+      physicsWorldRef.current?.reset();
+
+      for (const item of diceItems.values()) {
         disposeObject3D(item.mesh);
         disposeObject3D(item.shadow);
       }
 
-      diceItemsRef.current.clear();
+      diceItems.clear();
     };
   }, []);
 
@@ -406,34 +490,25 @@ export function DiceTable3D({
         disposeObject3D(item.shadow);
 
         diceItemsRef.current.delete(id);
+        physicsWorldRef.current?.removeDie(id);
       }
     }
 
     for (const instance of diceInstances) {
       addDiceInstanceToScene(scene, instance, true);
     }
-  }, [diceInstances]);
+
+    if (diceInstances.length === 0) {
+      physicsWorldRef.current?.clearDice();
+      physicsActiveRef.current = false;
+    }
+  }, [diceInstances, addDiceInstanceToScene]);
 
   useEffect(() => {
     if (rollRequestId <= 0) return;
 
-    for (const item of diceItemsRef.current.values()) {
-      const dropState = createDropStateForMesh(item.mesh);
-
-      item.mesh.position.copy(dropState.startPosition);
-      item.mesh.rotation.copy(dropState.startRotation);
-      item.mesh.scale.setScalar(DROP_START_SCALE);
-
-      updateContactShadow({
-        shadow: item.shadow,
-        dice: item.mesh,
-        progress: 0,
-        visible: false,
-      });
-
-      item.drop = dropState;
-    }
-  }, [rollRequestId]);
+    startPhysicsRoll();
+  }, [rollRequestId, startPhysicsRoll]);
 
   function handleContextCreate(gl: ExpoWebGLRenderingContext) {
     const { drawingBufferWidth: width, drawingBufferHeight: bufferHeight } = gl;
@@ -442,6 +517,7 @@ export function DiceTable3D({
     scene.background = new THREE.Color("#050713");
 
     sceneRef.current = scene;
+    physicsWorldRef.current = new Roll3DPhysicsWorld();
 
     const camera = new THREE.PerspectiveCamera(
       34,
@@ -480,101 +556,143 @@ export function DiceTable3D({
     }
 
     const render = () => {
-      for (const item of diceItemsRef.current.values()) {
-        const { mesh, shadow, drop } = item;
+      const now = Date.now();
+      const previousFrameAt = lastFrameAtRef.current ?? now;
+      const deltaSeconds = Math.min(0.04, (now - previousFrameAt) / 1000);
 
-        if (drop) {
-          const rawProgress = (Date.now() - drop.startedAt) / DROP_DURATION_MS;
-          const progress = clamp01(rawProgress);
+      lastFrameAtRef.current = now;
 
-          const fallProgress = easeInOutCubic(progress);
-          const lateralProgress = easeOutCubic(progress);
+      const physicsWorld = physicsWorldRef.current;
 
-          mesh.position.x = lerp(
-            drop.startPosition.x,
-            drop.targetPosition.x,
-            lateralProgress,
-          );
+      if (physicsWorld && physicsActiveRef.current) {
+        physicsWorld.step(deltaSeconds);
 
-          mesh.position.z = lerp(
-            drop.startPosition.z,
-            drop.targetPosition.z,
-            lateralProgress,
-          );
+        const snapshots = physicsWorld.getDiceSnapshots();
+        let allSleeping = snapshots.length > 0;
 
-          const impactProgress = clamp01((progress - 0.84) / 0.16);
+        for (const snapshot of snapshots) {
+          const item = diceItemsRef.current.get(snapshot.id);
+          if (!item) continue;
 
-          const bounce =
-            progress > 0.84
-              ? Math.sin((1 - impactProgress) * Math.PI) *
-                0.07 *
-                (1 - impactProgress)
-              : 0;
-
-          mesh.position.y =
-            lerp(drop.startPosition.y, drop.targetPosition.y, fallProgress) +
-            bounce;
-
-          mesh.scale.setScalar(
-            lerp(DROP_START_SCALE, DROP_TARGET_SCALE, fallProgress),
-          );
-
-          const spinAmount =
-            Math.sin(progress * Math.PI) * (1 - progress * 0.35);
-          const rotationProgress = easeOutCubic(progress);
-
-          mesh.rotation.x =
-            lerp(
-              drop.startRotation.x,
-              drop.targetRotation.x,
-              rotationProgress,
-            ) +
-            drop.spinTurns.x * Math.PI * 2 * spinAmount;
-
-          mesh.rotation.y =
-            lerp(
-              drop.startRotation.y,
-              drop.targetRotation.y,
-              rotationProgress,
-            ) +
-            drop.spinTurns.y * Math.PI * 2 * spinAmount;
-
-          mesh.rotation.z =
-            lerp(
-              drop.startRotation.z,
-              drop.targetRotation.z,
-              rotationProgress,
-            ) +
-            drop.spinTurns.z * Math.PI * 2 * spinAmount;
+          applyPhysicsTransform(item.mesh, snapshot.transform);
 
           updateContactShadow({
-            shadow,
-            dice: mesh,
-            progress: fallProgress,
-            visible: progress > 0.18,
+            shadow: item.shadow,
+            dice: item.mesh,
+            progress: 1,
+            visible: true,
           });
 
-          if (progress >= 1) {
-            mesh.position.copy(drop.targetPosition);
-            mesh.rotation.copy(drop.targetRotation);
-            mesh.scale.setScalar(DROP_TARGET_SCALE);
+          if (!snapshot.sleeping) {
+            allSleeping = false;
+          }
+        }
 
+        if (allSleeping) {
+          physicsActiveRef.current = false;
+
+          for (const item of diceItemsRef.current.values()) {
+            item.physicsActive = false;
+          }
+        }
+      } else {
+        for (const item of diceItemsRef.current.values()) {
+          const { mesh, shadow, drop } = item;
+
+          if (drop) {
+            const rawProgress =
+              (Date.now() - drop.startedAt) / DROP_DURATION_MS;
+            const progress = clamp01(rawProgress);
+
+            const fallProgress = easeInOutCubic(progress);
+            const lateralProgress = easeOutCubic(progress);
+
+            mesh.position.x = lerp(
+              drop.startPosition.x,
+              drop.targetPosition.x,
+              lateralProgress,
+            );
+
+            mesh.position.z = lerp(
+              drop.startPosition.z,
+              drop.targetPosition.z,
+              lateralProgress,
+            );
+
+            const impactProgress = clamp01((progress - 0.84) / 0.16);
+
+            const bounce =
+              progress > 0.84
+                ? Math.sin((1 - impactProgress) * Math.PI) *
+                  0.07 *
+                  (1 - impactProgress)
+                : 0;
+
+            mesh.position.y =
+              lerp(drop.startPosition.y, drop.targetPosition.y, fallProgress) +
+              bounce;
+
+            mesh.scale.setScalar(
+              lerp(DROP_START_SCALE, DROP_TARGET_SCALE, fallProgress),
+            );
+
+            const spinAmount =
+              Math.sin(progress * Math.PI) * (1 - progress * 0.35);
+            const rotationProgress = easeOutCubic(progress);
+
+            mesh.rotation.x =
+              lerp(
+                drop.startRotation.x,
+                drop.targetRotation.x,
+                rotationProgress,
+              ) +
+              drop.spinTurns.x * Math.PI * 2 * spinAmount;
+
+            mesh.rotation.y =
+              lerp(
+                drop.startRotation.y,
+                drop.targetRotation.y,
+                rotationProgress,
+              ) +
+              drop.spinTurns.y * Math.PI * 2 * spinAmount;
+
+            mesh.rotation.z =
+              lerp(
+                drop.startRotation.z,
+                drop.targetRotation.z,
+                rotationProgress,
+              ) +
+              drop.spinTurns.z * Math.PI * 2 * spinAmount;
+
+            updateContactShadow({
+              shadow,
+              dice: mesh,
+              progress: fallProgress,
+              visible: progress > 0.18,
+            });
+
+            if (progress >= 1) {
+              mesh.position.copy(drop.targetPosition);
+              mesh.rotation.copy(drop.targetRotation);
+              mesh.scale.setScalar(DROP_TARGET_SCALE);
+
+              updateContactShadow({
+                shadow,
+                dice: mesh,
+                progress: 1,
+                visible: true,
+              });
+
+              item.drop = null;
+            }
+          } else {
             updateContactShadow({
               shadow,
               dice: mesh,
               progress: 1,
               visible: true,
             });
-
-            item.drop = null;
           }
-        } else {
-          updateContactShadow({
-            shadow,
-            dice: mesh,
-            progress: 1,
-            visible: true,
-          });
         }
       }
 
