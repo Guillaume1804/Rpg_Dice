@@ -88,6 +88,10 @@ function clamp01(value: number) {
   return Math.max(0, Math.min(1, value));
 }
 
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}
+
 function lerp(from: number, to: number, t: number) {
   return from + (to - from) * t;
 }
@@ -549,6 +553,110 @@ export function DiceTable3D({
     return transforms;
   }, []);
 
+  const createCinematicSettleTransforms = useCallback(() => {
+    const transforms = new Map<string, DiceVisualTransform>();
+    const items = Array.from(diceItemsRef.current.entries());
+
+    const diceCount = items.length;
+
+    if (diceCount === 0) {
+      return transforms;
+    }
+
+    /**
+     * Zone sûre légèrement rentrée dans les murs.
+     * On évite de placer les dés trop près des bordures.
+     */
+    const safeX = TABLE_WIDTH / 2 - 0.58;
+    const safeZ = TABLE_DEPTH / 2 - 0.72;
+
+    /**
+     * Grille souple :
+     * elle permet d'éviter les gros chevauchements quand il y a beaucoup de dés.
+     * Ce n'est pas une grille visible parfaite, car on ajoute du jitter.
+     */
+    const columns = Math.max(
+      1,
+      Math.ceil(Math.sqrt(diceCount * (TABLE_WIDTH / TABLE_DEPTH))),
+    );
+
+    const rows = Math.max(1, Math.ceil(diceCount / columns));
+
+    const spacingX = columns <= 1 ? 0 : (safeX * 2) / (columns - 1);
+    const spacingZ = rows <= 1 ? 0 : (safeZ * 2) / (rows - 1);
+
+    /**
+     * On trie les dés selon leur position actuelle pour que la transition
+     * soit lisible et évite de traverser toute la table dans tous les sens.
+     */
+    const sortedItems = [...items].sort((a, b) => {
+      const meshA = a[1].mesh;
+      const meshB = b[1].mesh;
+
+      if (Math.abs(meshA.position.z - meshB.position.z) > 0.2) {
+        return meshA.position.z - meshB.position.z;
+      }
+
+      return meshA.position.x - meshB.position.x;
+    });
+
+    sortedItems.forEach(([id, item], index) => {
+      const column = index % columns;
+      const row = Math.floor(index / columns);
+
+      const baseX = columns <= 1 ? 0 : -safeX + column * spacingX;
+      const baseZ = rows <= 1 ? 0 : -safeZ + row * spacingZ;
+
+      /**
+       * Petit décalage pour éviter l'effet trop rangé.
+       * Plus il y a de dés, plus le jitter est faible.
+       */
+      const jitterScale = diceCount >= 36 ? 0.08 : diceCount >= 18 ? 0.12 : 0.18;
+
+      const targetX = clamp(
+        baseX + randomBetween(-jitterScale, jitterScale),
+        -safeX,
+        safeX,
+      );
+
+      const targetZ = clamp(
+        baseZ + randomBetween(-jitterScale, jitterScale),
+        -safeZ,
+        safeZ,
+      );
+
+      const finalRotation = createRandomRotation();
+      const finalQuaternion = new THREE.Quaternion().setFromEuler(finalRotation);
+
+      /**
+       * On calcule une hauteur de repos correcte sans laisser le mesh muté.
+       */
+      const originalPosition = item.mesh.position.clone();
+      const originalQuaternion = item.mesh.quaternion.clone();
+      const originalScale = item.mesh.scale.clone();
+
+      item.mesh.position.set(targetX, 0, targetZ);
+      item.mesh.quaternion.copy(finalQuaternion);
+      item.mesh.scale.setScalar(DROP_TARGET_SCALE);
+      item.mesh.updateMatrixWorld(true);
+
+      const box = new THREE.Box3().setFromObject(item.mesh);
+      const finalY = TABLE_SURFACE_Y - box.min.y;
+
+      item.mesh.position.copy(originalPosition);
+      item.mesh.quaternion.copy(originalQuaternion);
+      item.mesh.scale.copy(originalScale);
+      item.mesh.updateMatrixWorld(true);
+
+      transforms.set(id, {
+        position: new THREE.Vector3(targetX, finalY, targetZ),
+        quaternion: finalQuaternion,
+      });
+    });
+
+    return transforms;
+  }, []);
+
   const animateDiceToFinalTransforms = useCallback(
     (
       startTransforms: Map<string, DiceVisualTransform>,
@@ -566,7 +674,8 @@ export function DiceTable3D({
       }
 
       const startedAt = Date.now();
-      const durationMs = 340;
+      const diceCount = finalTransforms.size;
+      const durationMs = diceCount >= 24 ? 420 : diceCount >= 12 ? 380 : 320;
 
       const animate = () => {
         const progress = clamp01((Date.now() - startedAt) / durationMs);
@@ -651,66 +760,33 @@ export function DiceTable3D({
     }
 
     /**
-     * Important :
-     * on coupe la boucle physique normale immédiatement.
-     * Sinon la render loop continue de stepper la physique pendant que
-     * le fast-forward la steppe aussi, ce qui provoque des saccades.
+     * Stratégie pérenne :
+     * le tap ne tente plus de finir toute la physique.
+     * Il déclenche une transition cinématique stable, beaucoup plus fluide
+     * avec un grand nombre de dés.
      */
+    const startTransforms = captureCurrentDiceTransforms();
+    const finalTransforms = createCinematicSettleTransforms();
+
     physicsActiveRef.current = false;
+    physicsRollModeRef.current = "idle";
+    physicsSettledNotifiedRef.current = true;
     lastFrameAtRef.current = Date.now();
 
-    const diceCount = diceItemsRef.current.size;
+    for (const item of diceItemsRef.current.values()) {
+      item.physicsActive = false;
+    }
 
-    /**
-     * Réglage adaptatif :
-     * plus il y a de dés, moins on fait de steps par frame.
-     * L’objectif est de préserver la fluidité plutôt que de tout calculer trop vite.
-     */
-    const stepsPerFrame = diceCount >= 48 ? 4 : diceCount >= 24 ? 6 : 8;
-    const maxFrames = diceCount >= 48 ? 44 : diceCount >= 24 ? 38 : 32;
+    physicsWorld.clearDice();
 
-    let frameCount = 0;
-
-    const runFastForwardFrame = () => {
-      const currentWorld = physicsWorldRef.current;
-
-      if (!currentWorld || physicsRollModeRef.current !== "rolling") {
-        fastForwardFrameRef.current = null;
-        return;
-      }
-
-      for (let index = 0; index < stepsPerFrame; index += 1) {
-        currentWorld.step(1 / 60);
-      }
-
-      const allSleeping = applyPhysicsSnapshotsToMeshes();
-
-      frameCount += 1;
-
-      if (!allSleeping && frameCount < maxFrames) {
-        fastForwardFrameRef.current = requestAnimationFrame(runFastForwardFrame);
-        return;
-      }
-
-      fastForwardFrameRef.current = null;
-
-      applyPhysicsSnapshotsToMeshes();
-
-      physicsActiveRef.current = false;
-      physicsRollModeRef.current = "idle";
-      physicsSettledNotifiedRef.current = true;
-
-      for (const item of diceItemsRef.current.values()) {
-        item.physicsActive = false;
-      }
-
-      currentWorld.clearDice();
-
+    animateDiceToFinalTransforms(startTransforms, finalTransforms, () => {
       onPhysicsRollSettledRef.current?.();
-    };
-
-    fastForwardFrameRef.current = requestAnimationFrame(runFastForwardFrame);
-  }, [applyPhysicsSnapshotsToMeshes]);
+    });
+  }, [
+    animateDiceToFinalTransforms,
+    captureCurrentDiceTransforms,
+    createCinematicSettleTransforms,
+  ]);
 
   useEffect(() => {
     const diceItems = diceItemsRef.current;
