@@ -578,14 +578,37 @@ export function DiceTable3D({
     sceneRef.current = scene;
     physicsWorldRef.current = new Roll3DPhysicsWorld();
 
+    const cameraFov = 42;
+    const cameraAspect = width / bufferHeight;
+
+    /**
+     * On cadre surtout la largeur pour que les murs latéraux restent visibles,
+     * puis on accepte que la profondeur dépasse légèrement visuellement.
+     * Les murs physiques restent plus hauts et plus grands pour empêcher les dés
+     * de sortir de la table.
+     */
+    const widthMargin = 1.06;
+    const depthMargin = 0.82;
+
     const camera = new THREE.PerspectiveCamera(
-      38,
-      width / bufferHeight,
+      cameraFov,
+      cameraAspect,
       0.1,
       100,
     );
 
-    camera.position.set(0, 8.4, 0.28);
+    const fovRadians = THREE.MathUtils.degToRad(cameraFov);
+
+    const distanceForWidth =
+      (TABLE_WIDTH * widthMargin) /
+      (2 * Math.tan(fovRadians / 2) * cameraAspect);
+
+    const distanceForDepth =
+      (TABLE_DEPTH * depthMargin) / (2 * Math.tan(fovRadians / 2));
+
+    const cameraDistance = Math.max(distanceForWidth, distanceForDepth * 0.88);
+
+    camera.position.set(0, TABLE_SURFACE_Y + cameraDistance, 0.22);
     camera.lookAt(0, TABLE_SURFACE_Y, 0);
 
     const renderer = new Renderer({ gl });
@@ -705,8 +728,8 @@ export function DiceTable3D({
             const bounce =
               progress > 0.84
                 ? Math.sin((1 - impactProgress) * Math.PI) *
-                  0.07 *
-                  (1 - impactProgress)
+                0.07 *
+                (1 - impactProgress)
                 : 0;
 
             mesh.position.y =
@@ -791,7 +814,7 @@ export function DiceTable3D({
       style={{
         height,
         width: "100%",
-        borderRadius: 28,
+        borderRadius: 0,
         overflow: "hidden",
         backgroundColor: "#050713",
       }}

@@ -37,7 +37,11 @@ export function Roll3DLauncherSurface({
     <View
       style={{
         width: "100%",
-        gap: 10,
+        height,
+        position: "relative",
+        overflow: "hidden",
+        borderRadius: 0,
+        backgroundColor: "#050713",
       }}
     >
       <DiceTable3D
@@ -48,30 +52,46 @@ export function Roll3DLauncherSurface({
       />
 
       <View
+        pointerEvents="box-none"
         style={{
-          gap: 8,
+          position: "absolute",
+          left: 14,
+          right: 14,
+          bottom: 28,
+          gap: 10,
+          zIndex: 5,
         }}
       >
-        <Roll3DDiceSelector
-          selectedSides={launcher.selectedSides}
-          diceCount={launcher.diceCount}
-          maxDice={launcher.maxDice}
-          onSelectSides={launcher.addDie}
-          onClearDice={launcher.clearDice}
-        />
+        <View
+          style={{
+            borderRadius: 24,
+            backgroundColor: "rgba(5, 7, 19, 0.78)",
+            borderWidth: 1,
+            borderColor: "rgba(232, 200, 120, 0.16)",
+            padding: 8,
+          }}
+        >
+          <Roll3DDiceSelector
+            selectedSides={launcher.selectedSides}
+            diceCount={launcher.diceCount}
+            maxDice={launcher.maxDice}
+            onSelectSides={launcher.addDie}
+            onClearDice={launcher.clearDice}
+          />
+        </View>
 
         <Roll3DRollButton
           diceCount={launcher.diceCount}
           onPress={launcher.rollDice}
         />
-
-        <Roll3DResultOverlay
-          visible={!!launcher.latestResult}
-          result={launcher.latestResult}
-          onClose={launcher.clearResult}
-          onRollAgain={launcher.rollDice}
-        />
       </View>
+
+      <Roll3DResultOverlay
+        visible={!!launcher.latestResult}
+        result={launcher.latestResult}
+        onClose={launcher.clearResult}
+        onRollAgain={launcher.rollDice}
+      />
     </View>
   );
 }
