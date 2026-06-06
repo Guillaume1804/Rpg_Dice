@@ -15,6 +15,7 @@ type DiceTable3DProps = {
   height?: number;
   diceInstances?: Roll3DDieInstance[];
   rollRequestId?: number;
+  skipRollRequestId?: number;
   onPhysicsRollSettled?: () => void;
 };
 
@@ -36,6 +37,11 @@ type DiceSceneItem = {
   shadow: THREE.Mesh;
   drop: DiceDropState | null;
   physicsActive: boolean;
+};
+
+type DiceVisualTransform = {
+  position: THREE.Vector3;
+  quaternion: THREE.Quaternion;
 };
 
 /**
@@ -322,6 +328,7 @@ export function DiceTable3D({
   height = 320,
   diceInstances = [],
   rollRequestId = 0,
+  skipRollRequestId = 0,
   onPhysicsRollSettled,
 }: DiceTable3DProps) {
   const animationFrameRef = useRef<number | null>(null);
@@ -340,6 +347,8 @@ export function DiceTable3D({
   const onPhysicsRollSettledRef = useRef(onPhysicsRollSettled);
   const activePhysicsRollIdRef = useRef(0);
   const lastHandledRollRequestIdRef = useRef(0);
+  const lastHandledSkipRollRequestIdRef = useRef(0);
+  const skipTransitionFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
     onPhysicsRollSettledRef.current = onPhysicsRollSettled;
@@ -498,12 +507,197 @@ export function DiceTable3D({
     lastFrameAtRef.current = Date.now();
   }, [diceInstances]);
 
+  const applyPhysicsSnapshotsToMeshes = useCallback(() => {
+    const physicsWorld = physicsWorldRef.current;
+    if (!physicsWorld) return false;
+
+    const snapshots = physicsWorld.getDiceSnapshots();
+    let allSleeping = snapshots.length > 0;
+
+    for (const snapshot of snapshots) {
+      const item = diceItemsRef.current.get(snapshot.id);
+      if (!item) continue;
+
+      applyPhysicsTransform(item.mesh, snapshot.transform);
+
+      updateContactShadow({
+        shadow: item.shadow,
+        dice: item.mesh,
+        progress: 1,
+        visible: true,
+      });
+
+      if (!snapshot.sleeping) {
+        allSleeping = false;
+      }
+    }
+
+    return allSleeping;
+  }, []);
+
+  const captureCurrentDiceTransforms = useCallback(() => {
+    const transforms = new Map<string, DiceVisualTransform>();
+
+    for (const [id, item] of diceItemsRef.current.entries()) {
+      transforms.set(id, {
+        position: item.mesh.position.clone(),
+        quaternion: item.mesh.quaternion.clone(),
+      });
+    }
+
+    return transforms;
+  }, []);
+
+  const animateDiceToFinalTransforms = useCallback(
+    (
+      startTransforms: Map<string, DiceVisualTransform>,
+      finalTransforms: Map<string, DiceVisualTransform>,
+      onComplete: () => void,
+    ) => {
+      if (skipTransitionFrameRef.current != null) {
+        cancelAnimationFrame(skipTransitionFrameRef.current);
+        skipTransitionFrameRef.current = null;
+      }
+
+      const startedAt = Date.now();
+      const durationMs = 340;
+
+      const animate = () => {
+        const progress = clamp01((Date.now() - startedAt) / durationMs);
+        const easedProgress = easeOutCubic(progress);
+
+        for (const [id, finalTransform] of finalTransforms.entries()) {
+          const item = diceItemsRef.current.get(id);
+          const startTransform = startTransforms.get(id);
+
+          if (!item || !startTransform) continue;
+
+          item.mesh.position.lerpVectors(
+            startTransform.position,
+            finalTransform.position,
+            easedProgress,
+          );
+
+          item.mesh.quaternion
+            .copy(startTransform.quaternion)
+            .slerp(finalTransform.quaternion, easedProgress);
+
+          updateContactShadow({
+            shadow: item.shadow,
+            dice: item.mesh,
+            progress: 1,
+            visible: true,
+          });
+        }
+
+        if (progress < 1) {
+          skipTransitionFrameRef.current = requestAnimationFrame(animate);
+          return;
+        }
+
+        skipTransitionFrameRef.current = null;
+
+        for (const [id, finalTransform] of finalTransforms.entries()) {
+          const item = diceItemsRef.current.get(id);
+          if (!item) continue;
+
+          item.mesh.position.copy(finalTransform.position);
+          item.mesh.quaternion.copy(finalTransform.quaternion);
+
+          updateContactShadow({
+            shadow: item.shadow,
+            dice: item.mesh,
+            progress: 1,
+            visible: true,
+          });
+        }
+
+        onComplete();
+      };
+
+      animate();
+    },
+    [],
+  );
+
+  const fastForwardPhysicsRollToRest = useCallback(() => {
+    const physicsWorld = physicsWorldRef.current;
+
+    if (!physicsWorld || physicsRollModeRef.current !== "rolling") {
+      return;
+    }
+
+    activePhysicsRollIdRef.current += 1;
+
+    if (settleDelayTimeoutRef.current != null) {
+      clearTimeout(settleDelayTimeoutRef.current);
+      settleDelayTimeoutRef.current = null;
+    }
+
+    const startTransforms = captureCurrentDiceTransforms();
+
+    /**
+     * On avance la simulation rapidement hors écran logique.
+     * Ensuite, on anime visuellement les meshes vers l’état final obtenu.
+     */
+    let allSleeping = false;
+    const maxFastForwardSteps = 240;
+
+    for (let index = 0; index < maxFastForwardSteps; index += 1) {
+      physicsWorld.step(1 / 60);
+
+      const snapshots = physicsWorld.getDiceSnapshots();
+      allSleeping = snapshots.length > 0 && snapshots.every((snapshot) => snapshot.sleeping);
+
+      if (allSleeping) {
+        break;
+      }
+    }
+
+    const finalTransforms = new Map<string, DiceVisualTransform>();
+
+    for (const snapshot of physicsWorld.getDiceSnapshots()) {
+      finalTransforms.set(snapshot.id, {
+        position: new THREE.Vector3(
+          snapshot.transform.position.x,
+          snapshot.transform.position.y,
+          snapshot.transform.position.z,
+        ),
+        quaternion: new THREE.Quaternion(
+          snapshot.transform.quaternion.x,
+          snapshot.transform.quaternion.y,
+          snapshot.transform.quaternion.z,
+          snapshot.transform.quaternion.w,
+        ),
+      });
+    }
+
+    physicsActiveRef.current = false;
+    physicsRollModeRef.current = "idle";
+    physicsSettledNotifiedRef.current = true;
+
+    for (const item of diceItemsRef.current.values()) {
+      item.physicsActive = false;
+    }
+
+    physicsWorld.clearDice();
+
+    animateDiceToFinalTransforms(startTransforms, finalTransforms, () => {
+      onPhysicsRollSettledRef.current?.();
+    });
+  }, [animateDiceToFinalTransforms, captureCurrentDiceTransforms]);
+
   useEffect(() => {
     const diceItems = diceItemsRef.current;
 
     return () => {
       if (animationFrameRef.current != null) {
         cancelAnimationFrame(animationFrameRef.current);
+      }
+
+      if (skipTransitionFrameRef.current != null) {
+        cancelAnimationFrame(skipTransitionFrameRef.current);
+        skipTransitionFrameRef.current = null;
       }
 
       if (settleDelayTimeoutRef.current != null) {
@@ -568,6 +762,17 @@ export function DiceTable3D({
     lastHandledRollRequestIdRef.current = rollRequestId;
     startPhysicsRoll();
   }, [rollRequestId, startPhysicsRoll]);
+
+  useEffect(() => {
+    if (skipRollRequestId <= 0) return;
+
+    if (lastHandledSkipRollRequestIdRef.current === skipRollRequestId) {
+      return;
+    }
+
+    lastHandledSkipRollRequestIdRef.current = skipRollRequestId;
+    fastForwardPhysicsRollToRest();
+  }, [skipRollRequestId, fastForwardPhysicsRollToRest]);
 
   function handleContextCreate(gl: ExpoWebGLRenderingContext) {
     const { drawingBufferWidth: width, drawingBufferHeight: bufferHeight } = gl;
@@ -649,26 +854,7 @@ export function DiceTable3D({
       if (physicsWorld && physicsActiveRef.current) {
         physicsWorld.step(deltaSeconds);
 
-        const snapshots = physicsWorld.getDiceSnapshots();
-        let allSleeping = snapshots.length > 0;
-
-        for (const snapshot of snapshots) {
-          const item = diceItemsRef.current.get(snapshot.id);
-          if (!item) continue;
-
-          applyPhysicsTransform(item.mesh, snapshot.transform);
-
-          updateContactShadow({
-            shadow: item.shadow,
-            dice: item.mesh,
-            progress: 1,
-            visible: true,
-          });
-
-          if (!snapshot.sleeping) {
-            allSleeping = false;
-          }
-        }
+        const allSleeping = applyPhysicsSnapshotsToMeshes();
 
         if (allSleeping) {
           const completedMode = physicsRollModeRef.current;

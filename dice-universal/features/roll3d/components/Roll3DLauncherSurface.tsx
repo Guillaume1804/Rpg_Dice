@@ -1,8 +1,8 @@
 // dice-universal/features/roll3d/components/Roll3DLauncherSurface.tsx
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useFocusEffect } from "expo-router";
-import { View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 import { useRoll3DLauncher } from "../hooks/useRoll3DLauncher";
 import { DiceTable3D } from "./DiceTable3D";
@@ -25,13 +25,53 @@ export function Roll3DLauncherSurface({
 
   const { resetLauncher } = launcher;
 
+  const [isRolling, setIsRolling] = useState(false);
+  const [skipRollRequestId, setSkipRollRequestId] = useState(0);
+
   useFocusEffect(
     useCallback(() => {
       return () => {
+        setIsRolling(false);
+        setSkipRollRequestId(0);
         resetLauncher();
       };
     }, [resetLauncher]),
   );
+
+  const handleRollPress = useCallback(() => {
+    if (launcher.diceCount <= 0) {
+      return;
+    }
+
+    setIsRolling(true);
+    launcher.rollDice();
+  }, [launcher]);
+
+  const handlePhysicsRollSettled = useCallback(() => {
+    setIsRolling(false);
+    launcher.completeRollAfterPhysics();
+  }, [launcher]);
+
+  const handleSkipRolling = useCallback(() => {
+    if (!isRolling) {
+      return;
+    }
+
+    setSkipRollRequestId((current) => current + 1);
+  }, [isRolling]);
+
+  const handleClearDice = useCallback(() => {
+    setIsRolling(false);
+    setSkipRollRequestId(0);
+    launcher.clearDice();
+  }, [launcher]);
+
+  const handleCloseResult = useCallback(() => {
+    launcher.clearResult();
+    setIsRolling(false);
+  }, [launcher]);
+
+  const shouldShowControls = !isRolling && !launcher.latestResult;
 
   return (
     <View
@@ -48,49 +88,94 @@ export function Roll3DLauncherSurface({
         height={height}
         diceInstances={launcher.diceInstances}
         rollRequestId={launcher.rollRequestId}
-        onPhysicsRollSettled={launcher.completeRollAfterPhysics}
+        skipRollRequestId={skipRollRequestId}
+        onPhysicsRollSettled={handlePhysicsRollSettled}
       />
 
-      <View
-        pointerEvents="box-none"
-        style={{
-          position: "absolute",
-          left: 14,
-          right: 14,
-          bottom: 28,
-          gap: 10,
-          zIndex: 5,
-        }}
-      >
-        <View
+      {isRolling ? (
+        <Pressable
+          onPress={handleSkipRolling}
           style={{
-            borderRadius: 24,
-            backgroundColor: "rgba(5, 7, 19, 0.78)",
-            borderWidth: 1,
-            borderColor: "rgba(232, 200, 120, 0.16)",
-            padding: 8,
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 4,
+            justifyContent: "flex-start",
+            alignItems: "center",
+            paddingTop: 18,
           }}
         >
-          <Roll3DDiceSelector
-            selectedSides={launcher.selectedSides}
+          <View
+            pointerEvents="none"
+            style={{
+              borderRadius: 999,
+              borderWidth: 1,
+              borderColor: "rgba(232, 200, 120, 0.18)",
+              backgroundColor: "rgba(5, 7, 19, 0.42)",
+              paddingHorizontal: 14,
+              paddingVertical: 8,
+            }}
+          >
+            <Text
+              style={{
+                color: "rgba(232, 200, 120, 0.86)",
+                fontSize: 10,
+                fontWeight: "900",
+                textTransform: "uppercase",
+                letterSpacing: 1.1,
+              }}
+            >
+              Touchez pour révéler
+            </Text>
+          </View>
+        </Pressable>
+      ) : null}
+
+      {shouldShowControls ? (
+        <View
+          pointerEvents="box-none"
+          style={{
+            position: "absolute",
+            left: 14,
+            right: 14,
+            bottom: 28,
+            gap: 10,
+            zIndex: 5,
+          }}
+        >
+          <View
+            style={{
+              borderRadius: 24,
+              backgroundColor: "rgba(5, 7, 19, 0.78)",
+              borderWidth: 1,
+              borderColor: "rgba(232, 200, 120, 0.16)",
+              padding: 8,
+            }}
+          >
+            <Roll3DDiceSelector
+              selectedSides={launcher.selectedSides}
+              diceCount={launcher.diceCount}
+              maxDice={launcher.maxDice}
+              onSelectSides={launcher.addDie}
+              onClearDice={handleClearDice}
+            />
+          </View>
+
+          <Roll3DRollButton
             diceCount={launcher.diceCount}
-            maxDice={launcher.maxDice}
-            onSelectSides={launcher.addDie}
-            onClearDice={launcher.clearDice}
+            onPress={handleRollPress}
           />
         </View>
+      ) : null}
 
-        <Roll3DRollButton
-          diceCount={launcher.diceCount}
-          onPress={launcher.rollDice}
-        />
-      </View>
 
       <Roll3DResultOverlay
         visible={!!launcher.latestResult}
         result={launcher.latestResult}
-        onClose={launcher.clearResult}
-        onRollAgain={launcher.rollDice}
+        onClose={handleCloseResult}
+        onRollAgain={handleRollPress}
       />
     </View>
   );
