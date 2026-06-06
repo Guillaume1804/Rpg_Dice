@@ -8,12 +8,14 @@ import { usePremiumTheme } from "../../../theme/premium/usePremiumTheme";
 type Roll3DRollButtonProps = {
   disabled?: boolean;
   diceCount: number;
+  compact?: boolean;
   onPress: () => void;
 };
 
 export function Roll3DRollButton({
   disabled = false,
   diceCount,
+  compact = false,
   onPress,
 }: Roll3DRollButtonProps) {
   const premium = usePremiumTheme();
@@ -38,12 +40,12 @@ export function Roll3DRollButton({
         colors={
           isDisabled
             ? ["rgba(255,255,255,0.06)", "rgba(5,6,11,0.96)"]
-            : ["rgba(232,200,120,0.32)", "rgba(5,6,11,0.98)"]
+            : ["rgba(232,200,120,0.34)", "rgba(5,6,11,0.98)"]
         }
         start={{ x: 0.2, y: 0 }}
         end={{ x: 0.85, y: 1 }}
         style={{
-          minHeight: 62,
+          minHeight: compact ? 54 : 62,
           borderRadius: premium.radius.xl,
           borderWidth: 1,
           borderColor: isDisabled
@@ -59,9 +61,9 @@ export function Roll3DRollButton({
           style={{
             position: "absolute",
             top: 0,
-            left: 14,
-            right: 14,
-            height: 18,
+            left: 18,
+            right: 18,
+            height: compact ? 14 : 18,
             borderBottomLeftRadius: premium.radius.pill,
             borderBottomRightRadius: premium.radius.pill,
             backgroundColor: "rgba(255,255,255,0.08)",
@@ -73,13 +75,13 @@ export function Roll3DRollButton({
             color: isDisabled
               ? premium.colors.text.muted
               : premium.colors.text.primary,
-            fontSize: 15,
+            fontSize: compact ? 14 : 15,
             fontWeight: "900",
             textTransform: "uppercase",
-            letterSpacing: 1.6,
+            letterSpacing: 1.5,
           }}
         >
-          {isDisabled ? "Ajoute des dés" : "Lancer les dés"}
+          {isDisabled ? "Ajoute des dés" : "Lancer"}
         </Text>
 
         <Text
@@ -90,13 +92,14 @@ export function Roll3DRollButton({
             fontSize: 10,
             fontWeight: "900",
             textTransform: "uppercase",
-            letterSpacing: 1,
-            marginTop: 3,
+            letterSpacing: 0.9,
+            marginTop: compact ? 2 : 3,
           }}
         >
           {isDisabled
             ? "Touchez un dé pour commencer"
-            : `${diceCount} dé${diceCount > 1 ? "s" : ""} prêts`}
+            : `${diceCount} dé${diceCount > 1 ? "s" : ""} prêt${diceCount > 1 ? "s" : ""
+            }`}
         </Text>
       </LinearGradient>
     </Pressable>

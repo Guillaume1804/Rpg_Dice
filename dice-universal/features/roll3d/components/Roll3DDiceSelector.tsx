@@ -11,6 +11,7 @@ type Roll3DDiceSelectorProps = {
   selectedSides: Roll3DDieSides;
   diceCount?: number;
   maxDice?: number;
+  compact?: boolean;
   onSelectSides: (sides: Roll3DDieSides) => void;
   onClearDice?: () => void;
 };
@@ -29,12 +30,18 @@ export function Roll3DDiceSelector({
   selectedSides,
   diceCount = 0,
   maxDice = 12,
+  compact = false,
   onSelectSides,
   onClearDice,
 }: Roll3DDiceSelectorProps) {
   const premium = usePremiumTheme();
+
   const isFull = diceCount >= maxDice;
   const hasDice = diceCount > 0;
+
+  const dieButtonWidth = compact ? 46 : 54;
+  const dieButtonHeight = compact ? 52 : 62;
+  const dieButtonRadius = compact ? 15 : 17;
 
   return (
     <View
@@ -42,10 +49,12 @@ export function Roll3DDiceSelector({
         width: "100%",
         borderRadius: premium.radius.xl,
         borderWidth: 1,
-        borderColor: premium.colors.border.subtle,
-        backgroundColor: "rgba(5, 6, 11, 0.72)",
-        paddingVertical: 9,
-        paddingHorizontal: 9,
+        borderColor: "rgba(232, 200, 120, 0.12)",
+        backgroundColor: compact
+          ? "rgba(5, 6, 11, 0.58)"
+          : "rgba(5, 6, 11, 0.72)",
+        paddingVertical: compact ? 7 : 9,
+        paddingHorizontal: compact ? 7 : 9,
         overflow: "hidden",
       }}
     >
@@ -55,33 +64,38 @@ export function Roll3DDiceSelector({
           alignItems: "center",
           justifyContent: "space-between",
           gap: 10,
-          marginBottom: 8,
+          marginBottom: compact ? 6 : 8,
         }}
       >
-        <View>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "baseline",
+            gap: 8,
+          }}
+        >
           <Text
             style={{
-              color: premium.colors.text.muted,
+              color: premium.colors.text.secondary,
               fontSize: 10,
               fontWeight: "900",
               textTransform: "uppercase",
-              letterSpacing: 1.2,
+              letterSpacing: 1.1,
             }}
           >
-            Ajouter des dés
+            Dés
           </Text>
 
           <Text
             style={{
               color: isFull
                 ? premium.colors.accent.primary
-                : premium.colors.text.secondary,
+                : premium.colors.text.muted,
               fontSize: 10,
               fontWeight: "800",
-              marginTop: 3,
             }}
           >
-            {diceCount}/{maxDice} sur la table
+            {diceCount}/{maxDice}
           </Text>
         </View>
 
@@ -103,8 +117,8 @@ export function Roll3DDiceSelector({
               borderWidth: 1,
               borderColor: premium.colors.border.subtle,
               backgroundColor: "rgba(255, 255, 255, 0.055)",
-              paddingHorizontal: 12,
-              paddingVertical: 7,
+              paddingHorizontal: compact ? 10 : 12,
+              paddingVertical: compact ? 5 : 7,
             }}
           >
             <Text
@@ -126,7 +140,7 @@ export function Roll3DDiceSelector({
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{
-          gap: 9,
+          gap: compact ? 7 : 9,
           paddingRight: 2,
         }}
       >
@@ -139,9 +153,9 @@ export function Roll3DDiceSelector({
               disabled={isFull}
               onPress={() => onSelectSides(sides)}
               style={({ pressed }) => ({
-                width: 54,
-                height: 62,
-                borderRadius: 17,
+                width: dieButtonWidth,
+                height: dieButtonHeight,
+                borderRadius: dieButtonRadius,
                 opacity: isFull ? 0.42 : pressed ? 0.82 : 1,
                 transform: [
                   {
@@ -157,14 +171,14 @@ export function Roll3DDiceSelector({
               <LinearGradient
                 colors={
                   selected
-                    ? ["rgba(232, 200, 120, 0.28)", "rgba(5, 6, 11, 0.92)"]
-                    : ["rgba(255, 255, 255, 0.08)", "rgba(5, 6, 11, 0.9)"]
+                    ? ["rgba(232, 200, 120, 0.3)", "rgba(5, 6, 11, 0.92)"]
+                    : ["rgba(255, 255, 255, 0.075)", "rgba(5, 6, 11, 0.9)"]
                 }
                 start={{ x: 0.2, y: 0 }}
                 end={{ x: 0.8, y: 1 }}
                 style={{
                   flex: 1,
-                  borderRadius: 17,
+                  borderRadius: dieButtonRadius,
                   borderWidth: 1,
                   borderColor: selected
                     ? premium.colors.border.accent
@@ -181,7 +195,7 @@ export function Roll3DDiceSelector({
                     top: 5,
                     left: 7,
                     right: 7,
-                    height: 18,
+                    height: compact ? 14 : 18,
                     borderRadius: premium.radius.pill,
                     backgroundColor: selected
                       ? "rgba(255, 255, 255, 0.12)"
@@ -194,10 +208,10 @@ export function Roll3DDiceSelector({
                     color: selected
                       ? premium.colors.accent.primary
                       : premium.colors.text.secondary,
-                    fontSize: sides === 100 ? 20 : 22,
+                    fontSize: compact ? (sides === 100 ? 17 : 19) : sides === 100 ? 20 : 22,
                     fontWeight: "900",
-                    lineHeight: 26,
-                    marginBottom: 2,
+                    lineHeight: compact ? 22 : 26,
+                    marginBottom: compact ? 0 : 2,
                   }}
                 >
                   {getDieSymbol(sides)}
@@ -211,7 +225,7 @@ export function Roll3DDiceSelector({
                     fontSize: 10,
                     fontWeight: "900",
                     textTransform: "uppercase",
-                    letterSpacing: 0.8,
+                    letterSpacing: 0.7,
                   }}
                 >
                   d{sides}
@@ -228,10 +242,10 @@ export function Roll3DDiceSelector({
             color: premium.colors.text.muted,
             fontSize: 10,
             fontWeight: "700",
-            marginTop: 8,
+            marginTop: 7,
           }}
         >
-          Limite temporaire atteinte. Vide la table pour ajouter d’autres dés.
+          Limite temporaire atteinte.
         </Text>
       ) : null}
     </View>

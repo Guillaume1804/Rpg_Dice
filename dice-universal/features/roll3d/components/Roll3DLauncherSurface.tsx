@@ -140,21 +140,22 @@ export function Roll3DLauncherSurface({
             position: "absolute",
             left: 14,
             right: 14,
-            bottom: 28,
-            gap: 10,
+            bottom: 22,
+            gap: 8,
             zIndex: 5,
           }}
         >
           <View
             style={{
-              borderRadius: 24,
-              backgroundColor: "rgba(5, 7, 19, 0.78)",
+              borderRadius: 26,
+              backgroundColor: "rgba(5, 7, 19, 0.48)",
               borderWidth: 1,
-              borderColor: "rgba(232, 200, 120, 0.16)",
-              padding: 8,
+              borderColor: "rgba(232, 200, 120, 0.12)",
+              padding: 5,
             }}
           >
             <Roll3DDiceSelector
+              compact
               selectedSides={launcher.selectedSides}
               diceCount={launcher.diceCount}
               maxDice={launcher.maxDice}
@@ -164,6 +165,7 @@ export function Roll3DLauncherSurface({
           </View>
 
           <Roll3DRollButton
+            compact
             diceCount={launcher.diceCount}
             onPress={handleRollPress}
           />
