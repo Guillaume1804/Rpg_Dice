@@ -20,22 +20,17 @@ type DiceTable3DProps = {
 };
 
 type DiceDropState = {
-  startedAt: number;
-
   startPosition: THREE.Vector3;
   targetPosition: THREE.Vector3;
 
   startRotation: THREE.Euler;
   targetRotation: THREE.Euler;
-
-  spinTurns: THREE.Vector3;
 };
 
 type DiceSceneItem = {
   id: string;
   mesh: THREE.Group;
   shadow: THREE.Mesh;
-  drop: DiceDropState | null;
   physicsActive: boolean;
 };
 
@@ -57,11 +52,8 @@ const TABLE_DEPTH = 8.4;
 const TABLE_WALL_HEIGHT = 0.46;
 const TABLE_WALL_THICKNESS = 0.12;
 
-const DROP_DURATION_MS = 860;
-
 const DROP_START_Y = 3.2;
 const DROP_TARGET_SCALE = 0.4;
-const DROP_START_SCALE = 0.46;
 
 const TARGET_X_RANGE = 1.45;
 const TARGET_Z_RANGE = 2.25;
@@ -94,10 +86,6 @@ function clamp(value: number, min: number, max: number) {
 
 function lerp(from: number, to: number, t: number) {
   return from + (to - from) * t;
-}
-
-function easeInOutCubic(t: number) {
-  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 }
 
 function easeOutCubic(t: number) {
@@ -353,7 +341,6 @@ export function DiceTable3D({
   const lastHandledRollRequestIdRef = useRef(0);
   const lastHandledSkipRollRequestIdRef = useRef(0);
   const skipTransitionFrameRef = useRef<number | null>(null);
-  const fastForwardFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
     onPhysicsRollSettledRef.current = onPhysicsRollSettled;
@@ -384,16 +371,10 @@ export function DiceTable3D({
       );
 
       return {
-        startedAt: Date.now(),
         startPosition,
         targetPosition,
         startRotation,
         targetRotation,
-        spinTurns: new THREE.Vector3(
-          randomBetween(0.45, 0.85),
-          randomBetween(0.65, 1.05),
-          randomBetween(0.25, 0.65),
-        ),
       };
     },
     [],
@@ -443,7 +424,6 @@ export function DiceTable3D({
         id: instance.id,
         mesh,
         shadow,
-        drop: null,
         physicsActive: animate,
       });
 
@@ -489,7 +469,6 @@ export function DiceTable3D({
        * Le lancer repart depuis la position actuelle du dé sur la table.
        * On ne le replace plus en hauteur.
        */
-      item.drop = null;
       item.physicsActive = true;
 
       item.mesh.scale.setScalar(DROP_TARGET_SCALE);
@@ -611,7 +590,8 @@ export function DiceTable3D({
        * Petit décalage pour éviter l'effet trop rangé.
        * Plus il y a de dés, plus le jitter est faible.
        */
-      const jitterScale = diceCount >= 36 ? 0.08 : diceCount >= 18 ? 0.12 : 0.18;
+      const jitterScale =
+        diceCount >= 36 ? 0.08 : diceCount >= 18 ? 0.12 : 0.18;
 
       const targetX = clamp(
         baseX + randomBetween(-jitterScale, jitterScale),
@@ -626,7 +606,9 @@ export function DiceTable3D({
       );
 
       const finalRotation = createRandomRotation();
-      const finalQuaternion = new THREE.Quaternion().setFromEuler(finalRotation);
+      const finalQuaternion = new THREE.Quaternion().setFromEuler(
+        finalRotation,
+      );
 
       /**
        * On calcule une hauteur de repos correcte sans laisser le mesh muté.
@@ -666,11 +648,6 @@ export function DiceTable3D({
       if (skipTransitionFrameRef.current != null) {
         cancelAnimationFrame(skipTransitionFrameRef.current);
         skipTransitionFrameRef.current = null;
-      }
-
-      if (fastForwardFrameRef.current != null) {
-        cancelAnimationFrame(fastForwardFrameRef.current);
-        fastForwardFrameRef.current = null;
       }
 
       const startedAt = Date.now();
@@ -752,11 +729,6 @@ export function DiceTable3D({
     if (skipTransitionFrameRef.current != null) {
       cancelAnimationFrame(skipTransitionFrameRef.current);
       skipTransitionFrameRef.current = null;
-    }
-
-    if (fastForwardFrameRef.current != null) {
-      cancelAnimationFrame(fastForwardFrameRef.current);
-      fastForwardFrameRef.current = null;
     }
 
     /**
@@ -988,102 +960,12 @@ export function DiceTable3D({
         }
       } else {
         for (const item of diceItemsRef.current.values()) {
-          const { mesh, shadow, drop } = item;
-
-          if (drop) {
-            const rawProgress =
-              (Date.now() - drop.startedAt) / DROP_DURATION_MS;
-            const progress = clamp01(rawProgress);
-
-            const fallProgress = easeInOutCubic(progress);
-            const lateralProgress = easeOutCubic(progress);
-
-            mesh.position.x = lerp(
-              drop.startPosition.x,
-              drop.targetPosition.x,
-              lateralProgress,
-            );
-
-            mesh.position.z = lerp(
-              drop.startPosition.z,
-              drop.targetPosition.z,
-              lateralProgress,
-            );
-
-            const impactProgress = clamp01((progress - 0.84) / 0.16);
-
-            const bounce =
-              progress > 0.84
-                ? Math.sin((1 - impactProgress) * Math.PI) *
-                0.07 *
-                (1 - impactProgress)
-                : 0;
-
-            mesh.position.y =
-              lerp(drop.startPosition.y, drop.targetPosition.y, fallProgress) +
-              bounce;
-
-            mesh.scale.setScalar(
-              lerp(DROP_START_SCALE, DROP_TARGET_SCALE, fallProgress),
-            );
-
-            const spinAmount =
-              Math.sin(progress * Math.PI) * (1 - progress * 0.35);
-            const rotationProgress = easeOutCubic(progress);
-
-            mesh.rotation.x =
-              lerp(
-                drop.startRotation.x,
-                drop.targetRotation.x,
-                rotationProgress,
-              ) +
-              drop.spinTurns.x * Math.PI * 2 * spinAmount;
-
-            mesh.rotation.y =
-              lerp(
-                drop.startRotation.y,
-                drop.targetRotation.y,
-                rotationProgress,
-              ) +
-              drop.spinTurns.y * Math.PI * 2 * spinAmount;
-
-            mesh.rotation.z =
-              lerp(
-                drop.startRotation.z,
-                drop.targetRotation.z,
-                rotationProgress,
-              ) +
-              drop.spinTurns.z * Math.PI * 2 * spinAmount;
-
-            updateContactShadow({
-              shadow,
-              dice: mesh,
-              progress: fallProgress,
-              visible: progress > 0.18,
-            });
-
-            if (progress >= 1) {
-              mesh.position.copy(drop.targetPosition);
-              mesh.rotation.copy(drop.targetRotation);
-              mesh.scale.setScalar(DROP_TARGET_SCALE);
-
-              updateContactShadow({
-                shadow,
-                dice: mesh,
-                progress: 1,
-                visible: true,
-              });
-
-              item.drop = null;
-            }
-          } else {
-            updateContactShadow({
-              shadow,
-              dice: mesh,
-              progress: 1,
-              visible: true,
-            });
-          }
+          updateContactShadow({
+            shadow: item.shadow,
+            dice: item.mesh,
+            progress: 1,
+            visible: true,
+          });
         }
       }
 
