@@ -651,14 +651,23 @@ export function DiceTable3D({
     }
 
     /**
-     * Optimisation :
-     * On avance la physique plusieurs fois par frame,
-     * mais on ne synchronise les meshes qu’une seule fois par frame.
-     *
-     * Important pour préparer le futur support de gros volumes de dés.
+     * Important :
+     * on coupe la boucle physique normale immédiatement.
+     * Sinon la render loop continue de stepper la physique pendant que
+     * le fast-forward la steppe aussi, ce qui provoque des saccades.
      */
-    const stepsPerFrame = 6;
-    const maxFrames = 36;
+    physicsActiveRef.current = false;
+    lastFrameAtRef.current = Date.now();
+
+    const diceCount = diceItemsRef.current.size;
+
+    /**
+     * Réglage adaptatif :
+     * plus il y a de dés, moins on fait de steps par frame.
+     * L’objectif est de préserver la fluidité plutôt que de tout calculer trop vite.
+     */
+    const stepsPerFrame = diceCount >= 48 ? 4 : diceCount >= 24 ? 6 : 8;
+    const maxFrames = diceCount >= 48 ? 44 : diceCount >= 24 ? 38 : 32;
 
     let frameCount = 0;
 
@@ -685,10 +694,6 @@ export function DiceTable3D({
 
       fastForwardFrameRef.current = null;
 
-      /**
-       * Dernière application de sécurité pour garantir que les meshes
-       * reflètent bien le dernier état physique calculé.
-       */
       applyPhysicsSnapshotsToMeshes();
 
       physicsActiveRef.current = false;
