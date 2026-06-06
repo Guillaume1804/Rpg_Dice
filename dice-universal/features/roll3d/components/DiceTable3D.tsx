@@ -349,6 +349,7 @@ export function DiceTable3D({
   const lastHandledRollRequestIdRef = useRef(0);
   const lastHandledSkipRollRequestIdRef = useRef(0);
   const skipTransitionFrameRef = useRef<number | null>(null);
+  const fastForwardFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
     onPhysicsRollSettledRef.current = onPhysicsRollSettled;
@@ -559,6 +560,11 @@ export function DiceTable3D({
         skipTransitionFrameRef.current = null;
       }
 
+      if (fastForwardFrameRef.current != null) {
+        cancelAnimationFrame(fastForwardFrameRef.current);
+        fastForwardFrameRef.current = null;
+      }
+
       const startedAt = Date.now();
       const durationMs = 340;
 
@@ -634,58 +640,74 @@ export function DiceTable3D({
       settleDelayTimeoutRef.current = null;
     }
 
-    const startTransforms = captureCurrentDiceTransforms();
+    if (skipTransitionFrameRef.current != null) {
+      cancelAnimationFrame(skipTransitionFrameRef.current);
+      skipTransitionFrameRef.current = null;
+    }
+
+    if (fastForwardFrameRef.current != null) {
+      cancelAnimationFrame(fastForwardFrameRef.current);
+      fastForwardFrameRef.current = null;
+    }
 
     /**
-     * On avance la simulation rapidement hors écran logique.
-     * Ensuite, on anime visuellement les meshes vers l’état final obtenu.
+     * Au lieu de calculer toute la fin d’un coup, on accélère la simulation
+     * sur plusieurs frames. Ça évite le micro-freeze au moment du tap.
      */
-    let allSleeping = false;
-    const maxFastForwardSteps = 240;
+    const stepsPerFrame = 18;
+    const maxFrames = 18;
 
-    for (let index = 0; index < maxFastForwardSteps; index += 1) {
-      physicsWorld.step(1 / 60);
+    let frameCount = 0;
 
-      const snapshots = physicsWorld.getDiceSnapshots();
-      allSleeping = snapshots.length > 0 && snapshots.every((snapshot) => snapshot.sleeping);
+    const runFastForwardFrame = () => {
+      const currentWorld = physicsWorldRef.current;
 
-      if (allSleeping) {
-        break;
+      if (!currentWorld || physicsRollModeRef.current !== "rolling") {
+        fastForwardFrameRef.current = null;
+        return;
       }
-    }
 
-    const finalTransforms = new Map<string, DiceVisualTransform>();
+      let allSleeping = false;
 
-    for (const snapshot of physicsWorld.getDiceSnapshots()) {
-      finalTransforms.set(snapshot.id, {
-        position: new THREE.Vector3(
-          snapshot.transform.position.x,
-          snapshot.transform.position.y,
-          snapshot.transform.position.z,
-        ),
-        quaternion: new THREE.Quaternion(
-          snapshot.transform.quaternion.x,
-          snapshot.transform.quaternion.y,
-          snapshot.transform.quaternion.z,
-          snapshot.transform.quaternion.w,
-        ),
-      });
-    }
+      for (let index = 0; index < stepsPerFrame; index += 1) {
+        currentWorld.step(1 / 60);
+        allSleeping = applyPhysicsSnapshotsToMeshes();
 
-    physicsActiveRef.current = false;
-    physicsRollModeRef.current = "idle";
-    physicsSettledNotifiedRef.current = true;
+        if (allSleeping) {
+          break;
+        }
+      }
 
-    for (const item of diceItemsRef.current.values()) {
-      item.physicsActive = false;
-    }
+      frameCount += 1;
 
-    physicsWorld.clearDice();
+      if (!allSleeping && frameCount < maxFrames) {
+        fastForwardFrameRef.current = requestAnimationFrame(runFastForwardFrame);
+        return;
+      }
 
-    animateDiceToFinalTransforms(startTransforms, finalTransforms, () => {
+      fastForwardFrameRef.current = null;
+
+      /**
+       * Dernière application de sécurité pour garantir que les meshes
+       * reflètent bien le dernier état physique calculé.
+       */
+      applyPhysicsSnapshotsToMeshes();
+
+      physicsActiveRef.current = false;
+      physicsRollModeRef.current = "idle";
+      physicsSettledNotifiedRef.current = true;
+
+      for (const item of diceItemsRef.current.values()) {
+        item.physicsActive = false;
+      }
+
+      currentWorld.clearDice();
+
       onPhysicsRollSettledRef.current?.();
-    });
-  }, [animateDiceToFinalTransforms, captureCurrentDiceTransforms]);
+    };
+
+    fastForwardFrameRef.current = requestAnimationFrame(runFastForwardFrame);
+  }, [applyPhysicsSnapshotsToMeshes]);
 
   useEffect(() => {
     const diceItems = diceItemsRef.current;
