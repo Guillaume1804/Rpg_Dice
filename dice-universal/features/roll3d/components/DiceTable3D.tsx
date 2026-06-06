@@ -657,8 +657,8 @@ export function DiceTable3D({
      *
      * Important pour préparer le futur support de gros volumes de dés.
      */
-    const stepsPerFrame = 8;
-    const maxFrames = 32;
+    const stepsPerFrame = 6;
+    const maxFrames = 36;
 
     let frameCount = 0;
 
