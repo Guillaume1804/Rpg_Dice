@@ -651,11 +651,14 @@ export function DiceTable3D({
     }
 
     /**
-     * Au lieu de calculer toute la fin d’un coup, on accélère la simulation
-     * sur plusieurs frames. Ça évite le micro-freeze au moment du tap.
+     * Optimisation :
+     * On avance la physique plusieurs fois par frame,
+     * mais on ne synchronise les meshes qu’une seule fois par frame.
+     *
+     * Important pour préparer le futur support de gros volumes de dés.
      */
-    const stepsPerFrame = 18;
-    const maxFrames = 18;
+    const stepsPerFrame = 8;
+    const maxFrames = 32;
 
     let frameCount = 0;
 
@@ -667,16 +670,11 @@ export function DiceTable3D({
         return;
       }
 
-      let allSleeping = false;
-
       for (let index = 0; index < stepsPerFrame; index += 1) {
         currentWorld.step(1 / 60);
-        allSleeping = applyPhysicsSnapshotsToMeshes();
-
-        if (allSleeping) {
-          break;
-        }
       }
+
+      const allSleeping = applyPhysicsSnapshotsToMeshes();
 
       frameCount += 1;
 
