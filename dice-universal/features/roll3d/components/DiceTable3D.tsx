@@ -567,63 +567,134 @@ export function DiceTable3D({
     }
 
     /**
-     * Zone sûre légèrement rentrée dans les murs.
-     * On garde les dés loin des bordures pour que la scène reste lisible.
+     * Zone visible utile.
+     * On évite volontairement le bas de la table, car les contrôles flottants
+     * reviennent après fermeture du résultat.
      */
-    const safeX = TABLE_WIDTH / 2 - 0.62;
-    const safeZ = TABLE_DEPTH / 2 - 0.76;
+    const safeX = TABLE_WIDTH / 2 - 0.72;
+    const safeTopZ = -TABLE_DEPTH / 2 + 0.92;
+    const safeBottomZ = TABLE_DEPTH / 2 - 2.15;
 
-    /**
-     * La table est plus haute que large.
-     * On organise donc les groupes en colonnes limitées, puis en lignes.
-     *
-     * 1 groupe  : centre
-     * 2 groupes : gauche / droite
-     * 3+ groupes: grille douce en 2 colonnes
-     */
-    const zoneColumns = groupCount <= 1 ? 1 : 2;
-    const zoneRows = Math.ceil(groupCount / zoneColumns);
+    type Anchor = {
+      x: number;
+      z: number;
+    };
 
-    const zoneWidth = (safeX * 2) / zoneColumns;
-    const zoneDepth = (safeZ * 2) / zoneRows;
+    function getClusterAnchors(count: number): Anchor[] {
+      const minZ = safeTopZ;
+      const maxZ = safeBottomZ;
+      const midZ = (minZ + maxZ) / 2;
+
+      const topZ = minZ + (maxZ - minZ) * 0.2;
+      const centerZ = midZ;
+      const bottomZ = minZ + (maxZ - minZ) * 0.8;
+
+      if (count <= 1) {
+        return [{ x: 0, z: centerZ }];
+      }
+
+      if (count === 2) {
+        return [
+          { x: -safeX * 0.58, z: centerZ },
+          { x: safeX * 0.58, z: centerZ },
+        ];
+      }
+
+      if (count === 3) {
+        return [
+          { x: 0, z: topZ },
+          { x: -safeX * 0.62, z: bottomZ },
+          { x: safeX * 0.62, z: bottomZ },
+        ];
+      }
+
+      if (count === 4) {
+        return [
+          { x: -safeX * 0.62, z: topZ },
+          { x: safeX * 0.62, z: topZ },
+          { x: -safeX * 0.62, z: bottomZ },
+          { x: safeX * 0.62, z: bottomZ },
+        ];
+      }
+
+      if (count === 5) {
+        return [
+          { x: -safeX * 0.62, z: topZ },
+          { x: safeX * 0.62, z: topZ },
+          { x: 0, z: centerZ },
+          { x: -safeX * 0.62, z: bottomZ },
+          { x: safeX * 0.62, z: bottomZ },
+        ];
+      }
+
+      if (count === 6) {
+        return [
+          { x: -safeX * 0.62, z: topZ },
+          { x: safeX * 0.62, z: topZ },
+          { x: -safeX * 0.62, z: centerZ },
+          { x: safeX * 0.62, z: centerZ },
+          { x: -safeX * 0.62, z: bottomZ },
+          { x: safeX * 0.62, z: bottomZ },
+        ];
+      }
+
+      return [
+        { x: -safeX * 0.56, z: topZ },
+        { x: safeX * 0.56, z: topZ },
+        { x: -safeX * 0.72, z: centerZ },
+        { x: 0, z: centerZ },
+        { x: safeX * 0.72, z: centerZ },
+        { x: -safeX * 0.56, z: bottomZ },
+        { x: safeX * 0.56, z: bottomZ },
+      ];
+    }
+
+    function getClusterOffset(params: {
+      index: number;
+      count: number;
+      sides: number;
+    }) {
+      const { index, count, sides } = params;
+
+      if (count <= 1) {
+        return {
+          x: randomBetween(-0.035, 0.035),
+          z: randomBetween(-0.035, 0.035),
+        };
+      }
+
+      /**
+       * Rayon compact : les dés du même type doivent vraiment former un tas.
+       * On augmente légèrement selon le nombre, mais on reste serré.
+       */
+      const baseRadius =
+        sides === 100 ? 0.34 : sides === 20 || sides === 12 ? 0.3 : 0.26;
+
+      const radiusStep = count >= 10 ? 0.115 : count >= 6 ? 0.13 : 0.145;
+
+      /**
+       * Spirale naturelle autour de l'ancre.
+       * C'est beaucoup plus proche d'un tas trié qu'une grille.
+       */
+      const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+      const ringRadius = baseRadius + Math.sqrt(index) * radiusStep;
+      const angle = index * goldenAngle;
+
+      return {
+        x: Math.cos(angle) * ringRadius + randomBetween(-0.045, 0.045),
+        z: Math.sin(angle) * ringRadius + randomBetween(-0.045, 0.045),
+      };
+    }
+
+    const anchors = getClusterAnchors(groupCount);
 
     groupedItems.forEach((group, groupIndex) => {
-      const zoneColumn = groupIndex % zoneColumns;
-      const zoneRow = Math.floor(groupIndex / zoneColumns);
-
-      const zoneCenterX =
-        zoneColumns === 1 ? 0 : -safeX + zoneWidth * zoneColumn + zoneWidth / 2;
-
-      const zoneCenterZ =
-        zoneRows === 1 ? 0 : -safeZ + zoneDepth * zoneRow + zoneDepth / 2;
+      const anchor = anchors[groupIndex] ?? { x: 0, z: 0 };
 
       /**
-       * Marge interne pour éviter que les dés touchent les limites de zone.
+       * On trie uniquement pour que la transition reste lisible.
+       * Les dés d'un même type vont tous vers le même tas.
        */
-      const innerHalfWidth = Math.max(0.34, zoneWidth / 2 - 0.38);
-      const innerHalfDepth = Math.max(0.34, zoneDepth / 2 - 0.38);
-
-      const diceCountInGroup = group.items.length;
-
-      /**
-       * Répartition interne du groupe.
-       * Plusieurs dés identiques restent proches, mais sans se superposer.
-       */
-      const localColumns = Math.max(
-        1,
-        Math.ceil(
-          Math.sqrt(diceCountInGroup * (innerHalfWidth / innerHalfDepth)),
-        ),
-      );
-
-      const localRows = Math.max(1, Math.ceil(diceCountInGroup / localColumns));
-
-      const localSpacingX =
-        localColumns <= 1 ? 0 : (innerHalfWidth * 2) / (localColumns - 1);
-
-      const localSpacingZ =
-        localRows <= 1 ? 0 : (innerHalfDepth * 2) / (localRows - 1);
-
       const sortedGroupItems = [...group.items].sort((a, b) => {
         const meshA = a[1].mesh;
         const meshB = b[1].mesh;
@@ -636,34 +707,14 @@ export function DiceTable3D({
       });
 
       sortedGroupItems.forEach(([id, item], itemIndex) => {
-        const localColumn = itemIndex % localColumns;
-        const localRow = Math.floor(itemIndex / localColumns);
+        const offset = getClusterOffset({
+          index: itemIndex,
+          count: sortedGroupItems.length,
+          sides: group.sides,
+        });
 
-        const localX =
-          localColumns <= 1 ? 0 : -innerHalfWidth + localColumn * localSpacingX;
-
-        const localZ =
-          localRows <= 1 ? 0 : -innerHalfDepth + localRow * localSpacingZ;
-
-        /**
-         * Jitter léger :
-         * - assez présent avec peu de dés pour éviter l'effet grille
-         * - réduit avec beaucoup de dés pour garder la lisibilité
-         */
-        const jitterScale =
-          diceCountInGroup >= 12 ? 0.06 : diceCountInGroup >= 6 ? 0.1 : 0.15;
-
-        const targetX = clamp(
-          zoneCenterX + localX + randomBetween(-jitterScale, jitterScale),
-          -safeX,
-          safeX,
-        );
-
-        const targetZ = clamp(
-          zoneCenterZ + localZ + randomBetween(-jitterScale, jitterScale),
-          -safeZ,
-          safeZ,
-        );
+        const targetX = clamp(anchor.x + offset.x, -safeX, safeX);
+        const targetZ = clamp(anchor.z + offset.z, safeTopZ, safeBottomZ);
 
         const finalRotation = createRandomRotation();
         const finalQuaternion = new THREE.Quaternion().setFromEuler(
