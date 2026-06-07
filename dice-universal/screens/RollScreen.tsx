@@ -20,6 +20,8 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import { router } from "expo-router";
+
 import { useDb } from "../data/db/DbProvider";
 import { useActiveTable } from "../data/state/ActiveTableProvider";
 
@@ -57,7 +59,6 @@ import { PreparedRollEditSheet } from "../features/roll/components/PreparedRollE
 // import { FreeDicePad } from "../features/roll/components/FreeDicePad";
 
 import { useDraftTableActions } from "../features/roll/hooks/useDraftTableActions";
-import { useRollExecution } from "../features/roll/hooks/useRollExecution";
 import { useQuickRollDraft } from "../features/roll/hooks/useQuickRollDraft";
 import { useRollTableData } from "../features/roll/hooks/useRollTableData";
 
@@ -91,6 +92,17 @@ import {
 
 import { runPremiumTiming } from "../theme/premium/premiumAnimation";
 import { usePremiumTheme } from "../theme/premium/usePremiumTheme";
+
+import type {
+  Roll3DDieSides,
+  Roll3DDieSign,
+  Roll3DDieSource,
+} from "../features/roll3d/types";
+import {
+  createRoll3DDraftFromDice,
+  type CreateRoll3DDieInput,
+} from "../features/roll3d/logic/roll3DDraft";
+import { createRoll3DHandoff } from "../features/roll3d/logic/roll3DHandoff";
 
 function findStandardQuickGroup(groups: DraftGroupSummary[]) {
   return (
@@ -191,6 +203,75 @@ async function resolvePreparedRuleId(
           : "{}",
     is_system: 0,
   });
+}
+
+function toRoll3DDieSides(value: number): Roll3DDieSides | null {
+  if (
+    value === 4 ||
+    value === 6 ||
+    value === 8 ||
+    value === 10 ||
+    value === 12 ||
+    value === 20 ||
+    value === 100
+  ) {
+    return value;
+  }
+
+  return null;
+}
+
+function toRoll3DDieSign(value?: number | null): Roll3DDieSign {
+  return value === -1 ? -1 : 1;
+}
+
+function createRoll3DDiceInputsFromPreparedGroup(params: {
+  group: DraftGroupSummary;
+  source: Roll3DDieSource;
+  focusedLineIndex: number | null;
+}): CreateRoll3DDieInput[] {
+  const { group, source, focusedLineIndex } = params;
+
+  const diceToSend =
+    focusedLineIndex != null
+      ? group.dice
+          .map((die, index) => ({ die, index }))
+          .filter((entry) => entry.index === focusedLineIndex)
+      : group.dice.map((die, index) => ({ die, index }));
+
+  const result: CreateRoll3DDieInput[] = [];
+
+  for (const { die } of diceToSend) {
+    const sides = toRoll3DDieSides(die.sides);
+
+    if (!sides) {
+      continue;
+    }
+
+    const qty = Math.max(1, Math.floor(die.qty ?? 1));
+    const sign = toRoll3DDieSign(die.sign);
+    const modifier = Number.isFinite(die.modifier ?? 0)
+      ? (die.modifier ?? 0)
+      : 0;
+
+    for (let index = 0; index < qty; index += 1) {
+      result.push({
+        sides,
+        sign,
+        /**
+         * Important :
+         * Dans le modèle actuel Roll3D, chaque dé visuel est une entrée moteur.
+         * Le modificateur d'une ligne préparée ne doit donc être appliqué
+         * qu'une seule fois, sinon un 3d6+2 deviendrait 3d6+6.
+         */
+        modifier: index === 0 ? modifier : 0,
+        source,
+        behavior: null,
+      });
+    }
+  }
+
+  return result;
 }
 
 export default function RollScreen() {
@@ -360,7 +441,6 @@ export default function RollScreen() {
     removeDraftDie,
     clearDraft,
 
-    rollSingleDraftGroup,
   } = useQuickRollDraft({
     db,
     table,
@@ -399,14 +479,6 @@ export default function RollScreen() {
 
       return true;
     },
-  });
-
-  const { rollSavedGroup } = useRollExecution({
-    db,
-    table,
-    profiles,
-    rulesMap,
-    setResults,
   });
 
   const {
@@ -508,32 +580,6 @@ export default function RollScreen() {
     });
   }
 
-  async function handleRollPrepared() {
-    if (!preparedRoll) return;
-
-    if (
-      preparedRoll.source === "free" ||
-      preparedRoll.source === "action_draft"
-    ) {
-      const group = editablePreparedDraftGroup;
-
-      if (!group) return;
-
-      const result = await rollSingleDraftGroup(group.id);
-      setLatestResult(result);
-      return;
-    }
-
-    if (preparedRoll.source === "action") {
-      const result = await rollSavedGroup(
-        preparedRoll.profileId,
-        preparedRoll.groupId,
-      );
-
-      setLatestResult(result);
-    }
-  }
-
   async function handleRollPreparedLine(index: number) {
     if (
       preparedRoll?.source !== "free" &&
@@ -609,17 +655,40 @@ export default function RollScreen() {
     setFocusedPreparedLineIndex(null);
   }
 
-  async function handlePressStickyRollButton() {
-    if (
-      focusedPreparedLineIndex != null &&
-      (preparedRoll?.source === "free" ||
-        preparedRoll?.source === "action_draft")
-    ) {
-      await handleRollPreparedLine(focusedPreparedLineIndex);
+  function handleLaunchPreparedInRoll3D() {
+    if (!editablePreparedDraftGroup) {
       return;
     }
 
-    await handleRollPrepared();
+    const source: Roll3DDieSource =
+      preparedRoll?.source === "action_draft" ? "action" : "prepared";
+
+    const dice = createRoll3DDiceInputsFromPreparedGroup({
+      group: editablePreparedDraftGroup,
+      source,
+      focusedLineIndex: focusedPreparedLineIndex,
+    });
+
+    if (dice.length === 0) {
+      return;
+    }
+
+    const draft = createRoll3DDraftFromDice(dice);
+
+    const handoffId = createRoll3DHandoff({
+      label:
+        focusedPreparedLine?.label ??
+        editablePreparedDraftGroup.name ??
+        "Jet préparé",
+      draft,
+    });
+
+    router.replace({
+      pathname: "/roll",
+      params: {
+        handoffId,
+      },
+    });
   }
 
   async function handleOpenSaveDraftModal() {
@@ -1817,7 +1886,6 @@ export default function RollScreen() {
               ],
             }}
           >
-            
             {/* Résultat temporaire de prévisualisation.
             Le rendu final de résultat doit migrer vers Roll3D. */}
 
@@ -1956,8 +2024,8 @@ export default function RollScreen() {
             focusedLine={isFocusedLineMode}
             focusedLineLabel={focusedPreparedLine?.label ?? null}
             onClearFocusedLine={handleClearFocusedPreparedLine}
-            onPress={handlePressStickyRollButton}
-            label={isFocusedLineMode ? "TESTER LA LIGNE" : "TESTER LE JET"}
+            onPress={handleLaunchPreparedInRoll3D}
+            label={isFocusedLineMode ? "LANCER LA LIGNE EN 3D" : "LANCER EN 3D"}
             disabledLabel="AJOUTE DES DÉS"
           />
         </View>

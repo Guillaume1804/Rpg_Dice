@@ -1,5 +1,6 @@
 // dice-universal/screens/Roll3DScreen.tsx
 
+import { useLocalSearchParams } from "expo-router";
 import { View, useWindowDimensions } from "react-native";
 
 import { Roll3DLauncherSurface } from "../features/roll3d";
@@ -15,6 +16,10 @@ export default function Roll3DScreen() {
   const layout = useArcaneLayout();
   const { styles } = useArcaneTheme();
   const { height: windowHeight } = useWindowDimensions();
+
+  const params = useLocalSearchParams<{
+    handoffId?: string;
+  }>();
 
   /**
    * La bottom tab bar reste visible.
@@ -63,7 +68,11 @@ export default function Roll3DScreen() {
           justifyContent: "flex-start",
         }}
       >
-        <Roll3DLauncherSurface height={surfaceHeight} maxDice={12} />
+        <Roll3DLauncherSurface
+          height={surfaceHeight}
+          maxDice={12}
+          handoffId={params.handoffId}
+        />
       </View>
     </View>
   );

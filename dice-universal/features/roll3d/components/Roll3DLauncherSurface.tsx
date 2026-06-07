@@ -1,6 +1,6 @@
 // dice-universal/features/roll3d/components/Roll3DLauncherSurface.tsx
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useFocusEffect } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 
@@ -9,24 +9,28 @@ import { DiceTable3D } from "./DiceTable3D";
 import { Roll3DDiceSelector } from "./Roll3DDiceSelector";
 import { Roll3DResultOverlay } from "./Roll3DResultOverlay";
 import { Roll3DRollButton } from "./Roll3DRollButton";
+import { consumeRoll3DHandoff } from "../logic/roll3DHandoff";
 
 type Roll3DLauncherSurfaceProps = {
   height?: number;
   maxDice?: number;
+  handoffId?: string | string[];
 };
 
 export function Roll3DLauncherSurface({
   height = 300,
   maxDice = 99,
+  handoffId,
 }: Roll3DLauncherSurfaceProps) {
   const launcher = useRoll3DLauncher({
     maxDice,
   });
 
-  const { resetLauncher } = launcher;
+  const { resetLauncher, loadDraft } = launcher;
 
   const [isRolling, setIsRolling] = useState(false);
   const [skipRollRequestId, setSkipRollRequestId] = useState(0);
+  const [sceneVersion, setSceneVersion] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
@@ -37,6 +41,27 @@ export function Roll3DLauncherSurface({
       };
     }, [resetLauncher]),
   );
+
+  useEffect(() => {
+    const payload = consumeRoll3DHandoff(handoffId);
+
+    if (!payload) {
+      return;
+    }
+
+    setIsRolling(false);
+    setSkipRollRequestId(0);
+
+    /**
+     * Important :
+     * on force une nouvelle scène Three/GLView quand un jet arrive depuis
+     * Préparation. Ça évite de réutiliser une scène 3D dans un état instable
+     * après navigation + injection de draft.
+     */
+    setSceneVersion((current) => current + 1);
+
+    loadDraft(payload.draft);
+  }, [handoffId, loadDraft]);
 
   const handleRollPress = useCallback(() => {
     if (launcher.diceCount <= 0 || isRolling) {
@@ -86,6 +111,7 @@ export function Roll3DLauncherSurface({
       }}
     >
       <DiceTable3D
+        key={`roll-3d-table-${sceneVersion}`}
         height={height}
         diceInstances={launcher.diceInstances}
         rollRequestId={launcher.rollRequestId}

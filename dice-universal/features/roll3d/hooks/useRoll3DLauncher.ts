@@ -64,6 +64,13 @@ export function useRoll3DLauncher({
     setRollRequestId(0);
   }, []);
 
+  const loadDraft = useCallback((nextDraft: Roll3DDraft) => {
+    setDraft(nextDraft);
+    setSelectedSides(nextDraft.dice[0]?.sides ?? 20);
+    setLatestResult(null);
+    setRollRequestId(0);
+  }, []);
+
   const clearResult = useCallback(() => {
     setLatestResult(null);
   }, []);
@@ -95,6 +102,7 @@ export function useRoll3DLauncher({
       addDie,
       clearDice,
       resetLauncher,
+      loadDraft,
       clearResult,
       rollDice,
       completeRollAfterPhysics,
@@ -112,6 +120,7 @@ export function useRoll3DLauncher({
       addDie,
       clearDice,
       resetLauncher,
+      loadDraft,
       clearResult,
       rollDice,
       completeRollAfterPhysics,

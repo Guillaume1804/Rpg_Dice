@@ -1,7 +1,29 @@
 // dice-universal/features/roll3d/logic/roll3DDraft.ts
 
-import type { Roll3DDraft, Roll3DDieInstance, Roll3DDieSides } from "../types";
+import type {
+  Roll3DDraft,
+  Roll3DDieBehaviorRef,
+  Roll3DDieInstance,
+  Roll3DDieSides,
+  Roll3DDieSign,
+  Roll3DDieSource,
+} from "../types";
 import { createRoll3DId } from "./roll3DRandom";
+
+type CreateRoll3DDieInstanceOptions = {
+  sign?: Roll3DDieSign;
+  modifier?: number;
+  source?: Roll3DDieSource;
+  behavior?: Roll3DDieBehaviorRef | null;
+};
+
+export type CreateRoll3DDieInput = {
+  sides: Roll3DDieSides;
+  sign?: Roll3DDieSign;
+  modifier?: number;
+  source?: Roll3DDieSource;
+  behavior?: Roll3DDieBehaviorRef | null;
+};
 
 export function createEmptyRoll3DDraft(): Roll3DDraft {
   const now = Date.now();
@@ -16,15 +38,36 @@ export function createEmptyRoll3DDraft(): Roll3DDraft {
 
 export function createRoll3DDieInstance(
   sides: Roll3DDieSides,
+  options: CreateRoll3DDieInstanceOptions = {},
 ): Roll3DDieInstance {
   return {
     id: createRoll3DId("roll-3d-die"),
     sides,
     createdAt: Date.now(),
-    sign: 1,
-    modifier: 0,
-    source: "free",
-    behavior: null,
+    sign: options.sign ?? 1,
+    modifier: options.modifier ?? 0,
+    source: options.source ?? "free",
+    behavior: options.behavior ?? null,
+  };
+}
+
+export function createRoll3DDraftFromDice(
+  dice: CreateRoll3DDieInput[],
+): Roll3DDraft {
+  const now = Date.now();
+
+  return {
+    id: createRoll3DId("roll-3d-draft"),
+    createdAt: now,
+    updatedAt: now,
+    dice: dice.map((die) =>
+      createRoll3DDieInstance(die.sides, {
+        sign: die.sign,
+        modifier: die.modifier,
+        source: die.source,
+        behavior: die.behavior,
+      }),
+    ),
   };
 }
 
