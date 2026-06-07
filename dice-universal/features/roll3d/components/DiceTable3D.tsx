@@ -536,6 +536,73 @@ export function DiceTable3D({
     const transforms = new Map<string, DiceVisualTransform>();
     const items = Array.from(diceItemsRef.current.entries());
 
+    type PlacedTarget = {
+      x: number;
+      z: number;
+      radius: number;
+    };
+
+    const placedTargets: PlacedTarget[] = [];
+
+    function getVisualCollisionRadius(sides: number) {
+      if (sides === 100) return 0.46;
+      if (sides === 20 || sides === 12) return 0.34;
+      if (sides === 10) return 0.32;
+      return 0.3;
+    }
+
+    function resolveClusterCollision(params: {
+      x: number;
+      z: number;
+      radius: number;
+      minX: number;
+      maxX: number;
+      minZ: number;
+      maxZ: number;
+    }) {
+      const { radius, minX, maxX, minZ, maxZ } = params;
+
+      let x = params.x;
+      let z = params.z;
+
+      for (let pass = 0; pass < 8; pass += 1) {
+        let moved = false;
+
+        for (const placed of placedTargets) {
+          const dx = x - placed.x;
+          const dz = z - placed.z;
+          const distance = Math.sqrt(dx * dx + dz * dz);
+
+          const minimumDistance = radius + placed.radius + 0.045;
+
+          if (distance >= minimumDistance) {
+            continue;
+          }
+
+          const angle =
+            distance > 0.001
+              ? Math.atan2(dz, dx)
+              : randomBetween(0, Math.PI * 2);
+
+          const push = minimumDistance - distance;
+
+          x += Math.cos(angle) * push * 0.62;
+          z += Math.sin(angle) * push * 0.62;
+
+          x = clamp(x, minX, maxX);
+          z = clamp(z, minZ, maxZ);
+
+          moved = true;
+        }
+
+        if (!moved) {
+          break;
+        }
+      }
+
+      return { x, z };
+    }
+
     if (items.length === 0) {
       return transforms;
     }
@@ -713,8 +780,33 @@ export function DiceTable3D({
           sides: group.sides,
         });
 
-        const targetX = clamp(anchor.x + offset.x, -safeX, safeX);
-        const targetZ = clamp(anchor.z + offset.z, safeTopZ, safeBottomZ);
+        const visualRadius = getVisualCollisionRadius(group.sides);
+
+        const initialTargetX = clamp(anchor.x + offset.x, -safeX, safeX);
+        const initialTargetZ = clamp(
+          anchor.z + offset.z,
+          safeTopZ,
+          safeBottomZ,
+        );
+
+        const resolvedTarget = resolveClusterCollision({
+          x: initialTargetX,
+          z: initialTargetZ,
+          radius: visualRadius,
+          minX: -safeX,
+          maxX: safeX,
+          minZ: safeTopZ,
+          maxZ: safeBottomZ,
+        });
+
+        const targetX = resolvedTarget.x;
+        const targetZ = resolvedTarget.z;
+
+        placedTargets.push({
+          x: targetX,
+          z: targetZ,
+          radius: visualRadius,
+        });
 
         const finalRotation = createRandomRotation();
         const finalQuaternion = new THREE.Quaternion().setFromEuler(
