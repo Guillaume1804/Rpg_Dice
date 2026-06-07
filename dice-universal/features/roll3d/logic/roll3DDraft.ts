@@ -11,6 +11,7 @@ import type {
 import { createRoll3DId } from "./roll3DRandom";
 
 type CreateRoll3DDieInstanceOptions = {
+  rollEntryId?: string;
   sign?: Roll3DDieSign;
   modifier?: number;
   source?: Roll3DDieSource;
@@ -18,6 +19,7 @@ type CreateRoll3DDieInstanceOptions = {
 };
 
 export type CreateRoll3DDieInput = {
+  rollEntryId?: string;
   sides: Roll3DDieSides;
   sign?: Roll3DDieSign;
   modifier?: number;
@@ -33,6 +35,7 @@ export function createEmptyRoll3DDraft(): Roll3DDraft {
     createdAt: now,
     updatedAt: now,
     dice: [],
+    groupBehavior: null,
   };
 }
 
@@ -40,8 +43,11 @@ export function createRoll3DDieInstance(
   sides: Roll3DDieSides,
   options: CreateRoll3DDieInstanceOptions = {},
 ): Roll3DDieInstance {
+  const rollEntryId = options.rollEntryId ?? createRoll3DId("roll-3d-entry");
+
   return {
     id: createRoll3DId("roll-3d-die"),
+    rollEntryId,
     sides,
     createdAt: Date.now(),
     sign: options.sign ?? 1,
@@ -53,6 +59,9 @@ export function createRoll3DDieInstance(
 
 export function createRoll3DDraftFromDice(
   dice: CreateRoll3DDieInput[],
+  options: {
+    groupBehavior?: Roll3DDieBehaviorRef | null;
+  } = {},
 ): Roll3DDraft {
   const now = Date.now();
 
@@ -60,8 +69,10 @@ export function createRoll3DDraftFromDice(
     id: createRoll3DId("roll-3d-draft"),
     createdAt: now,
     updatedAt: now,
+    groupBehavior: options.groupBehavior ?? null,
     dice: dice.map((die) =>
       createRoll3DDieInstance(die.sides, {
+        rollEntryId: die.rollEntryId,
         sign: die.sign,
         modifier: die.modifier,
         source: die.source,
@@ -94,5 +105,6 @@ export function clearRoll3DDraft(draft: Roll3DDraft): Roll3DDraft {
     ...draft,
     updatedAt: Date.now(),
     dice: [],
+    groupBehavior: null,
   };
 }

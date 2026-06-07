@@ -25,14 +25,23 @@ export type Roll3DDieSign = 1 | -1;
 
 export type Roll3DDieSource = "free" | "prepared" | "action";
 
+export type Roll3DRuleRef = {
+  id: string;
+  name: string;
+  kind: string;
+  params_json: string;
+};
+
 export type Roll3DDieBehaviorRef = {
   id: string;
   label: string;
   kind: string;
+  rule: Roll3DRuleRef;
 };
 
 export type Roll3DDieInstance = {
   id: string;
+  rollEntryId: string;
   sides: Roll3DDieSides;
   createdAt: number;
 
@@ -56,6 +65,7 @@ export type Roll3DDraft = {
   createdAt: number;
   updatedAt: number;
   dice: Roll3DDieInstance[];
+  groupBehavior: Roll3DDieBehaviorRef | null;
 };
 
 export type Roll3DDieResult = {

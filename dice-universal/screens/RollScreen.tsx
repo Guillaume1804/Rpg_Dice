@@ -94,10 +94,12 @@ import { runPremiumTiming } from "../theme/premium/premiumAnimation";
 import { usePremiumTheme } from "../theme/premium/usePremiumTheme";
 
 import type {
+  Roll3DDieBehaviorRef,
   Roll3DDieSides,
   Roll3DDieSign,
   Roll3DDieSource,
 } from "../features/roll3d/types";
+
 import {
   createRoll3DDraftFromDice,
   type CreateRoll3DDieInput,
@@ -225,12 +227,44 @@ function toRoll3DDieSign(value?: number | null): Roll3DDieSign {
   return value === -1 ? -1 : 1;
 }
 
+function createRoll3DBehaviorRefFromRuleLike(
+  sourceRule: any | null | undefined,
+): Roll3DDieBehaviorRef | null {
+  if (!sourceRule) {
+    return null;
+  }
+
+  const id = String(sourceRule.id ?? `roll-3d-temp-rule-${Date.now()}`);
+  const name = String(sourceRule.name ?? "Comportement");
+  const kind = String(sourceRule.kind ?? "sum");
+
+  const paramsJson =
+    typeof sourceRule.params_json === "string"
+      ? sourceRule.params_json
+      : typeof sourceRule.paramsJson === "string"
+        ? sourceRule.paramsJson
+        : JSON.stringify(sourceRule.params_json ?? {});
+
+  return {
+    id,
+    label: name,
+    kind,
+    rule: {
+      id,
+      name,
+      kind,
+      params_json: paramsJson,
+    },
+  };
+}
+
 function createRoll3DDiceInputsFromPreparedGroup(params: {
   group: DraftGroupSummary;
   source: Roll3DDieSource;
   focusedLineIndex: number | null;
+  rulesMap: Record<string, any>;
 }): CreateRoll3DDieInput[] {
-  const { group, source, focusedLineIndex } = params;
+  const { group, source, focusedLineIndex, rulesMap } = params;
 
   const diceToSend =
     focusedLineIndex != null
@@ -241,7 +275,7 @@ function createRoll3DDiceInputsFromPreparedGroup(params: {
 
   const result: CreateRoll3DDieInput[] = [];
 
-  for (const { die } of diceToSend) {
+  for (const { die, index: lineIndex } of diceToSend) {
     const sides = toRoll3DDieSides(die.sides);
 
     if (!sides) {
@@ -254,19 +288,27 @@ function createRoll3DDiceInputsFromPreparedGroup(params: {
       ? (die.modifier ?? 0)
       : 0;
 
+    const sourceRule =
+      (die as any).rule_temp ?? (die.rule_id ? rulesMap[die.rule_id] : null);
+
+    const behavior = createRoll3DBehaviorRefFromRuleLike(sourceRule);
+
+    const rollEntryId = `${group.id}-line-${lineIndex}`;
+
     for (let index = 0; index < qty; index += 1) {
       result.push({
+        rollEntryId,
         sides,
         sign,
         /**
          * Important :
-         * Dans le modèle actuel Roll3D, chaque dé visuel est une entrée moteur.
-         * Le modificateur d'une ligne préparée ne doit donc être appliqué
-         * qu'une seule fois, sinon un 3d6+2 deviendrait 3d6+6.
+         * Tous les dés visuels d’une même ligne partagent le même rollEntryId.
+         * Le moteur officiel les regroupera donc en une seule entrée qty=N.
+         * Le modificateur reste porté par le premier dé visuel seulement.
          */
         modifier: index === 0 ? modifier : 0,
         source,
-        behavior: null,
+        behavior,
       });
     }
   }
@@ -440,7 +482,6 @@ export default function RollScreen() {
 
     removeDraftDie,
     clearDraft,
-
   } = useQuickRollDraft({
     db,
     table,
@@ -667,13 +708,24 @@ export default function RollScreen() {
       group: editablePreparedDraftGroup,
       source,
       focusedLineIndex: focusedPreparedLineIndex,
+      rulesMap,
     });
 
     if (dice.length === 0) {
       return;
     }
 
-    const draft = createRoll3DDraftFromDice(dice);
+    const groupRuleSource =
+      (editablePreparedDraftGroup as any).rule_temp ??
+      (editablePreparedDraftGroup.rule_id
+        ? rulesMap[editablePreparedDraftGroup.rule_id]
+        : null);
+
+    const groupBehavior = createRoll3DBehaviorRefFromRuleLike(groupRuleSource);
+
+    const draft = createRoll3DDraftFromDice(dice, {
+      groupBehavior,
+    });
 
     const handoffId = createRoll3DHandoff({
       label:

@@ -4,6 +4,7 @@ import { rollGroup } from "../../../core/roll/roll";
 import { evaluateRule } from "../../../core/rules/evaluate";
 
 import type {
+  Roll3DDraft,
   Roll3DDieInstance,
   Roll3DDieResult,
   Roll3DRollSummary,
@@ -29,44 +30,76 @@ function toRoll3DDieResult(params: {
   };
 }
 
+function groupDiceByRollEntry(diceInstances: Roll3DDieInstance[]) {
+  const groups = new Map<string, Roll3DDieInstance[]>();
+
+  for (const instance of diceInstances) {
+    const current = groups.get(instance.rollEntryId) ?? [];
+    current.push(instance);
+    groups.set(instance.rollEntryId, current);
+  }
+
+  return Array.from(groups.entries()).map(([rollEntryId, instances]) => ({
+    rollEntryId,
+    instances,
+  }));
+}
+
 export function buildOfficialRoll3DSummary(
-  diceInstances: Roll3DDieInstance[],
+  draft: Roll3DDraft,
 ): Roll3DRollSummary {
+  const entryGroups = groupDiceByRollEntry(draft.dice);
+
   const officialResult = rollGroup({
     groupId: createRoll3DId("roll-3d-group"),
     label: "Jet Roll3D",
-    entries: diceInstances.map((instance) => ({
-      entryId: instance.id,
-      sides: instance.sides,
-      qty: 1,
-      modifier: instance.modifier,
-      sign: instance.sign,
-      rule: null,
-    })),
-    groupRule: null,
+    entries: entryGroups.map(({ rollEntryId, instances }) => {
+      const first = instances[0];
+
+      return {
+        entryId: rollEntryId,
+        sides: first?.sides ?? 20,
+        qty: instances.length,
+        modifier: instances.reduce(
+          (sum, instance) => sum + instance.modifier,
+          0,
+        ),
+        sign: first?.sign ?? 1,
+        rule: first?.behavior?.rule ?? null,
+      };
+    }),
+    groupRule: draft.groupBehavior?.rule ?? null,
     evaluateRule,
   });
 
-  const dice: Roll3DDieResult[] = officialResult.entries.map((entry, index) => {
-    const instance = diceInstances[index];
+  const dice: Roll3DDieResult[] = [];
 
-    if (!instance) {
-      return {
-        id: entry.entryId,
-        sides: entry.sides as Roll3DDieResult["sides"],
-        value: entry.natural_values[0] ?? 0,
-        sign: entry.sign === -1 ? -1 : 1,
-        modifier: entry.modifier,
-        total: entry.final_total,
-      };
-    }
+  officialResult.entries.forEach((entry) => {
+    const entryGroup = entryGroups.find(
+      (group) => group.rollEntryId === entry.entryId,
+    );
 
-    return toRoll3DDieResult({
-      instance,
-      value: entry.natural_values[0] ?? 0,
-      sign: entry.sign === -1 ? -1 : 1,
-      modifier: entry.modifier,
-      total: entry.final_total,
+    const instances = entryGroup?.instances ?? [];
+
+    entry.natural_values.forEach((value, index) => {
+      const instance = instances[index];
+
+      if (!instance) {
+        return;
+      }
+
+      const visualModifier = index === 0 ? entry.modifier : 0;
+      const visualTotal = value * (entry.sign === -1 ? -1 : 1) + visualModifier;
+
+      dice.push(
+        toRoll3DDieResult({
+          instance,
+          value,
+          sign: entry.sign === -1 ? -1 : 1,
+          modifier: visualModifier,
+          total: visualTotal,
+        }),
+      );
     });
   });
 

@@ -85,8 +85,8 @@ export function useRoll3DLauncher({
   const completeRollAfterPhysics = useCallback(() => {
     if (draft.dice.length === 0) return;
 
-    setLatestResult(buildOfficialRoll3DSummary(draft.dice));
-  }, [draft.dice]);
+    setLatestResult(buildOfficialRoll3DSummary(draft));
+  }, [draft]);
 
   return useMemo(
     () => ({
