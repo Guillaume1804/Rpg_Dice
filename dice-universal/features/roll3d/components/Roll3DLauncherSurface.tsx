@@ -140,7 +140,7 @@ export function Roll3DLauncherSurface({
             position: "absolute",
             left: 14,
             right: 14,
-            bottom: 22,
+            bottom: 18,
             gap: 8,
             zIndex: 5,
           }}
