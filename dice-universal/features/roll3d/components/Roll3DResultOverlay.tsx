@@ -5,22 +5,16 @@ import { LinearGradient } from "expo-linear-gradient";
 
 import { usePremiumTheme } from "../../../theme/premium/usePremiumTheme";
 import type { Roll3DRollSummary } from "../types";
+import {
+  buildRoll3DResultPresentation,
+  type Roll3DResultTone,
+} from "../presentation/roll3DResultPresentation";
 
 type Roll3DResultOverlayProps = {
   result: Roll3DRollSummary | null;
   visible: boolean;
   onClose: () => void;
   onRollAgain: () => void;
-};
-
-type OfficialEntry = Roll3DRollSummary["officialResult"]["entries"][number];
-
-type OutcomeVisual = {
-  label: string;
-  icon: string;
-  borderColor: string;
-  backgroundColor: string;
-  textColor: string;
 };
 
 function formatRollTime(timestamp: number) {
@@ -30,66 +24,9 @@ function formatRollTime(timestamp: number) {
   });
 }
 
-function formatCompare(compare?: string) {
-  return compare === "lte" ? "≤" : "≥";
-}
-
-function formatNumberArray(values: number[] | undefined | null) {
-  if (!Array.isArray(values) || values.length === 0) {
-    return "—";
-  }
-
-  return values.join(", ");
-}
-
-function formatMaybeArray(value: number | number[] | null | undefined) {
-  if (Array.isArray(value)) {
-    return formatNumberArray(value);
-  }
-
-  if (typeof value === "number") {
-    return String(value);
-  }
-
-  return "—";
-}
-
-function getOutcomeFromEval(evalResult: any | null | undefined): string | null {
-  if (!evalResult) {
-    return null;
-  }
-
-  if (typeof evalResult.outcome === "string") {
-    return evalResult.outcome;
-  }
-
-  if (typeof evalResult.meta?.outcome === "string") {
-    return evalResult.meta.outcome;
-  }
-
-  return null;
-}
-
-function getPrimaryEvalResult(result: Roll3DRollSummary) {
-  if (result.officialResult.group_eval_result) {
-    return result.officialResult.group_eval_result;
-  }
-
-  const entryWithOutcome = result.officialResult.entries.find((entry) =>
-    getOutcomeFromEval(entry.eval_result),
-  );
-
-  if (entryWithOutcome?.eval_result) {
-    return entryWithOutcome.eval_result;
-  }
-
-  return result.officialResult.entries.find((entry) => entry.eval_result)
-    ?.eval_result;
-}
-
-function getOutcomeVisual(outcome: string | null | undefined): OutcomeVisual {
-  switch (outcome) {
-    case "crit_success":
+function getToneVisual(tone: Roll3DResultTone) {
+  switch (tone) {
+    case "criticalSuccess":
       return {
         label: "Réussite critique",
         icon: "✦",
@@ -116,20 +53,16 @@ function getOutcomeVisual(outcome: string | null | undefined): OutcomeVisual {
         textColor: "#FF9C9C",
       };
 
-    case "crit_failure":
-    case "crit_glitch":
+    case "criticalFailure":
       return {
-        label:
-          outcome === "crit_glitch"
-            ? "Complication critique"
-            : "Échec critique",
+        label: "Échec critique",
         icon: "!",
         borderColor: "rgba(255, 88, 88, 0.72)",
         backgroundColor: "rgba(190, 28, 28, 0.18)",
         textColor: "#FF7D7D",
       };
 
-    case "glitch":
+    case "complication":
       return {
         label: "Complication",
         icon: "◇",
@@ -138,6 +71,7 @@ function getOutcomeVisual(outcome: string | null | undefined): OutcomeVisual {
         textColor: "#FFC978",
       };
 
+    case "neutral":
     default:
       return {
         label: "Résultat",
@@ -147,216 +81,6 @@ function getOutcomeVisual(outcome: string | null | undefined): OutcomeVisual {
         textColor: "#E8C878",
       };
   }
-}
-
-function getResultSubtitle(result: Roll3DRollSummary) {
-  if (result.officialResult.group_eval_result) {
-    return "Moteur officiel · comportement de groupe";
-  }
-
-  if (result.officialResult.entries.some((entry) => entry.eval_result)) {
-    return "Moteur officiel · comportements";
-  }
-
-  if (result.modifierTotal !== 0) {
-    return "Moteur officiel · modificateurs";
-  }
-
-  return "Moteur officiel · somme";
-}
-
-function getEntryTitle(entry: OfficialEntry) {
-  const signPrefix = entry.sign < 0 ? "-" : "";
-  const modifierLabel =
-    entry.modifier !== 0
-      ? ` ${entry.modifier > 0 ? "+" : "-"} ${Math.abs(entry.modifier)}`
-      : "";
-
-  return `${signPrefix}${entry.qty}d${entry.sides}${modifierLabel}`;
-}
-
-function formatEvalSummaryLines(evalResult: any | null | undefined): string[] {
-  if (!evalResult) {
-    return [];
-  }
-
-  if (evalResult.kind === "sum") {
-    return [`Total : ${evalResult.total}`];
-  }
-
-  if (evalResult.kind === "single_check") {
-    const threshold =
-      evalResult.threshold == null
-        ? "sans seuil"
-        : `${formatCompare(evalResult.compare)} ${evalResult.threshold}`;
-
-    return [
-      `Jet naturel : ${evalResult.natural}`,
-      `Final : ${evalResult.final}`,
-      `Seuil : ${threshold}`,
-    ];
-  }
-
-  if (evalResult.kind === "threshold_degrees") {
-    return [
-      `Jet : ${evalResult.roll}`,
-      `Final : ${evalResult.final}`,
-      `Cible : ${formatCompare(evalResult.compare)} ${evalResult.target}`,
-      `Marge : ${evalResult.margin}`,
-      `Degrés : ${evalResult.degrees}`,
-    ];
-  }
-
-  if (evalResult.kind === "success_pool") {
-    const lines = [
-      `Succès : ${evalResult.successes}`,
-      `Échecs spéciaux : ${evalResult.fail_count}`,
-      `Dés lancés : ${evalResult.dice_count}`,
-      `Seuil de succès : ${evalResult.success_at_or_above}+`,
-    ];
-
-    if (evalResult.complication) {
-      lines.push("Complication détectée");
-    }
-
-    if (evalResult.critical_success) {
-      lines.push("Réussite critique détectée");
-    }
-
-    if (evalResult.critical_failure) {
-      lines.push("Échec critique détecté");
-    }
-
-    return lines;
-  }
-
-  if (evalResult.kind === "table_lookup") {
-    return [`Valeur : ${evalResult.value}`, `Résultat : ${evalResult.label}`];
-  }
-
-  if (evalResult.kind === "banded_sum") {
-    return [`Total : ${evalResult.total}`, `Palier : ${evalResult.label}`];
-  }
-
-  if (
-    evalResult.kind === "highest_of_pool" ||
-    evalResult.kind === "lowest_of_pool"
-  ) {
-    const modeLabel =
-      evalResult.kind === "highest_of_pool" ? "Meilleur dé" : "Pire dé";
-
-    const threshold =
-      evalResult.threshold == null
-        ? "sans seuil"
-        : `${formatCompare(evalResult.compare)} ${evalResult.threshold}`;
-
-    return [
-      `${modeLabel} : ${evalResult.kept}`,
-      `Dés : ${formatNumberArray(evalResult.natural_values)}`,
-      `Final : ${evalResult.final}`,
-      `Seuil : ${threshold}`,
-    ];
-  }
-
-  if (evalResult.kind === "keep_highest_n") {
-    return [
-      `Dés : ${formatNumberArray(evalResult.natural_values)}`,
-      `Gardés : ${formatNumberArray(evalResult.kept)}`,
-      `Final : ${formatMaybeArray(evalResult.final)}`,
-    ];
-  }
-
-  if (evalResult.kind === "keep_lowest_n") {
-    return [
-      `Dés : ${formatNumberArray(evalResult.natural_values)}`,
-      `Gardés : ${formatNumberArray(evalResult.kept)}`,
-      `Final : ${formatMaybeArray(evalResult.final)}`,
-    ];
-  }
-
-  if (evalResult.kind === "drop_highest_n") {
-    return [
-      `Dés : ${formatNumberArray(evalResult.natural_values)}`,
-      `Restants : ${formatNumberArray(evalResult.remaining)}`,
-      `Final : ${formatMaybeArray(evalResult.final)}`,
-    ];
-  }
-
-  if (evalResult.kind === "drop_lowest_n") {
-    return [
-      `Dés : ${formatNumberArray(evalResult.natural_values)}`,
-      `Restants : ${formatNumberArray(evalResult.remaining)}`,
-      `Final : ${formatMaybeArray(evalResult.final)}`,
-    ];
-  }
-
-  if (evalResult.kind === "pipeline") {
-    const lines = [
-      `Dés : ${formatNumberArray(evalResult.values)}`,
-      `Gardés : ${formatNumberArray(evalResult.kept)}`,
-      `Final : ${formatMaybeArray(evalResult.final)}`,
-    ];
-
-    if (typeof evalResult.meta?.successes === "number") {
-      lines.push(`Succès : ${evalResult.meta.successes}`);
-    }
-
-    if (typeof evalResult.meta?.complications === "number") {
-      lines.push(`Complications : ${evalResult.meta.complications}`);
-    }
-
-    if (typeof evalResult.meta?.count_equal === "number") {
-      lines.push(`Comptage faces : ${evalResult.meta.count_equal}`);
-    }
-
-    if (typeof evalResult.meta?.count_range === "number") {
-      lines.push(`Comptage plage : ${evalResult.meta.count_range}`);
-    }
-
-    if (evalResult.meta?.lookup?.label) {
-      lines.push(`Palier : ${evalResult.meta.lookup.label}`);
-    }
-
-    if (evalResult.meta?.degrees) {
-      lines.push(`Degrés : ${evalResult.meta.degrees.degrees}`);
-      lines.push(`Marge : ${evalResult.meta.degrees.margin}`);
-    }
-
-    if (evalResult.meta?.complication) {
-      lines.push("Complication détectée");
-    }
-
-    if (evalResult.meta?.critical_success) {
-      lines.push("Réussite critique détectée");
-    }
-
-    if (evalResult.meta?.critical_failure) {
-      lines.push("Échec critique détecté");
-    }
-
-    return lines;
-  }
-
-  if (evalResult.kind === "unknown") {
-    return [evalResult.message ?? "Règle inconnue"];
-  }
-
-  return [];
-}
-
-function buildEntryChips(entry: OfficialEntry) {
-  const chips: string[] = [];
-
-  chips.push(`Dés : ${formatNumberArray(entry.natural_values)}`);
-
-  if (entry.base_total !== entry.total_with_modifier) {
-    chips.push(`Base : ${entry.base_total}`);
-    chips.push(`Modifié : ${entry.total_with_modifier}`);
-  }
-
-  chips.push(`Final : ${entry.final_total}`);
-
-  return chips;
 }
 
 export function Roll3DResultOverlay({
@@ -371,17 +95,8 @@ export function Roll3DResultOverlay({
     return null;
   }
 
-  const primaryEvalResult = getPrimaryEvalResult(result);
-  const primaryOutcome = getOutcomeFromEval(primaryEvalResult);
-  const outcomeVisual = getOutcomeVisual(primaryOutcome);
-
-  const hasAnyBehavior =
-    !!result.officialResult.group_eval_result ||
-    result.officialResult.entries.some((entry) => !!entry.eval_result);
-
-  const groupSummaryLines = formatEvalSummaryLines(
-    result.officialResult.group_eval_result,
-  );
+  const presentation = buildRoll3DResultPresentation(result);
+  const toneVisual = getToneVisual(presentation.tone);
 
   return (
     <Modal
@@ -418,7 +133,7 @@ export function Roll3DResultOverlay({
             style={{
               borderRadius: 30,
               borderWidth: 1,
-              borderColor: premium.colors.border.accent,
+              borderColor: toneVisual.borderColor,
               padding: 18,
               overflow: "hidden",
             }}
@@ -433,7 +148,7 @@ export function Roll3DResultOverlay({
                 height: 22,
                 borderBottomLeftRadius: premium.radius.pill,
                 borderBottomRightRadius: premium.radius.pill,
-                backgroundColor: "rgba(232, 200, 120, 0.16)",
+                backgroundColor: toneVisual.backgroundColor,
               }}
             />
 
@@ -461,8 +176,8 @@ export function Roll3DResultOverlay({
                 style={{
                   borderRadius: premium.radius.pill,
                   borderWidth: 1,
-                  borderColor: outcomeVisual.borderColor,
-                  backgroundColor: outcomeVisual.backgroundColor,
+                  borderColor: toneVisual.borderColor,
+                  backgroundColor: toneVisual.backgroundColor,
                   paddingHorizontal: 10,
                   paddingVertical: 6,
                   flexDirection: "row",
@@ -472,24 +187,24 @@ export function Roll3DResultOverlay({
               >
                 <Text
                   style={{
-                    color: outcomeVisual.textColor,
+                    color: toneVisual.textColor,
                     fontSize: 11,
                     fontWeight: "900",
                   }}
                 >
-                  {outcomeVisual.icon}
+                  {toneVisual.icon}
                 </Text>
 
                 <Text
                   style={{
-                    color: outcomeVisual.textColor,
+                    color: toneVisual.textColor,
                     fontSize: 10,
                     fontWeight: "900",
                     textTransform: "uppercase",
                     letterSpacing: 0.7,
                   }}
                 >
-                  {outcomeVisual.label}
+                  {presentation.title}
                 </Text>
               </View>
             </View>
@@ -507,9 +222,24 @@ export function Roll3DResultOverlay({
                   fontWeight: "900",
                   letterSpacing: -2,
                   lineHeight: 64,
+                  textAlign: "center",
                 }}
               >
-                {result.total}
+                {presentation.mainValue}
+              </Text>
+
+              <Text
+                style={{
+                  color: premium.colors.accent.primary,
+                  fontSize: 11,
+                  fontWeight: "900",
+                  textTransform: "uppercase",
+                  letterSpacing: 1.2,
+                  marginTop: -2,
+                  textAlign: "center",
+                }}
+              >
+                {presentation.mainLabel}
               </Text>
 
               <Text
@@ -519,11 +249,11 @@ export function Roll3DResultOverlay({
                   fontWeight: "900",
                   textTransform: "uppercase",
                   letterSpacing: 1,
-                  marginTop: 4,
+                  marginTop: 6,
                   textAlign: "center",
                 }}
               >
-                {getResultSubtitle(result)}
+                {presentation.subtitle}
               </Text>
 
               <Text
@@ -532,6 +262,7 @@ export function Roll3DResultOverlay({
                   fontSize: 11,
                   fontWeight: "700",
                   marginTop: 5,
+                  textAlign: "center",
                 }}
               >
                 {result.dice.length} dé{result.dice.length > 1 ? "s" : ""} ·{" "}
@@ -539,20 +270,20 @@ export function Roll3DResultOverlay({
               </Text>
             </View>
 
-            {hasAnyBehavior ? (
+            {presentation.summaryLines.length > 0 ? (
               <View
                 style={{
                   marginTop: 14,
                   borderRadius: 22,
                   borderWidth: 1,
-                  borderColor: outcomeVisual.borderColor,
-                  backgroundColor: outcomeVisual.backgroundColor,
+                  borderColor: toneVisual.borderColor,
+                  backgroundColor: toneVisual.backgroundColor,
                   padding: 12,
                 }}
               >
                 <Text
                   style={{
-                    color: outcomeVisual.textColor,
+                    color: toneVisual.textColor,
                     fontSize: 11,
                     fontWeight: "900",
                     textTransform: "uppercase",
@@ -563,54 +294,14 @@ export function Roll3DResultOverlay({
                   Interprétation officielle
                 </Text>
 
-                {formatEvalSummaryLines(primaryEvalResult).map((line) => (
+                {presentation.summaryLines.map((line) => (
                   <Text
-                    key={`primary-eval-${line}`}
+                    key={`presentation-summary-${line}`}
                     style={{
                       color: premium.colors.text.secondary,
                       fontSize: 11,
                       fontWeight: "800",
                       lineHeight: 17,
-                    }}
-                  >
-                    {line}
-                  </Text>
-                ))}
-              </View>
-            ) : null}
-
-            {groupSummaryLines.length > 0 ? (
-              <View
-                style={{
-                  marginTop: 10,
-                  borderRadius: 18,
-                  borderWidth: 1,
-                  borderColor: premium.colors.border.subtle,
-                  backgroundColor: "rgba(255,255,255,0.045)",
-                  padding: 10,
-                }}
-              >
-                <Text
-                  style={{
-                    color: premium.colors.text.secondary,
-                    fontSize: 10,
-                    fontWeight: "900",
-                    textTransform: "uppercase",
-                    letterSpacing: 0.8,
-                    marginBottom: 6,
-                  }}
-                >
-                  Comportement de groupe
-                </Text>
-
-                {groupSummaryLines.map((line) => (
-                  <Text
-                    key={`group-eval-${line}`}
-                    style={{
-                      color: premium.colors.text.muted,
-                      fontSize: 11,
-                      fontWeight: "700",
-                      lineHeight: 16,
                     }}
                   >
                     {line}
@@ -630,23 +321,21 @@ export function Roll3DResultOverlay({
                 paddingBottom: 4,
               }}
             >
-              {result.officialResult.entries.map((entry) => {
-                const entryOutcome = getOutcomeFromEval(entry.eval_result);
-                const entryOutcomeVisual = getOutcomeVisual(entryOutcome);
-                const evalLines = formatEvalSummaryLines(entry.eval_result);
-                const chips = buildEntryChips(entry);
+              {presentation.sections.map((section) => {
+                const sectionToneVisual = getToneVisual(section.tone);
+                const hasSpecialTone = section.tone !== "neutral";
 
                 return (
                   <View
-                    key={entry.entryId}
+                    key={section.id}
                     style={{
                       borderRadius: 20,
                       borderWidth: 1,
-                      borderColor: entry.eval_result
-                        ? entryOutcomeVisual.borderColor
+                      borderColor: hasSpecialTone
+                        ? sectionToneVisual.borderColor
                         : premium.colors.border.subtle,
-                      backgroundColor: entry.eval_result
-                        ? entryOutcomeVisual.backgroundColor
+                      backgroundColor: hasSpecialTone
+                        ? sectionToneVisual.backgroundColor
                         : "rgba(255,255,255,0.055)",
                       padding: 12,
                     }}
@@ -667,7 +356,7 @@ export function Roll3DResultOverlay({
                             fontWeight: "900",
                           }}
                         >
-                          {getEntryTitle(entry)}
+                          {section.title}
                         </Text>
 
                         <Text
@@ -678,16 +367,16 @@ export function Roll3DResultOverlay({
                             marginTop: 3,
                           }}
                         >
-                          {entry.rule?.name ?? "Somme simple"}
+                          {section.subtitle ?? "Somme simple"}
                         </Text>
                       </View>
 
-                      {entryOutcome ? (
+                      {hasSpecialTone ? (
                         <View
                           style={{
                             borderRadius: premium.radius.pill,
                             borderWidth: 1,
-                            borderColor: entryOutcomeVisual.borderColor,
+                            borderColor: sectionToneVisual.borderColor,
                             backgroundColor: "rgba(0,0,0,0.18)",
                             paddingHorizontal: 9,
                             paddingVertical: 5,
@@ -695,60 +384,62 @@ export function Roll3DResultOverlay({
                         >
                           <Text
                             style={{
-                              color: entryOutcomeVisual.textColor,
+                              color: sectionToneVisual.textColor,
                               fontSize: 10,
                               fontWeight: "900",
                             }}
                           >
-                            {entryOutcomeVisual.label}
+                            {sectionToneVisual.label}
                           </Text>
                         </View>
                       ) : null}
                     </View>
 
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        flexWrap: "wrap",
-                        gap: 7,
-                        marginTop: 10,
-                      }}
-                    >
-                      {chips.map((chip) => (
-                        <View
-                          key={`${entry.entryId}-${chip}`}
-                          style={{
-                            borderRadius: premium.radius.pill,
-                            borderWidth: 1,
-                            borderColor: premium.colors.border.subtle,
-                            backgroundColor: "rgba(0,0,0,0.16)",
-                            paddingHorizontal: 9,
-                            paddingVertical: 5,
-                          }}
-                        >
-                          <Text
+                    {section.chips.length > 0 ? (
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          flexWrap: "wrap",
+                          gap: 7,
+                          marginTop: 10,
+                        }}
+                      >
+                        {section.chips.map((chip) => (
+                          <View
+                            key={`${section.id}-${chip}`}
                             style={{
-                              color: premium.colors.text.secondary,
-                              fontSize: 10,
-                              fontWeight: "900",
+                              borderRadius: premium.radius.pill,
+                              borderWidth: 1,
+                              borderColor: premium.colors.border.subtle,
+                              backgroundColor: "rgba(0,0,0,0.16)",
+                              paddingHorizontal: 9,
+                              paddingVertical: 5,
                             }}
                           >
-                            {chip}
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
+                            <Text
+                              style={{
+                                color: premium.colors.text.secondary,
+                                fontSize: 10,
+                                fontWeight: "900",
+                              }}
+                            >
+                              {chip}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+                    ) : null}
 
-                    {evalLines.length > 0 ? (
+                    {section.lines.length > 0 ? (
                       <View
                         style={{
                           marginTop: 9,
                           gap: 2,
                         }}
                       >
-                        {evalLines.map((line) => (
+                        {section.lines.map((line) => (
                           <Text
-                            key={`${entry.entryId}-${line}`}
+                            key={`${section.id}-${line}`}
                             style={{
                               color: premium.colors.text.secondary,
                               fontSize: 11,
