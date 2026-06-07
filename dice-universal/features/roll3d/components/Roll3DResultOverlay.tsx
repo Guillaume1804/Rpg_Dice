@@ -33,7 +33,13 @@ export function Roll3DResultOverlay({
   }
 
   return (
-    <Modal visible={visible} transparent animationType="fade">
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      onRequestClose={onClose}
+    >
       <Pressable
         onPress={onClose}
         style={{

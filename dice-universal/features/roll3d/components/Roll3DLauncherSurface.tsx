@@ -39,13 +39,13 @@ export function Roll3DLauncherSurface({
   );
 
   const handleRollPress = useCallback(() => {
-    if (launcher.diceCount <= 0) {
+    if (launcher.diceCount <= 0 || isRolling) {
       return;
     }
 
     setIsRolling(true);
     launcher.rollDice();
-  }, [launcher]);
+  }, [isRolling, launcher]);
 
   const handlePhysicsRollSettled = useCallback(() => {
     setIsRolling(false);
@@ -69,6 +69,7 @@ export function Roll3DLauncherSurface({
   const handleCloseResult = useCallback(() => {
     launcher.clearResult();
     setIsRolling(false);
+    setSkipRollRequestId(0);
   }, [launcher]);
 
   const shouldShowControls = !isRolling && !launcher.latestResult;
@@ -166,12 +167,12 @@ export function Roll3DLauncherSurface({
 
           <Roll3DRollButton
             compact
+            disabled={isRolling}
             diceCount={launcher.diceCount}
             onPress={handleRollPress}
           />
         </View>
       ) : null}
-
 
       <Roll3DResultOverlay
         visible={!!launcher.latestResult}
