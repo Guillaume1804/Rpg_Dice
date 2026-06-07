@@ -536,108 +536,169 @@ export function DiceTable3D({
     const transforms = new Map<string, DiceVisualTransform>();
     const items = Array.from(diceItemsRef.current.entries());
 
-    const diceCount = items.length;
+    if (items.length === 0) {
+      return transforms;
+    }
 
-    if (diceCount === 0) {
+    const instanceById = new Map(
+      diceInstances.map((instance) => [instance.id, instance]),
+    );
+
+    const diceTypeOrder = [4, 6, 8, 10, 12, 20, 100] as const;
+
+    const groupedItems = diceTypeOrder
+      .map((sides) => {
+        const groupItems = items.filter(([id]) => {
+          const instance = instanceById.get(id);
+          return instance?.sides === sides;
+        });
+
+        return {
+          sides,
+          items: groupItems,
+        };
+      })
+      .filter((group) => group.items.length > 0);
+
+    const groupCount = groupedItems.length;
+
+    if (groupCount === 0) {
       return transforms;
     }
 
     /**
      * Zone sûre légèrement rentrée dans les murs.
-     * On évite de placer les dés trop près des bordures.
+     * On garde les dés loin des bordures pour que la scène reste lisible.
      */
-    const safeX = TABLE_WIDTH / 2 - 0.58;
-    const safeZ = TABLE_DEPTH / 2 - 0.72;
+    const safeX = TABLE_WIDTH / 2 - 0.62;
+    const safeZ = TABLE_DEPTH / 2 - 0.76;
 
     /**
-     * Grille souple :
-     * elle permet d'éviter les gros chevauchements quand il y a beaucoup de dés.
-     * Ce n'est pas une grille visible parfaite, car on ajoute du jitter.
+     * La table est plus haute que large.
+     * On organise donc les groupes en colonnes limitées, puis en lignes.
+     *
+     * 1 groupe  : centre
+     * 2 groupes : gauche / droite
+     * 3+ groupes: grille douce en 2 colonnes
      */
-    const columns = Math.max(
-      1,
-      Math.ceil(Math.sqrt(diceCount * (TABLE_WIDTH / TABLE_DEPTH))),
-    );
+    const zoneColumns = groupCount <= 1 ? 1 : 2;
+    const zoneRows = Math.ceil(groupCount / zoneColumns);
 
-    const rows = Math.max(1, Math.ceil(diceCount / columns));
+    const zoneWidth = (safeX * 2) / zoneColumns;
+    const zoneDepth = (safeZ * 2) / zoneRows;
 
-    const spacingX = columns <= 1 ? 0 : (safeX * 2) / (columns - 1);
-    const spacingZ = rows <= 1 ? 0 : (safeZ * 2) / (rows - 1);
+    groupedItems.forEach((group, groupIndex) => {
+      const zoneColumn = groupIndex % zoneColumns;
+      const zoneRow = Math.floor(groupIndex / zoneColumns);
 
-    /**
-     * On trie les dés selon leur position actuelle pour que la transition
-     * soit lisible et évite de traverser toute la table dans tous les sens.
-     */
-    const sortedItems = [...items].sort((a, b) => {
-      const meshA = a[1].mesh;
-      const meshB = b[1].mesh;
+      const zoneCenterX =
+        zoneColumns === 1 ? 0 : -safeX + zoneWidth * zoneColumn + zoneWidth / 2;
 
-      if (Math.abs(meshA.position.z - meshB.position.z) > 0.2) {
-        return meshA.position.z - meshB.position.z;
-      }
-
-      return meshA.position.x - meshB.position.x;
-    });
-
-    sortedItems.forEach(([id, item], index) => {
-      const column = index % columns;
-      const row = Math.floor(index / columns);
-
-      const baseX = columns <= 1 ? 0 : -safeX + column * spacingX;
-      const baseZ = rows <= 1 ? 0 : -safeZ + row * spacingZ;
+      const zoneCenterZ =
+        zoneRows === 1 ? 0 : -safeZ + zoneDepth * zoneRow + zoneDepth / 2;
 
       /**
-       * Petit décalage pour éviter l'effet trop rangé.
-       * Plus il y a de dés, plus le jitter est faible.
+       * Marge interne pour éviter que les dés touchent les limites de zone.
        */
-      const jitterScale =
-        diceCount >= 36 ? 0.08 : diceCount >= 18 ? 0.12 : 0.18;
+      const innerHalfWidth = Math.max(0.34, zoneWidth / 2 - 0.38);
+      const innerHalfDepth = Math.max(0.34, zoneDepth / 2 - 0.38);
 
-      const targetX = clamp(
-        baseX + randomBetween(-jitterScale, jitterScale),
-        -safeX,
-        safeX,
-      );
-
-      const targetZ = clamp(
-        baseZ + randomBetween(-jitterScale, jitterScale),
-        -safeZ,
-        safeZ,
-      );
-
-      const finalRotation = createRandomRotation();
-      const finalQuaternion = new THREE.Quaternion().setFromEuler(
-        finalRotation,
-      );
+      const diceCountInGroup = group.items.length;
 
       /**
-       * On calcule une hauteur de repos correcte sans laisser le mesh muté.
+       * Répartition interne du groupe.
+       * Plusieurs dés identiques restent proches, mais sans se superposer.
        */
-      const originalPosition = item.mesh.position.clone();
-      const originalQuaternion = item.mesh.quaternion.clone();
-      const originalScale = item.mesh.scale.clone();
+      const localColumns = Math.max(
+        1,
+        Math.ceil(
+          Math.sqrt(diceCountInGroup * (innerHalfWidth / innerHalfDepth)),
+        ),
+      );
 
-      item.mesh.position.set(targetX, 0, targetZ);
-      item.mesh.quaternion.copy(finalQuaternion);
-      item.mesh.scale.setScalar(DROP_TARGET_SCALE);
-      item.mesh.updateMatrixWorld(true);
+      const localRows = Math.max(1, Math.ceil(diceCountInGroup / localColumns));
 
-      const box = new THREE.Box3().setFromObject(item.mesh);
-      const finalY = TABLE_SURFACE_Y - box.min.y;
+      const localSpacingX =
+        localColumns <= 1 ? 0 : (innerHalfWidth * 2) / (localColumns - 1);
 
-      item.mesh.position.copy(originalPosition);
-      item.mesh.quaternion.copy(originalQuaternion);
-      item.mesh.scale.copy(originalScale);
-      item.mesh.updateMatrixWorld(true);
+      const localSpacingZ =
+        localRows <= 1 ? 0 : (innerHalfDepth * 2) / (localRows - 1);
 
-      transforms.set(id, {
-        position: new THREE.Vector3(targetX, finalY, targetZ),
-        quaternion: finalQuaternion,
+      const sortedGroupItems = [...group.items].sort((a, b) => {
+        const meshA = a[1].mesh;
+        const meshB = b[1].mesh;
+
+        if (Math.abs(meshA.position.z - meshB.position.z) > 0.2) {
+          return meshA.position.z - meshB.position.z;
+        }
+
+        return meshA.position.x - meshB.position.x;
+      });
+
+      sortedGroupItems.forEach(([id, item], itemIndex) => {
+        const localColumn = itemIndex % localColumns;
+        const localRow = Math.floor(itemIndex / localColumns);
+
+        const localX =
+          localColumns <= 1 ? 0 : -innerHalfWidth + localColumn * localSpacingX;
+
+        const localZ =
+          localRows <= 1 ? 0 : -innerHalfDepth + localRow * localSpacingZ;
+
+        /**
+         * Jitter léger :
+         * - assez présent avec peu de dés pour éviter l'effet grille
+         * - réduit avec beaucoup de dés pour garder la lisibilité
+         */
+        const jitterScale =
+          diceCountInGroup >= 12 ? 0.06 : diceCountInGroup >= 6 ? 0.1 : 0.15;
+
+        const targetX = clamp(
+          zoneCenterX + localX + randomBetween(-jitterScale, jitterScale),
+          -safeX,
+          safeX,
+        );
+
+        const targetZ = clamp(
+          zoneCenterZ + localZ + randomBetween(-jitterScale, jitterScale),
+          -safeZ,
+          safeZ,
+        );
+
+        const finalRotation = createRandomRotation();
+        const finalQuaternion = new THREE.Quaternion().setFromEuler(
+          finalRotation,
+        );
+
+        /**
+         * Calcul de hauteur de repos sans laisser le mesh muté.
+         */
+        const originalPosition = item.mesh.position.clone();
+        const originalQuaternion = item.mesh.quaternion.clone();
+        const originalScale = item.mesh.scale.clone();
+
+        item.mesh.position.set(targetX, 0, targetZ);
+        item.mesh.quaternion.copy(finalQuaternion);
+        item.mesh.scale.setScalar(DROP_TARGET_SCALE);
+        item.mesh.updateMatrixWorld(true);
+
+        const box = new THREE.Box3().setFromObject(item.mesh);
+        const finalY = TABLE_SURFACE_Y - box.min.y;
+
+        item.mesh.position.copy(originalPosition);
+        item.mesh.quaternion.copy(originalQuaternion);
+        item.mesh.scale.copy(originalScale);
+        item.mesh.updateMatrixWorld(true);
+
+        transforms.set(id, {
+          position: new THREE.Vector3(targetX, finalY, targetZ),
+          quaternion: finalQuaternion,
+        });
       });
     });
 
     return transforms;
-  }, []);
+  }, [diceInstances]);
 
   const animateDiceToFinalTransforms = useCallback(
     (
