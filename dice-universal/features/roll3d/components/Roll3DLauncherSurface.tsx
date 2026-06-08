@@ -1,15 +1,26 @@
 // dice-universal/features/roll3d/components/Roll3DLauncherSurface.tsx
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useFocusEffect } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 
+import { useDb } from "../../../data/db/DbProvider";
+import { useActiveTable } from "../../../data/state/ActiveTableProvider";
+import { useDataRefresh } from "../../../data/state/DataRefreshProvider";
+import { useRollTableData } from "../../roll/hooks/useRollTableData";
+import { formatSavedActionDetail } from "../../roll/helpers/rollDisplaySummary";
+
 import { useRoll3DLauncher } from "../hooks/useRoll3DLauncher";
 import { DiceTable3D } from "./DiceTable3D";
-import { Roll3DDiceSelector } from "./Roll3DDiceSelector";
+import { Roll3DControlDock } from "./Roll3DControlDock";
 import { Roll3DResultOverlay } from "./Roll3DResultOverlay";
-import { Roll3DRollButton } from "./Roll3DRollButton";
 import { consumeRoll3DHandoff } from "../logic/roll3DHandoff";
+import { createRoll3DDiceInputsFromSavedActionEntry } from "../logic/roll3DActionDraft";
+import type { Roll3DDieSides } from "../types";
+import {
+  appendDiceToRoll3DDraft,
+  createRoll3DDraftFromDice,
+} from "../logic/roll3DDraft";
 
 type Roll3DLauncherSurfaceProps = {
   height?: number;
@@ -26,20 +37,126 @@ export function Roll3DLauncherSurface({
     maxDice,
   });
 
-  const { resetLauncher, loadDraft } = launcher;
+  const {
+    resetLauncher,
+    loadDraft,
+    addDie,
+    clearDice,
+    rollDice,
+    completeRollAfterPhysics,
+    clearResult,
+  } = launcher;
+
+  const db = useDb();
+  const { activeTableId } = useActiveTable();
+  const { revision } = useDataRefresh();
+
+  const tableId = useMemo(
+    () =>
+      typeof activeTableId === "string" && activeTableId.length > 0
+        ? activeTableId
+        : "",
+    [activeTableId],
+  );
+
+  const { profiles, rulesMap, reloadGroups } = useRollTableData({
+    db,
+    tableId,
+  });
 
   const [isRolling, setIsRolling] = useState(false);
   const [skipRollRequestId, setSkipRollRequestId] = useState(0);
   const [sceneVersion, setSceneVersion] = useState(0);
+
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(
+    null,
+  );
+  const [selectedSetId, setSelectedSetId] = useState<string | null>(null);
+
+  const [selectedSetEntryId, setSelectedSetEntryId] = useState<string | null>(
+    null,
+  );
+  const [setInsertMode, setSetInsertMode] = useState<"replace" | "append">(
+    "replace",
+  );
 
   useFocusEffect(
     useCallback(() => {
       return () => {
         setIsRolling(false);
         setSkipRollRequestId(0);
+        setSelectedSetId(null);
+        setSelectedSetEntryId(null);
         resetLauncher();
       };
     }, [resetLauncher]),
+  );
+
+  useEffect(() => {
+    if (!tableId) {
+      setSelectedProfileId(null);
+      setSelectedSetId(null);
+      setSelectedSetEntryId(null);
+      return;
+    }
+
+    void reloadGroups(tableId);
+  }, [revision, tableId, reloadGroups]);
+
+  useEffect(() => {
+    if (profiles.length === 0) {
+      setSelectedProfileId(null);
+      setSelectedSetId(null);
+      setSelectedSetEntryId(null);
+      return;
+    }
+
+    const profileExists = profiles.some(
+      (entry) => entry.profile.id === selectedProfileId,
+    );
+
+    if (!profileExists) {
+      setSelectedProfileId(profiles[0].profile.id);
+      setSelectedSetId(null);
+      setSelectedSetEntryId(null);
+    }
+  }, [profiles, selectedProfileId]);
+
+  const activeProfileEntry = useMemo(() => {
+    if (profiles.length === 0) {
+      return null;
+    }
+
+    return (
+      profiles.find((entry) => entry.profile.id === selectedProfileId) ??
+      profiles[0] ??
+      null
+    );
+  }, [profiles, selectedProfileId]);
+
+  const setItems = useMemo(
+    () =>
+      activeProfileEntry?.groups.map(({ group, dice }) => ({
+        id: group.id,
+        name: group.name,
+        detail: formatSavedActionDetail({
+          group,
+          dice,
+          rulesMap,
+        }),
+        entries: dice.map((die) => ({
+          id: die.id,
+          label: `${die.sign === -1 ? "- " : ""}${die.qty}d${die.sides}${
+            die.modifier !== 0
+              ? ` ${die.modifier > 0 ? "+" : "-"} ${Math.abs(die.modifier)}`
+              : ""
+          }`,
+          detail: die.rule_id
+            ? (rulesMap[die.rule_id]?.name ?? "Comportement")
+            : "Somme simple",
+        })),
+      })) ?? [],
+    [activeProfileEntry, rulesMap],
   );
 
   useEffect(() => {
@@ -51,6 +168,8 @@ export function Roll3DLauncherSurface({
 
     setIsRolling(false);
     setSkipRollRequestId(0);
+    setSelectedSetId(null);
+    setSelectedSetEntryId(null);
 
     /**
      * Important :
@@ -63,19 +182,109 @@ export function Roll3DLauncherSurface({
     loadDraft(payload.draft);
   }, [handoffId, loadDraft]);
 
+  const handleSelectFreeDie = useCallback(
+    (sides: Roll3DDieSides) => {
+      setSelectedSetId(null);
+      setSelectedSetEntryId(null);
+      addDie(sides);
+    },
+    [addDie],
+  );
+
+  const handleClearDice = useCallback(() => {
+    setIsRolling(false);
+    setSkipRollRequestId(0);
+    setSelectedSetId(null);
+    setSelectedSetEntryId(null);
+    clearDice();
+  }, [clearDice]);
+
+  const handleSelectSet = useCallback((setId: string) => {
+    if (!setId) {
+      setSelectedSetId(null);
+      setSelectedSetEntryId(null);
+      return;
+    }
+
+    setSelectedSetId(setId);
+    setSelectedSetEntryId(null);
+  }, []);
+
+  const handleSelectSetEntry = useCallback(
+    (params: { setId: string; entryId: string }) => {
+      const selectedSet = activeProfileEntry?.groups.find(
+        (entry) => entry.group.id === params.setId,
+      );
+
+      const selectedDie = selectedSet?.dice.find(
+        (die) => die.id === params.entryId,
+      );
+
+      if (!selectedSet || !selectedDie) {
+        return;
+      }
+
+      const entryDraft = createRoll3DDiceInputsFromSavedActionEntry({
+        group: selectedSet.group,
+        die: selectedDie,
+        rulesMap,
+        source: "action",
+      });
+
+      if (entryDraft.dice.length === 0) {
+        return;
+      }
+
+      setIsRolling(false);
+      setSkipRollRequestId(0);
+      setSelectedSetId(params.setId);
+      setSelectedSetEntryId(params.entryId);
+
+      if (setInsertMode === "replace") {
+        const draft = createRoll3DDraftFromDice(entryDraft.dice, {
+          groupBehavior: entryDraft.groupBehavior,
+        });
+
+        setSceneVersion((current) => current + 1);
+        loadDraft(draft);
+        return;
+      }
+
+      const nextDraft = appendDiceToRoll3DDraft(
+        launcher.draft,
+        entryDraft.dice,
+        {
+          maxDice: launcher.maxDice,
+          groupBehavior: entryDraft.groupBehavior,
+        },
+      );
+
+      setSceneVersion((current) => current + 1);
+      loadDraft(nextDraft);
+    },
+    [
+      activeProfileEntry,
+      launcher.draft,
+      launcher.maxDice,
+      loadDraft,
+      rulesMap,
+      setInsertMode,
+    ],
+  );
+
   const handleRollPress = useCallback(() => {
     if (launcher.diceCount <= 0 || isRolling) {
       return;
     }
 
     setIsRolling(true);
-    launcher.rollDice();
-  }, [isRolling, launcher]);
+    rollDice();
+  }, [isRolling, launcher.diceCount, rollDice]);
 
   const handlePhysicsRollSettled = useCallback(() => {
     setIsRolling(false);
-    launcher.completeRollAfterPhysics();
-  }, [launcher]);
+    completeRollAfterPhysics();
+  }, [completeRollAfterPhysics]);
 
   const handleSkipRolling = useCallback(() => {
     if (!isRolling) {
@@ -85,17 +294,11 @@ export function Roll3DLauncherSurface({
     setSkipRollRequestId((current) => current + 1);
   }, [isRolling]);
 
-  const handleClearDice = useCallback(() => {
-    setIsRolling(false);
-    setSkipRollRequestId(0);
-    launcher.clearDice();
-  }, [launcher]);
-
   const handleCloseResult = useCallback(() => {
-    launcher.clearResult();
+    clearResult();
     setIsRolling(false);
     setSkipRollRequestId(0);
-  }, [launcher]);
+  }, [clearResult]);
 
   const shouldShowControls = !isRolling && !launcher.latestResult;
 
@@ -168,34 +371,26 @@ export function Roll3DLauncherSurface({
             left: 14,
             right: 14,
             bottom: 18,
-            gap: 8,
             zIndex: 5,
           }}
         >
-          <View
-            style={{
-              borderRadius: 26,
-              backgroundColor: "rgba(5, 7, 19, 0.48)",
-              borderWidth: 1,
-              borderColor: "rgba(232, 200, 120, 0.12)",
-              padding: 5,
-            }}
-          >
-            <Roll3DDiceSelector
-              compact
-              selectedSides={launcher.selectedSides}
-              diceCount={launcher.diceCount}
-              maxDice={launcher.maxDice}
-              onSelectSides={launcher.addDie}
-              onClearDice={handleClearDice}
-            />
-          </View>
-
-          <Roll3DRollButton
+          <Roll3DControlDock
             compact
-            disabled={isRolling}
+            selectedSides={launcher.selectedSides}
             diceCount={launcher.diceCount}
-            onPress={handleRollPress}
+            maxDice={launcher.maxDice}
+            rollDisabled={isRolling}
+            profileName={activeProfileEntry?.profile.name ?? null}
+            sets={setItems}
+            onSelectSides={handleSelectFreeDie}
+            onClearDice={handleClearDice}
+            selectedSetId={selectedSetId}
+            selectedSetEntryId={selectedSetEntryId}
+            setInsertMode={setInsertMode}
+            onSelectSet={handleSelectSet}
+            onSelectSetEntry={handleSelectSetEntry}
+            onChangeSetInsertMode={setSetInsertMode}
+            onRoll={handleRollPress}
           />
         </View>
       ) : null}

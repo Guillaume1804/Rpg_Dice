@@ -108,3 +108,39 @@ export function clearRoll3DDraft(draft: Roll3DDraft): Roll3DDraft {
     groupBehavior: null,
   };
 }
+
+export function appendDiceToRoll3DDraft(
+  draft: Roll3DDraft,
+  dice: CreateRoll3DDieInput[],
+  options: {
+    maxDice?: number;
+    groupBehavior?: Roll3DDieBehaviorRef | null;
+  } = {},
+): Roll3DDraft {
+  const maxDice = options.maxDice ?? 99;
+  const remainingSlots = Math.max(0, maxDice - draft.dice.length);
+
+  if (remainingSlots <= 0) {
+    return draft;
+  }
+
+  const diceToAppend = dice.slice(0, remainingSlots);
+
+  return {
+    ...draft,
+    updatedAt: Date.now(),
+    groupBehavior: options.groupBehavior ?? draft.groupBehavior,
+    dice: [
+      ...draft.dice,
+      ...diceToAppend.map((die) =>
+        createRoll3DDieInstance(die.sides, {
+          rollEntryId: die.rollEntryId,
+          sign: die.sign,
+          modifier: die.modifier,
+          source: die.source,
+          behavior: die.behavior,
+        }),
+      ),
+    ],
+  };
+}
