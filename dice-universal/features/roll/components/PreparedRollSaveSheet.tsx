@@ -408,7 +408,7 @@ export function PreparedRollSaveSheet({
         : actionLabel
           ? `Action modifiée : ${actionLabel}`
           : "Choisis comment conserver cette version modifiée."
-      : "Transforme ton jet rapide en action réutilisable dans une table.";
+      : "Transforme ce jet en action réutilisable pour un profil.";
 
   return (
     <PremiumBottomSheet
@@ -458,7 +458,7 @@ export function PreparedRollSaveSheet({
               label="Nom de l’action"
               value={freeActionName}
               onChangeText={onChangeFreeActionName}
-              placeholder="Ex: Attaque, Perception, Dégâts..."
+              placeholder="Ex: Attaque à l’épée, Perception, Dégâts..."
             />
           </View>
 
@@ -467,21 +467,21 @@ export function PreparedRollSaveSheet({
 
             <OptionCard
               label="Nouvelle table + nouveau profil"
-              description="Crée un nouvel espace complet pour ce jet."
+              description="Crée une table, un profil, puis ajoute cette action."
               selected={freeMode === "new_table_new_profile"}
               onPress={() => setFreeMode("new_table_new_profile")}
             />
 
             <OptionCard
               label="Table existante + nouveau profil"
-              description="Ajoute ce jet dans une table existante, avec un nouveau profil."
+              description="Ajoute cette action dans une table existante, avec un nouveau profil."
               selected={freeMode === "existing_table_new_profile"}
               onPress={() => setFreeMode("existing_table_new_profile")}
             />
 
             <OptionCard
               label="Table existante + profil existant"
-              description="Ajoute ce jet à un profil déjà créé."
+              description="Ajoute cette action à un profil déjà créé."
               selected={freeMode === "existing_table_existing_profile"}
               onPress={() => setFreeMode("existing_table_existing_profile")}
             />

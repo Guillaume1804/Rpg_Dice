@@ -4,17 +4,15 @@ import { useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
 import { usePremiumTheme } from "../../../theme/premium/usePremiumTheme";
-import type { Roll3DDieSides } from "../types";
+import type { Roll3DDieSides, Roll3DActionEntryInsertMode } from "../types";
 import { Roll3DDiceSelector } from "./Roll3DDiceSelector";
 import { Roll3DRollButton } from "./Roll3DRollButton";
 import {
-  Roll3DSetSelector,
-  type Roll3DSetSelectorItem,
-} from "./Roll3DSetSelector";
+  Roll3DActionEntrySelector,
+  type Roll3DActionItem,
+} from "./Roll3DActionEntrySelector";
 
-type Roll3DSetInsertMode = "replace" | "append";
-
-type Roll3DControlMode = "dice" | "sets";
+type Roll3DControlMode = "dice" | "actions";
 
 type Roll3DControlDockProps = {
   compact?: boolean;
@@ -25,16 +23,16 @@ type Roll3DControlDockProps = {
   rollDisabled?: boolean;
 
   profileName: string | null;
-  sets: Roll3DSetSelectorItem[];
-  selectedSetId: string | null;
-  selectedSetEntryId: string | null;
-  setInsertMode: Roll3DSetInsertMode;
+  actions: Roll3DActionItem[];
+  selectedActionId: string | null;
+  selectedActionEntryId: string | null;
+  actionEntryInsertMode: Roll3DActionEntryInsertMode;
 
   onSelectSides: (sides: Roll3DDieSides) => void;
   onClearDice: () => void;
-  onSelectSet: (setId: string) => void;
-  onSelectSetEntry: (params: { setId: string; entryId: string }) => void;
-  onChangeSetInsertMode: (mode: Roll3DSetInsertMode) => void;
+  onSelectAction: (actionId: string) => void;
+  onSelectActionEntry: (params: { actionId: string; entryId: string }) => void;
+  onChangeActionEntryInsertMode: (mode: Roll3DActionEntryInsertMode) => void;
   onRoll: () => void;
 };
 
@@ -134,30 +132,30 @@ export function Roll3DControlDock({
   maxDice,
   rollDisabled = false,
   profileName,
-  sets,
-  selectedSetEntryId,
-  setInsertMode,
-  onSelectSetEntry,
-  onChangeSetInsertMode,
-  selectedSetId,
+  actions,
+  selectedActionEntryId,
+  actionEntryInsertMode,
+  onSelectActionEntry,
+  onChangeActionEntryInsertMode,
+  selectedActionId,
   onSelectSides,
   onClearDice,
-  onSelectSet,
+  onSelectAction,
   onRoll,
 }: Roll3DControlDockProps) {
   // const premium = usePremiumTheme();
 
-  const hasSets = sets.length > 0;
+  const hasActions = actions.length > 0;
 
   const defaultMode = useMemo<Roll3DControlMode>(
-    () => (hasSets ? "sets" : "dice"),
-    [hasSets],
+    () => (hasActions ? "actions" : "dice"),
+    [hasActions],
   );
 
   const [mode, setMode] = useState<Roll3DControlMode>(defaultMode);
 
   const safeMode: Roll3DControlMode =
-    mode === "sets" && !hasSets ? "dice" : mode;
+    mode === "actions" && !hasActions ? "dice" : mode;
 
   return (
     <View
@@ -184,25 +182,25 @@ export function Roll3DControlDock({
         />
 
         <DockTab
-          label="Sets"
-          selected={safeMode === "sets"}
-          disabled={!hasSets}
-          badge={hasSets ? String(sets.length) : null}
-          onPress={() => setMode("sets")}
+          label="Actions"
+          selected={safeMode === "actions"}
+          disabled={!hasActions}
+          badge={hasActions ? String(actions.length) : null}
+          onPress={() => setMode("actions")}
         />
       </View>
 
-      {safeMode === "sets" ? (
-        <Roll3DSetSelector
+      {safeMode === "actions" ? (
+        <Roll3DActionEntrySelector
           compact={compact}
           profileName={profileName}
-          sets={sets}
-          selectedSetId={selectedSetId}
-          selectedEntryId={selectedSetEntryId}
-          insertMode={setInsertMode}
-          onSelectSet={onSelectSet}
-          onSelectEntry={onSelectSetEntry}
-          onChangeInsertMode={onChangeSetInsertMode}
+          actions={actions}
+          selectedActionId={selectedActionId}
+          selectedEntryId={selectedActionEntryId}
+          insertMode={actionEntryInsertMode}
+          onSelectAction={onSelectAction}
+          onSelectEntry={onSelectActionEntry}
+          onChangeInsertMode={onChangeActionEntryInsertMode}
         />
       ) : (
         <Roll3DDiceSelector

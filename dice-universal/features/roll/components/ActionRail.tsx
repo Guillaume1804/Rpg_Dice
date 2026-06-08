@@ -285,10 +285,10 @@ export function ActionRail({
 
       const inertiaOffset = hasDraggedFloatingButtonRef.current
         ? getSubtleInertiaOffset(
-          safePosition,
-          gestureState?.vx ?? 0,
-          gestureState?.vy ?? 0,
-        )
+            safePosition,
+            gestureState?.vx ?? 0,
+            gestureState?.vy ?? 0,
+          )
         : { x: 0, y: 0 };
 
       floatingPositionRef.current = safePosition;
@@ -589,7 +589,8 @@ export function ActionRail({
                   fontWeight: "700",
                 }}
               >
-                Crée des actions depuis l’écran Tables pour les retrouver ici.
+                Crée des actions depuis l’espace Préparation pour les retrouver
+                ici.
               </Text>
             </View>
           ) : (

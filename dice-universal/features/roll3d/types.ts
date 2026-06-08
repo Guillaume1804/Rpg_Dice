@@ -25,6 +25,51 @@ export type Roll3DDieSign = 1 | -1;
 
 export type Roll3DDieSource = "free" | "prepared" | "action";
 
+export type Roll3DActionEntryInsertMode = "replace" | "append";
+
+export type Roll3DActionEntryValueSourceKind =
+  | "manual"
+  | "character_attribute"
+  | "character_skill"
+  | "character_attribute_plus_skill"
+  | "difficulty"
+  | "opposition"
+  | "temporary_bonus"
+  | "temporary_malus"
+  | "advantage"
+  | "disadvantage";
+
+export type Roll3DActionEntryValueSource = {
+  id: string;
+  kind: Roll3DActionEntryValueSourceKind;
+
+  /**
+   * Label lisible côté UI.
+   * Exemples :
+   * - Force
+   * - Épée
+   * - Difficulté MJ
+   * - Défense adverse
+   * - Bonus temporaire
+   */
+  label: string;
+
+  /**
+   * Valeur manuelle aujourd’hui.
+   * Demain, cette valeur pourra venir d’une feuille de personnage connectée.
+   */
+  value?: number | null;
+
+  /**
+   * Clé externe future pour l’app de feuilles modulaires.
+   * Exemples :
+   * - attributes.strength
+   * - skills.sword
+   * - target.defense
+   */
+  externalKey?: string | null;
+};
+
 export type Roll3DRuleRef = {
   id: string;
   name: string;
@@ -58,6 +103,13 @@ export type Roll3DDieInstance = {
    */
   source: Roll3DDieSource;
   behavior: Roll3DDieBehaviorRef | null;
+
+  /**
+   * Prépare la future connexion avec les feuilles de personnage :
+   * attributs, compétences, difficultés, opposition, bonus/malus.
+   * Non exploité en V1 immédiate, mais le modèle Roll3D est prêt.
+   */
+  valueSources?: Roll3DActionEntryValueSource[];
 };
 
 export type Roll3DDraft = {

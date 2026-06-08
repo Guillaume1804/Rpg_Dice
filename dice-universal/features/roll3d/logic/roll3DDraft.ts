@@ -2,6 +2,7 @@
 
 import type {
   Roll3DDraft,
+  Roll3DActionEntryValueSource,
   Roll3DDieBehaviorRef,
   Roll3DDieInstance,
   Roll3DDieSides,
@@ -16,6 +17,7 @@ type CreateRoll3DDieInstanceOptions = {
   modifier?: number;
   source?: Roll3DDieSource;
   behavior?: Roll3DDieBehaviorRef | null;
+  valueSources?: Roll3DActionEntryValueSource[];
 };
 
 export type CreateRoll3DDieInput = {
@@ -25,6 +27,7 @@ export type CreateRoll3DDieInput = {
   modifier?: number;
   source?: Roll3DDieSource;
   behavior?: Roll3DDieBehaviorRef | null;
+  valueSources?: Roll3DActionEntryValueSource[];
 };
 
 export function createEmptyRoll3DDraft(): Roll3DDraft {
@@ -54,6 +57,7 @@ export function createRoll3DDieInstance(
     modifier: options.modifier ?? 0,
     source: options.source ?? "free",
     behavior: options.behavior ?? null,
+    valueSources: options.valueSources ?? [],
   };
 }
 
@@ -77,6 +81,7 @@ export function createRoll3DDraftFromDice(
         modifier: die.modifier,
         source: die.source,
         behavior: die.behavior,
+        valueSources: die.valueSources,
       }),
     ),
   };
@@ -139,6 +144,7 @@ export function appendDiceToRoll3DDraft(
           modifier: die.modifier,
           source: die.source,
           behavior: die.behavior,
+          valueSources: die.valueSources,
         }),
       ),
     ],

@@ -1,58 +1,60 @@
+// dice-universal\features\roll3d\components\Roll3DActionEntrySelector.tsx
+
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
 import { usePremiumTheme } from "../../../theme/premium/usePremiumTheme";
+import type { Roll3DActionEntryInsertMode } from "../types";
 
-export type Roll3DSetEntryItem = {
+export type Roll3DActionEntryItem = {
   id: string;
   label: string;
   detail: string;
 };
 
-export type Roll3DSetSelectorItem = {
+export type Roll3DActionItem = {
   id: string;
   name: string;
   detail: string;
-  entries: Roll3DSetEntryItem[];
+  entries: Roll3DActionEntryItem[];
 };
 
-type Roll3DSetInsertMode = "replace" | "append";
-
-type Roll3DSetSelectorProps = {
+type Roll3DActionEntrySelectorProps = {
   profileName: string | null;
-  sets: Roll3DSetSelectorItem[];
-  selectedSetId: string | null;
+  actions: Roll3DActionItem[];
+  selectedActionId: string | null;
   selectedEntryId: string | null;
-  insertMode: Roll3DSetInsertMode;
+  insertMode: Roll3DActionEntryInsertMode;
   compact?: boolean;
-  onSelectSet: (setId: string) => void;
-  onSelectEntry: (params: { setId: string; entryId: string }) => void;
-  onChangeInsertMode: (mode: Roll3DSetInsertMode) => void;
+  onSelectAction: (actionId: string) => void;
+  onSelectEntry: (params: { actionId: string; entryId: string }) => void;
+  onChangeInsertMode: (mode: Roll3DActionEntryInsertMode) => void;
 };
 
-function getSetIcon(index: number) {
+function getActionIcon(index: number) {
   const icons = ["✦", "◇", "⬟", "✧", "⬢", "◆"];
   return icons[index % icons.length];
 }
 
-function formatInsertModeLabel(mode: Roll3DSetInsertMode) {
+function formatInsertModeLabel(mode: Roll3DActionEntryInsertMode) {
   return mode === "replace" ? "Remplacer" : "Ajouter";
 }
 
-export function Roll3DSetSelector({
+export function Roll3DActionEntrySelector({
   profileName,
-  sets,
-  selectedSetId,
+  actions,
+  selectedActionId,
   selectedEntryId,
   insertMode,
   compact = false,
-  onSelectSet,
+  onSelectAction,
   onSelectEntry,
   onChangeInsertMode,
-}: Roll3DSetSelectorProps) {
+}: Roll3DActionEntrySelectorProps) {
   const premium = usePremiumTheme();
 
-  const selectedSet = sets.find((set) => set.id === selectedSetId) ?? null;
+  const selectedAction =
+    actions.find((action) => action.id === selectedActionId) ?? null;
 
   return (
     <View
@@ -88,7 +90,7 @@ export function Roll3DSetSelector({
               letterSpacing: 1.1,
             }}
           >
-            {selectedSet ? "Entrées du Set" : "Sets"}
+            {selectedAction ? "Entrées de l’action" : "Actions"}
           </Text>
 
           <Text
@@ -100,10 +102,10 @@ export function Roll3DSetSelector({
               marginTop: 2,
             }}
           >
-            {selectedSet
-              ? selectedSet.name
+            {selectedAction
+              ? selectedAction.name
               : profileName
-                ? `${sets.length} set${sets.length > 1 ? "s" : ""} · ${profileName}`
+                ? `${actions.length} action${actions.length > 1 ? "s" : ""} · ${profileName}`
                 : "Aucun profil actif"}
           </Text>
         </View>
@@ -119,7 +121,7 @@ export function Roll3DSetSelector({
 
             return (
               <Pressable
-                key={`insert-mode-${mode}`}
+                key={`action-entry-insert-mode-${mode}`}
                 onPress={() => onChangeInsertMode(mode)}
                 style={({ pressed }) => ({
                   opacity: pressed ? 0.78 : 1,
@@ -162,7 +164,7 @@ export function Roll3DSetSelector({
         </View>
       </View>
 
-      {sets.length === 0 ? (
+      {actions.length === 0 ? (
         <View
           style={{
             minHeight: compact ? 58 : 68,
@@ -182,7 +184,7 @@ export function Roll3DSetSelector({
               fontWeight: "900",
             }}
           >
-            Aucun Set disponible
+            Aucune action disponible
           </Text>
 
           <Text
@@ -194,13 +196,13 @@ export function Roll3DSetSelector({
               marginTop: 3,
             }}
           >
-            Crée ou prépare des Sets depuis l’espace Préparation.
+            Crée des actions depuis l’espace Préparation.
           </Text>
         </View>
-      ) : selectedSet ? (
+      ) : selectedAction ? (
         <View style={{ gap: 8 }}>
           <Pressable
-            onPress={() => onSelectSet("")}
+            onPress={() => onSelectAction("")}
             style={({ pressed }) => ({
               opacity: pressed ? 0.76 : 1,
               transform: [
@@ -217,7 +219,7 @@ export function Roll3DSetSelector({
                 letterSpacing: 0.8,
               }}
             >
-              ← Retour aux Sets
+              ← Retour aux actions
             </Text>
           </Pressable>
 
@@ -229,15 +231,15 @@ export function Roll3DSetSelector({
               paddingRight: 2,
             }}
           >
-            {selectedSet.entries.map((entry) => {
+            {selectedAction.entries.map((entry) => {
               const selected = selectedEntryId === entry.id;
 
               return (
                 <Pressable
-                  key={`roll-3d-set-entry-${entry.id}`}
+                  key={`roll-3d-action-entry-${entry.id}`}
                   onPress={() =>
                     onSelectEntry({
-                      setId: selectedSet.id,
+                      actionId: selectedAction.id,
                       entryId: entry.id,
                     })
                   }
@@ -315,10 +317,10 @@ export function Roll3DSetSelector({
             paddingRight: 2,
           }}
         >
-          {sets.map((set, index) => (
+          {actions.map((action, index) => (
             <Pressable
-              key={`roll-3d-set-${set.id}`}
-              onPress={() => onSelectSet(set.id)}
+              key={`roll-3d-action-${action.id}`}
+              onPress={() => onSelectAction(action.id)}
               style={({ pressed }) => ({
                 width: compact ? 176 : 210,
                 minHeight: compact ? 70 : 82,
@@ -367,7 +369,7 @@ export function Roll3DSetSelector({
                         fontWeight: "900",
                       }}
                     >
-                      {getSetIcon(index)}
+                      {getActionIcon(index)}
                     </Text>
                   </View>
 
@@ -380,7 +382,7 @@ export function Roll3DSetSelector({
                         fontWeight: "900",
                       }}
                     >
-                      {set.name}
+                      {action.name}
                     </Text>
 
                     <Text
@@ -393,7 +395,7 @@ export function Roll3DSetSelector({
                         marginTop: 3,
                       }}
                     >
-                      {set.detail}
+                      {action.detail}
                     </Text>
                   </View>
                 </View>

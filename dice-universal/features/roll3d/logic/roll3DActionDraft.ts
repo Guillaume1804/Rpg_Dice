@@ -16,7 +16,7 @@ import {
   type CreateRoll3DDieInput,
 } from "./roll3DDraft";
 
-export type Roll3DSavedActionEntryDraftInput = {
+export type Roll3DActionEntryDraftInput = {
   dice: CreateRoll3DDieInput[];
   groupBehavior: Roll3DDieBehaviorRef | null;
 };
@@ -66,7 +66,7 @@ export function createRoll3DDiceInputsFromSavedActionEntry(params: {
   die: GroupDieRow;
   rulesMap: Record<string, RuleRow>;
   source?: Roll3DDieSource;
-}): Roll3DSavedActionEntryDraftInput {
+}): Roll3DActionEntryDraftInput {
   const { group, die, rulesMap, source = "action" } = params;
 
   const sides = toRoll3DDieSides(die.sides);
