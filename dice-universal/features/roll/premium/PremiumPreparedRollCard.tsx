@@ -6,6 +6,7 @@ import {
   Pressable,
   ScrollView,
   Text,
+  TextInput,
   View,
 } from "react-native";
 
@@ -22,7 +23,24 @@ import { usePremiumTheme } from "../../../theme/premium/usePremiumTheme";
 
 export type PremiumPreparedRollCardLine = {
   id: string;
+
+  /**
+   * Label affiché principal.
+   * Si customLabel est vide, il peut retomber sur le label technique.
+   */
   label: string;
+
+  /**
+   * Valeur utilisateur brute.
+   * Peut être vide.
+   */
+  customLabel?: string | null;
+
+  /**
+   * Label technique de fallback : "1d20 + 5", "2d6", etc.
+   */
+  technicalLabel?: string | null;
+
   detail?: string | null;
   sign?: number;
   sides?: number;
@@ -41,6 +59,7 @@ type PremiumPreparedRollCardProps = {
   onEdit?: () => void;
   onClear?: () => void;
   onSave?: () => void;
+  onRenameLine?: (index: number, label: string) => void;
   onAdjustLineQty?: (index: number, delta: number) => void;
   onAdjustLineModifier?: (index: number, delta: number) => void;
   onToggleLineSign?: (index: number) => void;
@@ -1000,7 +1019,10 @@ function CompactOverflowChip({
 
   const translateY = bumpAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [premium.animation.translateMedium - premium.animation.translateSmall, 0],
+    outputRange: [
+      premium.animation.translateMedium - premium.animation.translateSmall,
+      0,
+    ],
   });
 
   return (
@@ -1218,6 +1240,7 @@ function PreparedLineConfigSheet({
   index,
   skinId,
   onClose,
+  onRename,
   onAdjustQty,
   onAdjustModifier,
   onToggleSign,
@@ -1232,6 +1255,7 @@ function PreparedLineConfigSheet({
   index: number | null;
   skinId: PremiumDiceSkinId;
   onClose: () => void;
+  onRename?: (index: number, label: string) => void;
   onAdjustQty?: (index: number, delta: number) => void;
   onAdjustModifier?: (index: number, delta: number) => void;
   onToggleSign?: (index: number) => void;
@@ -1258,11 +1282,55 @@ function PreparedLineConfigSheet({
     <PremiumBottomSheet
       visible={visible}
       title={line.label}
-      subtitle={line.detail ?? "Somme simple"}
+      subtitle={
+        line.technicalLabel
+          ? `${line.technicalLabel} · ${line.detail ?? "Somme simple"}`
+          : (line.detail ?? "Somme simple")
+      }
       onClose={onClose}
       maxHeight="86%"
     >
       <View style={{ gap: premium.spacing.md }}>
+        <View
+          style={{
+            borderRadius: premium.radius.lg,
+            borderWidth: 1,
+            borderColor: premium.colors.border.subtle,
+            backgroundColor: premium.colors.surface.subtle,
+            padding: premium.spacing.md,
+            gap: premium.spacing.xs,
+          }}
+        >
+          <PremiumText variant="tiny" tone="muted" uppercase>
+            Label de l’entrée
+          </PremiumText>
+
+          <TextInput
+            value={line.customLabel ?? ""}
+            editable={!!onRename}
+            placeholder="Ex : Attaque principale, Dégâts épée, Bonus critique…"
+            placeholderTextColor={premium.colors.text.muted}
+            onChangeText={(value) => onRename?.(index, value)}
+            style={{
+              minHeight: 42,
+              borderRadius: premium.radius.md,
+              borderWidth: 1,
+              borderColor: premium.colors.border.subtle,
+              backgroundColor: premium.colors.surface.secondary,
+              color: premium.colors.text.primary,
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+              fontSize: 14,
+              fontWeight: "800",
+            }}
+          />
+
+          {line.technicalLabel ? (
+            <PremiumText variant="caption" tone="muted" numberOfLines={1}>
+              Jet : {line.technicalLabel}
+            </PremiumText>
+          ) : null}
+        </View>
         <View
           style={{
             borderRadius: premium.radius.xl,
@@ -1381,9 +1449,9 @@ function PreparedLineConfigSheet({
             onPress={
               onRollLine
                 ? () => {
-                  onClose();
-                  void onRollLine(index);
-                }
+                    onClose();
+                    void onRollLine(index);
+                  }
                 : undefined
             }
           />
@@ -1508,6 +1576,7 @@ export function PremiumPreparedRollCard({
   onEdit,
   onClear,
   onSave,
+  onRenameLine,
   onAdjustLineQty,
   onAdjustLineModifier,
   onToggleLineSign,
@@ -1559,8 +1628,9 @@ export function PremiumPreparedRollCard({
   const effectiveHighlightedPreparedLineId =
     immediateHighlightedPreparedLineId ?? highlightedPreparedLineId;
 
-  const lineCountLabel = `${preparedLines.length} ligne${preparedLines.length > 1 ? "s" : ""
-    }`;
+  const lineCountLabel = `${preparedLines.length} ligne${
+    preparedLines.length > 1 ? "s" : ""
+  }`;
 
   useEffect(() => {
     preparedContentAnim.setValue(0);
@@ -1806,6 +1876,7 @@ export function PremiumPreparedRollCard({
         index={selectedLineConfigIndex}
         skinId={skinId}
         onClose={() => setSelectedLineConfigIndex(null)}
+        onRename={onRenameLine}
         onAdjustQty={onAdjustLineQty}
         onAdjustModifier={onAdjustLineModifier}
         onToggleSign={onToggleLineSign}

@@ -4,6 +4,7 @@ import { newId } from "../../core/types/ids";
 import { assertGroupNameAvailable } from "./groupsRepo";
 
 export type DraftDie = {
+  label?: string | null;
   sides: number;
   qty: number;
   modifier?: number;
@@ -139,6 +140,7 @@ export async function createGroupFromDraft(
       INSERT INTO group_dice(
         id,
         group_id,
+        label,
         sides,
         qty,
         modifier,
@@ -148,11 +150,12 @@ export async function createGroupFromDraft(
         created_at,
         updated_at
       )
-      VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+      VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
       `,
       [
         dieId,
         groupId,
+        d.label?.trim() ? d.label.trim() : null,
         d.sides,
         d.qty,
         d.modifier ?? 0,

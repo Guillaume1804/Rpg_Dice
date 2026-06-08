@@ -19,6 +19,7 @@ type DraftTempRule = {
 };
 
 type DraftLikeDie = {
+  label?: string | null;
   sides: number;
   qty: number;
   modifier?: number;
@@ -42,6 +43,7 @@ export type SaveTargetMode =
   | "existing_table_existing_profile";
 
 type ResolvedSaveableDraftDie = {
+  label: string | null;
   sides: number;
   qty: number;
   modifier: number;
@@ -102,6 +104,7 @@ async function resolveDraftGroupsForSave(
           : (die.rule_id ?? null);
 
       resolvedDice.push({
+        label: die.label?.trim() ? die.label.trim() : null,
         sides: die.sides,
         qty: die.qty,
         modifier: die.modifier ?? 0,
@@ -140,9 +143,9 @@ function buildGroupsToSave(
   return selectedGroups.map((group, index) =>
     index === 0
       ? {
-        ...group,
-        name: actionName,
-      }
+          ...group,
+          name: actionName,
+        }
       : group,
   );
 }
@@ -222,7 +225,10 @@ export function useDraftTableActions({
       throw new Error("Une table avec ce nom existe déjà.");
     }
 
-    const resolvedGroups = await resolveDraftGroupsForSave(db, validGroupsToSave);
+    const resolvedGroups = await resolveDraftGroupsForSave(
+      db,
+      validGroupsToSave,
+    );
 
     const newTableId = await createTableWithDraftGroups(db, {
       name: trimmedTableName,
@@ -269,7 +275,10 @@ export function useDraftTableActions({
       throw new Error("Impossible de sauvegarder une action sans dés.");
     }
 
-    const resolvedGroups = await resolveDraftGroupsForSave(db, validGroupsToSave);
+    const resolvedGroups = await resolveDraftGroupsForSave(
+      db,
+      validGroupsToSave,
+    );
 
     const profileId = await createProfileFromDraft(db, {
       tableId,
@@ -313,7 +322,10 @@ export function useDraftTableActions({
       throw new Error("Impossible de sauvegarder une action sans dés.");
     }
 
-    const resolvedGroups = await resolveDraftGroupsForSave(db, validGroupsToSave);
+    const resolvedGroups = await resolveDraftGroupsForSave(
+      db,
+      validGroupsToSave,
+    );
 
     await createGroupsFromDraft(db, {
       tableId,

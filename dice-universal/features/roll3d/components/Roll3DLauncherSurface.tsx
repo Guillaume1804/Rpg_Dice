@@ -144,17 +144,26 @@ export function Roll3DLauncherSurface({
           dice,
           rulesMap,
         }),
-        entries: dice.map((die) => ({
-          id: die.id,
-          label: `${die.sign === -1 ? "- " : ""}${die.qty}d${die.sides}${
+        entries: dice.map((die) => {
+          const technicalLabel = `${die.sign === -1 ? "- " : ""}${die.qty}d${die.sides}${
             die.modifier !== 0
               ? ` ${die.modifier > 0 ? "+" : "-"} ${Math.abs(die.modifier)}`
               : ""
-          }`,
-          detail: die.rule_id
-            ? (rulesMap[die.rule_id]?.name ?? "Comportement")
-            : "Somme simple",
-        })),
+          }`;
+
+          const customLabel =
+            typeof die.label === "string" && die.label.trim().length > 0
+              ? die.label.trim()
+              : null;
+
+          return {
+            id: die.id,
+            label: customLabel ?? technicalLabel,
+            detail: die.rule_id
+              ? `${technicalLabel} · ${rulesMap[die.rule_id]?.name ?? "Comportement"}`
+              : `${technicalLabel} · Somme simple`,
+          };
+        }),
       })) ?? [],
     [activeProfileEntry, rulesMap],
   );

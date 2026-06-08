@@ -15,6 +15,7 @@ export type GroupRow = {
 export type GroupDieRow = {
   id: string;
   group_id: string;
+  label: string | null;
   sides: number;
   qty: number;
   modifier: number;
@@ -79,7 +80,9 @@ type DuplicateGroupNameError = Error & {
   actionName: string;
 };
 
-function createDuplicateGroupNameError(actionName: string): DuplicateGroupNameError {
+function createDuplicateGroupNameError(
+  actionName: string,
+): DuplicateGroupNameError {
   const error = new Error(
     `Une action nommée "${actionName}" existe déjà dans ce profil.`,
   ) as DuplicateGroupNameError;
@@ -311,6 +314,7 @@ export async function createGroupDie(
   db: Db,
   params: {
     groupId: string;
+    label?: string | null;
     sides: number;
     qty: number;
     modifier?: number;
@@ -339,6 +343,7 @@ export async function createGroupDie(
     INSERT INTO group_dice(
       id,
       group_id,
+      label,
       sides,
       qty,
       modifier,
@@ -348,11 +353,12 @@ export async function createGroupDie(
       created_at,
       updated_at
     )
-    VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     `,
     [
       id,
       params.groupId,
+      params.label?.trim() ? params.label.trim() : null,
       params.sides,
       params.qty,
       params.modifier ?? 0,
@@ -395,6 +401,7 @@ export async function updateGroupDie(
   db: Db,
   dieId: string,
   params: {
+    label?: string | null;
     sides: number;
     qty: number;
     modifier?: number;
@@ -410,6 +417,7 @@ export async function updateGroupDie(
     `
     UPDATE group_dice
     SET
+      label = ?,
       sides = ?,
       qty = ?,
       modifier = ?,
@@ -419,6 +427,7 @@ export async function updateGroupDie(
     WHERE id = ?;
     `,
     [
+      params.label?.trim() ? params.label.trim() : null,
       params.sides,
       params.qty,
       params.modifier ?? 0,
@@ -427,6 +436,26 @@ export async function updateGroupDie(
       now,
       dieId,
     ],
+  );
+}
+
+export async function updateGroupDieLabel(
+  db: Db,
+  dieId: string,
+  label: string | null,
+): Promise<void> {
+  await assertTableIsNotSystemFromDie(db, dieId);
+
+  const now = nowIso();
+  const safeLabel = label?.trim() ? label.trim() : null;
+
+  await db.runAsync(
+    `
+    UPDATE group_dice
+    SET label = ?, updated_at = ?
+    WHERE id = ?;
+    `,
+    [safeLabel, now, dieId],
   );
 }
 

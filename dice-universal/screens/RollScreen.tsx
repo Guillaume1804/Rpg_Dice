@@ -1008,12 +1008,13 @@ export default function RollScreen() {
         rule_id: action.group.rule_id,
       },
       dice: action.dice.map((die) => ({
+        label: die.label ?? null,
         sides: die.sides,
         qty: die.qty,
         modifier: die.modifier ?? 0,
         sign: die.sign ?? 1,
         rule_id: die.rule_id ?? null,
-      })),
+      })) as any,
       draftName: action.group.name,
     });
 
@@ -1108,6 +1109,39 @@ export default function RollScreen() {
     quickBehaviorConfig.close();
 
     setShowPreparedEditSheet(false);
+  }
+
+  function handleRenamePreparedDie(index: number, label: string) {
+    if (
+      preparedRoll?.source !== "free" &&
+      preparedRoll?.source !== "action_draft"
+    ) {
+      return;
+    }
+
+    if (!editablePreparedDraftGroup) return;
+
+    setDraftGroups((currentGroups) =>
+      currentGroups.map((group) => {
+        if (group.id !== editablePreparedDraftGroup.id) {
+          return group;
+        }
+
+        return {
+          ...group,
+          dice: group.dice.map((die, dieIndex) =>
+            dieIndex === index
+              ? {
+                  ...die,
+                  label,
+                }
+              : die,
+          ),
+        };
+      }),
+    );
+
+    setLatestResult(null);
   }
 
   function handleAdjustPreparedDieQty(index: number, delta: number) {
@@ -1368,6 +1402,7 @@ export default function RollScreen() {
 
         await createGroupDie(db, {
           groupId: preparedRoll.groupId,
+          label: (die as any).label ?? null,
           sides: die.sides,
           qty: die.qty,
           modifier: die.modifier ?? 0,
@@ -1452,6 +1487,7 @@ export default function RollScreen() {
 
         await createGroupDie(db, {
           groupId: newGroupId,
+          label: (die as any).label ?? null,
           sides: die.sides,
           qty: die.qty,
           modifier: die.modifier ?? 0,
@@ -1491,6 +1527,7 @@ export default function RollScreen() {
   const preparedQuickEditDice = useMemo(
     () =>
       editablePreparedDraftGroup?.dice.map((die) => ({
+        label: (die as any).label ?? null,
         sides: die.sides,
         qty: die.qty,
         modifier: die.modifier ?? 0,
@@ -1508,10 +1545,17 @@ export default function RollScreen() {
       preparedQuickEditDice.map((die, index) => {
         const ruleLabel = die.ruleLabel ?? "Somme simple";
         const hasBehavior = ruleLabel !== "Somme simple";
+        const technicalLabel = formatPreparedCardDieLabel(die);
+        const rawCustomLabel = typeof die.label === "string" ? die.label : "";
+
+        const displayCustomLabel =
+          rawCustomLabel.trim().length > 0 ? rawCustomLabel.trim() : null;
 
         return {
           id: `${editablePreparedDraftGroup?.id ?? "prepared"}-${index}-${die.sides}`,
-          label: formatPreparedCardDieLabel(die),
+          label: displayCustomLabel ?? technicalLabel,
+          customLabel: rawCustomLabel,
+          technicalLabel,
           detail: ruleLabel,
           sign: die.sign ?? 1,
           sides: die.sides,
@@ -2046,6 +2090,13 @@ export default function RollScreen() {
                     preparedRoll?.source === "action_draft") &&
                   hasPreparedRoll
                     ? handleOpenPreparedSave
+                    : undefined
+                }
+                onRenameLine={
+                  (preparedRoll?.source === "free" ||
+                    preparedRoll?.source === "action_draft") &&
+                  hasPreparedRoll
+                    ? handleRenamePreparedDie
                     : undefined
                 }
                 onFocusLine={
