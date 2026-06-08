@@ -5,10 +5,12 @@ import { LinearGradient } from "expo-linear-gradient";
 
 import { usePremiumTheme } from "../../../theme/premium/usePremiumTheme";
 import type { Roll3DRollSummary } from "../types";
+import { buildRoll3DResultPresentation } from "../presentation/roll3DResultPresentation";
 import {
-  buildRoll3DResultPresentation,
-  type Roll3DResultTone,
-} from "../presentation/roll3DResultPresentation";
+  buildRoll3DResultSkinEvents,
+  formatRoll3DResultEventLabel,
+  getRoll3DResultToneVisual,
+} from "../presentation/roll3DResultSkinEvents";
 
 type Roll3DResultOverlayProps = {
   result: Roll3DRollSummary | null;
@@ -24,65 +26,6 @@ function formatRollTime(timestamp: number) {
   });
 }
 
-function getToneVisual(tone: Roll3DResultTone) {
-  switch (tone) {
-    case "criticalSuccess":
-      return {
-        label: "Réussite critique",
-        icon: "✦",
-        borderColor: "rgba(125, 255, 190, 0.72)",
-        backgroundColor: "rgba(42, 190, 119, 0.16)",
-        textColor: "#9DFFD0",
-      };
-
-    case "success":
-      return {
-        label: "Réussite",
-        icon: "✓",
-        borderColor: "rgba(113, 221, 150, 0.58)",
-        backgroundColor: "rgba(54, 160, 98, 0.14)",
-        textColor: "#9BE7B2",
-      };
-
-    case "failure":
-      return {
-        label: "Échec",
-        icon: "×",
-        borderColor: "rgba(255, 130, 130, 0.52)",
-        backgroundColor: "rgba(190, 58, 58, 0.14)",
-        textColor: "#FF9C9C",
-      };
-
-    case "criticalFailure":
-      return {
-        label: "Échec critique",
-        icon: "!",
-        borderColor: "rgba(255, 88, 88, 0.72)",
-        backgroundColor: "rgba(190, 28, 28, 0.18)",
-        textColor: "#FF7D7D",
-      };
-
-    case "complication":
-      return {
-        label: "Complication",
-        icon: "◇",
-        borderColor: "rgba(255, 188, 92, 0.6)",
-        backgroundColor: "rgba(190, 114, 36, 0.16)",
-        textColor: "#FFC978",
-      };
-
-    case "neutral":
-    default:
-      return {
-        label: "Résultat",
-        icon: "◆",
-        borderColor: "rgba(232, 200, 120, 0.48)",
-        backgroundColor: "rgba(232, 200, 120, 0.12)",
-        textColor: "#E8C878",
-      };
-  }
-}
-
 export function Roll3DResultOverlay({
   result,
   visible,
@@ -96,7 +39,8 @@ export function Roll3DResultOverlay({
   }
 
   const presentation = buildRoll3DResultPresentation(result);
-  const toneVisual = getToneVisual(presentation.tone);
+  const skinEvents = buildRoll3DResultSkinEvents(presentation);
+  const toneVisual = getRoll3DResultToneVisual(skinEvents.tone);
 
   return (
     <Modal
@@ -268,6 +212,43 @@ export function Roll3DResultOverlay({
                 {result.dice.length} dé{result.dice.length > 1 ? "s" : ""} ·{" "}
                 {formatRollTime(result.createdAt)}
               </Text>
+              {skinEvents.highlightedEvents.length > 0 ? (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    flexWrap: "wrap",
+                    justifyContent: "center",
+                    gap: 6,
+                    marginTop: 10,
+                  }}
+                >
+                  {skinEvents.highlightedEvents.slice(0, 4).map((event) => (
+                    <View
+                      key={`skin-event-${event}`}
+                      style={{
+                        borderRadius: premium.radius.pill,
+                        borderWidth: 1,
+                        borderColor: "rgba(232, 200, 120, 0.18)",
+                        backgroundColor: "rgba(255,255,255,0.045)",
+                        paddingHorizontal: 8,
+                        paddingVertical: 4,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: premium.colors.text.secondary,
+                          fontSize: 9,
+                          fontWeight: "900",
+                          textTransform: "uppercase",
+                          letterSpacing: 0.5,
+                        }}
+                      >
+                        {formatRoll3DResultEventLabel(event)}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
             </View>
 
             {presentation.summaryLines.length > 0 ? (
@@ -322,7 +303,9 @@ export function Roll3DResultOverlay({
               }}
             >
               {presentation.sections.map((section) => {
-                const sectionToneVisual = getToneVisual(section.tone);
+                const sectionToneVisual = getRoll3DResultToneVisual(
+                  section.tone,
+                );
                 const hasSpecialTone = section.tone !== "neutral";
 
                 return (
