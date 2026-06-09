@@ -7,6 +7,7 @@ import type {
 import type { RuleRow } from "../../../data/repositories/rulesRepo";
 import type {
   Roll3DActionEntryAdjustment,
+  Roll3DBehaviorParamsOverride,
   Roll3DDieBehaviorRef,
   Roll3DDieSides,
   Roll3DDieSign,
@@ -59,6 +60,49 @@ function formatTechnicalEntryLabel(params: {
         : "";
 
   return `${signPrefix}${qty}d${sides}${modifierLabel}`;
+}
+
+function safeParseBehaviorParams(paramsJson: string): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(paramsJson || "{}");
+
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+
+    return {};
+  } catch {
+    return {};
+  }
+}
+
+function hasBehaviorParamsOverride(
+  override: Roll3DBehaviorParamsOverride | undefined,
+) {
+  return !!override && Object.keys(override).length > 0;
+}
+
+function mergeRoll3DBehaviorRefWithParamsOverride(
+  behavior: Roll3DDieBehaviorRef | null,
+  override: Roll3DBehaviorParamsOverride | undefined,
+): Roll3DDieBehaviorRef | null {
+  if (!behavior || !hasBehaviorParamsOverride(override)) {
+    return behavior;
+  }
+
+  const baseParams = safeParseBehaviorParams(behavior.rule.params_json);
+  const nextParams = {
+    ...baseParams,
+    ...override,
+  };
+
+  return {
+    ...behavior,
+    rule: {
+      ...behavior.rule,
+      params_json: JSON.stringify(nextParams),
+    },
+  };
 }
 
 function createRoll3DBehaviorRefFromRule(
@@ -118,19 +162,27 @@ export function createRoll3DActionEntryAdjustmentFromSavedActionEntry(params: {
       ? die.label.trim()
       : null;
 
+  const behaviorParamsTarget = behavior
+    ? "entry"
+    : groupBehavior
+      ? "group"
+      : null;
+
   return {
     actionId: group.id,
     entryId: die.id,
     actionName: group.name,
     entryLabel: customLabel ?? technicalLabel,
     technicalLabel,
-    detail: behavior?.label ?? "Somme simple",
+    detail: behavior?.label ?? groupBehavior?.label ?? "Somme simple",
     sides,
     qty,
     modifier,
     sign,
     behavior,
     groupBehavior,
+    behaviorParamsTarget,
+    behaviorParamsOverride: {},
     valueSources: [],
   };
 }
@@ -194,6 +246,22 @@ export function createRoll3DDiceInputsFromActionEntryAdjustment(params: {
   const qty = Math.max(1, Math.floor(adjustment.qty));
   const rollEntryId = `${adjustment.actionId}-entry-${adjustment.entryId}-${Date.now()}`;
 
+  const behavior =
+    adjustment.behaviorParamsTarget === "entry"
+      ? mergeRoll3DBehaviorRefWithParamsOverride(
+          adjustment.behavior,
+          adjustment.behaviorParamsOverride,
+        )
+      : adjustment.behavior;
+
+  const groupBehavior =
+    adjustment.behaviorParamsTarget === "group"
+      ? mergeRoll3DBehaviorRefWithParamsOverride(
+          adjustment.groupBehavior,
+          adjustment.behaviorParamsOverride,
+        )
+      : adjustment.groupBehavior;
+
   const diceInputs: CreateRoll3DDieInput[] = [];
 
   for (let index = 0; index < qty; index += 1) {
@@ -203,14 +271,14 @@ export function createRoll3DDiceInputsFromActionEntryAdjustment(params: {
       sign: adjustment.sign,
       modifier: index === 0 ? adjustment.modifier : 0,
       source,
-      behavior: adjustment.behavior,
+      behavior,
       valueSources: adjustment.valueSources ?? [],
     });
   }
 
   return {
     dice: diceInputs,
-    groupBehavior: adjustment.groupBehavior,
+    groupBehavior,
   };
 }
 

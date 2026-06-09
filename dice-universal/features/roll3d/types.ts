@@ -27,6 +27,10 @@ export type Roll3DDieSource = "free" | "prepared" | "action";
 
 export type Roll3DActionEntryInsertMode = "replace" | "append";
 
+export type Roll3DBehaviorParamsOverride = Record<string, unknown>;
+
+export type Roll3DBehaviorParamsTarget = "entry" | "group" | null;
+
 export type Roll3DActionEntryValueSourceKind =
   | "manual"
   | "character_attribute"
@@ -86,6 +90,26 @@ export type Roll3DActionEntryAdjustment = {
 
   behavior: Roll3DDieBehaviorRef | null;
   groupBehavior: Roll3DDieBehaviorRef | null;
+
+  /**
+   * Cible du comportement ajustable dans Roll3D.
+   * - entry : comportement porté par l’entrée
+   * - group : comportement porté par l’action/groupe
+   * - null : aucun comportement configurable
+   */
+  behaviorParamsTarget?: Roll3DBehaviorParamsTarget;
+
+  /**
+   * Paramètres temporaires du comportement pour le lancer en cours.
+   * Non sauvegardés en base.
+   *
+   * Exemple :
+   * - success_threshold: 15
+   * - target_value: 65
+   * - degree_step: 10
+   * - keep: 2
+   */
+  behaviorParamsOverride?: Roll3DBehaviorParamsOverride;
 
   /**
    * Préparation future :
