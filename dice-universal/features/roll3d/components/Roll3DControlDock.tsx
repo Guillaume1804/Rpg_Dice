@@ -4,13 +4,18 @@ import { useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
 import { usePremiumTheme } from "../../../theme/premium/usePremiumTheme";
-import type { Roll3DDieSides, Roll3DActionEntryInsertMode } from "../types";
+import type {
+  Roll3DActionEntryAdjustment,
+  Roll3DActionEntryInsertMode,
+  Roll3DDieSides,
+} from "../types";
 import { Roll3DDiceSelector } from "./Roll3DDiceSelector";
 import { Roll3DRollButton } from "./Roll3DRollButton";
 import {
   Roll3DActionEntrySelector,
   type Roll3DActionItem,
 } from "./Roll3DActionEntrySelector";
+import { Roll3DActionEntryAdjustmentCard } from "./Roll3DActionEntryAdjustmentCard";
 
 type Roll3DControlMode = "dice" | "actions";
 
@@ -27,6 +32,7 @@ type Roll3DControlDockProps = {
   selectedActionId: string | null;
   selectedActionEntryId: string | null;
   actionEntryInsertMode: Roll3DActionEntryInsertMode;
+  actionEntryAdjustment: Roll3DActionEntryAdjustment | null;
 
   onSelectSides: (sides: Roll3DDieSides) => void;
   onClearDice: () => void;
@@ -34,6 +40,13 @@ type Roll3DControlDockProps = {
   onSelectActionEntry: (params: { actionId: string; entryId: string }) => void;
   onChangeActionEntryInsertMode: (mode: Roll3DActionEntryInsertMode) => void;
   onRoll: () => void;
+
+  onAdjustActionEntry: (params: { actionId: string; entryId: string }) => void;
+  onChangeActionEntryAdjustmentQty: (delta: number) => void;
+  onChangeActionEntryAdjustmentModifier: (delta: number) => void;
+  onToggleActionEntryAdjustmentSign: () => void;
+  onApplyActionEntryAdjustment: (mode: Roll3DActionEntryInsertMode) => void;
+  onCloseActionEntryAdjustment: () => void;
 };
 
 function DockTab({
@@ -125,6 +138,60 @@ function DockTab({
   );
 }
 
+function DockClearButton({
+  disabled,
+  onPress,
+}: {
+  disabled?: boolean;
+  onPress: () => void;
+}) {
+  const premium = usePremiumTheme();
+
+  return (
+    <Pressable
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        minHeight: 34,
+        minWidth: 72,
+        borderRadius: premium.radius.pill,
+        borderWidth: 1,
+        borderColor: disabled
+          ? premium.colors.border.subtle
+          : "rgba(239, 111, 145, 0.34)",
+        backgroundColor: disabled
+          ? premium.colors.surface.disabled
+          : pressed
+            ? premium.colors.surface.pressed
+            : premium.colors.state.failureSoft,
+        alignItems: "center",
+        justifyContent: "center",
+        paddingHorizontal: 10,
+        opacity: disabled ? 0.42 : pressed ? 0.78 : 1,
+        transform: [
+          {
+            scale: pressed && !disabled ? premium.animation.pressScale : 1,
+          },
+        ],
+      })}
+    >
+      <Text
+        style={{
+          color: disabled
+            ? premium.colors.text.muted
+            : premium.colors.state.failure,
+          fontSize: 10,
+          fontWeight: "900",
+          textTransform: "uppercase",
+          letterSpacing: 0.75,
+        }}
+      >
+        Vider
+      </Text>
+    </Pressable>
+  );
+}
+
 export function Roll3DControlDock({
   compact = true,
   selectedSides,
@@ -135,8 +202,15 @@ export function Roll3DControlDock({
   actions,
   selectedActionEntryId,
   actionEntryInsertMode,
+  actionEntryAdjustment,
   onSelectActionEntry,
   onChangeActionEntryInsertMode,
+  onAdjustActionEntry,
+  onChangeActionEntryAdjustmentQty,
+  onChangeActionEntryAdjustmentModifier,
+  onToggleActionEntryAdjustmentSign,
+  onApplyActionEntryAdjustment,
+  onCloseActionEntryAdjustment,
   selectedActionId,
   onSelectSides,
   onClearDice,
@@ -173,21 +247,32 @@ export function Roll3DControlDock({
         style={{
           flexDirection: "row",
           gap: 7,
+          alignItems: "center",
         }}
       >
-        <DockTab
-          label="Dés libres"
-          selected={safeMode === "dice"}
-          onPress={() => setMode("dice")}
-        />
+        <View
+          style={{
+            flex: 1,
+            flexDirection: "row",
+            gap: 7,
+          }}
+        >
+          <DockTab
+            label="Dés libres"
+            selected={safeMode === "dice"}
+            onPress={() => setMode("dice")}
+          />
 
-        <DockTab
-          label="Actions"
-          selected={safeMode === "actions"}
-          disabled={!hasActions}
-          badge={hasActions ? String(actions.length) : null}
-          onPress={() => setMode("actions")}
-        />
+          <DockTab
+            label="Actions"
+            selected={safeMode === "actions"}
+            disabled={!hasActions}
+            badge={hasActions ? String(actions.length) : null}
+            onPress={() => setMode("actions")}
+          />
+        </View>
+
+        <DockClearButton disabled={diceCount <= 0} onPress={onClearDice} />
       </View>
 
       {safeMode === "actions" ? (
@@ -201,6 +286,7 @@ export function Roll3DControlDock({
           onSelectAction={onSelectAction}
           onSelectEntry={onSelectActionEntry}
           onChangeInsertMode={onChangeActionEntryInsertMode}
+          onAdjustEntry={onAdjustActionEntry}
         />
       ) : (
         <Roll3DDiceSelector
@@ -209,9 +295,21 @@ export function Roll3DControlDock({
           diceCount={diceCount}
           maxDice={maxDice}
           onSelectSides={onSelectSides}
-          onClearDice={onClearDice}
+          onClearDice={undefined}
         />
       )}
+
+      {actionEntryAdjustment ? (
+        <Roll3DActionEntryAdjustmentCard
+          compact={compact}
+          adjustment={actionEntryAdjustment}
+          onChangeQty={onChangeActionEntryAdjustmentQty}
+          onChangeModifier={onChangeActionEntryAdjustmentModifier}
+          onToggleSign={onToggleActionEntryAdjustmentSign}
+          onApply={onApplyActionEntryAdjustment}
+          onClose={onCloseActionEntryAdjustment}
+        />
+      ) : null}
 
       <Roll3DRollButton
         compact={compact}

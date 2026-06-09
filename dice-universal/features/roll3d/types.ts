@@ -70,6 +70,30 @@ export type Roll3DActionEntryValueSource = {
   externalKey?: string | null;
 };
 
+export type Roll3DActionEntryAdjustment = {
+  actionId: string;
+  entryId: string;
+
+  actionName: string;
+  entryLabel: string;
+  technicalLabel: string;
+  detail: string;
+
+  sides: Roll3DDieSides;
+  qty: number;
+  modifier: number;
+  sign: Roll3DDieSign;
+
+  behavior: Roll3DDieBehaviorRef | null;
+  groupBehavior: Roll3DDieBehaviorRef | null;
+
+  /**
+   * Préparation future :
+   * valeur manuelle aujourd’hui, attribut/compétence/opposition demain.
+   */
+  valueSources?: Roll3DActionEntryValueSource[];
+};
+
 export type Roll3DRuleRef = {
   id: string;
   name: string;

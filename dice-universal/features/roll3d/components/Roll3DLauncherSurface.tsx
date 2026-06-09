@@ -15,8 +15,16 @@ import { DiceTable3D } from "./DiceTable3D";
 import { Roll3DControlDock } from "./Roll3DControlDock";
 import { Roll3DResultOverlay } from "./Roll3DResultOverlay";
 import { consumeRoll3DHandoff } from "../logic/roll3DHandoff";
-import { createRoll3DDiceInputsFromSavedActionEntry } from "../logic/roll3DActionDraft";
-import type { Roll3DActionEntryInsertMode, Roll3DDieSides } from "../types";
+import {
+  createRoll3DActionEntryAdjustmentFromSavedActionEntry,
+  createRoll3DDiceInputsFromActionEntryAdjustment,
+  createRoll3DDiceInputsFromSavedActionEntry,
+} from "../logic/roll3DActionDraft";
+import type {
+  Roll3DActionEntryAdjustment,
+  Roll3DActionEntryInsertMode,
+  Roll3DDieSides,
+} from "../types";
 import {
   appendDiceToRoll3DDraft,
   createRoll3DDraftFromDice,
@@ -80,6 +88,9 @@ export function Roll3DLauncherSurface({
   const [actionEntryInsertMode, setActionEntryInsertMode] =
     useState<Roll3DActionEntryInsertMode>("replace");
 
+  const [actionEntryAdjustment, setActionEntryAdjustment] =
+    useState<Roll3DActionEntryAdjustment | null>(null);
+
   useFocusEffect(
     useCallback(() => {
       return () => {
@@ -87,6 +98,7 @@ export function Roll3DLauncherSurface({
         setSkipRollRequestId(0);
         setSelectedActionId(null);
         setSelectedActionEntryId(null);
+        setActionEntryAdjustment(null);
         resetLauncher();
       };
     }, [resetLauncher]),
@@ -97,6 +109,7 @@ export function Roll3DLauncherSurface({
       setSelectedProfileId(null);
       setSelectedActionId(null);
       setSelectedActionEntryId(null);
+      setActionEntryAdjustment(null);
       return;
     }
 
@@ -108,6 +121,7 @@ export function Roll3DLauncherSurface({
       setSelectedProfileId(null);
       setSelectedActionId(null);
       setSelectedActionEntryId(null);
+      setActionEntryAdjustment(null);
       return;
     }
 
@@ -119,6 +133,7 @@ export function Roll3DLauncherSurface({
       setSelectedProfileId(profiles[0].profile.id);
       setSelectedActionId(null);
       setSelectedActionEntryId(null);
+      setActionEntryAdjustment(null);
     }
   }, [profiles, selectedProfileId]);
 
@@ -179,6 +194,7 @@ export function Roll3DLauncherSurface({
     setSkipRollRequestId(0);
     setSelectedActionId(null);
     setSelectedActionEntryId(null);
+    setActionEntryAdjustment(null);
 
     /**
      * Important :
@@ -195,6 +211,7 @@ export function Roll3DLauncherSurface({
     (sides: Roll3DDieSides) => {
       setSelectedActionId(null);
       setSelectedActionEntryId(null);
+      setActionEntryAdjustment(null);
       addDie(sides);
     },
     [addDie],
@@ -205,6 +222,7 @@ export function Roll3DLauncherSurface({
     setSkipRollRequestId(0);
     setSelectedActionId(null);
     setSelectedActionEntryId(null);
+    setActionEntryAdjustment(null);
     clearDice();
   }, [clearDice]);
 
@@ -212,12 +230,51 @@ export function Roll3DLauncherSurface({
     if (!actionId) {
       setSelectedActionId(null);
       setSelectedActionEntryId(null);
+      setActionEntryAdjustment(null);
       return;
     }
 
     setSelectedActionId(actionId);
     setSelectedActionEntryId(null);
+    setActionEntryAdjustment(null);
   }, []);
+
+  const applyActionEntryDraft = useCallback(
+    (
+      entryDraft: ReturnType<typeof createRoll3DDiceInputsFromSavedActionEntry>,
+      mode: Roll3DActionEntryInsertMode,
+    ) => {
+      if (entryDraft.dice.length === 0) {
+        return;
+      }
+
+      setIsRolling(false);
+      setSkipRollRequestId(0);
+
+      if (mode === "replace") {
+        const draft = createRoll3DDraftFromDice(entryDraft.dice, {
+          groupBehavior: entryDraft.groupBehavior,
+        });
+
+        setSceneVersion((current) => current + 1);
+        loadDraft(draft);
+        return;
+      }
+
+      const nextDraft = appendDiceToRoll3DDraft(
+        launcher.draft,
+        entryDraft.dice,
+        {
+          maxDice: launcher.maxDice,
+          groupBehavior: entryDraft.groupBehavior,
+        },
+      );
+
+      setSceneVersion((current) => current + 1);
+      loadDraft(nextDraft);
+    },
+    [launcher.draft, launcher.maxDice, loadDraft],
+  );
 
   const handleSelectActionEntry = useCallback(
     (params: { actionId: string; entryId: string }) => {
@@ -244,42 +301,112 @@ export function Roll3DLauncherSurface({
         return;
       }
 
-      setIsRolling(false);
-      setSkipRollRequestId(0);
       setSelectedActionId(params.actionId);
       setSelectedActionEntryId(params.entryId);
+      setActionEntryAdjustment(null);
 
-      if (actionEntryInsertMode === "replace") {
-        const draft = createRoll3DDraftFromDice(entryDraft.dice, {
-          groupBehavior: entryDraft.groupBehavior,
-        });
-
-        setSceneVersion((current) => current + 1);
-        loadDraft(draft);
-        return;
-      }
-
-      const nextDraft = appendDiceToRoll3DDraft(
-        launcher.draft,
-        entryDraft.dice,
-        {
-          maxDice: launcher.maxDice,
-          groupBehavior: entryDraft.groupBehavior,
-        },
-      );
-
-      setSceneVersion((current) => current + 1);
-      loadDraft(nextDraft);
+      applyActionEntryDraft(entryDraft, actionEntryInsertMode);
     },
     [
       activeProfileEntry,
-      launcher.draft,
-      launcher.maxDice,
-      loadDraft,
       rulesMap,
       actionEntryInsertMode,
+      applyActionEntryDraft,
     ],
   );
+
+  const handleAdjustActionEntry = useCallback(
+    (params: { actionId: string; entryId: string }) => {
+      const selectedAction = activeProfileEntry?.groups.find(
+        (entry) => entry.group.id === params.actionId,
+      );
+
+      const selectedDie = selectedAction?.dice.find(
+        (die) => die.id === params.entryId,
+      );
+
+      if (!selectedAction || !selectedDie) {
+        return;
+      }
+
+      const adjustment = createRoll3DActionEntryAdjustmentFromSavedActionEntry({
+        group: selectedAction.group,
+        die: selectedDie,
+        rulesMap,
+      });
+
+      if (!adjustment) {
+        return;
+      }
+
+      setSelectedActionId(params.actionId);
+      setSelectedActionEntryId(params.entryId);
+      setActionEntryAdjustment(adjustment);
+    },
+    [activeProfileEntry, rulesMap],
+  );
+
+  const handleChangeActionEntryAdjustmentQty = useCallback(
+    (delta: number) => {
+      setActionEntryAdjustment((current) => {
+        if (!current) return current;
+
+        return {
+          ...current,
+          qty: Math.max(1, Math.min(maxDice, current.qty + delta)),
+        };
+      });
+    },
+    [maxDice],
+  );
+
+  const handleChangeActionEntryAdjustmentModifier = useCallback(
+    (delta: number) => {
+      setActionEntryAdjustment((current) => {
+        if (!current) return current;
+
+        return {
+          ...current,
+          modifier: Math.max(-99, Math.min(99, current.modifier + delta)),
+        };
+      });
+    },
+    [],
+  );
+
+  const handleToggleActionEntryAdjustmentSign = useCallback(() => {
+    setActionEntryAdjustment((current) => {
+      if (!current) return current;
+
+      return {
+        ...current,
+        sign: current.sign === -1 ? 1 : -1,
+      };
+    });
+  }, []);
+
+  const handleApplyActionEntryAdjustment = useCallback(
+    (mode: Roll3DActionEntryInsertMode) => {
+      if (!actionEntryAdjustment) {
+        return;
+      }
+
+      const entryDraft = createRoll3DDiceInputsFromActionEntryAdjustment({
+        adjustment: actionEntryAdjustment,
+        source: "action",
+      });
+
+      setSelectedActionId(actionEntryAdjustment.actionId);
+      setSelectedActionEntryId(actionEntryAdjustment.entryId);
+
+      applyActionEntryDraft(entryDraft, mode);
+    },
+    [actionEntryAdjustment, applyActionEntryDraft],
+  );
+
+  const handleCloseActionEntryAdjustment = useCallback(() => {
+    setActionEntryAdjustment(null);
+  }, []);
 
   const handleRollPress = useCallback(() => {
     if (launcher.diceCount <= 0 || isRolling) {
@@ -400,6 +527,19 @@ export function Roll3DLauncherSurface({
             onSelectActionEntry={handleSelectActionEntry}
             onChangeActionEntryInsertMode={setActionEntryInsertMode}
             onRoll={handleRollPress}
+            actionEntryAdjustment={actionEntryAdjustment}
+            onAdjustActionEntry={handleAdjustActionEntry}
+            onChangeActionEntryAdjustmentQty={
+              handleChangeActionEntryAdjustmentQty
+            }
+            onChangeActionEntryAdjustmentModifier={
+              handleChangeActionEntryAdjustmentModifier
+            }
+            onToggleActionEntryAdjustmentSign={
+              handleToggleActionEntryAdjustmentSign
+            }
+            onApplyActionEntryAdjustment={handleApplyActionEntryAdjustment}
+            onCloseActionEntryAdjustment={handleCloseActionEntryAdjustment}
           />
         </View>
       ) : null}

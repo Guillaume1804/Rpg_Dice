@@ -28,6 +28,7 @@ type Roll3DActionEntrySelectorProps = {
   compact?: boolean;
   onSelectAction: (actionId: string) => void;
   onSelectEntry: (params: { actionId: string; entryId: string }) => void;
+  onAdjustEntry?: (params: { actionId: string; entryId: string }) => void;
   onChangeInsertMode: (mode: Roll3DActionEntryInsertMode) => void;
 };
 
@@ -49,6 +50,7 @@ export function Roll3DActionEntrySelector({
   compact = false,
   onSelectAction,
   onSelectEntry,
+  onAdjustEntry,
   onChangeInsertMode,
 }: Roll3DActionEntrySelectorProps) {
   const premium = usePremiumTheme();
@@ -302,6 +304,53 @@ export function Roll3DActionEntrySelector({
                     >
                       {entry.detail}
                     </Text>
+
+                    {onAdjustEntry ? (
+                      <Pressable
+                        onPress={(event) => {
+                          event.stopPropagation();
+                          onAdjustEntry({
+                            actionId: selectedAction.id,
+                            entryId: entry.id,
+                          });
+                        }}
+                        style={({ pressed }) => ({
+                          alignSelf: "flex-start",
+                          marginTop: 8,
+                          borderRadius: premium.radius.pill,
+                          borderWidth: 1,
+                          borderColor: selected
+                            ? premium.colors.border.accent
+                            : premium.colors.border.subtle,
+                          backgroundColor: pressed
+                            ? premium.colors.surface.pressed
+                            : "rgba(255,255,255,0.055)",
+                          paddingHorizontal: 10,
+                          paddingVertical: 5,
+                          opacity: pressed ? 0.78 : 1,
+                          transform: [
+                            {
+                              scale: pressed ? premium.animation.pressScale : 1,
+                            },
+                          ],
+                        })}
+                      >
+                        <Text
+                          style={{
+                            color: selected
+                              ? premium.colors.accent.primary
+                              : premium.colors.text.secondary,
+                            fontSize: 9,
+                            fontWeight: "900",
+                            textTransform: "uppercase",
+                            letterSpacing: 0.65,
+                          }}
+                        >
+                          Ajuster
+                        </Text>
+                      </Pressable>
+                    ) : null}
+                    
                   </LinearGradient>
                 </Pressable>
               );
