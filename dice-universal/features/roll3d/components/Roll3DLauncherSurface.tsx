@@ -78,6 +78,7 @@ export function Roll3DLauncherSurface({
 
   const [pendingAdjustmentLaunch, setPendingAdjustmentLaunch] = useState<{
     requestId: number;
+    expectedDraftId: string;
     expectedDiceCount: number;
   } | null>(null);
 
@@ -394,6 +395,23 @@ export function Roll3DLauncherSurface({
     });
   }, []);
 
+  const handleChangeActionEntryBehaviorParam = useCallback(
+    (params: { paramsKey: string; value: unknown }) => {
+      setActionEntryAdjustment((current) => {
+        if (!current) return current;
+
+        return {
+          ...current,
+          behaviorParamsOverride: {
+            ...(current.behaviorParamsOverride ?? {}),
+            [params.paramsKey]: params.value,
+          },
+        };
+      });
+    },
+    [],
+  );
+
   const handleCloseActionEntryAdjustment = useCallback(() => {
     setActionEntryAdjustment(null);
   }, []);
@@ -433,6 +451,7 @@ export function Roll3DLauncherSurface({
 
     setPendingAdjustmentLaunch({
       requestId: Date.now(),
+      expectedDraftId: draft.id,
       expectedDiceCount: entryDraft.dice.length,
     });
 
@@ -448,7 +467,14 @@ export function Roll3DLauncherSurface({
       return;
     }
 
-    if (launcher.diceCount < pendingAdjustmentLaunch.expectedDiceCount) {
+    const draftIsLoaded =
+      launcher.draft.id === pendingAdjustmentLaunch.expectedDraftId;
+
+    if (!draftIsLoaded) {
+      return;
+    }
+
+    if (launcher.diceCount !== pendingAdjustmentLaunch.expectedDiceCount) {
       return;
     }
 
@@ -459,12 +485,18 @@ export function Roll3DLauncherSurface({
       requestAnimationFrame(() => {
         rollDice();
       });
-    }, 180);
+    }, 220);
 
     return () => {
       clearTimeout(timeoutId);
     };
-  }, [pendingAdjustmentLaunch, isRolling, launcher.diceCount, rollDice]);
+  }, [
+    pendingAdjustmentLaunch,
+    isRolling,
+    launcher.draft.id,
+    launcher.diceCount,
+    rollDice,
+  ]);
 
   const handleRollPress = useCallback(() => {
     if (isRolling || pendingAdjustmentLaunch) {
@@ -651,6 +683,9 @@ export function Roll3DLauncherSurface({
             }
             onToggleActionEntryAdjustmentSign={
               handleToggleActionEntryAdjustmentSign
+            }
+            onChangeActionEntryBehaviorParam={
+              handleChangeActionEntryBehaviorParam
             }
             onCloseActionEntryAdjustment={handleCloseActionEntryAdjustment}
           />

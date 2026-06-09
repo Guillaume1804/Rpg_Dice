@@ -1,5 +1,11 @@
+// dice-universal\features\roll3d\components\Roll3DActionEntryAdjustmentCard.tsx
+
 import { Pressable, Text, View } from "react-native";
 
+import {
+  getRuleBehaviorDefinition,
+  type RuleBehaviorField,
+} from "../../../core/rules/behaviorRegistry";
 import { usePremiumTheme } from "../../../theme/premium/usePremiumTheme";
 import type { Roll3DActionEntryAdjustment } from "../types";
 
@@ -9,8 +15,75 @@ type Roll3DActionEntryAdjustmentCardProps = {
   onChangeQty: (delta: number) => void;
   onChangeModifier: (delta: number) => void;
   onToggleSign: () => void;
+  onChangeBehaviorParam: (params: {
+    paramsKey: string;
+    value: unknown;
+  }) => void;
   onClose: () => void;
 };
+
+type NumberBehaviorField = RuleBehaviorField & {
+  type: "number";
+  defaultValue: string;
+  placeholder?: string;
+};
+
+type SelectBehaviorField = RuleBehaviorField & {
+  type: "select";
+  defaultValue: string;
+  options: { value: string; label: string }[];
+};
+
+type TextBehaviorField = RuleBehaviorField & {
+  type: "text";
+  defaultValue: string;
+  placeholder?: string;
+};
+
+type EditableBehaviorField =
+  | NumberBehaviorField
+  | SelectBehaviorField
+  | TextBehaviorField;
+
+function isNumberBehaviorField(
+  field: RuleBehaviorField,
+): field is NumberBehaviorField {
+  return field.type === "number";
+}
+
+function isSelectBehaviorField(
+  field: RuleBehaviorField,
+): field is SelectBehaviorField {
+  return field.type === "select";
+}
+
+function isTextBehaviorField(
+  field: RuleBehaviorField,
+): field is TextBehaviorField {
+  return field.type === "text";
+}
+
+function isFacesTextField(
+  field: RuleBehaviorField,
+): field is TextBehaviorField {
+  if (!isTextBehaviorField(field)) {
+    return false;
+  }
+
+  const paramsKey = getFieldParamsKey(field);
+
+  return paramsKey.includes("faces") || paramsKey.includes("face");
+}
+
+function isEditableBehaviorField(
+  field: RuleBehaviorField,
+): field is EditableBehaviorField {
+  return (
+    isNumberBehaviorField(field) ||
+    isSelectBehaviorField(field) ||
+    isFacesTextField(field)
+  );
+}
 
 function SmallButton({
   label,
@@ -228,12 +301,469 @@ function StepperRow({
   );
 }
 
+function safeParseParams(paramsJson: string): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(paramsJson || "{}");
+
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+
+    return {};
+  } catch {
+    return {};
+  }
+}
+
+function getFieldParamsKey(field: RuleBehaviorField) {
+  return field.paramsKey ?? field.key;
+}
+
+function getNumberParamValue(params: {
+  field: NumberBehaviorField;
+  baseParams: Record<string, unknown>;
+  overrideParams: Record<string, unknown>;
+}) {
+  const { field, baseParams, overrideParams } = params;
+  const paramsKey = getFieldParamsKey(field);
+
+  const rawValue =
+    overrideParams[paramsKey] ??
+    baseParams[paramsKey] ??
+    (field.defaultValue.length > 0 ? field.defaultValue : "0");
+
+  const numericValue = Number(rawValue);
+
+  return Number.isFinite(numericValue) ? numericValue : 0;
+}
+
+function getSelectParamValue(params: {
+  field: SelectBehaviorField;
+  baseParams: Record<string, unknown>;
+  overrideParams: Record<string, unknown>;
+}) {
+  const { field, baseParams, overrideParams } = params;
+  const paramsKey = getFieldParamsKey(field);
+
+  const rawValue =
+    overrideParams[paramsKey] ?? baseParams[paramsKey] ?? field.defaultValue;
+
+  return String(rawValue);
+}
+
+function parseFacesValue(rawValue: unknown): number[] {
+  if (Array.isArray(rawValue)) {
+    return rawValue.map(Number).filter(Number.isFinite);
+  }
+
+  if (typeof rawValue === "number" && Number.isFinite(rawValue)) {
+    return [rawValue];
+  }
+
+  if (typeof rawValue === "string") {
+    return rawValue
+      .split(",")
+      .map((part) => Number(part.trim()))
+      .filter(Number.isFinite);
+  }
+
+  return [];
+}
+
+function getFacesParamValue(params: {
+  field: TextBehaviorField;
+  baseParams: Record<string, unknown>;
+  overrideParams: Record<string, unknown>;
+}) {
+  const { field, baseParams, overrideParams } = params;
+  const paramsKey = getFieldParamsKey(field);
+
+  const rawValue =
+    overrideParams[paramsKey] ?? baseParams[paramsKey] ?? field.defaultValue;
+
+  const faces = parseFacesValue(rawValue);
+
+  if (faces.length > 0) {
+    return faces;
+  }
+
+  const defaultFaces = parseFacesValue(field.defaultValue);
+
+  return defaultFaces.length > 0 ? defaultFaces : [1];
+}
+
+function BehaviorNumberParamRow({
+  field,
+  value,
+  onChange,
+}: {
+  field: NumberBehaviorField;
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  const step = 1;
+
+  return (
+    <StepperRow
+      label={field.label}
+      value={`${value}`}
+      minusDisabled={false}
+      onMinus={() => onChange(value - step)}
+      onPlus={() => onChange(value + step)}
+    />
+  );
+}
+
+function BehaviorFacesParamRow({
+  field,
+  value,
+  onChange,
+}: {
+  field: TextBehaviorField;
+  value: number[];
+  onChange: (value: number[]) => void;
+}) {
+  const currentFace = value[0] ?? 1;
+
+  return (
+    <StepperRow
+      label={field.label}
+      value={value.join(", ")}
+      minusDisabled={currentFace <= 1}
+      onMinus={() => onChange([Math.max(1, currentFace - 1)])}
+      onPlus={() => onChange([currentFace + 1])}
+    />
+  );
+}
+
+function BehaviorSelectParamRow({
+  field,
+  value,
+  onChange,
+}: {
+  field: SelectBehaviorField;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const premium = usePremiumTheme();
+
+  return (
+    <View
+      style={{
+        gap: 6,
+      }}
+    >
+      <Text
+        numberOfLines={1}
+        style={{
+          color: premium.colors.text.muted,
+          fontSize: 9,
+          fontWeight: "900",
+          textTransform: "uppercase",
+          letterSpacing: 0.7,
+        }}
+      >
+        {field.label}
+      </Text>
+
+      <View
+        style={{
+          flexDirection: "row",
+          flexWrap: "wrap",
+          gap: 6,
+        }}
+      >
+        {field.options.map((option) => {
+          const selected = option.value === value;
+
+          return (
+            <Pressable
+              key={option.value}
+              onPress={() => onChange(option.value)}
+              style={({ pressed }) => ({
+                borderRadius: premium.radius.pill,
+                borderWidth: 1,
+                borderColor: selected
+                  ? premium.colors.border.accent
+                  : premium.colors.border.subtle,
+                backgroundColor: selected
+                  ? premium.colors.accent.soft
+                  : pressed
+                    ? premium.colors.surface.pressed
+                    : "rgba(255,255,255,0.045)",
+                paddingHorizontal: 10,
+                paddingVertical: 7,
+                opacity: pressed ? 0.78 : 1,
+                transform: [
+                  {
+                    scale: pressed ? premium.animation.pressScale : 1,
+                  },
+                ],
+              })}
+            >
+              <Text
+                style={{
+                  color: selected
+                    ? premium.colors.accent.primary
+                    : premium.colors.text.secondary,
+                  fontSize: 10,
+                  fontWeight: "900",
+                }}
+              >
+                {option.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+function BehaviorParamsSection({
+  adjustment,
+  onChangeBehaviorParam,
+}: {
+  adjustment: Roll3DActionEntryAdjustment;
+  onChangeBehaviorParam: (params: {
+    paramsKey: string;
+    value: unknown;
+  }) => void;
+}) {
+  const premium = usePremiumTheme();
+
+  const behavior =
+    adjustment.behaviorParamsTarget === "group"
+      ? adjustment.groupBehavior
+      : adjustment.behavior;
+
+  if (!behavior) {
+    return null;
+  }
+
+  const definition = getRuleBehaviorDefinition(behavior.kind as never);
+
+  if (!definition) {
+    return (
+      <View style={{ gap: 4 }}>
+        <Text
+          style={{
+            color: premium.colors.text.muted,
+            fontSize: 9,
+            fontWeight: "900",
+            textTransform: "uppercase",
+            letterSpacing: 0.8,
+          }}
+        >
+          Paramètres du comportement
+        </Text>
+
+        <Text
+          style={{
+            color: premium.colors.text.secondary,
+            fontSize: 10,
+            fontWeight: "800",
+            lineHeight: 14,
+          }}
+        >
+          Ce comportement n’expose pas encore de réglages rapides dans Roll3D.
+        </Text>
+      </View>
+    );
+  }
+
+  if (definition.key === "custom_pipeline") {
+    return (
+      <View style={{ gap: 4 }}>
+        <Text
+          style={{
+            color: premium.colors.text.muted,
+            fontSize: 9,
+            fontWeight: "900",
+            textTransform: "uppercase",
+            letterSpacing: 0.8,
+          }}
+        >
+          Paramètres du comportement
+        </Text>
+
+        <Text
+          style={{
+            color: premium.colors.text.secondary,
+            fontSize: 10,
+            fontWeight: "800",
+            lineHeight: 14,
+          }}
+        >
+          Pipeline avancé : édition complète prévue dans la page Comportements.
+        </Text>
+      </View>
+    );
+  }
+
+  const editableFields = definition.fields.filter(isEditableBehaviorField);
+
+  if (editableFields.length === 0) {
+    return (
+      <View style={{ gap: 4 }}>
+        <Text
+          style={{
+            color: premium.colors.text.muted,
+            fontSize: 9,
+            fontWeight: "900",
+            textTransform: "uppercase",
+            letterSpacing: 0.8,
+          }}
+        >
+          Paramètres du comportement
+        </Text>
+
+        <Text
+          style={{
+            color: premium.colors.text.secondary,
+            fontSize: 10,
+            fontWeight: "800",
+            lineHeight: 14,
+          }}
+        >
+          Ce comportement sera configurable depuis la page Comportements.
+        </Text>
+      </View>
+    );
+  }
+
+  const baseParams = safeParseParams(behavior.rule.params_json);
+  const overrideParams = adjustment.behaviorParamsOverride ?? {};
+
+  return (
+    <View
+      style={{
+        gap: 8,
+        paddingTop: 2,
+      }}
+    >
+      <View style={{ gap: 2 }}>
+        <Text
+          style={{
+            color: premium.colors.text.muted,
+            fontSize: 9,
+            fontWeight: "900",
+            textTransform: "uppercase",
+            letterSpacing: 0.8,
+          }}
+        >
+          Paramètres du comportement
+        </Text>
+
+        <Text
+          numberOfLines={1}
+          style={{
+            color: premium.colors.text.secondary,
+            fontSize: 10,
+            fontWeight: "800",
+          }}
+        >
+          {definition.label}
+        </Text>
+      </View>
+
+      <View
+        style={{
+          flexDirection: "row",
+          flexWrap: "wrap",
+          alignItems: "stretch",
+          gap: 8,
+        }}
+      >
+        {editableFields.map((field) => {
+          const paramsKey = getFieldParamsKey(field);
+
+          if (isNumberBehaviorField(field)) {
+            const value = getNumberParamValue({
+              field,
+              baseParams,
+              overrideParams,
+            });
+
+            return (
+              <BehaviorNumberParamRow
+                key={paramsKey}
+                field={field}
+                value={value}
+                onChange={(nextValue) =>
+                  onChangeBehaviorParam({
+                    paramsKey,
+                    value: nextValue,
+                  })
+                }
+              />
+            );
+          }
+
+          if (isFacesTextField(field)) {
+            const value = getFacesParamValue({
+              field,
+              baseParams,
+              overrideParams,
+            });
+
+            return (
+              <BehaviorFacesParamRow
+                key={paramsKey}
+                field={field}
+                value={value}
+                onChange={(nextValue) =>
+                  onChangeBehaviorParam({
+                    paramsKey,
+                    value: nextValue,
+                  })
+                }
+              />
+            );
+          }
+
+          if (isSelectBehaviorField(field)) {
+            const value = getSelectParamValue({
+              field,
+              baseParams,
+              overrideParams,
+            });
+
+            return (
+              <View
+                key={paramsKey}
+                style={{
+                  width: "100%",
+                }}
+              >
+                <BehaviorSelectParamRow
+                  field={field}
+                  value={value}
+                  onChange={(nextValue) =>
+                    onChangeBehaviorParam({
+                      paramsKey,
+                      value: nextValue,
+                    })
+                  }
+                />
+              </View>
+            );
+          }
+
+          return null;
+        })}
+      </View>
+    </View>
+  );
+}
+
 export function Roll3DActionEntryAdjustmentCard({
   adjustment,
   compact = true,
   onChangeQty,
   onChangeModifier,
   onToggleSign,
+  onChangeBehaviorParam,
   onClose,
 }: Roll3DActionEntryAdjustmentCardProps) {
   const premium = usePremiumTheme();
@@ -408,6 +938,11 @@ export function Roll3DActionEntryAdjustmentCard({
           />
         </View>
       </View>
+
+      <BehaviorParamsSection
+        adjustment={adjustment}
+        onChangeBehaviorParam={onChangeBehaviorParam}
+      />
 
       <Text
         style={{
