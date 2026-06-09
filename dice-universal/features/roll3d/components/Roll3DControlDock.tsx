@@ -45,7 +45,6 @@ type Roll3DControlDockProps = {
   onChangeActionEntryAdjustmentQty: (delta: number) => void;
   onChangeActionEntryAdjustmentModifier: (delta: number) => void;
   onToggleActionEntryAdjustmentSign: () => void;
-  onApplyActionEntryAdjustment: (mode: Roll3DActionEntryInsertMode) => void;
   onCloseActionEntryAdjustment: () => void;
 };
 
@@ -209,7 +208,6 @@ export function Roll3DControlDock({
   onChangeActionEntryAdjustmentQty,
   onChangeActionEntryAdjustmentModifier,
   onToggleActionEntryAdjustmentSign,
-  onApplyActionEntryAdjustment,
   onCloseActionEntryAdjustment,
   selectedActionId,
   onSelectSides,
@@ -306,7 +304,6 @@ export function Roll3DControlDock({
           onChangeQty={onChangeActionEntryAdjustmentQty}
           onChangeModifier={onChangeActionEntryAdjustmentModifier}
           onToggleSign={onToggleActionEntryAdjustmentSign}
-          onApply={onApplyActionEntryAdjustment}
           onClose={onCloseActionEntryAdjustment}
         />
       ) : null}

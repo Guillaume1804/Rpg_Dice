@@ -1,10 +1,7 @@
 import { Pressable, Text, View } from "react-native";
 
 import { usePremiumTheme } from "../../../theme/premium/usePremiumTheme";
-import type {
-  Roll3DActionEntryAdjustment,
-  Roll3DActionEntryInsertMode,
-} from "../types";
+import type { Roll3DActionEntryAdjustment } from "../types";
 
 type Roll3DActionEntryAdjustmentCardProps = {
   adjustment: Roll3DActionEntryAdjustment;
@@ -12,7 +9,6 @@ type Roll3DActionEntryAdjustmentCardProps = {
   onChangeQty: (delta: number) => void;
   onChangeModifier: (delta: number) => void;
   onToggleSign: () => void;
-  onApply: (mode: Roll3DActionEntryInsertMode) => void;
   onClose: () => void;
 };
 
@@ -238,7 +234,6 @@ export function Roll3DActionEntryAdjustmentCard({
   onChangeQty,
   onChangeModifier,
   onToggleSign,
-  onApply,
   onClose,
 }: Roll3DActionEntryAdjustmentCardProps) {
   const premium = usePremiumTheme();
@@ -255,10 +250,10 @@ export function Roll3DActionEntryAdjustmentCard({
       style={{
         borderRadius: premium.radius.xl,
         borderWidth: 1,
-        borderColor: premium.colors.border.accent,
-        backgroundColor: "rgba(5, 6, 11, 0.78)",
-        padding: compact ? 10 : 12,
-        gap: 10,
+        borderColor: "rgba(232, 200, 120, 0.18)",
+        backgroundColor: "rgba(5, 6, 11, 0.72)",
+        padding: compact ? 9 : 11,
+        gap: 9,
       }}
     >
       <View
@@ -313,20 +308,15 @@ export function Roll3DActionEntryAdjustmentCard({
 
       <View
         style={{
-          borderRadius: premium.radius.lg,
-          borderWidth: 1,
-          borderColor: premium.colors.border.subtle,
-          backgroundColor: "rgba(255,255,255,0.045)",
-          padding: 9,
-          gap: 3,
+          gap: 2,
         }}
       >
         <Text
           numberOfLines={1}
           style={{
-            color: premium.colors.text.primary,
-            fontSize: 12,
-            fontWeight: "900",
+            color: premium.colors.text.secondary,
+            fontSize: 10,
+            fontWeight: "800",
           }}
         >
           Base : {adjustment.technicalLabel}
@@ -351,7 +341,7 @@ export function Roll3DActionEntryAdjustmentCard({
             lineHeight: 13,
           }}
         >
-          La modif. d’entrée est appliquée une seule fois, pas à chaque dé.
+          Ces réglages seront appliqués au moment du lancer.
         </Text>
       </View>
 
@@ -419,20 +409,16 @@ export function Roll3DActionEntryAdjustmentCard({
         </View>
       </View>
 
-      <View
+      <Text
         style={{
-          flexDirection: "row",
-          gap: 8,
+          color: premium.colors.text.muted,
+          fontSize: 9,
+          fontWeight: "800",
+          lineHeight: 13,
         }}
       >
-        <SmallButton
-          label="Remplacer"
-          variant="accent"
-          onPress={() => onApply("replace")}
-        />
-
-        <SmallButton label="Ajouter" onPress={() => onApply("append")} />
-      </View>
+        Appuie sur LANCER pour jeter cette entrée ajustée.
+      </Text>
     </View>
   );
 }

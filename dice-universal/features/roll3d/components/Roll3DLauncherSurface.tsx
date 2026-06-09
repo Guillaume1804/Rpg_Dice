@@ -76,6 +76,11 @@ export function Roll3DLauncherSurface({
   const [skipRollRequestId, setSkipRollRequestId] = useState(0);
   const [sceneVersion, setSceneVersion] = useState(0);
 
+  const [pendingAdjustmentLaunch, setPendingAdjustmentLaunch] = useState<{
+    requestId: number;
+    expectedDiceCount: number;
+  } | null>(null);
+
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(
     null,
   );
@@ -96,6 +101,7 @@ export function Roll3DLauncherSurface({
       return () => {
         setIsRolling(false);
         setSkipRollRequestId(0);
+        setPendingAdjustmentLaunch(null);
         setSelectedActionId(null);
         setSelectedActionEntryId(null);
         setActionEntryAdjustment(null);
@@ -192,6 +198,7 @@ export function Roll3DLauncherSurface({
 
     setIsRolling(false);
     setSkipRollRequestId(0);
+    setPendingAdjustmentLaunch(null);
     setSelectedActionId(null);
     setSelectedActionEntryId(null);
     setActionEntryAdjustment(null);
@@ -220,6 +227,7 @@ export function Roll3DLauncherSurface({
   const handleClearDice = useCallback(() => {
     setIsRolling(false);
     setSkipRollRequestId(0);
+    setPendingAdjustmentLaunch(null);
     setSelectedActionId(null);
     setSelectedActionEntryId(null);
     setActionEntryAdjustment(null);
@@ -250,6 +258,7 @@ export function Roll3DLauncherSurface({
 
       setIsRolling(false);
       setSkipRollRequestId(0);
+      setPendingAdjustmentLaunch(null);
 
       if (mode === "replace") {
         const draft = createRoll3DDraftFromDice(entryDraft.dice, {
@@ -385,31 +394,126 @@ export function Roll3DLauncherSurface({
     });
   }, []);
 
-  const handleApplyActionEntryAdjustment = useCallback(
-    (mode: Roll3DActionEntryInsertMode) => {
-      if (!actionEntryAdjustment) {
-        return;
-      }
-
-      const entryDraft = createRoll3DDiceInputsFromActionEntryAdjustment({
-        adjustment: actionEntryAdjustment,
-        source: "action",
-      });
-
-      setSelectedActionId(actionEntryAdjustment.actionId);
-      setSelectedActionEntryId(actionEntryAdjustment.entryId);
-
-      applyActionEntryDraft(entryDraft, mode);
-    },
-    [actionEntryAdjustment, applyActionEntryDraft],
-  );
-
   const handleCloseActionEntryAdjustment = useCallback(() => {
     setActionEntryAdjustment(null);
   }, []);
 
+  const launchPendingActionEntryAdjustment = useCallback(() => {
+    if (!actionEntryAdjustment || isRolling || pendingAdjustmentLaunch) {
+      return false;
+    }
+
+    const entryDraft = createRoll3DDiceInputsFromActionEntryAdjustment({
+      adjustment: actionEntryAdjustment,
+      source: "action",
+    });
+
+    if (entryDraft.dice.length === 0) {
+      return false;
+    }
+
+    const draft = createRoll3DDraftFromDice(entryDraft.dice, {
+      groupBehavior: entryDraft.groupBehavior,
+    });
+
+    setIsRolling(false);
+    setSkipRollRequestId(0);
+    setSelectedActionId(actionEntryAdjustment.actionId);
+    setSelectedActionEntryId(actionEntryAdjustment.entryId);
+
+    /**
+     * Important :
+     * à partir de maintenant, l’ajustement devient le draft normal de la table.
+     * On ferme donc le mode "ajustement en attente" pour que Relancer
+     * repasse dans le flux standard Roll3D.
+     */
+    setActionEntryAdjustment(null);
+
+    loadDraft(draft);
+
+    setPendingAdjustmentLaunch({
+      requestId: Date.now(),
+      expectedDiceCount: entryDraft.dice.length,
+    });
+
+    return true;
+  }, [actionEntryAdjustment, isRolling, pendingAdjustmentLaunch, loadDraft]);
+
+  useEffect(() => {
+    if (!pendingAdjustmentLaunch) {
+      return;
+    }
+
+    if (isRolling) {
+      return;
+    }
+
+    if (launcher.diceCount < pendingAdjustmentLaunch.expectedDiceCount) {
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      setPendingAdjustmentLaunch(null);
+      setIsRolling(true);
+
+      requestAnimationFrame(() => {
+        rollDice();
+      });
+    }, 180);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [pendingAdjustmentLaunch, isRolling, launcher.diceCount, rollDice]);
+
   const handleRollPress = useCallback(() => {
-    if (launcher.diceCount <= 0 || isRolling) {
+    if (isRolling || pendingAdjustmentLaunch) {
+      return;
+    }
+
+    /**
+     * Cas spécial :
+     * une entrée est en cours d’ajustement.
+     * Le bouton LANCER doit d’abord convertir cet ajustement en draft normal,
+     * puis lancer après stabilisation.
+     */
+    if (actionEntryAdjustment) {
+      const launchedAdjustment = launchPendingActionEntryAdjustment();
+
+      if (launchedAdjustment) {
+        return;
+      }
+    }
+
+    /**
+     * Cas normal :
+     * aucun ajustement en attente.
+     * On relance simplement le draft actuellement présent sur la table.
+     */
+    if (launcher.diceCount <= 0) {
+      return;
+    }
+
+    setIsRolling(true);
+    rollDice();
+  }, [
+    isRolling,
+    pendingAdjustmentLaunch,
+    actionEntryAdjustment,
+    launchPendingActionEntryAdjustment,
+    launcher.diceCount,
+    rollDice,
+  ]);
+
+  const handleRollAgain = useCallback(() => {
+    /**
+     * Relancer doit toujours utiliser le draft déjà présent sur la table.
+     * Il ne doit jamais rouvrir / réutiliser une ancienne intention d’ajustement.
+     */
+    setActionEntryAdjustment(null);
+    setPendingAdjustmentLaunch(null);
+
+    if (isRolling || launcher.diceCount <= 0) {
       return;
     }
 
@@ -434,9 +538,19 @@ export function Roll3DLauncherSurface({
     clearResult();
     setIsRolling(false);
     setSkipRollRequestId(0);
+    setPendingAdjustmentLaunch(null);
   }, [clearResult]);
 
   const shouldShowControls = !isRolling && !launcher.latestResult;
+
+  const pendingAdjustmentDiceCount = actionEntryAdjustment
+    ? Math.max(1, Math.floor(actionEntryAdjustment.qty))
+    : 0;
+
+  const effectiveDiceCount =
+    pendingAdjustmentDiceCount > 0
+      ? pendingAdjustmentDiceCount
+      : launcher.diceCount;
 
   return (
     <View
@@ -513,9 +627,9 @@ export function Roll3DLauncherSurface({
           <Roll3DControlDock
             compact
             selectedSides={launcher.selectedSides}
-            diceCount={launcher.diceCount}
+            diceCount={effectiveDiceCount}
             maxDice={launcher.maxDice}
-            rollDisabled={isRolling}
+            rollDisabled={isRolling || !!pendingAdjustmentLaunch}
             profileName={activeProfileEntry?.profile.name ?? null}
             actions={actionItems}
             onSelectSides={handleSelectFreeDie}
@@ -538,7 +652,6 @@ export function Roll3DLauncherSurface({
             onToggleActionEntryAdjustmentSign={
               handleToggleActionEntryAdjustmentSign
             }
-            onApplyActionEntryAdjustment={handleApplyActionEntryAdjustment}
             onCloseActionEntryAdjustment={handleCloseActionEntryAdjustment}
           />
         </View>
@@ -548,7 +661,7 @@ export function Roll3DLauncherSurface({
         visible={!!launcher.latestResult}
         result={launcher.latestResult}
         onClose={handleCloseResult}
-        onRollAgain={handleRollPress}
+        onRollAgain={handleRollAgain}
       />
     </View>
   );
