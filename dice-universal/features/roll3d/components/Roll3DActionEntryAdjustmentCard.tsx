@@ -46,6 +46,18 @@ type EditableBehaviorField =
   | SelectBehaviorField
   | TextBehaviorField;
 
+type KeepDropPipelineMode =
+  | "keep_highest"
+  | "keep_lowest"
+  | "drop_highest"
+  | "drop_lowest";
+
+type KeepDropPipelineConfig = {
+  mode: KeepDropPipelineMode;
+  count: number;
+  resultMode: "sum" | "values";
+};
+
 function isNumberBehaviorField(
   field: RuleBehaviorField,
 ): field is NumberBehaviorField {
@@ -316,6 +328,77 @@ function safeParseParams(paramsJson: string): Record<string, unknown> {
   }
 }
 
+function getPipelineKeepDropConfig(
+  params: Record<string, unknown>,
+): KeepDropPipelineConfig | null {
+  const steps = Array.isArray(params.steps) ? params.steps : [];
+
+  const keepDropStep = steps.find((step) => {
+    if (!step || typeof step !== "object") {
+      return false;
+    }
+
+    const op = (step as { op?: unknown }).op;
+
+    return (
+      op === "keep_highest" ||
+      op === "keep_lowest" ||
+      op === "drop_highest" ||
+      op === "drop_lowest"
+    );
+  }) as { op?: KeepDropPipelineMode; n?: unknown } | undefined;
+
+  if (!keepDropStep?.op) {
+    return null;
+  }
+
+  const count = Number(keepDropStep.n ?? 1);
+  const output = params.output;
+
+  return {
+    mode: keepDropStep.op,
+    count: Number.isFinite(count) && count > 0 ? count : 1,
+    resultMode: output === "values" ? "values" : "sum",
+  };
+}
+
+function updatePipelineKeepDropParams(params: {
+  baseParams: Record<string, unknown>;
+  nextConfig: KeepDropPipelineConfig;
+}) {
+  const { baseParams, nextConfig } = params;
+  const steps = Array.isArray(baseParams.steps) ? baseParams.steps : [];
+
+  const nextSteps = steps.map((step) => {
+    if (!step || typeof step !== "object") {
+      return step;
+    }
+
+    const currentStep = step as Record<string, unknown>;
+    const op = currentStep.op;
+
+    if (
+      op === "keep_highest" ||
+      op === "keep_lowest" ||
+      op === "drop_highest" ||
+      op === "drop_lowest"
+    ) {
+      return {
+        ...currentStep,
+        op: nextConfig.mode,
+        n: nextConfig.count,
+      };
+    }
+
+    return step;
+  });
+
+  return {
+    steps: nextSteps,
+    output: nextConfig.resultMode,
+  };
+}
+
 function getFieldParamsKey(field: RuleBehaviorField) {
   return field.paramsKey ?? field.key;
 }
@@ -559,6 +642,221 @@ function BehaviorSelectParamRow({
   );
 }
 
+function BehaviorKeepDropPipelineSection({
+  baseParams,
+  overrideParams,
+  onChangeBehaviorParam,
+}: {
+  baseParams: Record<string, unknown>;
+  overrideParams: Record<string, unknown>;
+  onChangeBehaviorParam: (params: {
+    paramsKey: string;
+    value: unknown;
+  }) => void;
+}) {
+  const premium = usePremiumTheme();
+
+  const currentParams = {
+    ...baseParams,
+    ...overrideParams,
+  };
+
+  const config = getPipelineKeepDropConfig(currentParams);
+
+  if (!config) {
+    return null;
+  }
+
+  const updateConfig = (nextConfig: KeepDropPipelineConfig) => {
+    const nextOverride = updatePipelineKeepDropParams({
+      baseParams: currentParams,
+      nextConfig,
+    });
+
+    onChangeBehaviorParam({
+      paramsKey: "steps",
+      value: nextOverride.steps,
+    });
+
+    onChangeBehaviorParam({
+      paramsKey: "output",
+      value: nextOverride.output,
+    });
+  };
+
+  const modeOptions: { value: KeepDropPipelineMode; label: string }[] = [
+    { value: "keep_highest", label: "Garder meilleurs" },
+    { value: "keep_lowest", label: "Garder pires" },
+    { value: "drop_highest", label: "Retirer meilleurs" },
+    { value: "drop_lowest", label: "Retirer pires" },
+  ];
+
+  return (
+    <View
+      style={{
+        gap: 9,
+      }}
+    >
+      <View style={{ gap: 2 }}>
+        <Text
+          style={{
+            color: premium.colors.text.muted,
+            fontSize: 9,
+            fontWeight: "900",
+            textTransform: "uppercase",
+            letterSpacing: 0.8,
+          }}
+        >
+          Paramètres du comportement
+        </Text>
+
+        <Text
+          style={{
+            color: premium.colors.text.secondary,
+            fontSize: 10,
+            fontWeight: "800",
+            lineHeight: 14,
+          }}
+        >
+          Garder / retirer des dés
+        </Text>
+      </View>
+
+      <View
+        style={{
+          flexDirection: "row",
+          flexWrap: "wrap",
+          gap: 6,
+        }}
+      >
+        {modeOptions.map((option) => {
+          const selected = option.value === config.mode;
+
+          return (
+            <Pressable
+              key={option.value}
+              onPress={() =>
+                updateConfig({
+                  ...config,
+                  mode: option.value,
+                })
+              }
+              style={({ pressed }) => ({
+                borderRadius: premium.radius.pill,
+                borderWidth: 1,
+                borderColor: selected
+                  ? premium.colors.border.accent
+                  : premium.colors.border.subtle,
+                backgroundColor: selected
+                  ? premium.colors.accent.soft
+                  : pressed
+                    ? premium.colors.surface.pressed
+                    : "rgba(255,255,255,0.045)",
+                paddingHorizontal: 10,
+                paddingVertical: 7,
+                opacity: pressed ? 0.78 : 1,
+                transform: [
+                  {
+                    scale: pressed ? premium.animation.pressScale : 1,
+                  },
+                ],
+              })}
+            >
+              <Text
+                style={{
+                  color: selected
+                    ? premium.colors.accent.primary
+                    : premium.colors.text.secondary,
+                  fontSize: 10,
+                  fontWeight: "900",
+                }}
+              >
+                {option.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <StepperRow
+        label={
+          config.mode.startsWith("keep")
+            ? "Nombre de dés à garder"
+            : "Nombre de dés à retirer"
+        }
+        value={`${config.count}`}
+        minusDisabled={config.count <= 1}
+        onMinus={() =>
+          updateConfig({
+            ...config,
+            count: Math.max(1, config.count - 1),
+          })
+        }
+        onPlus={() =>
+          updateConfig({
+            ...config,
+            count: config.count + 1,
+          })
+        }
+      />
+
+      <View
+        style={{
+          flexDirection: "row",
+          flexWrap: "wrap",
+          gap: 6,
+        }}
+      >
+        {[
+          { value: "sum", label: "Somme" },
+          { value: "values", label: "Valeurs" },
+        ].map((option) => {
+          const selected = option.value === config.resultMode;
+
+          return (
+            <Pressable
+              key={option.value}
+              onPress={() =>
+                updateConfig({
+                  ...config,
+                  resultMode: option.value as "sum" | "values",
+                })
+              }
+              style={({ pressed }) => ({
+                borderRadius: premium.radius.pill,
+                borderWidth: 1,
+                borderColor: selected
+                  ? premium.colors.border.accent
+                  : premium.colors.border.subtle,
+                backgroundColor: selected
+                  ? premium.colors.accent.soft
+                  : pressed
+                    ? premium.colors.surface.pressed
+                    : "rgba(255,255,255,0.045)",
+                paddingHorizontal: 10,
+                paddingVertical: 7,
+                opacity: pressed ? 0.78 : 1,
+              })}
+            >
+              <Text
+                style={{
+                  color: selected
+                    ? premium.colors.accent.primary
+                    : premium.colors.text.secondary,
+                  fontSize: 10,
+                  fontWeight: "900",
+                }}
+              >
+                {option.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 function BehaviorParamsSection({
   adjustment,
   onChangeBehaviorParam,
@@ -582,7 +880,7 @@ function BehaviorParamsSection({
 
   const registryKey = getRoll3DBehaviorRegistryKey(behavior.kind);
   const definition = registryKey ? getRuleBehaviorDefinition(registryKey) : null;
-  
+
   if (!definition) {
     return (
       <View style={{ gap: 4 }}>
@@ -612,7 +910,24 @@ function BehaviorParamsSection({
     );
   }
 
+  const baseParams = safeParseParams(behavior.rule.params_json);
+  const overrideParams = adjustment.behaviorParamsOverride ?? {};
+  const keepDropPipelineConfig = getPipelineKeepDropConfig({
+    ...baseParams,
+    ...overrideParams,
+  });
+
   if (definition.key === "custom_pipeline") {
+    if (keepDropPipelineConfig) {
+      return (
+        <BehaviorKeepDropPipelineSection
+          baseParams={baseParams}
+          overrideParams={overrideParams}
+          onChangeBehaviorParam={onChangeBehaviorParam}
+        />
+      );
+    }
+
     return (
       <View style={{ gap: 4 }}>
         <Text
@@ -671,9 +986,6 @@ function BehaviorParamsSection({
       </View>
     );
   }
-
-  const baseParams = safeParseParams(behavior.rule.params_json);
-  const overrideParams = adjustment.behaviorParamsOverride ?? {};
 
   return (
     <View
