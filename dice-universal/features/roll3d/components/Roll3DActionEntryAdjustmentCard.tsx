@@ -1,10 +1,11 @@
 // dice-universal\features\roll3d\components\Roll3DActionEntryAdjustmentCard.tsx
 
-import { Pressable, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 
 import {
   getRuleBehaviorDefinition,
   type RuleBehaviorField,
+  type RuleBehaviorKey,
 } from "../../../core/rules/behaviorRegistry";
 import { usePremiumTheme } from "../../../theme/premium/usePremiumTheme";
 import type { Roll3DActionEntryAdjustment } from "../types";
@@ -319,6 +320,44 @@ function getFieldParamsKey(field: RuleBehaviorField) {
   return field.paramsKey ?? field.key;
 }
 
+function getRoll3DBehaviorRegistryKey(kind: string): RuleBehaviorKey | null {
+  const normalizedKindMap: Record<string, RuleBehaviorKey> = {
+    sum: "sum_total",
+    sum_total: "sum_total",
+
+    single_check: "single_check",
+    d20: "single_check",
+
+    threshold_degrees: "threshold_degrees",
+
+    success_pool: "success_pool",
+    pool: "success_pool",
+
+    table_lookup: "table_lookup",
+    banded_sum: "banded_sum",
+
+    highest_of_pool: "highest_of_pool",
+    lowest_of_pool: "lowest_of_pool",
+
+    keep_highest: "keep_highest_n",
+    keep_highest_n: "keep_highest_n",
+
+    keep_lowest: "keep_lowest_n",
+    keep_lowest_n: "keep_lowest_n",
+
+    drop_highest: "drop_highest_n",
+    drop_highest_n: "drop_highest_n",
+
+    drop_lowest: "drop_lowest_n",
+    drop_lowest_n: "drop_lowest_n",
+
+    pipeline: "custom_pipeline",
+    custom_pipeline: "custom_pipeline",
+  };
+
+  return normalizedKindMap[kind] ?? null;
+}
+
 function getNumberParamValue(params: {
   field: NumberBehaviorField;
   baseParams: Record<string, unknown>;
@@ -541,8 +580,9 @@ function BehaviorParamsSection({
     return null;
   }
 
-  const definition = getRuleBehaviorDefinition(behavior.kind as never);
-
+  const registryKey = getRoll3DBehaviorRegistryKey(behavior.kind);
+  const definition = registryKey ? getRuleBehaviorDefinition(registryKey) : null;
+  
   if (!definition) {
     return (
       <View style={{ gap: 4 }}>
@@ -836,124 +876,137 @@ export function Roll3DActionEntryAdjustmentCard({
         <SmallButton label="×" variant="danger" onPress={onClose} />
       </View>
 
-      <View
+      <ScrollView
         style={{
-          gap: 2,
+          maxHeight: compact ? 310 : 420,
         }}
-      >
-        <Text
-          numberOfLines={1}
-          style={{
-            color: premium.colors.text.secondary,
-            fontSize: 10,
-            fontWeight: "800",
-          }}
-        >
-          Base : {adjustment.technicalLabel}
-        </Text>
-
-        <Text
-          numberOfLines={1}
-          style={{
-            color: premium.colors.text.secondary,
-            fontSize: 10,
-            fontWeight: "800",
-          }}
-        >
-          Comportement : {adjustment.detail}
-        </Text>
-
-        <Text
-          style={{
-            color: premium.colors.text.muted,
-            fontSize: 9,
-            fontWeight: "700",
-            lineHeight: 13,
-          }}
-        >
-          Ces réglages seront appliqués au moment du lancer.
-        </Text>
-      </View>
-
-      <View
-        style={{
-          flexDirection: "row",
-          flexWrap: "wrap",
-          alignItems: "stretch",
-          gap: 8,
+        contentContainerStyle={{
+          gap: 9,
+          paddingBottom: 2,
         }}
+        showsVerticalScrollIndicator={false}
+        nestedScrollEnabled
       >
-        <StepperRow
-          label="Quantité"
-          value={`${adjustment.qty}`}
-          minusDisabled={adjustment.qty <= 1}
-          onMinus={() => onChangeQty(-1)}
-          onPlus={() => onChangeQty(1)}
-        />
-
-        <StepperRow
-          label="Modif. entrée"
-          value={modifierLabel}
-          onMinus={() => onChangeModifier(-1)}
-          onPlus={() => onChangeModifier(1)}
-        />
-
         <View
           style={{
-            flexGrow: 0,
-            flexShrink: 0,
-            flexBasis: 96,
-            minWidth: 96,
-            borderRadius: premium.radius.lg,
-            borderWidth: 1,
-            borderColor:
-              adjustment.sign === -1
-                ? "rgba(239, 111, 145, 0.32)"
-                : "rgba(136, 211, 154, 0.28)",
-            backgroundColor:
-              adjustment.sign === -1
-                ? premium.colors.state.failureSoft
-                : premium.colors.state.successSoft,
-            padding: 8,
-            gap: 6,
+            gap: 2,
           }}
         >
           <Text
             numberOfLines={1}
             style={{
-              color: premium.colors.text.muted,
-              fontSize: 9,
-              fontWeight: "900",
-              textTransform: "uppercase",
-              letterSpacing: 0.7,
+              color: premium.colors.text.secondary,
+              fontSize: 10,
+              fontWeight: "800",
             }}
           >
-            Signe
+            Base : {adjustment.technicalLabel}
           </Text>
 
-          <SmallButton
-            label={signLabel}
-            variant={adjustment.sign === -1 ? "danger" : "accent"}
-            onPress={onToggleSign}
-          />
+          <Text
+            numberOfLines={1}
+            style={{
+              color: premium.colors.text.secondary,
+              fontSize: 10,
+              fontWeight: "800",
+            }}
+          >
+            Comportement : {adjustment.detail}
+          </Text>
+
+          <Text
+            style={{
+              color: premium.colors.text.muted,
+              fontSize: 9,
+              fontWeight: "700",
+              lineHeight: 13,
+            }}
+          >
+            Ces réglages seront appliqués au moment du lancer.
+          </Text>
         </View>
-      </View>
 
-      <BehaviorParamsSection
-        adjustment={adjustment}
-        onChangeBehaviorParam={onChangeBehaviorParam}
-      />
+        <View
+          style={{
+            flexDirection: "row",
+            flexWrap: "wrap",
+            alignItems: "stretch",
+            gap: 8,
+          }}
+        >
+          <StepperRow
+            label="Quantité"
+            value={`${adjustment.qty}`}
+            minusDisabled={adjustment.qty <= 1}
+            onMinus={() => onChangeQty(-1)}
+            onPlus={() => onChangeQty(1)}
+          />
 
-      <Text
-        style={{
-          color: premium.colors.text.muted,
-          fontSize: 9,
-          fontWeight: "800",
-          lineHeight: 13,
-        }}
-      >
-        Appuie sur LANCER pour jeter cette entrée ajustée.
-      </Text>
+          <StepperRow
+            label="Modif. entrée"
+            value={modifierLabel}
+            onMinus={() => onChangeModifier(-1)}
+            onPlus={() => onChangeModifier(1)}
+          />
+
+          <View
+            style={{
+              flexGrow: 0,
+              flexShrink: 0,
+              flexBasis: 96,
+              minWidth: 96,
+              borderRadius: premium.radius.lg,
+              borderWidth: 1,
+              borderColor:
+                adjustment.sign === -1
+                  ? "rgba(239, 111, 145, 0.32)"
+                  : "rgba(136, 211, 154, 0.28)",
+              backgroundColor:
+                adjustment.sign === -1
+                  ? premium.colors.state.failureSoft
+                  : premium.colors.state.successSoft,
+              padding: 8,
+              gap: 6,
+            }}
+          >
+            <Text
+              numberOfLines={1}
+              style={{
+                color: premium.colors.text.muted,
+                fontSize: 9,
+                fontWeight: "900",
+                textTransform: "uppercase",
+                letterSpacing: 0.7,
+              }}
+            >
+              Signe
+            </Text>
+
+            <SmallButton
+              label={signLabel}
+              variant={adjustment.sign === -1 ? "danger" : "accent"}
+              onPress={onToggleSign}
+            />
+          </View>
+        </View>
+
+        <BehaviorParamsSection
+          adjustment={adjustment}
+          onChangeBehaviorParam={onChangeBehaviorParam}
+        />
+
+        <Text
+          style={{
+            color: premium.colors.text.muted,
+            fontSize: 9,
+            fontWeight: "800",
+            lineHeight: 13,
+          }}
+        >
+          Appuie sur LANCER pour jeter cette entrée ajustée.
+        </Text>
+      </ScrollView>
+
     </View>
   );
 }

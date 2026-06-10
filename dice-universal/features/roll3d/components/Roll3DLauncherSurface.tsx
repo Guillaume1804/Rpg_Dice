@@ -111,12 +111,24 @@ export function Roll3DLauncherSurface({
     }, [resetLauncher]),
   );
 
+  useFocusEffect(
+    useCallback(() => {
+      if (!tableId) {
+        return;
+      }
+
+      void reloadGroups(tableId);
+    }, [tableId, reloadGroups, revision]),
+  );
+
   useEffect(() => {
+    setSelectedActionId(null);
+    setSelectedActionEntryId(null);
+    setActionEntryAdjustment(null);
+    setPendingAdjustmentLaunch(null);
+
     if (!tableId) {
       setSelectedProfileId(null);
-      setSelectedActionId(null);
-      setSelectedActionEntryId(null);
-      setActionEntryAdjustment(null);
       return;
     }
 
@@ -167,11 +179,10 @@ export function Roll3DLauncherSurface({
           rulesMap,
         }),
         entries: dice.map((die) => {
-          const technicalLabel = `${die.sign === -1 ? "- " : ""}${die.qty}d${die.sides}${
-            die.modifier !== 0
-              ? ` ${die.modifier > 0 ? "+" : "-"} ${Math.abs(die.modifier)}`
-              : ""
-          }`;
+          const technicalLabel = `${die.sign === -1 ? "- " : ""}${die.qty}d${die.sides}${die.modifier !== 0
+            ? ` ${die.modifier > 0 ? "+" : "-"} ${Math.abs(die.modifier)}`
+            : ""
+            }`;
 
           const customLabel =
             typeof die.label === "string" && die.label.trim().length > 0

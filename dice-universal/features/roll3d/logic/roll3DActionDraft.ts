@@ -105,6 +105,36 @@ function mergeRoll3DBehaviorRefWithParamsOverride(
   };
 }
 
+function normalizeRoll3DRuleKind(kind: string) {
+  const normalizedKindMap: Record<string, string> = {
+    sum_total: "sum",
+    sum: "sum",
+
+    d20: "single_check",
+    single_check: "single_check",
+
+    pool: "success_pool",
+    success_pool: "success_pool",
+
+    keep_highest: "keep_highest_n",
+    keep_highest_n: "keep_highest_n",
+
+    keep_lowest: "keep_lowest_n",
+    keep_lowest_n: "keep_lowest_n",
+
+    drop_highest: "drop_highest_n",
+    drop_highest_n: "drop_highest_n",
+
+    drop_lowest: "drop_lowest_n",
+    drop_lowest_n: "drop_lowest_n",
+
+    pipeline: "pipeline",
+    custom_pipeline: "pipeline",
+  };
+
+  return normalizedKindMap[kind] ?? kind;
+}
+
 function createRoll3DBehaviorRefFromRule(
   rule: RuleRow | null | undefined,
 ): Roll3DDieBehaviorRef | null {
@@ -112,14 +142,16 @@ function createRoll3DBehaviorRefFromRule(
     return null;
   }
 
+  const normalizedKind = normalizeRoll3DRuleKind(rule.kind);
+
   return {
     id: rule.id,
     label: rule.name,
-    kind: rule.kind,
+    kind: normalizedKind,
     rule: {
       id: rule.id,
       name: rule.name,
-      kind: rule.kind,
+      kind: normalizedKind,
       params_json: rule.params_json,
     },
   };
@@ -249,18 +281,50 @@ export function createRoll3DDiceInputsFromActionEntryAdjustment(params: {
   const behavior =
     adjustment.behaviorParamsTarget === "entry"
       ? mergeRoll3DBehaviorRefWithParamsOverride(
-          adjustment.behavior,
-          adjustment.behaviorParamsOverride,
-        )
+        adjustment.behavior,
+        adjustment.behaviorParamsOverride,
+      )
       : adjustment.behavior;
 
   const groupBehavior =
     adjustment.behaviorParamsTarget === "group"
       ? mergeRoll3DBehaviorRefWithParamsOverride(
-          adjustment.groupBehavior,
-          adjustment.behaviorParamsOverride,
-        )
+        adjustment.groupBehavior,
+        adjustment.behaviorParamsOverride,
+      )
       : adjustment.groupBehavior;
+
+  // DEBUG TEMPORAIRE
+  if (__DEV__) {
+    const appliedBehavior =
+      adjustment.behaviorParamsTarget === "group" ? groupBehavior : behavior;
+
+    console.log("[Roll3D] adjusted behavior params", {
+      target: adjustment.behaviorParamsTarget ?? "none",
+      entryBehavior: behavior
+        ? {
+          kind: behavior.kind,
+          label: behavior.label,
+          params: behavior.rule.params_json,
+        }
+        : null,
+      groupBehavior: groupBehavior
+        ? {
+          kind: groupBehavior.kind,
+          label: groupBehavior.label,
+          params: groupBehavior.rule.params_json,
+        }
+        : null,
+      appliedBehavior: appliedBehavior
+        ? {
+          kind: appliedBehavior.kind,
+          label: appliedBehavior.label,
+          params: appliedBehavior.rule.params_json,
+        }
+        : null,
+    });
+  }
+  // FIN DEBUG TEMPORAIRE
 
   const diceInputs: CreateRoll3DDieInput[] = [];
 
