@@ -97,6 +97,11 @@ export function Roll3DLauncherSurface({
   const [actionEntryAdjustment, setActionEntryAdjustment] =
     useState<Roll3DActionEntryAdjustment | null>(null);
 
+  const [
+    lastAppliedActionEntryAdjustment,
+    setLastAppliedActionEntryAdjustment,
+  ] = useState<Roll3DActionEntryAdjustment | null>(null);
+
   useFocusEffect(
     useCallback(() => {
       return () => {
@@ -106,6 +111,7 @@ export function Roll3DLauncherSurface({
         setSelectedActionId(null);
         setSelectedActionEntryId(null);
         setActionEntryAdjustment(null);
+        setLastAppliedActionEntryAdjustment(null);
         resetLauncher();
       };
     }, [resetLauncher]),
@@ -125,6 +131,7 @@ export function Roll3DLauncherSurface({
     setSelectedActionId(null);
     setSelectedActionEntryId(null);
     setActionEntryAdjustment(null);
+    setLastAppliedActionEntryAdjustment(null);
     setPendingAdjustmentLaunch(null);
 
     if (!tableId) {
@@ -141,6 +148,7 @@ export function Roll3DLauncherSurface({
       setSelectedActionId(null);
       setSelectedActionEntryId(null);
       setActionEntryAdjustment(null);
+      setLastAppliedActionEntryAdjustment(null);
       return;
     }
 
@@ -153,6 +161,7 @@ export function Roll3DLauncherSurface({
       setSelectedActionId(null);
       setSelectedActionEntryId(null);
       setActionEntryAdjustment(null);
+      setLastAppliedActionEntryAdjustment(null);
     }
   }, [profiles, selectedProfileId]);
 
@@ -214,6 +223,7 @@ export function Roll3DLauncherSurface({
     setSelectedActionId(null);
     setSelectedActionEntryId(null);
     setActionEntryAdjustment(null);
+    setLastAppliedActionEntryAdjustment(null);
 
     /**
      * Important :
@@ -231,6 +241,7 @@ export function Roll3DLauncherSurface({
       setSelectedActionId(null);
       setSelectedActionEntryId(null);
       setActionEntryAdjustment(null);
+      setLastAppliedActionEntryAdjustment(null);
       addDie(sides);
     },
     [addDie],
@@ -243,6 +254,7 @@ export function Roll3DLauncherSurface({
     setSelectedActionId(null);
     setSelectedActionEntryId(null);
     setActionEntryAdjustment(null);
+    setLastAppliedActionEntryAdjustment(null);
     clearDice();
   }, [clearDice]);
 
@@ -251,12 +263,14 @@ export function Roll3DLauncherSurface({
       setSelectedActionId(null);
       setSelectedActionEntryId(null);
       setActionEntryAdjustment(null);
+      setLastAppliedActionEntryAdjustment(null);
       return;
     }
 
     setSelectedActionId(actionId);
     setSelectedActionEntryId(null);
     setActionEntryAdjustment(null);
+    setLastAppliedActionEntryAdjustment(null);
   }, []);
 
   const applyActionEntryDraft = useCallback(
@@ -325,6 +339,7 @@ export function Roll3DLauncherSurface({
       setSelectedActionId(params.actionId);
       setSelectedActionEntryId(params.entryId);
       setActionEntryAdjustment(null);
+      setLastAppliedActionEntryAdjustment(null);
 
       applyActionEntryDraft(entryDraft, actionEntryInsertMode);
     },
@@ -363,6 +378,7 @@ export function Roll3DLauncherSurface({
       setSelectedActionId(params.actionId);
       setSelectedActionEntryId(params.entryId);
       setActionEntryAdjustment(adjustment);
+      setLastAppliedActionEntryAdjustment(null);
     },
     [activeProfileEntry, rulesMap],
   );
@@ -456,6 +472,7 @@ export function Roll3DLauncherSurface({
      * On ferme donc le mode "ajustement en attente" pour que Relancer
      * repasse dans le flux standard Roll3D.
      */
+    setLastAppliedActionEntryAdjustment(actionEntryAdjustment);
     setActionEntryAdjustment(null);
 
     loadDraft(draft);
@@ -537,6 +554,7 @@ export function Roll3DLauncherSurface({
       return;
     }
 
+    setLastAppliedActionEntryAdjustment(null);
     setIsRolling(true);
     rollDice();
   }, [
@@ -582,6 +600,7 @@ export function Roll3DLauncherSurface({
     setIsRolling(false);
     setSkipRollRequestId(0);
     setPendingAdjustmentLaunch(null);
+    setLastAppliedActionEntryAdjustment(null);
   }, [clearResult]);
 
   const shouldShowControls = !isRolling && !launcher.latestResult;
@@ -594,6 +613,31 @@ export function Roll3DLauncherSurface({
     pendingAdjustmentDiceCount > 0
       ? pendingAdjustmentDiceCount
       : launcher.diceCount;
+
+  useEffect(() => {
+    if (!__DEV__) {
+      return;
+    }
+
+    if (!launcher.latestResult || !lastAppliedActionEntryAdjustment) {
+      return;
+    }
+
+    console.log("[Roll3D] saveable adjusted action entry", {
+      actionId: lastAppliedActionEntryAdjustment.actionId,
+      entryId: lastAppliedActionEntryAdjustment.entryId,
+      actionName: lastAppliedActionEntryAdjustment.actionName,
+      entryLabel: lastAppliedActionEntryAdjustment.entryLabel,
+      qty: lastAppliedActionEntryAdjustment.qty,
+      sides: lastAppliedActionEntryAdjustment.sides,
+      modifier: lastAppliedActionEntryAdjustment.modifier,
+      sign: lastAppliedActionEntryAdjustment.sign,
+      behaviorParamsTarget:
+        lastAppliedActionEntryAdjustment.behaviorParamsTarget ?? null,
+      behaviorParamsOverride:
+        lastAppliedActionEntryAdjustment.behaviorParamsOverride ?? {},
+    });
+  }, [launcher.latestResult, lastAppliedActionEntryAdjustment]);
 
   return (
     <View
