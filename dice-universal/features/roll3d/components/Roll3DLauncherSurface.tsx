@@ -461,6 +461,8 @@ export function Roll3DLauncherSurface({
       groupBehavior: entryDraft.groupBehavior,
     });
 
+    const shouldResetSceneBeforeAdjustedLaunch = launcher.diceCount <= 0;
+
     setIsRolling(false);
     setSkipRollRequestId(0);
     setSelectedActionId(actionEntryAdjustment.actionId);
@@ -475,6 +477,10 @@ export function Roll3DLauncherSurface({
     setLastAppliedActionEntryAdjustment(actionEntryAdjustment);
     setActionEntryAdjustment(null);
 
+    if (shouldResetSceneBeforeAdjustedLaunch) {
+      setSceneVersion((current) => current + 1);
+    }
+
     loadDraft(draft);
 
     setPendingAdjustmentLaunch({
@@ -484,7 +490,13 @@ export function Roll3DLauncherSurface({
     });
 
     return true;
-  }, [actionEntryAdjustment, isRolling, pendingAdjustmentLaunch, loadDraft]);
+  }, [
+    actionEntryAdjustment,
+    isRolling,
+    pendingAdjustmentLaunch,
+    launcher.diceCount,
+    loadDraft,
+  ]);
 
   useEffect(() => {
     if (!pendingAdjustmentLaunch) {
