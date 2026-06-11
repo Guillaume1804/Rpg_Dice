@@ -582,6 +582,29 @@ export function Roll3DLauncherSurface({
     rollDice();
   }, [isRolling, launcher.diceCount, rollDice]);
 
+  const handleSaveAdjustedAction = useCallback(() => {
+    if (!lastAppliedActionEntryAdjustment) {
+      return;
+    }
+
+    if (__DEV__) {
+      console.log("[Roll3D] save adjusted action requested", {
+        actionId: lastAppliedActionEntryAdjustment.actionId,
+        entryId: lastAppliedActionEntryAdjustment.entryId,
+        actionName: lastAppliedActionEntryAdjustment.actionName,
+        entryLabel: lastAppliedActionEntryAdjustment.entryLabel,
+        qty: lastAppliedActionEntryAdjustment.qty,
+        sides: lastAppliedActionEntryAdjustment.sides,
+        modifier: lastAppliedActionEntryAdjustment.modifier,
+        sign: lastAppliedActionEntryAdjustment.sign,
+        behaviorParamsTarget:
+          lastAppliedActionEntryAdjustment.behaviorParamsTarget ?? null,
+        behaviorParamsOverride:
+          lastAppliedActionEntryAdjustment.behaviorParamsOverride ?? {},
+      });
+    }
+  }, [lastAppliedActionEntryAdjustment]);
+
   const handlePhysicsRollSettled = useCallback(() => {
     setIsRolling(false);
     completeRollAfterPhysics();
@@ -750,8 +773,10 @@ export function Roll3DLauncherSurface({
       <Roll3DResultOverlay
         visible={!!launcher.latestResult}
         result={launcher.latestResult}
+        canSaveAdjustedAction={!!lastAppliedActionEntryAdjustment}
         onClose={handleCloseResult}
         onRollAgain={handleRollAgain}
+        onSaveAdjustedAction={handleSaveAdjustedAction}
       />
     </View>
   );

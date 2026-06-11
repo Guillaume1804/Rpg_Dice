@@ -15,8 +15,10 @@ import {
 type Roll3DResultOverlayProps = {
   result: Roll3DRollSummary | null;
   visible: boolean;
+  canSaveAdjustedAction?: boolean;
   onClose: () => void;
   onRollAgain: () => void;
+  onSaveAdjustedAction?: () => void;
 };
 
 function formatRollTime(timestamp: number) {
@@ -29,8 +31,10 @@ function formatRollTime(timestamp: number) {
 export function Roll3DResultOverlay({
   result,
   visible,
+  canSaveAdjustedAction = false,
   onClose,
   onRollAgain,
+  onSaveAdjustedAction,
 }: Roll3DResultOverlayProps) {
   const premium = usePremiumTheme();
 
@@ -483,6 +487,50 @@ export function Roll3DResultOverlay({
                   </Text>
                 </View>
               </Pressable>
+
+              {canSaveAdjustedAction && onSaveAdjustedAction ? (
+                <Pressable
+                  onPress={onSaveAdjustedAction}
+                  style={({ pressed }) => ({
+                    flex: 1,
+                    opacity: pressed ? 0.82 : 1,
+                    transform: [
+                      {
+                        scale: pressed ? premium.animation.pressScale : 1,
+                      },
+                    ],
+                  })}
+                >
+                  <View
+                    style={{
+                      minHeight: 46,
+                      borderRadius: premium.radius.pill,
+                      borderWidth: 1,
+                      borderColor: "rgba(136, 211, 154, 0.32)",
+                      backgroundColor: "rgba(136, 211, 154, 0.12)",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      paddingHorizontal: 8,
+                    }}
+                  >
+                    <Text
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.72}
+                      style={{
+                        color: premium.colors.state.success,
+                        fontSize: 11,
+                        fontWeight: "900",
+                        textTransform: "uppercase",
+                        letterSpacing: 0.7,
+                        textAlign: "center",
+                      }}
+                    >
+                      Sauvegarder
+                    </Text>
+                  </View>
+                </Pressable>
+              ) : null}
 
               <Pressable
                 onPress={onRollAgain}
