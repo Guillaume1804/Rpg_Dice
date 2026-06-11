@@ -492,6 +492,21 @@ function parseFacesValue(rawValue: unknown): number[] {
   return [];
 }
 
+function createNumberRange(min: number, max: number) {
+  const start = Math.min(min, max);
+  const end = Math.max(min, max);
+
+  return Array.from({ length: end - start + 1 }, (_, index) => start + index);
+}
+
+function isCriticalSuccessParamsKey(paramsKey: string) {
+  return paramsKey.includes("crit_success") || paramsKey.includes("critical_success");
+}
+
+function isCriticalFailureParamsKey(paramsKey: string) {
+  return paramsKey.includes("crit_failure") || paramsKey.includes("critical_failure");
+}
+
 function getFacesParamValue(params: {
   field: TextBehaviorField;
   baseParams: Record<string, unknown>;
@@ -613,27 +628,176 @@ function BehaviorNumberParamRow({
 
 function BehaviorFacesParamRow({
   field,
+  paramsKey,
   value,
   min,
   max,
   onChange,
 }: {
   field: TextBehaviorField;
+  paramsKey: string;
   value: number[];
   min: number;
   max: number;
   onChange: (value: number[]) => void;
 }) {
-  const currentFace = clampNumber(value[0] ?? min, min, max);
+  const premium = usePremiumTheme();
+
+  const sortedValue = [...value]
+    .map(Number)
+    .filter(Number.isFinite)
+    .sort((a, b) => a - b);
+
+  const firstValue = sortedValue[0] ?? min;
+  const lastValue = sortedValue[sortedValue.length - 1] ?? firstValue;
+
+  const isFailureCritical = isCriticalFailureParamsKey(paramsKey);
+  const isSuccessCritical = isCriticalSuccessParamsKey(paramsKey);
+
+  const currentFace = clampNumber(
+    isSuccessCritical ? firstValue : lastValue,
+    min,
+    max,
+  );
+
+  const exactValue = [currentFace];
+
+  const rangeValue =
+    isFailureCritical
+      ? createNumberRange(min, currentFace)
+      : isSuccessCritical
+        ? createNumberRange(currentFace, max)
+        : exactValue;
+
+  const isRangeAvailable = isFailureCritical || isSuccessCritical;
+
+  const isRangeSelected =
+    isRangeAvailable &&
+    sortedValue.length === rangeValue.length &&
+    sortedValue.every((face, index) => face === rangeValue[index]);
+
+  const displayValue = isRangeSelected
+    ? isFailureCritical
+      ? `${min}–${currentFace}`
+      : `${currentFace}–${max}`
+    : `${currentFace}`;
+
+  const applyExact = () => {
+    onChange(exactValue);
+  };
+
+  const applyRange = () => {
+    onChange(rangeValue);
+  };
+
+  const updateFace = (nextFace: number) => {
+    const clampedFace = clampNumber(nextFace, min, max);
+
+    if (isRangeSelected) {
+      if (isFailureCritical) {
+        onChange(createNumberRange(min, clampedFace));
+        return;
+      }
+
+      if (isSuccessCritical) {
+        onChange(createNumberRange(clampedFace, max));
+        return;
+      }
+    }
+
+    onChange([clampedFace]);
+  };
 
   return (
-    <StepperRow
-      label={field.label}
-      value={`${currentFace}`}
-      minusDisabled={currentFace <= min}
-      onMinus={() => onChange([clampNumber(currentFace - 1, min, max)])}
-      onPlus={() => onChange([clampNumber(currentFace + 1, min, max)])}
-    />
+    <View
+      style={{
+        flexGrow: 1,
+        flexShrink: 0,
+        flexBasis: 164,
+        minWidth: 164,
+        gap: 6,
+      }}
+    >
+      <StepperRow
+        label={field.label}
+        value={displayValue}
+        minusDisabled={currentFace <= min}
+        onMinus={() => updateFace(currentFace - 1)}
+        onPlus={() => updateFace(currentFace + 1)}
+      />
+
+      {isRangeAvailable ? (
+        <View
+          style={{
+            flexDirection: "row",
+            flexWrap: "wrap",
+            gap: 6,
+          }}
+        >
+          <Pressable
+            onPress={applyExact}
+            style={({ pressed }) => ({
+              borderRadius: premium.radius.pill,
+              borderWidth: 1,
+              borderColor: !isRangeSelected
+                ? premium.colors.border.accent
+                : premium.colors.border.subtle,
+              backgroundColor: !isRangeSelected
+                ? premium.colors.accent.soft
+                : pressed
+                  ? premium.colors.surface.pressed
+                  : "rgba(255,255,255,0.045)",
+              paddingHorizontal: 9,
+              paddingVertical: 6,
+              opacity: pressed ? 0.78 : 1,
+            })}
+          >
+            <Text
+              style={{
+                color: !isRangeSelected
+                  ? premium.colors.accent.primary
+                  : premium.colors.text.secondary,
+                fontSize: 9,
+                fontWeight: "900",
+              }}
+            >
+              Seulement {currentFace}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={applyRange}
+            style={({ pressed }) => ({
+              borderRadius: premium.radius.pill,
+              borderWidth: 1,
+              borderColor: isRangeSelected
+                ? premium.colors.border.accent
+                : premium.colors.border.subtle,
+              backgroundColor: isRangeSelected
+                ? premium.colors.accent.soft
+                : pressed
+                  ? premium.colors.surface.pressed
+                  : "rgba(255,255,255,0.045)",
+              paddingHorizontal: 9,
+              paddingVertical: 6,
+              opacity: pressed ? 0.78 : 1,
+            })}
+          >
+            <Text
+              style={{
+                color: isRangeSelected
+                  ? premium.colors.accent.primary
+                  : premium.colors.text.secondary,
+                fontSize: 9,
+                fontWeight: "900",
+              }}
+            >
+              {isFailureCritical ? `${min} à ${currentFace}` : `${currentFace} à ${max}`}
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -1154,6 +1318,7 @@ function BehaviorParamsSection({
               <BehaviorFacesParamRow
                 key={paramsKey}
                 field={field}
+                paramsKey={paramsKey}
                 value={value}
                 min={1}
                 max={adjustment.sides}
