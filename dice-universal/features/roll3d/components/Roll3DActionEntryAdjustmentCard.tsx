@@ -532,6 +532,16 @@ function getBehaviorNumberParamBounds(params: {
   const diceCount = Math.max(1, Math.floor(adjustment.qty));
 
   if (
+    paramsKey === "success_at_or_above" ||
+    paramsKey === "successAtOrAbove"
+  ) {
+    return {
+      min: 1,
+      max: diceMax,
+    };
+  }
+
+  if (
     paramsKey.includes("threshold") ||
     paramsKey.includes("target") ||
     paramsKey.includes("value")
