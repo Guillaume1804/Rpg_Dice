@@ -514,24 +514,89 @@ function getFacesParamValue(params: {
   return defaultFaces.length > 0 ? defaultFaces : [1];
 }
 
+function clampNumber(value: number, min: number, max: number) {
+  if (!Number.isFinite(value)) {
+    return min;
+  }
+
+  return Math.min(max, Math.max(min, value));
+}
+
+function getBehaviorNumberParamBounds(params: {
+  paramsKey: string;
+  adjustment: Roll3DActionEntryAdjustment;
+}) {
+  const { paramsKey, adjustment } = params;
+
+  const diceMax = adjustment.sides;
+  const diceCount = Math.max(1, Math.floor(adjustment.qty));
+
+  if (
+    paramsKey.includes("threshold") ||
+    paramsKey.includes("target") ||
+    paramsKey.includes("value")
+  ) {
+    return {
+      min: 1,
+      max: diceMax + Math.max(0, Math.abs(adjustment.modifier)),
+    };
+  }
+
+  if (paramsKey.includes("degree_step")) {
+    return {
+      min: 1,
+      max: diceMax,
+    };
+  }
+
+  if (
+    paramsKey.includes("crit_success") ||
+    paramsKey.includes("crit_failure") ||
+    paramsKey.includes("face")
+  ) {
+    return {
+      min: 1,
+      max: diceMax,
+    };
+  }
+
+  if (paramsKey === "keep" || paramsKey === "drop") {
+    return {
+      min: 1,
+      max: diceCount,
+    };
+  }
+
+  return {
+    min: 0,
+    max: 999,
+  };
+}
+
 function BehaviorNumberParamRow({
   field,
   value,
+  min,
+  max,
   onChange,
 }: {
   field: NumberBehaviorField;
   value: number;
+  min: number;
+  max: number;
   onChange: (value: number) => void;
 }) {
   const step = 1;
 
+  const safeValue = clampNumber(value, min, max);
+
   return (
     <StepperRow
       label={field.label}
-      value={`${value}`}
-      minusDisabled={false}
-      onMinus={() => onChange(value - step)}
-      onPlus={() => onChange(value + step)}
+      value={`${safeValue}`}
+      minusDisabled={safeValue <= min}
+      onMinus={() => onChange(clampNumber(safeValue - step, min, max))}
+      onPlus={() => onChange(clampNumber(safeValue + step, min, max))}
     />
   );
 }
@@ -539,21 +604,25 @@ function BehaviorNumberParamRow({
 function BehaviorFacesParamRow({
   field,
   value,
+  min,
+  max,
   onChange,
 }: {
   field: TextBehaviorField;
   value: number[];
+  min: number;
+  max: number;
   onChange: (value: number[]) => void;
 }) {
-  const currentFace = value[0] ?? 1;
+  const currentFace = clampNumber(value[0] ?? min, min, max);
 
   return (
     <StepperRow
       label={field.label}
-      value={value.join(", ")}
-      minusDisabled={currentFace <= 1}
-      onMinus={() => onChange([Math.max(1, currentFace - 1)])}
-      onPlus={() => onChange([currentFace + 1])}
+      value={`${currentFace}`}
+      minusDisabled={currentFace <= min}
+      onMinus={() => onChange([clampNumber(currentFace - 1, min, max)])}
+      onPlus={() => onChange([clampNumber(currentFace + 1, min, max)])}
     />
   );
 }
@@ -643,10 +712,12 @@ function BehaviorSelectParamRow({
 }
 
 function BehaviorKeepDropPipelineSection({
+  adjustment,
   baseParams,
   overrideParams,
   onChangeBehaviorParam,
 }: {
+  adjustment: Roll3DActionEntryAdjustment;
   baseParams: Record<string, unknown>;
   overrideParams: Record<string, unknown>;
   onChangeBehaviorParam: (params: {
@@ -655,6 +726,8 @@ function BehaviorKeepDropPipelineSection({
   }) => void;
 }) {
   const premium = usePremiumTheme();
+
+  const maxCount = Math.max(1, Math.floor(adjustment.qty));
 
   const currentParams = {
     ...baseParams,
@@ -784,18 +857,18 @@ function BehaviorKeepDropPipelineSection({
             ? "Nombre de dés à garder"
             : "Nombre de dés à retirer"
         }
-        value={`${config.count}`}
+        value={`${clampNumber(config.count, 1, maxCount)}`}
         minusDisabled={config.count <= 1}
         onMinus={() =>
           updateConfig({
             ...config,
-            count: Math.max(1, config.count - 1),
+            count: clampNumber(config.count - 1, 1, maxCount),
           })
         }
         onPlus={() =>
           updateConfig({
             ...config,
-            count: config.count + 1,
+            count: clampNumber(config.count + 1, 1, maxCount),
           })
         }
       />
@@ -921,6 +994,7 @@ function BehaviorParamsSection({
     if (keepDropPipelineConfig) {
       return (
         <BehaviorKeepDropPipelineSection
+          adjustment={adjustment}
           baseParams={baseParams}
           overrideParams={overrideParams}
           onChangeBehaviorParam={onChangeBehaviorParam}
@@ -1037,11 +1111,18 @@ function BehaviorParamsSection({
               overrideParams,
             });
 
+            const bounds = getBehaviorNumberParamBounds({
+              paramsKey,
+              adjustment,
+            });
+
             return (
               <BehaviorNumberParamRow
                 key={paramsKey}
                 field={field}
                 value={value}
+                min={bounds.min}
+                max={bounds.max}
                 onChange={(nextValue) =>
                   onChangeBehaviorParam({
                     paramsKey,
@@ -1064,6 +1145,8 @@ function BehaviorParamsSection({
                 key={paramsKey}
                 field={field}
                 value={value}
+                min={1}
+                max={adjustment.sides}
                 onChange={(nextValue) =>
                   onChangeBehaviorParam({
                     paramsKey,
