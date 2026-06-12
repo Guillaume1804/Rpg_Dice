@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useFocusEffect } from "expo-router";
-import { Pressable, Text, View } from "react-native";
+import { Modal, Pressable, Text, TextInput, View } from "react-native";
 
 import { useDb } from "../../../data/db/DbProvider";
 import { useActiveTable } from "../../../data/state/ActiveTableProvider";
@@ -101,6 +101,11 @@ export function Roll3DLauncherSurface({
     lastAppliedActionEntryAdjustment,
     setLastAppliedActionEntryAdjustment,
   ] = useState<Roll3DActionEntryAdjustment | null>(null);
+
+  const [showSaveAdjustedActionModal, setShowSaveAdjustedActionModal] =
+    useState(false);
+
+  const [newAdjustedActionName, setNewAdjustedActionName] = useState("");
 
   useFocusEffect(
     useCallback(() => {
@@ -599,6 +604,12 @@ export function Roll3DLauncherSurface({
       return;
     }
 
+    setNewAdjustedActionName(
+      `${lastAppliedActionEntryAdjustment.actionName} — variante`,
+    );
+
+    setShowSaveAdjustedActionModal(true);
+
     if (__DEV__) {
       console.log("[Roll3D] save adjusted action requested", {
         actionId: lastAppliedActionEntryAdjustment.actionId,
@@ -616,6 +627,67 @@ export function Roll3DLauncherSurface({
       });
     }
   }, [lastAppliedActionEntryAdjustment]);
+
+  const handleRequestUpdateExistingAdjustedAction = useCallback(() => {
+    if (!lastAppliedActionEntryAdjustment) {
+      return;
+    }
+
+    if (__DEV__) {
+      console.log("[Roll3D] update existing adjusted action requested", {
+        actionId: lastAppliedActionEntryAdjustment.actionId,
+        entryId: lastAppliedActionEntryAdjustment.entryId,
+        actionName: lastAppliedActionEntryAdjustment.actionName,
+        entryLabel: lastAppliedActionEntryAdjustment.entryLabel,
+        qty: lastAppliedActionEntryAdjustment.qty,
+        sides: lastAppliedActionEntryAdjustment.sides,
+        modifier: lastAppliedActionEntryAdjustment.modifier,
+        sign: lastAppliedActionEntryAdjustment.sign,
+        behaviorParamsTarget:
+          lastAppliedActionEntryAdjustment.behaviorParamsTarget ?? null,
+        behaviorParamsOverride:
+          lastAppliedActionEntryAdjustment.behaviorParamsOverride ?? {},
+      });
+    }
+
+    setShowSaveAdjustedActionModal(false);
+  }, [lastAppliedActionEntryAdjustment]);
+
+  const handleRequestSaveAdjustedActionAsNew = useCallback(() => {
+    if (!lastAppliedActionEntryAdjustment) {
+      return;
+    }
+
+    const safeName = newAdjustedActionName.trim();
+
+    if (!safeName) {
+      return;
+    }
+
+    if (__DEV__) {
+      console.log("[Roll3D] save adjusted action as new requested", {
+        sourceActionId: lastAppliedActionEntryAdjustment.actionId,
+        sourceEntryId: lastAppliedActionEntryAdjustment.entryId,
+        sourceActionName: lastAppliedActionEntryAdjustment.actionName,
+        newActionName: safeName,
+        entryLabel: lastAppliedActionEntryAdjustment.entryLabel,
+        qty: lastAppliedActionEntryAdjustment.qty,
+        sides: lastAppliedActionEntryAdjustment.sides,
+        modifier: lastAppliedActionEntryAdjustment.modifier,
+        sign: lastAppliedActionEntryAdjustment.sign,
+        behaviorParamsTarget:
+          lastAppliedActionEntryAdjustment.behaviorParamsTarget ?? null,
+        behaviorParamsOverride:
+          lastAppliedActionEntryAdjustment.behaviorParamsOverride ?? {},
+      });
+    }
+
+    setShowSaveAdjustedActionModal(false);
+  }, [lastAppliedActionEntryAdjustment, newAdjustedActionName]);
+
+  const handleCloseSaveAdjustedActionModal = useCallback(() => {
+    setShowSaveAdjustedActionModal(false);
+  }, []);
 
   const handlePhysicsRollSettled = useCallback(() => {
     setIsRolling(false);
@@ -673,6 +745,15 @@ export function Roll3DLauncherSurface({
         lastAppliedActionEntryAdjustment.behaviorParamsOverride ?? {},
     });
   }, [launcher.latestResult, lastAppliedActionEntryAdjustment]);
+
+  useEffect(() => {
+    if (lastAppliedActionEntryAdjustment) {
+      return;
+    }
+
+    setShowSaveAdjustedActionModal(false);
+    setNewAdjustedActionName("");
+  }, [lastAppliedActionEntryAdjustment]);
 
   return (
     <View
@@ -790,6 +871,292 @@ export function Roll3DLauncherSurface({
         onRollAgain={handleRollAgain}
         onSaveAdjustedAction={handleSaveAdjustedAction}
       />
+
+      <Roll3DAdjustedActionSaveModal
+        visible={showSaveAdjustedActionModal && !!lastAppliedActionEntryAdjustment}
+        adjustment={lastAppliedActionEntryAdjustment}
+        newActionName={newAdjustedActionName}
+        onChangeNewActionName={setNewAdjustedActionName}
+        onClose={handleCloseSaveAdjustedActionModal}
+        onUpdateExisting={handleRequestUpdateExistingAdjustedAction}
+        onSaveAsNew={handleRequestSaveAdjustedActionAsNew}
+      />
     </View>
+  );
+}
+
+function Roll3DAdjustedActionSaveModal({
+  visible,
+  adjustment,
+  newActionName,
+  onChangeNewActionName,
+  onClose,
+  onUpdateExisting,
+  onSaveAsNew,
+}: {
+  visible: boolean;
+  adjustment: Roll3DActionEntryAdjustment | null;
+  newActionName: string;
+  onChangeNewActionName: (value: string) => void;
+  onClose: () => void;
+  onUpdateExisting: () => void;
+  onSaveAsNew: () => void;
+}) {
+  if (!adjustment) {
+    return null;
+  }
+
+  const canSaveAsNew = newActionName.trim().length > 0;
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      onRequestClose={onClose}
+    >
+      <Pressable
+        onPress={onClose}
+        style={{
+          flex: 1,
+          backgroundColor: "rgba(0,0,0,0.66)",
+          alignItems: "center",
+          justifyContent: "center",
+          paddingHorizontal: 18,
+          paddingVertical: 28,
+        }}
+      >
+        <Pressable
+          onPress={() => {
+            return;
+          }}
+          style={{
+            width: "100%",
+            maxWidth: 420,
+            borderRadius: 28,
+            borderWidth: 1,
+            borderColor: "rgba(232, 200, 120, 0.22)",
+            backgroundColor: "rgba(12, 14, 24, 0.98)",
+            padding: 18,
+          }}
+        >
+          <Text
+            style={{
+              color: "rgba(232, 200, 120, 0.94)",
+              fontSize: 11,
+              fontWeight: "900",
+              textTransform: "uppercase",
+              letterSpacing: 1.2,
+            }}
+          >
+            Sauvegarder ce réglage
+          </Text>
+
+          <Text
+            style={{
+              color: "rgba(255,255,255,0.94)",
+              fontSize: 20,
+              fontWeight: "900",
+              marginTop: 8,
+            }}
+          >
+            {adjustment.actionName}
+          </Text>
+
+          <Text
+            style={{
+              color: "rgba(255,255,255,0.58)",
+              fontSize: 12,
+              fontWeight: "700",
+              lineHeight: 18,
+              marginTop: 6,
+            }}
+          >
+            Entrée : {adjustment.entryLabel} · {adjustment.qty}d
+            {adjustment.sides}
+            {adjustment.modifier !== 0
+              ? ` ${adjustment.modifier > 0 ? "+" : "-"} ${Math.abs(
+                adjustment.modifier,
+              )}`
+              : ""}
+          </Text>
+
+          <View
+            style={{
+              marginTop: 14,
+              borderRadius: 20,
+              borderWidth: 1,
+              borderColor: "rgba(255,255,255,0.08)",
+              backgroundColor: "rgba(255,255,255,0.045)",
+              padding: 12,
+              gap: 8,
+            }}
+          >
+            <Text
+              style={{
+                color: "rgba(255,255,255,0.78)",
+                fontSize: 12,
+                fontWeight: "900",
+              }}
+            >
+              Que veux-tu faire ?
+            </Text>
+
+            <Text
+              style={{
+                color: "rgba(255,255,255,0.52)",
+                fontSize: 11,
+                fontWeight: "700",
+                lineHeight: 16,
+              }}
+            >
+              Tu peux écraser volontairement l’action actuelle ou créer une
+              nouvelle action avec ces réglages.
+            </Text>
+          </View>
+
+          <Pressable
+            onPress={onUpdateExisting}
+            style={({ pressed }) => ({
+              marginTop: 14,
+              opacity: pressed ? 0.78 : 1,
+              transform: [{ scale: pressed ? 0.985 : 1 }],
+            })}
+          >
+            <View
+              style={{
+                minHeight: 46,
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: "rgba(232, 200, 120, 0.24)",
+                backgroundColor: "rgba(232, 200, 120, 0.10)",
+                alignItems: "center",
+                justifyContent: "center",
+                paddingHorizontal: 12,
+              }}
+            >
+              <Text
+                style={{
+                  color: "rgba(232, 200, 120, 0.96)",
+                  fontSize: 12,
+                  fontWeight: "900",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.8,
+                  textAlign: "center",
+                }}
+              >
+                Mettre à jour l’action existante
+              </Text>
+            </View>
+          </Pressable>
+
+          <View
+            style={{
+              marginTop: 12,
+              gap: 8,
+            }}
+          >
+            <Text
+              style={{
+                color: "rgba(255,255,255,0.62)",
+                fontSize: 10,
+                fontWeight: "900",
+                textTransform: "uppercase",
+                letterSpacing: 0.8,
+              }}
+            >
+              Nouvelle action
+            </Text>
+
+            <TextInput
+              value={newActionName}
+              onChangeText={onChangeNewActionName}
+              placeholder="Nom de la nouvelle action"
+              placeholderTextColor="rgba(255,255,255,0.28)"
+              selectTextOnFocus
+              style={{
+                minHeight: 46,
+                borderRadius: 18,
+                borderWidth: 1,
+                borderColor: "rgba(255,255,255,0.10)",
+                backgroundColor: "rgba(0,0,0,0.24)",
+                color: "rgba(255,255,255,0.94)",
+                paddingHorizontal: 14,
+                fontSize: 13,
+                fontWeight: "800",
+              }}
+            />
+
+            <Pressable
+              disabled={!canSaveAsNew}
+              onPress={onSaveAsNew}
+              style={({ pressed }) => ({
+                opacity: !canSaveAsNew ? 0.42 : pressed ? 0.78 : 1,
+                transform: [{ scale: pressed ? 0.985 : 1 }],
+              })}
+            >
+              <View
+                style={{
+                  minHeight: 46,
+                  borderRadius: 999,
+                  borderWidth: 1,
+                  borderColor: "rgba(136, 211, 154, 0.32)",
+                  backgroundColor: "rgba(136, 211, 154, 0.12)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  paddingHorizontal: 12,
+                }}
+              >
+                <Text
+                  style={{
+                    color: "rgba(136, 211, 154, 0.96)",
+                    fontSize: 12,
+                    fontWeight: "900",
+                    textTransform: "uppercase",
+                    letterSpacing: 0.8,
+                    textAlign: "center",
+                  }}
+                >
+                  Enregistrer comme nouvelle action
+                </Text>
+              </View>
+            </Pressable>
+          </View>
+
+          <Pressable
+            onPress={onClose}
+            style={({ pressed }) => ({
+              marginTop: 14,
+              opacity: pressed ? 0.72 : 1,
+            })}
+          >
+            <View
+              style={{
+                minHeight: 42,
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: "rgba(255,255,255,0.08)",
+                backgroundColor: "rgba(255,255,255,0.045)",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text
+                style={{
+                  color: "rgba(255,255,255,0.66)",
+                  fontSize: 12,
+                  fontWeight: "900",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.8,
+                }}
+              >
+                Annuler
+              </Text>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
