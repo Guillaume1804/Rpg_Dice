@@ -248,6 +248,7 @@ export function Roll3DLauncherSurface({
     requestId: number;
     expectedDraftId: string;
     expectedDiceCount: number;
+    createdAt: number;
   } | null>(null);
 
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(
@@ -639,8 +640,6 @@ export function Roll3DLauncherSurface({
       groupBehavior: entryDraft.groupBehavior,
     });
 
-    const shouldResetSceneBeforeAdjustedLaunch = launcher.diceCount <= 0;
-
     setIsRolling(false);
     setSkipRollRequestId(0);
     setSelectedActionId(actionEntryAdjustment.actionId);
@@ -655,26 +654,27 @@ export function Roll3DLauncherSurface({
     setLastAppliedActionEntryAdjustment(actionEntryAdjustment);
     setActionEntryAdjustment(null);
 
-    if (shouldResetSceneBeforeAdjustedLaunch) {
-      setSceneVersion((current) => current + 1);
-    }
+    const requestId = Date.now();
+
+    /**
+     * Important :
+     * un lancer ajusté remplace toujours le draft de la table.
+     * On force donc une scène fraîche à chaque fois pour éviter les états Three/GL
+     * où les dés sont visibles mais où le rollRequest n’est pas consommé.
+     */
+    setSceneVersion((current) => current + 1);
 
     loadDraft(draft);
 
     setPendingAdjustmentLaunch({
-      requestId: Date.now(),
+      requestId,
       expectedDraftId: draft.id,
       expectedDiceCount: entryDraft.dice.length,
+      createdAt: requestId,
     });
 
     return true;
-  }, [
-    actionEntryAdjustment,
-    isRolling,
-    pendingAdjustmentLaunch,
-    launcher.diceCount,
-    loadDraft,
-  ]);
+  }, [actionEntryAdjustment, isRolling, pendingAdjustmentLaunch, loadDraft]);
 
   useEffect(() => {
     if (!pendingAdjustmentLaunch) {
@@ -692,18 +692,33 @@ export function Roll3DLauncherSurface({
       return;
     }
 
-    if (launcher.diceCount !== pendingAdjustmentLaunch.expectedDiceCount) {
+    const hasExpectedDice =
+      launcher.diceCount === pendingAdjustmentLaunch.expectedDiceCount;
+
+    const hasSomeDice = launcher.diceCount > 0;
+
+    /**
+     * Cas normal : le draft chargé contient exactement le nombre de dés attendu.
+     * Cas toléré : le draft est bien le bon et contient des dés, même si le count
+     * n’est pas exactement celui attendu. On évite ainsi un blocage permanent.
+     */
+    if (!hasExpectedDice && !hasSomeDice) {
       return;
     }
 
-    const timeoutId = setTimeout(() => {
-      setPendingAdjustmentLaunch(null);
-      setIsRolling(true);
+    const timeoutId = setTimeout(
+      () => {
+        setPendingAdjustmentLaunch(null);
+        setIsRolling(true);
 
-      requestAnimationFrame(() => {
-        rollDice();
-      });
-    }, 220);
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            rollDice();
+          });
+        });
+      },
+      hasExpectedDice ? 260 : 520,
+    );
 
     return () => {
       clearTimeout(timeoutId);
@@ -714,6 +729,44 @@ export function Roll3DLauncherSurface({
     launcher.draft.id,
     launcher.diceCount,
     rollDice,
+  ]);
+
+  useEffect(() => {
+    if (!pendingAdjustmentLaunch) {
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      setPendingAdjustmentLaunch((current) => {
+        if (!current) {
+          return current;
+        }
+
+        if (current.requestId !== pendingAdjustmentLaunch.requestId) {
+          return current;
+        }
+
+        if (__DEV__) {
+          console.warn("[Roll3D] pending adjusted launch recovered", {
+            expectedDraftId: current.expectedDraftId,
+            expectedDiceCount: current.expectedDiceCount,
+            currentDraftId: launcher.draft.id,
+            currentDiceCount: launcher.diceCount,
+          });
+        }
+
+        setIsRolling(false);
+        return null;
+      });
+    }, 2200);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [
+    pendingAdjustmentLaunch,
+    launcher.draft.id,
+    launcher.diceCount,
   ]);
 
   const handleRollPress = useCallback(() => {
