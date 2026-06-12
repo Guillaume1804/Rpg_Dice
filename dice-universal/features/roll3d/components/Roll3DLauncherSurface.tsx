@@ -30,11 +30,179 @@ import {
   createRoll3DDraftFromDice,
 } from "../logic/roll3DDraft";
 
+import {
+  createGroupFromDraft,
+  type DraftDie,
+} from "../../../data/repositories/draftSaveRepo";
+import {
+  updateGroupDie,
+  updateGroupRuleId,
+  isDuplicateGroupNameError,
+} from "../../../data/repositories/groupsRepo";
+import {
+  createRule,
+  findCanonicalLocalRule,
+  getRuleById,
+  type RuleRow,
+} from "../../../data/repositories/rulesRepo";
+import type { Db } from "../../../data/db/database";
+
 type Roll3DLauncherSurfaceProps = {
   height?: number;
   maxDice?: number;
   handoffId?: string | string[];
 };
+
+function safeParseRuleParams(paramsJson: string): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(paramsJson || "{}");
+
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+
+    return {};
+  } catch {
+    return {};
+  }
+}
+
+function hasBehaviorParamsOverride(
+  override: Roll3DActionEntryAdjustment["behaviorParamsOverride"],
+) {
+  return !!override && Object.keys(override).length > 0;
+}
+
+function getAdjustedEntryLabelForSave(
+  adjustment: Roll3DActionEntryAdjustment,
+) {
+  return adjustment.entryLabel.trim() &&
+    adjustment.entryLabel.trim() !== adjustment.technicalLabel.trim()
+    ? adjustment.entryLabel.trim()
+    : null;
+}
+
+function getAdjustedBehaviorRefForTarget(
+  adjustment: Roll3DActionEntryAdjustment,
+) {
+  if (adjustment.behaviorParamsTarget === "group") {
+    return adjustment.groupBehavior;
+  }
+
+  if (adjustment.behaviorParamsTarget === "entry") {
+    return adjustment.behavior;
+  }
+
+  return null;
+}
+
+async function resolveAdjustedRuleIdForSave(params: {
+  db: Db;
+  tableId: string;
+  adjustment: Roll3DActionEntryAdjustment;
+  target: "entry" | "group";
+}): Promise<string | null> {
+  const { db, tableId, adjustment, target } = params;
+
+  const behavior =
+    target === "entry" ? adjustment.behavior : adjustment.groupBehavior;
+
+  if (!behavior) {
+    return null;
+  }
+
+  const override =
+    adjustment.behaviorParamsTarget === target
+      ? adjustment.behaviorParamsOverride
+      : undefined;
+
+  if (!hasBehaviorParamsOverride(override)) {
+    return behavior.id;
+  }
+
+  const fullRule = await getRuleById(db, behavior.id);
+
+  const baseParams = safeParseRuleParams(
+    fullRule?.params_json ?? behavior.rule.params_json,
+  );
+
+  const nextParams = {
+    ...baseParams,
+    ...override,
+  };
+
+  const nextParamsJson = JSON.stringify(nextParams);
+  const behaviorKey =
+    fullRule?.behavior_key ?? fullRule?.kind ?? behavior.kind ?? null;
+
+  const supportedSidesJson =
+    fullRule?.supported_sides_json ?? JSON.stringify([adjustment.sides]);
+
+  const scope = fullRule?.scope ?? target;
+
+  const existingCanonicalRule = await findCanonicalLocalRule(db, {
+    tableId,
+    behavior_key: behaviorKey,
+    params_json: nextParamsJson,
+    scope,
+    supported_sides_json: supportedSidesJson,
+  });
+
+  if (existingCanonicalRule) {
+    return existingCanonicalRule.id;
+  }
+
+  return createRule(db, {
+    table_id: tableId,
+    name: fullRule?.name ?? behavior.label,
+    kind: fullRule?.kind ?? behavior.kind,
+    behavior_key: behaviorKey,
+    category: fullRule?.category ?? null,
+    params_json: nextParamsJson,
+    ui_schema_json: fullRule?.ui_schema_json ?? null,
+    is_system: 0,
+    supported_sides_json: supportedSidesJson,
+    scope,
+    usage_kind: "generated",
+  });
+}
+
+async function buildAdjustedDraftDieForSave(params: {
+  db: Db;
+  tableId: string;
+  adjustment: Roll3DActionEntryAdjustment;
+}): Promise<DraftDie> {
+  const { db, tableId, adjustment } = params;
+
+  const entryRuleId = await resolveAdjustedRuleIdForSave({
+    db,
+    tableId,
+    adjustment,
+    target: "entry",
+  });
+
+  return {
+    label: getAdjustedEntryLabelForSave(adjustment),
+    sides: adjustment.sides,
+    qty: adjustment.qty,
+    modifier: adjustment.modifier,
+    sign: adjustment.sign,
+    rule_id: entryRuleId,
+  };
+}
+
+async function resolveAdjustedGroupRuleIdForSave(params: {
+  db: Db;
+  tableId: string;
+  adjustment: Roll3DActionEntryAdjustment;
+}): Promise<string | null> {
+  return resolveAdjustedRuleIdForSave({
+    db: params.db,
+    tableId: params.tableId,
+    adjustment: params.adjustment,
+    target: "group",
+  });
+}
 
 export function Roll3DLauncherSurface({
   height = 300,
@@ -106,6 +274,11 @@ export function Roll3DLauncherSurface({
     useState(false);
 
   const [newAdjustedActionName, setNewAdjustedActionName] = useState("");
+
+  const [isSavingAdjustedAction, setIsSavingAdjustedAction] = useState(false);
+  const [saveAdjustedActionError, setSaveAdjustedActionError] = useState<
+    string | null
+  >(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -608,6 +781,7 @@ export function Roll3DLauncherSurface({
       `${lastAppliedActionEntryAdjustment.actionName} — variante`,
     );
 
+    setSaveAdjustedActionError(null);
     setShowSaveAdjustedActionModal(true);
 
     if (__DEV__) {
@@ -628,62 +802,155 @@ export function Roll3DLauncherSurface({
     }
   }, [lastAppliedActionEntryAdjustment]);
 
-  const handleRequestUpdateExistingAdjustedAction = useCallback(() => {
-    if (!lastAppliedActionEntryAdjustment) {
+  const handleRequestUpdateExistingAdjustedAction = useCallback(async () => {
+    if (!lastAppliedActionEntryAdjustment || !tableId) {
       return;
     }
 
-    if (__DEV__) {
-      console.log("[Roll3D] update existing adjusted action requested", {
-        actionId: lastAppliedActionEntryAdjustment.actionId,
-        entryId: lastAppliedActionEntryAdjustment.entryId,
-        actionName: lastAppliedActionEntryAdjustment.actionName,
-        entryLabel: lastAppliedActionEntryAdjustment.entryLabel,
-        qty: lastAppliedActionEntryAdjustment.qty,
-        sides: lastAppliedActionEntryAdjustment.sides,
-        modifier: lastAppliedActionEntryAdjustment.modifier,
-        sign: lastAppliedActionEntryAdjustment.sign,
-        behaviorParamsTarget:
-          lastAppliedActionEntryAdjustment.behaviorParamsTarget ?? null,
-        behaviorParamsOverride:
-          lastAppliedActionEntryAdjustment.behaviorParamsOverride ?? {},
+    setIsSavingAdjustedAction(true);
+    setSaveAdjustedActionError(null);
+
+    try {
+      const adjustment = lastAppliedActionEntryAdjustment;
+
+      const entryRuleId = await resolveAdjustedRuleIdForSave({
+        db,
+        tableId,
+        adjustment,
+        target: "entry",
       });
+
+      const groupRuleId = await resolveAdjustedGroupRuleIdForSave({
+        db,
+        tableId,
+        adjustment,
+      });
+
+      await updateGroupDie(db, adjustment.entryId, {
+        label: getAdjustedEntryLabelForSave(adjustment),
+        sides: adjustment.sides,
+        qty: adjustment.qty,
+        modifier: adjustment.modifier,
+        sign: adjustment.sign,
+        rule_id: entryRuleId,
+      });
+
+      if (adjustment.behaviorParamsTarget === "group") {
+        await updateGroupRuleId(db, adjustment.actionId, groupRuleId);
+      }
+
+      await reloadGroups(tableId);
+
+      setShowSaveAdjustedActionModal(false);
+      setSaveAdjustedActionError(null);
+      setLastAppliedActionEntryAdjustment(null);
+
+      if (__DEV__) {
+        console.log("[Roll3D] updated existing adjusted action", {
+          actionId: adjustment.actionId,
+          entryId: adjustment.entryId,
+          entryRuleId,
+          groupRuleId:
+            adjustment.behaviorParamsTarget === "group" ? groupRuleId : null,
+        });
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Impossible de mettre à jour cette action.";
+
+      setSaveAdjustedActionError(message);
+
+      if (__DEV__) {
+        console.warn("[Roll3D] update adjusted action failed", error);
+      }
+    } finally {
+      setIsSavingAdjustedAction(false);
     }
+  }, [db, tableId, lastAppliedActionEntryAdjustment, reloadGroups]);
 
-    setShowSaveAdjustedActionModal(false);
-  }, [lastAppliedActionEntryAdjustment]);
-
-  const handleRequestSaveAdjustedActionAsNew = useCallback(() => {
-    if (!lastAppliedActionEntryAdjustment) {
+  const handleRequestSaveAdjustedActionAsNew = useCallback(async () => {
+    if (!lastAppliedActionEntryAdjustment || !tableId || !activeProfileEntry) {
       return;
     }
 
     const safeName = newAdjustedActionName.trim();
 
     if (!safeName) {
+      setSaveAdjustedActionError("Le nom de la nouvelle action est obligatoire.");
       return;
     }
 
-    if (__DEV__) {
-      console.log("[Roll3D] save adjusted action as new requested", {
-        sourceActionId: lastAppliedActionEntryAdjustment.actionId,
-        sourceEntryId: lastAppliedActionEntryAdjustment.entryId,
-        sourceActionName: lastAppliedActionEntryAdjustment.actionName,
-        newActionName: safeName,
-        entryLabel: lastAppliedActionEntryAdjustment.entryLabel,
-        qty: lastAppliedActionEntryAdjustment.qty,
-        sides: lastAppliedActionEntryAdjustment.sides,
-        modifier: lastAppliedActionEntryAdjustment.modifier,
-        sign: lastAppliedActionEntryAdjustment.sign,
-        behaviorParamsTarget:
-          lastAppliedActionEntryAdjustment.behaviorParamsTarget ?? null,
-        behaviorParamsOverride:
-          lastAppliedActionEntryAdjustment.behaviorParamsOverride ?? {},
-      });
-    }
+    setIsSavingAdjustedAction(true);
+    setSaveAdjustedActionError(null);
 
-    setShowSaveAdjustedActionModal(false);
-  }, [lastAppliedActionEntryAdjustment, newAdjustedActionName]);
+    try {
+      const adjustment = lastAppliedActionEntryAdjustment;
+
+      const draftDie = await buildAdjustedDraftDieForSave({
+        db,
+        tableId,
+        adjustment,
+      });
+
+      const groupRuleId =
+        adjustment.behaviorParamsTarget === "group"
+          ? await resolveAdjustedGroupRuleIdForSave({
+            db,
+            tableId,
+            adjustment,
+          })
+          : null;
+
+      const newGroupId = await createGroupFromDraft(db, {
+        profileId: activeProfileEntry.profile.id,
+        groupName: safeName,
+        groupRuleId,
+        draftDice: [draftDie],
+      });
+
+      await reloadGroups(tableId);
+
+      setSelectedActionId(newGroupId);
+      setSelectedActionEntryId(null);
+      setShowSaveAdjustedActionModal(false);
+      setSaveAdjustedActionError(null);
+      setLastAppliedActionEntryAdjustment(null);
+
+      if (__DEV__) {
+        console.log("[Roll3D] saved adjusted action as new", {
+          sourceActionId: adjustment.actionId,
+          sourceEntryId: adjustment.entryId,
+          newActionId: newGroupId,
+          newActionName: safeName,
+          entryRuleId: draftDie.rule_id,
+          groupRuleId,
+        });
+      }
+    } catch (error) {
+      const message = isDuplicateGroupNameError(error)
+        ? error.message
+        : error instanceof Error
+          ? error.message
+          : "Impossible de créer cette nouvelle action.";
+
+      setSaveAdjustedActionError(message);
+
+      if (__DEV__) {
+        console.warn("[Roll3D] save adjusted action as new failed", error);
+      }
+    } finally {
+      setIsSavingAdjustedAction(false);
+    }
+  }, [
+    db,
+    tableId,
+    activeProfileEntry,
+    lastAppliedActionEntryAdjustment,
+    newAdjustedActionName,
+    reloadGroups,
+  ]);
 
   const handleCloseSaveAdjustedActionModal = useCallback(() => {
     setShowSaveAdjustedActionModal(false);
@@ -753,6 +1020,8 @@ export function Roll3DLauncherSurface({
 
     setShowSaveAdjustedActionModal(false);
     setNewAdjustedActionName("");
+    setSaveAdjustedActionError(null);
+    setIsSavingAdjustedAction(false);
   }, [lastAppliedActionEntryAdjustment]);
 
   return (
@@ -876,6 +1145,8 @@ export function Roll3DLauncherSurface({
         visible={showSaveAdjustedActionModal && !!lastAppliedActionEntryAdjustment}
         adjustment={lastAppliedActionEntryAdjustment}
         newActionName={newAdjustedActionName}
+        isSaving={isSavingAdjustedAction}
+        errorMessage={saveAdjustedActionError}
         onChangeNewActionName={setNewAdjustedActionName}
         onClose={handleCloseSaveAdjustedActionModal}
         onUpdateExisting={handleRequestUpdateExistingAdjustedAction}
@@ -889,6 +1160,8 @@ function Roll3DAdjustedActionSaveModal({
   visible,
   adjustment,
   newActionName,
+  isSaving,
+  errorMessage,
   onChangeNewActionName,
   onClose,
   onUpdateExisting,
@@ -897,6 +1170,8 @@ function Roll3DAdjustedActionSaveModal({
   visible: boolean;
   adjustment: Roll3DActionEntryAdjustment | null;
   newActionName: string;
+  isSaving: boolean;
+  errorMessage: string | null;
   onChangeNewActionName: (value: string) => void;
   onClose: () => void;
   onUpdateExisting: () => void;
@@ -906,7 +1181,7 @@ function Roll3DAdjustedActionSaveModal({
     return null;
   }
 
-  const canSaveAsNew = newActionName.trim().length > 0;
+  const canSaveAsNew = newActionName.trim().length > 0 && !isSaving;
 
   return (
     <Modal
@@ -1018,9 +1293,10 @@ function Roll3DAdjustedActionSaveModal({
 
           <Pressable
             onPress={onUpdateExisting}
+            disabled={isSaving}
             style={({ pressed }) => ({
               marginTop: 14,
-              opacity: pressed ? 0.78 : 1,
+              opacity: isSaving ? 0.42 : pressed ? 0.78 : 1,
               transform: [{ scale: pressed ? 0.985 : 1 }],
             })}
           >
@@ -1046,7 +1322,7 @@ function Roll3DAdjustedActionSaveModal({
                   textAlign: "center",
                 }}
               >
-                Mettre à jour l’action existante
+                {isSaving ? "Sauvegarde..." : "Mettre à jour l’action existante"}
               </Text>
             </View>
           </Pressable>
@@ -1118,11 +1394,36 @@ function Roll3DAdjustedActionSaveModal({
                     textAlign: "center",
                   }}
                 >
-                  Enregistrer comme nouvelle action
+                  {isSaving ? "Sauvegarde..." : "Enregistrer comme nouvelle action"}
                 </Text>
               </View>
             </Pressable>
           </View>
+
+          {errorMessage ? (
+            <View
+              style={{
+                marginTop: 12,
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: "rgba(239, 111, 145, 0.28)",
+                backgroundColor: "rgba(239, 111, 145, 0.10)",
+                paddingHorizontal: 12,
+                paddingVertical: 10,
+              }}
+            >
+              <Text
+                style={{
+                  color: "rgba(239, 111, 145, 0.96)",
+                  fontSize: 11,
+                  fontWeight: "800",
+                  lineHeight: 16,
+                }}
+              >
+                {errorMessage}
+              </Text>
+            </View>
+          ) : null}
 
           <Pressable
             onPress={onClose}
