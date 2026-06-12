@@ -294,38 +294,6 @@ export function createRoll3DDiceInputsFromActionEntryAdjustment(params: {
       )
       : adjustment.groupBehavior;
 
-  // DEBUG TEMPORAIRE
-  if (__DEV__) {
-    const appliedBehavior =
-      adjustment.behaviorParamsTarget === "group" ? groupBehavior : behavior;
-
-    console.log("[Roll3D] adjusted behavior params", {
-      target: adjustment.behaviorParamsTarget ?? "none",
-      entryBehavior: behavior
-        ? {
-          kind: behavior.kind,
-          label: behavior.label,
-          params: behavior.rule.params_json,
-        }
-        : null,
-      groupBehavior: groupBehavior
-        ? {
-          kind: groupBehavior.kind,
-          label: groupBehavior.label,
-          params: groupBehavior.rule.params_json,
-        }
-        : null,
-      appliedBehavior: appliedBehavior
-        ? {
-          kind: appliedBehavior.kind,
-          label: appliedBehavior.label,
-          params: appliedBehavior.rule.params_json,
-        }
-        : null,
-    });
-  }
-  // FIN DEBUG TEMPORAIRE
-
   const diceInputs: CreateRoll3DDieInput[] = [];
 
   for (let index = 0; index < qty; index += 1) {

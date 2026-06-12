@@ -783,23 +783,6 @@ export function Roll3DLauncherSurface({
 
     setSaveAdjustedActionError(null);
     setShowSaveAdjustedActionModal(true);
-
-    if (__DEV__) {
-      console.log("[Roll3D] save adjusted action requested", {
-        actionId: lastAppliedActionEntryAdjustment.actionId,
-        entryId: lastAppliedActionEntryAdjustment.entryId,
-        actionName: lastAppliedActionEntryAdjustment.actionName,
-        entryLabel: lastAppliedActionEntryAdjustment.entryLabel,
-        qty: lastAppliedActionEntryAdjustment.qty,
-        sides: lastAppliedActionEntryAdjustment.sides,
-        modifier: lastAppliedActionEntryAdjustment.modifier,
-        sign: lastAppliedActionEntryAdjustment.sign,
-        behaviorParamsTarget:
-          lastAppliedActionEntryAdjustment.behaviorParamsTarget ?? null,
-        behaviorParamsOverride:
-          lastAppliedActionEntryAdjustment.behaviorParamsOverride ?? {},
-      });
-    }
   }, [lastAppliedActionEntryAdjustment]);
 
   const handleRequestUpdateExistingAdjustedAction = useCallback(async () => {
@@ -844,16 +827,10 @@ export function Roll3DLauncherSurface({
       setShowSaveAdjustedActionModal(false);
       setSaveAdjustedActionError(null);
       setLastAppliedActionEntryAdjustment(null);
-
-      if (__DEV__) {
-        console.log("[Roll3D] updated existing adjusted action", {
-          actionId: adjustment.actionId,
-          entryId: adjustment.entryId,
-          entryRuleId,
-          groupRuleId:
-            adjustment.behaviorParamsTarget === "group" ? groupRuleId : null,
-        });
-      }
+      clearResult();
+      setIsRolling(false);
+      setSkipRollRequestId(0);
+      setPendingAdjustmentLaunch(null);
     } catch (error) {
       const message =
         error instanceof Error
@@ -861,10 +838,6 @@ export function Roll3DLauncherSurface({
           : "Impossible de mettre à jour cette action.";
 
       setSaveAdjustedActionError(message);
-
-      if (__DEV__) {
-        console.warn("[Roll3D] update adjusted action failed", error);
-      }
     } finally {
       setIsSavingAdjustedAction(false);
     }
@@ -917,17 +890,10 @@ export function Roll3DLauncherSurface({
       setShowSaveAdjustedActionModal(false);
       setSaveAdjustedActionError(null);
       setLastAppliedActionEntryAdjustment(null);
-
-      if (__DEV__) {
-        console.log("[Roll3D] saved adjusted action as new", {
-          sourceActionId: adjustment.actionId,
-          sourceEntryId: adjustment.entryId,
-          newActionId: newGroupId,
-          newActionName: safeName,
-          entryRuleId: draftDie.rule_id,
-          groupRuleId,
-        });
-      }
+      clearResult();
+      setIsRolling(false);
+      setSkipRollRequestId(0);
+      setPendingAdjustmentLaunch(null);
     } catch (error) {
       const message = isDuplicateGroupNameError(error)
         ? error.message
@@ -936,10 +902,6 @@ export function Roll3DLauncherSurface({
           : "Impossible de créer cette nouvelle action.";
 
       setSaveAdjustedActionError(message);
-
-      if (__DEV__) {
-        console.warn("[Roll3D] save adjusted action as new failed", error);
-      }
     } finally {
       setIsSavingAdjustedAction(false);
     }
@@ -987,31 +949,6 @@ export function Roll3DLauncherSurface({
     pendingAdjustmentDiceCount > 0
       ? pendingAdjustmentDiceCount
       : launcher.diceCount;
-
-  useEffect(() => {
-    if (!__DEV__) {
-      return;
-    }
-
-    if (!launcher.latestResult || !lastAppliedActionEntryAdjustment) {
-      return;
-    }
-
-    console.log("[Roll3D] saveable adjusted action entry", {
-      actionId: lastAppliedActionEntryAdjustment.actionId,
-      entryId: lastAppliedActionEntryAdjustment.entryId,
-      actionName: lastAppliedActionEntryAdjustment.actionName,
-      entryLabel: lastAppliedActionEntryAdjustment.entryLabel,
-      qty: lastAppliedActionEntryAdjustment.qty,
-      sides: lastAppliedActionEntryAdjustment.sides,
-      modifier: lastAppliedActionEntryAdjustment.modifier,
-      sign: lastAppliedActionEntryAdjustment.sign,
-      behaviorParamsTarget:
-        lastAppliedActionEntryAdjustment.behaviorParamsTarget ?? null,
-      behaviorParamsOverride:
-        lastAppliedActionEntryAdjustment.behaviorParamsOverride ?? {},
-    });
-  }, [launcher.latestResult, lastAppliedActionEntryAdjustment]);
 
   useEffect(() => {
     if (lastAppliedActionEntryAdjustment) {
