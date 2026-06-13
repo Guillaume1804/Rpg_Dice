@@ -1,6 +1,6 @@
 // dice-universal\features\roll3d\components\Roll3DActionEntryAdjustmentCard.tsx
 
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 
 import {
   getRuleBehaviorDefinition,
@@ -41,10 +41,17 @@ type TextBehaviorField = RuleBehaviorField & {
   placeholder?: string;
 };
 
+type RangesBehaviorField = RuleBehaviorField & {
+  type: "ranges";
+  paramsKey: "ranges" | "bands";
+  defaultValue: { min: string; max: string; label: string }[];
+};
+
 type EditableBehaviorField =
   | NumberBehaviorField
   | SelectBehaviorField
-  | TextBehaviorField;
+  | TextBehaviorField
+  | RangesBehaviorField;
 
 type KeepDropPipelineMode =
   | "keep_highest"
@@ -76,6 +83,12 @@ function isTextBehaviorField(
   return field.type === "text";
 }
 
+function isRangesBehaviorField(
+  field: RuleBehaviorField,
+): field is RangesBehaviorField {
+  return field.type === "ranges";
+}
+
 function isFacesTextField(
   field: RuleBehaviorField,
 ): field is TextBehaviorField {
@@ -94,7 +107,8 @@ function isEditableBehaviorField(
   return (
     isNumberBehaviorField(field) ||
     isSelectBehaviorField(field) ||
-    isFacesTextField(field)
+    isFacesTextField(field) ||
+    isRangesBehaviorField(field)
   );
 }
 
@@ -492,6 +506,100 @@ function parseFacesValue(rawValue: unknown): number[] {
   return [];
 }
 
+type Roll3DRangeParamValue = {
+  min: number;
+  max: number;
+  label: string;
+};
+
+function parseRangeNumber(value: unknown, fallback: number) {
+  const numericValue = Number(value);
+
+  return Number.isFinite(numericValue) ? numericValue : fallback;
+}
+
+function parseRangesValue(
+  rawValue: unknown,
+  fallback: { min: string; max: string; label: string }[],
+): Roll3DRangeParamValue[] {
+  const sourceRanges = Array.isArray(rawValue) ? rawValue : fallback;
+
+  return sourceRanges
+    .map((range, index) => {
+      if (!range || typeof range !== "object") {
+        return null;
+      }
+
+      const candidate = range as {
+        min?: unknown;
+        max?: unknown;
+        label?: unknown;
+      };
+
+      const fallbackRange = fallback[index] ?? {
+        min: "1",
+        max: "1",
+        label: "Palier",
+      };
+
+      const min = parseRangeNumber(candidate.min, Number(fallbackRange.min));
+      const max = parseRangeNumber(candidate.max, Number(fallbackRange.max));
+
+      return {
+        min,
+        max,
+        label:
+          typeof candidate.label === "string" && candidate.label.trim().length > 0
+            ? candidate.label
+            : fallbackRange.label,
+      };
+    })
+    .filter((range): range is Roll3DRangeParamValue => !!range);
+}
+
+function getRangesParamValue(params: {
+  field: RangesBehaviorField;
+  baseParams: Record<string, unknown>;
+  overrideParams: Record<string, unknown>;
+}) {
+  const { field, baseParams, overrideParams } = params;
+  const paramsKey = getFieldParamsKey(field);
+
+  const rawValue =
+    overrideParams[paramsKey] ?? baseParams[paramsKey] ?? field.defaultValue;
+
+  return parseRangesValue(rawValue, field.defaultValue);
+}
+
+function getRangesNumberBounds(params: {
+  behaviorKind: string;
+  adjustment: Roll3DActionEntryAdjustment;
+}) {
+  const { behaviorKind, adjustment } = params;
+
+  if (behaviorKind === "table_lookup") {
+    return {
+      min: 1,
+      max: adjustment.sides,
+    };
+  }
+
+  if (behaviorKind === "banded_sum") {
+    const diceCount = Math.max(1, Math.floor(adjustment.qty));
+    const maxNaturalSum = diceCount * adjustment.sides;
+
+    return {
+      min: -999,
+      max: Math.max(999, maxNaturalSum + Math.abs(adjustment.modifier)),
+    };
+  }
+
+  return {
+    min: -999,
+    max: 999,
+  };
+}
+
 function createNumberRange(min: number, max: number) {
   const start = Math.min(min, max);
   const end = Math.max(min, max);
@@ -881,6 +989,211 @@ function BehaviorSelectParamRow({
           );
         })}
       </View>
+    </View>
+  );
+}
+
+function BehaviorRangesParamSection({
+  field,
+  behaviorKind,
+  adjustment,
+  value,
+  onChange,
+}: {
+  field: RangesBehaviorField;
+  behaviorKind: string;
+  adjustment: Roll3DActionEntryAdjustment;
+  value: Roll3DRangeParamValue[];
+  onChange: (value: Roll3DRangeParamValue[]) => void;
+}) {
+  const premium = usePremiumTheme();
+
+  const bounds = getRangesNumberBounds({
+    behaviorKind,
+    adjustment,
+  });
+
+  const updateRange = (
+    rangeIndex: number,
+    patch: Partial<Roll3DRangeParamValue>,
+  ) => {
+    const nextValue = value.map((range, index) => {
+      if (index !== rangeIndex) {
+        return range;
+      }
+
+      const nextMin =
+        patch.min != null
+          ? clampNumber(patch.min, bounds.min, bounds.max)
+          : range.min;
+
+      const nextMax =
+        patch.max != null
+          ? clampNumber(patch.max, bounds.min, bounds.max)
+          : range.max;
+
+      return {
+        ...range,
+        ...patch,
+        min: Math.min(nextMin, nextMax),
+        max: Math.max(nextMin, nextMax),
+        label:
+          patch.label != null
+            ? patch.label
+            : range.label,
+      };
+    });
+
+    onChange(nextValue);
+  };
+
+  return (
+    <View
+      style={{
+        width: "100%",
+        gap: 8,
+      }}
+    >
+      <View style={{ gap: 2 }}>
+        <Text
+          style={{
+            color: premium.colors.text.muted,
+            fontSize: 9,
+            fontWeight: "900",
+            textTransform: "uppercase",
+            letterSpacing: 0.8,
+          }}
+        >
+          {field.label}
+        </Text>
+
+        <Text
+          style={{
+            color: premium.colors.text.secondary,
+            fontSize: 10,
+            fontWeight: "800",
+            lineHeight: 14,
+          }}
+        >
+          Ajustement rapide des paliers existants
+        </Text>
+      </View>
+
+      <View style={{ gap: 8 }}>
+        {value.map((range, index) => (
+          <View
+            key={`range-${field.paramsKey}-${index}`}
+            style={{
+              borderRadius: premium.radius.lg,
+              borderWidth: 1,
+              borderColor: premium.colors.border.subtle,
+              backgroundColor: "rgba(255,255,255,0.045)",
+              padding: 9,
+              gap: 8,
+            }}
+          >
+            <Text
+              style={{
+                color: premium.colors.accent.primary,
+                fontSize: 10,
+                fontWeight: "900",
+                textTransform: "uppercase",
+                letterSpacing: 0.7,
+              }}
+            >
+              Palier {index + 1}
+            </Text>
+
+            <View
+              style={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                gap: 8,
+              }}
+            >
+              <StepperRow
+                label="Min"
+                value={`${range.min}`}
+                minusDisabled={range.min <= bounds.min}
+                onMinus={() =>
+                  updateRange(index, {
+                    min: range.min - 1,
+                  })
+                }
+                onPlus={() =>
+                  updateRange(index, {
+                    min: range.min + 1,
+                  })
+                }
+              />
+
+              <StepperRow
+                label="Max"
+                value={`${range.max}`}
+                minusDisabled={range.max <= bounds.min}
+                onMinus={() =>
+                  updateRange(index, {
+                    max: range.max - 1,
+                  })
+                }
+                onPlus={() =>
+                  updateRange(index, {
+                    max: range.max + 1,
+                  })
+                }
+              />
+            </View>
+
+            <View style={{ gap: 5 }}>
+              <Text
+                style={{
+                  color: premium.colors.text.muted,
+                  fontSize: 9,
+                  fontWeight: "900",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.7,
+                }}
+              >
+                Résultat / label
+              </Text>
+
+              <TextInput
+                value={range.label}
+                onChangeText={(nextLabel) =>
+                  updateRange(index, {
+                    label: nextLabel,
+                  })
+                }
+                placeholder="Ex: Bas, Moyen, Haut..."
+                placeholderTextColor="rgba(255,255,255,0.28)"
+                style={{
+                  minHeight: 38,
+                  borderRadius: premium.radius.md,
+                  borderWidth: 1,
+                  borderColor: "rgba(255,255,255,0.10)",
+                  backgroundColor: "rgba(0,0,0,0.22)",
+                  color: premium.colors.text.primary,
+                  paddingHorizontal: 10,
+                  paddingVertical: 8,
+                  fontSize: 12,
+                  fontWeight: "800",
+                }}
+              />
+            </View>
+          </View>
+        ))}
+      </View>
+
+      <Text
+        style={{
+          color: premium.colors.text.muted,
+          fontSize: 9,
+          fontWeight: "700",
+          lineHeight: 13,
+        }}
+      >
+        Pour ajouter ou supprimer des paliers, utilise l’atelier Comportements.
+      </Text>
     </View>
   );
 }
@@ -1278,6 +1591,30 @@ function BehaviorParamsSection({
         {editableFields.map((field) => {
           const paramsKey = getFieldParamsKey(field);
 
+          if (isRangesBehaviorField(field)) {
+            const value = getRangesParamValue({
+              field,
+              baseParams,
+              overrideParams,
+            });
+
+            return (
+              <BehaviorRangesParamSection
+                key={paramsKey}
+                field={field}
+                behaviorKind={behavior.kind}
+                adjustment={adjustment}
+                value={value}
+                onChange={(nextValue) =>
+                  onChangeBehaviorParam({
+                    paramsKey,
+                    value: nextValue,
+                  })
+                }
+              />
+            );
+          }
+          
           if (isNumberBehaviorField(field)) {
             const value = getNumberParamValue({
               field,
