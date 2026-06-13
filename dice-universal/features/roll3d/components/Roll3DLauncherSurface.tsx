@@ -227,7 +227,7 @@ export function Roll3DLauncherSurface({
 
   const db = useDb();
   const { activeTableId, setActiveTableId } = useActiveTable();
-  const { revision } = useDataRefresh();
+  const { revision, notifyDataChanged } = useDataRefresh();
 
   const tableId = useMemo(
     () =>
@@ -499,6 +499,7 @@ export function Roll3DLauncherSurface({
 
         await setActiveTableId(nextTableId);
         await reloadGroups(nextTableId);
+        notifyDataChanged();
       } finally {
         setIsChangingTable(false);
       }
@@ -511,6 +512,7 @@ export function Roll3DLauncherSurface({
       resetLauncher,
       setActiveTableId,
       reloadGroups,
+      notifyDataChanged
     ],
   );
 
@@ -987,6 +989,7 @@ export function Roll3DLauncherSurface({
       }
 
       await reloadGroups(tableId);
+      notifyDataChanged();
 
       setShowSaveAdjustedActionModal(false);
       setSaveAdjustedActionError(null);
@@ -1005,7 +1008,7 @@ export function Roll3DLauncherSurface({
     } finally {
       setIsSavingAdjustedAction(false);
     }
-  }, [db, tableId, lastAppliedActionEntryAdjustment, reloadGroups]);
+  }, [db, tableId, lastAppliedActionEntryAdjustment, reloadGroups, notifyDataChanged]);
 
   const handleRequestSaveAdjustedActionAsNew = useCallback(async () => {
     if (!lastAppliedActionEntryAdjustment || !tableId || !activeProfileEntry) {
@@ -1048,6 +1051,7 @@ export function Roll3DLauncherSurface({
       });
 
       await reloadGroups(tableId);
+      notifyDataChanged();
 
       setSelectedActionId(newGroupId);
       setSelectedActionEntryId(null);
@@ -1076,6 +1080,7 @@ export function Roll3DLauncherSurface({
     lastAppliedActionEntryAdjustment,
     newAdjustedActionName,
     reloadGroups,
+    notifyDataChanged
   ]);
 
   const handleCloseSaveAdjustedActionModal = useCallback(() => {

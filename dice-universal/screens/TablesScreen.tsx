@@ -1,3 +1,5 @@
+// dice-universal/screens/TablesScreen.tsx
+
 import { useState, useCallback } from "react";
 import {
   View,
@@ -11,6 +13,8 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useDb } from "../data/db/DbProvider";
 import { useActiveTable } from "../data/state/ActiveTableProvider";
+import { useDataRefresh } from "../data/state/DataRefreshProvider";
+
 import {
   listTables,
   getTableStats,
@@ -37,6 +41,8 @@ export default function TablesScreen() {
   const router = useRouter();
   const { setActiveTableId, activeTableId, clearActiveTableId } =
     useActiveTable();
+
+  const { revision, notifyDataChanged } = useDataRefresh();
 
   const [tables, setTables] = useState<TableListItem[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -67,6 +73,7 @@ export default function TablesScreen() {
       }
 
       await loadTables();
+      notifyDataChanged();
     } catch (e: any) {
       setError(e?.message ?? String(e));
     }
@@ -91,6 +98,8 @@ export default function TablesScreen() {
 
       await loadTables();
       await setActiveTableId(createdId);
+      notifyDataChanged();
+
       router.push(`/tables/${createdId}` as any);
     } catch (e: any) {
       setError(e?.message ?? String(e));
@@ -127,7 +136,7 @@ export default function TablesScreen() {
       return () => {
         isActive = false;
       };
-    }, [db]),
+    }, [db, revision]),
   );
 
   const activeTable =
@@ -242,6 +251,7 @@ export default function TablesScreen() {
               <Pressable
                 onPress={async () => {
                   await clearActiveTableId();
+                  notifyDataChanged();
                 }}
                 style={{
                   marginTop: theme.spacing.xs,
@@ -476,6 +486,7 @@ export default function TablesScreen() {
                     <Pressable
                       onPress={async () => {
                         await setActiveTableId(table.id);
+                        notifyDataChanged();
                       }}
                       disabled={isActive}
                       style={({ pressed }) => ({
