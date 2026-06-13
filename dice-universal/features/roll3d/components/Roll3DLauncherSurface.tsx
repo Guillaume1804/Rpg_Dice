@@ -10,6 +10,8 @@ import { useDataRefresh } from "../../../data/state/DataRefreshProvider";
 import { useRollTableData } from "../../roll/hooks/useRollTableData";
 import { formatSavedActionDetail } from "../../roll/helpers/rollDisplaySummary";
 
+import { listTables, type TableRow } from "../../../data/repositories/tablesRepo";
+
 import { useRoll3DLauncher } from "../hooks/useRoll3DLauncher";
 import { DiceTable3D } from "./DiceTable3D";
 import { Roll3DControlDock } from "./Roll3DControlDock";
@@ -224,7 +226,7 @@ export function Roll3DLauncherSurface({
   } = launcher;
 
   const db = useDb();
-  const { activeTableId } = useActiveTable();
+  const { activeTableId, setActiveTableId } = useActiveTable();
   const { revision } = useDataRefresh();
 
   const tableId = useMemo(
@@ -243,6 +245,9 @@ export function Roll3DLauncherSurface({
   const [isRolling, setIsRolling] = useState(false);
   const [skipRollRequestId, setSkipRollRequestId] = useState(0);
   const [sceneVersion, setSceneVersion] = useState(0);
+
+  const [availableTables, setAvailableTables] = useState<TableRow[]>([]);
+  const [isChangingTable, setIsChangingTable] = useState(false);
 
   const [pendingAdjustmentLaunch, setPendingAdjustmentLaunch] = useState<{
     requestId: number;
@@ -280,6 +285,15 @@ export function Roll3DLauncherSurface({
   const [saveAdjustedActionError, setSaveAdjustedActionError] = useState<
     string | null
   >(null);
+
+  const reloadAvailableTables = useCallback(async () => {
+    const tables = await listTables(db);
+    setAvailableTables(tables);
+  }, [db]);
+
+  useEffect(() => {
+    void reloadAvailableTables();
+  }, [revision, reloadAvailableTables]);
 
   useFocusEffect(
     useCallback(() => {
@@ -446,6 +460,59 @@ export function Roll3DLauncherSurface({
     setLastAppliedActionEntryAdjustment(null);
     clearDice();
   }, [clearDice]);
+
+  const resetRoll3DTransientState = useCallback(() => {
+    setIsRolling(false);
+    setSkipRollRequestId(0);
+    setPendingAdjustmentLaunch(null);
+    setSelectedActionId(null);
+    setSelectedActionEntryId(null);
+    setActionEntryAdjustment(null);
+    setLastAppliedActionEntryAdjustment(null);
+    setShowSaveAdjustedActionModal(false);
+    setNewAdjustedActionName("");
+    setSaveAdjustedActionError(null);
+    setIsSavingAdjustedAction(false);
+    clearResult();
+  }, [clearResult]);
+
+  const handleSelectTable = useCallback(
+    async (nextTableId: string) => {
+      if (!nextTableId || nextTableId === tableId || isChangingTable) {
+        return;
+      }
+
+      const tableExists = availableTables.some((entry) => entry.id === nextTableId);
+
+      if (!tableExists) {
+        return;
+      }
+
+      setIsChangingTable(true);
+
+      try {
+        resetRoll3DTransientState();
+        resetLauncher();
+
+        setSelectedProfileId(null);
+        setSceneVersion((current) => current + 1);
+
+        await setActiveTableId(nextTableId);
+        await reloadGroups(nextTableId);
+      } finally {
+        setIsChangingTable(false);
+      }
+    },
+    [
+      tableId,
+      isChangingTable,
+      availableTables,
+      resetRoll3DTransientState,
+      resetLauncher,
+      setActiveTableId,
+      reloadGroups,
+    ],
+  );
 
   const handleSelectProfile = useCallback(
     (profileId: string) => {
@@ -1137,12 +1204,15 @@ export function Roll3DLauncherSurface({
             maxDice={launcher.maxDice}
             rollDisabled={isRolling || !!pendingAdjustmentLaunch}
             tableName={table?.name ?? null}
+            tables={availableTables}
+            selectedTableId={tableId || null}
             profileName={activeProfileEntry?.profile.name ?? null}
             profiles={profileOptions}
             selectedProfileId={activeProfileEntry?.profile.id ?? null}
             actions={actionItems}
             onSelectProfile={handleSelectProfile}
             onSelectSides={handleSelectFreeDie}
+            onSelectTable={handleSelectTable}
             onClearDice={handleClearDice}
             selectedActionId={selectedActionId}
             selectedActionEntryId={selectedActionEntryId}
