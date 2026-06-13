@@ -48,6 +48,7 @@ import {
   type RuleRow,
 } from "../../../data/repositories/rulesRepo";
 import type { Db } from "../../../data/db/database";
+import { getRoll3DAvailableDiceSidesForTable } from "../logic/roll3DAvailableDice";
 
 type Roll3DLauncherSurfaceProps = {
   height?: number;
@@ -241,6 +242,25 @@ export function Roll3DLauncherSurface({
     db,
     tableId,
   });
+
+  const availableDiceSides = useMemo(
+    () => getRoll3DAvailableDiceSidesForTable(table),
+    [table],
+  );
+
+  useEffect(() => {
+    if (availableDiceSides.length === 0) {
+      return;
+    }
+
+    if (availableDiceSides.includes(launcher.selectedSides)) {
+      return;
+    }
+
+    // Pour l’instant, on ne change pas encore automatiquement selectedSides
+    // car useRoll3DLauncher ne semble pas exposer de setter direct.
+    // Ce cas sera utile quand les tables limiteront vraiment les dés disponibles.
+  }, [availableDiceSides, launcher.selectedSides]);
 
   const [isRolling, setIsRolling] = useState(false);
   const [skipRollRequestId, setSkipRollRequestId] = useState(0);
@@ -1205,6 +1225,7 @@ export function Roll3DLauncherSurface({
           <Roll3DControlDock
             compact
             selectedSides={launcher.selectedSides}
+            availableDiceSides={availableDiceSides}
             diceCount={effectiveDiceCount}
             maxDice={launcher.maxDice}
             rollDisabled={isRolling || !!pendingAdjustmentLaunch}

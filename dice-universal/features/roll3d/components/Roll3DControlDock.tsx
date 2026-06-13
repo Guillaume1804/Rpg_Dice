@@ -31,6 +31,7 @@ type Roll3DControlDockProps = {
   compact?: boolean;
 
   selectedSides: Roll3DDieSides;
+  availableDiceSides: Roll3DDieSides[];
   diceCount: number;
   maxDice: number;
   rollDisabled?: boolean;
@@ -723,6 +724,7 @@ function Roll3DTableSelectorModal({
 export function Roll3DControlDock({
   compact = true,
   selectedSides,
+  availableDiceSides,
   diceCount,
   maxDice,
   rollDisabled = false,
@@ -861,6 +863,7 @@ export function Roll3DControlDock({
         <Roll3DDiceSelector
           compact={compact}
           selectedSides={selectedSides}
+          availableSides={availableDiceSides}
           diceCount={diceCount}
           maxDice={maxDice}
           onSelectSides={onSelectSides}
