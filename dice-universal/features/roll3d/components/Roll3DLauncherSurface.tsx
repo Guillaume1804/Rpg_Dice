@@ -235,7 +235,7 @@ export function Roll3DLauncherSurface({
     [activeTableId],
   );
 
-  const { profiles, rulesMap, reloadGroups } = useRollTableData({
+  const { table, profiles, rulesMap, reloadGroups } = useRollTableData({
     db,
     tableId,
   });
@@ -356,6 +356,16 @@ export function Roll3DLauncherSurface({
     );
   }, [profiles, selectedProfileId]);
 
+  const profileOptions = useMemo(
+    () =>
+      profiles.map((entry) => ({
+        id: entry.profile.id,
+        name: entry.profile.name,
+        actionCount: entry.groups.length,
+      })),
+    [profiles],
+  );
+
   const actionItems = useMemo(
     () =>
       activeProfileEntry?.groups.map(({ group, dice }) => ({
@@ -436,6 +446,40 @@ export function Roll3DLauncherSurface({
     setLastAppliedActionEntryAdjustment(null);
     clearDice();
   }, [clearDice]);
+
+  const handleSelectProfile = useCallback(
+    (profileId: string) => {
+      if (!profileId || profileId === selectedProfileId) {
+        return;
+      }
+
+      const profileExists = profiles.some((entry) => entry.profile.id === profileId);
+
+      if (!profileExists) {
+        return;
+      }
+
+      setSelectedProfileId(profileId);
+      setSelectedActionId(null);
+      setSelectedActionEntryId(null);
+      setActionEntryAdjustment(null);
+      setLastAppliedActionEntryAdjustment(null);
+      setPendingAdjustmentLaunch(null);
+      setShowSaveAdjustedActionModal(false);
+      setNewAdjustedActionName("");
+      setSaveAdjustedActionError(null);
+      setIsSavingAdjustedAction(false);
+
+      clearResult();
+      setIsRolling(false);
+      setSkipRollRequestId(0);
+    },
+    [
+      selectedProfileId,
+      profiles,
+      clearResult,
+    ],
+  );
 
   const handleSelectAction = useCallback((actionId: string) => {
     if (!actionId) {
@@ -1092,8 +1136,12 @@ export function Roll3DLauncherSurface({
             diceCount={effectiveDiceCount}
             maxDice={launcher.maxDice}
             rollDisabled={isRolling || !!pendingAdjustmentLaunch}
+            tableName={table?.name ?? null}
             profileName={activeProfileEntry?.profile.name ?? null}
+            profiles={profileOptions}
+            selectedProfileId={activeProfileEntry?.profile.id ?? null}
             actions={actionItems}
+            onSelectProfile={handleSelectProfile}
             onSelectSides={handleSelectFreeDie}
             onClearDice={handleClearDice}
             selectedActionId={selectedActionId}
