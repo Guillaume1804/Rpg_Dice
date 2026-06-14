@@ -48,15 +48,8 @@ export function Roll3DDiceSelector({
     <View
       style={{
         width: "100%",
-        borderRadius: premium.radius.xl,
-        borderWidth: 1,
-        borderColor: "rgba(232, 200, 120, 0.12)",
-        backgroundColor: compact
-          ? "rgba(5, 6, 11, 0.58)"
-          : "rgba(5, 6, 11, 0.72)",
-        paddingVertical: compact ? 7 : 9,
-        paddingHorizontal: compact ? 7 : 9,
-        overflow: "hidden",
+        paddingVertical: compact ? 4 : 6,
+        paddingHorizontal: compact ? 4 : 6,
       }}
     >
       <View
@@ -234,7 +227,13 @@ export function Roll3DDiceSelector({
                       color: selected
                         ? premium.colors.accent.primary
                         : premium.colors.text.secondary,
-                      fontSize: compact ? (sides === 100 ? 17 : 19) : sides === 100 ? 20 : 22,
+                      fontSize: compact
+                        ? sides === 100
+                          ? 17
+                          : 19
+                        : sides === 100
+                          ? 20
+                          : 22,
                       fontWeight: "900",
                       lineHeight: compact ? 22 : 26,
                       marginBottom: compact ? 0 : 2,

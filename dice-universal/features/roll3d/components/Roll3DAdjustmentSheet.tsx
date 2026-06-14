@@ -12,6 +12,7 @@ type Roll3DAdjustmentSheetProps = {
   visible: boolean;
   adjustment: Roll3DActionEntryAdjustment | null;
   onClose: () => void;
+  onApply: () => void;
   onChangeQty: (delta: number) => void;
   onChangeModifier: (delta: number) => void;
   onToggleSign: () => void;
@@ -24,13 +25,14 @@ type Roll3DAdjustmentSheetProps = {
 function getAdjustmentSectionLabel(section: Roll3DAdjustmentSection) {
   if (section === "dice") return "Dés";
   if (section === "behavior") return "Règle";
-  return "Tout";
+  return "Expert";
 }
 
 export function Roll3DAdjustmentSheet({
   visible,
   adjustment,
   onClose,
+  onApply,
   onChangeQty,
   onChangeModifier,
   onToggleSign,
@@ -78,17 +80,16 @@ export function Roll3DAdjustmentSheet({
             width: "100%",
             maxWidth: 430,
             maxHeight: "84%",
-            borderRadius: 30,
+            borderRadius: 32,
             borderWidth: 1,
-            borderColor: "rgba(232, 200, 120, 0.18)",
-            backgroundColor: "rgba(6, 8, 18, 0.985)",
+            borderColor: "rgba(232, 200, 120, 0.14)",
+            backgroundColor: "rgba(6, 8, 18, 0.94)",
             paddingHorizontal: 14,
-            paddingTop: 12,
+            paddingTop: 14,
             paddingBottom: 14,
-            gap: 10,
+            gap: 11,
           }}
         >
-
           <View
             style={{
               flexDirection: "row",
@@ -101,10 +102,10 @@ export function Roll3DAdjustmentSheet({
               <Text
                 style={{
                   color: premium.colors.accent.primary,
-                  fontSize: 11,
+                  fontSize: 10,
                   fontWeight: "900",
                   textTransform: "uppercase",
-                  letterSpacing: 1.1,
+                  letterSpacing: 1.2,
                 }}
               >
                 Ajuster le jet
@@ -114,25 +115,83 @@ export function Roll3DAdjustmentSheet({
                 numberOfLines={1}
                 style={{
                   color: premium.colors.text.primary,
-                  fontSize: 17,
+                  fontSize: 22,
                   fontWeight: "900",
                   marginTop: 3,
+                  letterSpacing: -0.4,
                 }}
               >
                 {adjustment.entryLabel}
               </Text>
 
-              <Text
-                numberOfLines={1}
+              <View
                 style={{
-                  color: premium.colors.text.secondary,
-                  fontSize: 11,
-                  fontWeight: "800",
-                  marginTop: 3,
+                  flexDirection: "row",
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                  gap: 7,
+                  marginTop: 7,
                 }}
               >
-                {adjustment.actionName}
-              </Text>
+                <Pressable
+                  onPress={onApply}
+                  style={({ pressed }) => ({
+                    opacity: pressed ? 0.84 : 1,
+                    transform: [
+                      {
+                        scale: pressed ? premium.animation.pressScale : 1,
+                      },
+                    ],
+                  })}
+                >
+                  <View
+                    style={{
+                      minHeight: 48,
+                      borderRadius: 999,
+                      borderWidth: 1,
+                      borderColor: "rgba(232, 200, 120, 0.34)",
+                      backgroundColor: "rgba(232, 200, 120, 0.16)",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      paddingHorizontal: 14,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: premium.colors.accent.primary,
+                        fontSize: 12,
+                        fontWeight: "900",
+                        textTransform: "uppercase",
+                        letterSpacing: 0.9,
+                      }}
+                    >
+                      Appliquer au jet
+                    </Text>
+                  </View>
+                </Pressable>
+
+                <View
+                  style={{
+                    borderRadius: 999,
+                    borderWidth: 1,
+                    borderColor: "rgba(232, 200, 120, 0.14)",
+                    backgroundColor: "rgba(232, 200, 120, 0.055)",
+                    paddingHorizontal: 9,
+                    paddingVertical: 5,
+                  }}
+                >
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      color: premium.colors.accent.primary,
+                      fontSize: 9,
+                      fontWeight: "900",
+                    }}
+                  >
+                    non sauvegardé
+                  </Text>
+                </View>
+              </View>
             </View>
 
             <Pressable
@@ -148,24 +207,27 @@ export function Roll3DAdjustmentSheet({
             >
               <View
                 style={{
-                  width: 34,
+                  minWidth: 78,
                   height: 34,
                   borderRadius: 999,
                   borderWidth: 1,
-                  borderColor: "rgba(239, 111, 145, 0.32)",
-                  backgroundColor: "rgba(239, 111, 145, 0.10)",
+                  borderColor: "rgba(239, 111, 145, 0.28)",
+                  backgroundColor: "rgba(239, 111, 145, 0.09)",
                   alignItems: "center",
                   justifyContent: "center",
+                  paddingHorizontal: 12,
                 }}
               >
                 <Text
                   style={{
                     color: premium.colors.state.failure,
-                    fontSize: 13,
+                    fontSize: 10,
                     fontWeight: "900",
+                    textTransform: "uppercase",
+                    letterSpacing: 0.7,
                   }}
                 >
-                  ×
+                  Annuler
                 </Text>
               </View>
             </Pressable>
@@ -175,6 +237,11 @@ export function Roll3DAdjustmentSheet({
             style={{
               flexDirection: "row",
               gap: 7,
+              borderRadius: 999,
+              borderWidth: 1,
+              borderColor: "rgba(255,255,255,0.07)",
+              backgroundColor: "rgba(255,255,255,0.035)",
+              padding: 4,
             }}
           >
             {(["dice", "behavior", "all"] as const).map((section) => {
@@ -197,14 +264,14 @@ export function Roll3DAdjustmentSheet({
                   <View
                     style={{
                       minHeight: 34,
-                      borderRadius: premium.radius.pill,
-                      borderWidth: 1,
+                      borderRadius: 999,
+                      borderWidth: selected ? 1 : 0,
                       borderColor: selected
-                        ? premium.colors.border.accent
-                        : premium.colors.border.subtle,
+                        ? "rgba(232, 200, 120, 0.30)"
+                        : "transparent",
                       backgroundColor: selected
-                        ? premium.colors.accent.soft
-                        : "rgba(255,255,255,0.045)",
+                        ? "rgba(232, 200, 120, 0.16)"
+                        : "transparent",
                       alignItems: "center",
                       justifyContent: "center",
                       paddingHorizontal: 8,
@@ -218,7 +285,7 @@ export function Roll3DAdjustmentSheet({
                         fontSize: 10,
                         fontWeight: "900",
                         textTransform: "uppercase",
-                        letterSpacing: 0.7,
+                        letterSpacing: 0.8,
                       }}
                     >
                       {getAdjustmentSectionLabel(section)}
@@ -243,12 +310,11 @@ export function Roll3DAdjustmentSheet({
 
           <View
             style={{
-              borderRadius: premium.radius.lg,
-              borderWidth: 1,
-              borderColor: "rgba(232, 200, 120, 0.12)",
-              backgroundColor: "rgba(232, 200, 120, 0.055)",
-              paddingHorizontal: 11,
-              paddingVertical: 9,
+              borderRadius: 22,
+              borderWidth: 0,
+              backgroundColor: "rgba(255,255,255,0.045)",
+              paddingHorizontal: 12,
+              paddingVertical: 10,
             }}
           >
             <Text
@@ -259,8 +325,8 @@ export function Roll3DAdjustmentSheet({
                 lineHeight: 16,
               }}
             >
-              Les réglages restent temporaires tant que tu ne sauvegardes pas
-              l’action. Ferme ce panneau puis lance le jet ajusté.
+              Applique ces réglages au jet, puis lance depuis la table. Tu
+              pourras sauvegarder la variante après le résultat.
             </Text>
           </View>
         </Pressable>

@@ -203,18 +203,18 @@ function StepperButton({
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => ({
-        width: 32,
+        width: 34,
         height: 34,
-        borderRadius: premium.radius.pill,
+        borderRadius: 999,
         borderWidth: 1,
         borderColor: disabled
-          ? premium.colors.border.subtle
-          : premium.colors.border.accent,
+          ? "rgba(255,255,255,0.06)"
+          : "rgba(232, 200, 120, 0.18)",
         backgroundColor: disabled
-          ? premium.colors.surface.disabled
+          ? "rgba(255,255,255,0.025)"
           : pressed
-            ? premium.colors.surface.pressed
-            : "rgba(255,255,255,0.06)",
+            ? "rgba(232, 200, 120, 0.12)"
+            : "rgba(255,255,255,0.045)",
         alignItems: "center",
         justifyContent: "center",
         opacity: disabled ? 0.42 : pressed ? 0.78 : 1,
@@ -230,7 +230,7 @@ function StepperButton({
           color: disabled
             ? premium.colors.text.muted
             : premium.colors.accent.primary,
-          fontSize: 18,
+          fontSize: 20,
           fontWeight: "900",
           lineHeight: 20,
           includeFontPadding: false,
@@ -265,18 +265,18 @@ function StepperRow({
         flexShrink: 0,
         flexBasis: 146,
         minWidth: 146,
-        borderRadius: premium.radius.lg,
+        borderRadius: 22,
         borderWidth: 1,
-        borderColor: premium.colors.border.subtle,
-        backgroundColor: "rgba(255,255,255,0.045)",
-        padding: 7,
-        gap: 5,
+        borderColor: "rgba(255,255,255,0.065)",
+        backgroundColor: "rgba(255,255,255,0.032)",
+        padding: 8,
+        gap: 6,
       }}
     >
       <Text
         numberOfLines={1}
         style={{
-          color: premium.colors.text.muted,
+          color: "rgba(255,255,255,0.46)",
           fontSize: 9,
           fontWeight: "900",
           textTransform: "uppercase",
@@ -298,15 +298,15 @@ function StepperRow({
         <View
           style={{
             flex: 1,
-            minWidth: 48,
-            height: 32,
-            borderRadius: premium.radius.pill,
+            minWidth: 54,
+            height: 34,
+            borderRadius: 999,
             borderWidth: 1,
-            borderColor: "rgba(232, 200, 120, 0.18)",
-            backgroundColor: "rgba(232, 200, 120, 0.08)",
+            borderColor: "rgba(232, 200, 120, 0.22)",
+            backgroundColor: "rgba(232, 200, 120, 0.105)",
             alignItems: "center",
             justifyContent: "center",
-            paddingHorizontal: 8,
+            paddingHorizontal: 10,
           }}
         >
           <Text
@@ -315,7 +315,7 @@ function StepperRow({
             minimumFontScale={0.75}
             style={{
               color: premium.colors.accent.primary,
-              fontSize: 15,
+              fontSize: 16,
               fontWeight: "900",
               lineHeight: 18,
               includeFontPadding: false,
@@ -1459,7 +1459,7 @@ function BehaviorParamsSection({
             letterSpacing: 0.8,
           }}
         >
-          Paramètres du comportement
+          Réglages de règle
         </Text>
 
         <Text
@@ -1735,18 +1735,18 @@ export function Roll3DActionEntryAdjustmentCard({
 
   const helperText =
     section === "dice"
-      ? "Ces réglages modifient la quantité, le bonus ou le signe du prochain lancer."
+      ? "Ajuste les dés, le bonus ou le malus avant de revenir à la table."
       : section === "behavior"
-        ? "Ces réglages modifient la règle appliquée au prochain lancer."
-        : "Appuie sur LANCER pour jeter cette entrée ajustée.";
+        ? "Ajuste la règle de résolution sans modifier l’action sauvegardée."
+        : "Mode expert : tous les réglages rapides disponibles pour ce jet.";
 
   return (
     <View
       style={{
-        borderRadius: premium.radius.lg,
+        borderRadius: 24,
         borderWidth: 1,
-        borderColor: "rgba(232, 200, 120, 0.18)",
-        backgroundColor: "rgba(5, 6, 11, 0.66)",
+        borderColor: "rgba(255,255,255,0.075)",
+        backgroundColor: "rgba(255,255,255,0.025)",
         padding: compact ? 8 : 10,
         gap: 7,
       }}
@@ -1816,12 +1816,11 @@ export function Roll3DActionEntryAdjustmentCard({
       >
         <View
           style={{
-            borderRadius: premium.radius.md,
-            borderWidth: 1,
-            borderColor: "rgba(255,255,255,0.07)",
+            borderRadius: 18,
+            borderWidth: 0,
             backgroundColor: "rgba(255,255,255,0.035)",
-            paddingHorizontal: 9,
-            paddingVertical: 7,
+            paddingHorizontal: 10,
+            paddingVertical: 8,
             gap: 2,
           }}
         >
@@ -1833,7 +1832,7 @@ export function Roll3DActionEntryAdjustmentCard({
               fontWeight: "800",
             }}
           >
-            Base : {adjustment.technicalLabel}
+            Jet de base · {adjustment.technicalLabel}
           </Text>
 
           <Text
@@ -1844,7 +1843,7 @@ export function Roll3DActionEntryAdjustmentCard({
               fontWeight: "800",
             }}
           >
-            Règle : {adjustment.detail}
+            Règle active · {adjustment.detail}
           </Text>
 
           <Text
@@ -1878,7 +1877,7 @@ export function Roll3DActionEntryAdjustmentCard({
             />
 
             <StepperRow
-              label="Modif. entrée"
+              label="Bonus / malus"
               value={modifierLabel}
               onMinus={() => onChangeModifier(-1)}
               onPlus={() => onChangeModifier(1)}
@@ -1890,18 +1889,18 @@ export function Roll3DActionEntryAdjustmentCard({
                 flexShrink: 0,
                 flexBasis: 82,
                 minWidth: 82,
-                borderRadius: premium.radius.lg,
+                borderRadius: 22,
                 borderWidth: 1,
                 borderColor:
                   adjustment.sign === -1
-                    ? "rgba(239, 111, 145, 0.32)"
-                    : "rgba(136, 211, 154, 0.28)",
+                    ? "rgba(239, 111, 145, 0.24)"
+                    : "rgba(136, 211, 154, 0.22)",
                 backgroundColor:
                   adjustment.sign === -1
-                    ? premium.colors.state.failureSoft
-                    : premium.colors.state.successSoft,
-                padding: 7,
-                gap: 5,
+                    ? "rgba(239, 111, 145, 0.08)"
+                    : "rgba(136, 211, 154, 0.07)",
+                padding: 8,
+                gap: 6,
               }}
             >
               <Text

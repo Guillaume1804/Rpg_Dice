@@ -39,12 +39,12 @@ export function Roll3DActionPickerSheet({
   const selectedAction =
     actions.find((action) => action.id === selectedActionId) ?? null;
 
-  const title = selectedAction ? "Choisir un jet" : "Actions";
+  const title = selectedAction ? "Choisir un jet" : "Jets préparés";
   const subtitle = selectedAction
     ? selectedAction.name
     : profileName
-      ? `${actions.length} action${actions.length > 1 ? "s" : ""} · ${profileName}`
-      : "Choisis une action préparée";
+      ? `${actions.length} jet${actions.length > 1 ? "s" : ""} disponible${actions.length > 1 ? "s" : ""} · ${profileName}`
+      : "Choisis un jet préparé";
 
   return (
     <Modal
@@ -73,17 +73,16 @@ export function Roll3DActionPickerSheet({
             width: "100%",
             maxWidth: 430,
             maxHeight: "82%",
-            borderRadius: 30,
+            borderRadius: 32,
             borderWidth: 1,
-            borderColor: "rgba(232, 200, 120, 0.18)",
-            backgroundColor: "rgba(6, 8, 18, 0.985)",
+            borderColor: "rgba(232, 200, 120, 0.14)",
+            backgroundColor: "rgba(6, 8, 18, 0.955)",
             paddingHorizontal: 14,
-            paddingTop: 12,
+            paddingTop: 14,
             paddingBottom: 14,
-            gap: 10,
+            gap: 11,
           }}
         >
-
           <View
             style={{
               flexDirection: "row",

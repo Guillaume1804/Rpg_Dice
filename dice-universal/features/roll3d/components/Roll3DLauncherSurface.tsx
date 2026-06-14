@@ -51,6 +51,7 @@ import {
 } from "../../../data/repositories/rulesRepo";
 import type { Db } from "../../../data/db/database";
 import { getRoll3DAvailableDiceSidesForTable } from "../logic/roll3DAvailableDice";
+import { Roll3DRollButton } from "./Roll3DRollButton";
 
 type Roll3DLauncherSurfaceProps = {
   height?: number;
@@ -217,10 +218,10 @@ function Roll3DEmptyTableHint({
       <View
         style={{
           maxWidth: 340,
-          borderRadius: 26,
+          borderRadius: 28,
           borderWidth: 1,
-          borderColor: "rgba(232, 200, 120, 0.13)",
-          backgroundColor: "rgba(5, 7, 19, 0.34)",
+          borderColor: "rgba(232, 200, 120, 0.10)",
+          backgroundColor: "rgba(5, 7, 19, 0.26)",
           paddingHorizontal: 16,
           paddingVertical: 13,
           alignItems: "center",
@@ -249,7 +250,7 @@ function Roll3DEmptyTableHint({
             letterSpacing: -0.2,
           }}
         >
-          Prépare ton jet
+          Choisis ton lancer
         </Text>
 
         <Text
@@ -1355,10 +1356,11 @@ export function Roll3DLauncherSurface({
           pointerEvents="box-none"
           style={{
             position: "absolute",
-            left: 14,
-            right: 14,
-            bottom: 18,
+            left: 12,
+            right: 12,
+            bottom: 14,
             zIndex: 5,
+            gap: 9,
           }}
         >
           <Roll3DControlDock
@@ -1367,7 +1369,6 @@ export function Roll3DLauncherSurface({
             availableDiceSides={availableDiceSides}
             diceCount={effectiveDiceCount}
             maxDice={launcher.maxDice}
-            rollDisabled={isRolling || !!pendingAdjustmentLaunch}
             tableName={table?.name ?? null}
             tables={availableTables}
             selectedTableId={tableId || null}
@@ -1385,7 +1386,6 @@ export function Roll3DLauncherSurface({
             onSelectAction={handleSelectAction}
             onSelectActionEntry={handleSelectActionEntry}
             onChangeActionEntryInsertMode={setActionEntryInsertMode}
-            onRoll={handleRollPress}
             actionEntryAdjustment={actionEntryAdjustment}
             onAdjustActionEntry={handleAdjustActionEntry}
             onChangeActionEntryAdjustmentQty={
@@ -1402,6 +1402,23 @@ export function Roll3DLauncherSurface({
             }
             onCloseActionEntryAdjustment={handleCloseActionEntryAdjustment}
           />
+
+          <View
+            style={{
+              shadowColor: "#E8C878",
+              shadowOpacity: 0.22,
+              shadowRadius: 18,
+              shadowOffset: { width: 0, height: 8 },
+              elevation: 8,
+            }}
+          >
+            <Roll3DRollButton
+              compact
+              disabled={isRolling || !!pendingAdjustmentLaunch}
+              diceCount={effectiveDiceCount}
+              onPress={handleRollPress}
+            />
+          </View>
         </View>
       ) : null}
 

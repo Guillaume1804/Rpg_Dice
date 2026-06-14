@@ -45,8 +45,8 @@ export function Roll3DRollButton({
         start={{ x: 0.2, y: 0 }}
         end={{ x: 0.85, y: 1 }}
         style={{
-          minHeight: compact ? 58 : 66,
-          borderRadius: 24,
+          minHeight: compact ? 60 : 68,
+          borderRadius: 28,
           borderWidth: 1,
           borderColor: isDisabled
             ? premium.colors.border.subtle
@@ -54,6 +54,11 @@ export function Roll3DRollButton({
           alignItems: "center",
           justifyContent: "center",
           overflow: "hidden",
+          shadowColor: "#E8C878",
+          shadowOpacity: isDisabled ? 0 : 0.18,
+          shadowRadius: 16,
+          shadowOffset: { width: 0, height: 8 },
+          elevation: isDisabled ? 0 : 7,
         }}
       >
         <View
@@ -75,13 +80,13 @@ export function Roll3DRollButton({
             color: isDisabled
               ? premium.colors.text.muted
               : premium.colors.text.primary,
-            fontSize: compact ? 15 : 16,
+            fontSize: compact ? 16 : 17,
             fontWeight: "900",
             textTransform: "uppercase",
             letterSpacing: 1.7,
           }}
         >
-          {isDisabled ? "Ajoute des dés" : "Lancer"}
+          {isDisabled ? "Prépare un jet" : "Lancer"}
         </Text>
 
         <Text
@@ -97,7 +102,7 @@ export function Roll3DRollButton({
           }}
         >
           {isDisabled
-            ? "Ajoute un dé ou choisis une action"
+            ? "Ajoute des dés ou choisis un jet préparé"
             : `${diceCount} dé${diceCount > 1 ? "s" : ""} prêt${diceCount > 1 ? "s" : ""} · toucher pour lancer`}
         </Text>
       </LinearGradient>
