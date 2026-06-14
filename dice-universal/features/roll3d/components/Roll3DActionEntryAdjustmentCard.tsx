@@ -199,7 +199,7 @@ function StepperButton({
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => ({
-        width: 34,
+        width: 32,
         height: 34,
         borderRadius: premium.radius.pill,
         borderWidth: 1,
@@ -259,14 +259,14 @@ function StepperRow({
       style={{
         flexGrow: 1,
         flexShrink: 0,
-        flexBasis: 164,
-        minWidth: 164,
+        flexBasis: 146,
+        minWidth: 146,
         borderRadius: premium.radius.lg,
         borderWidth: 1,
         borderColor: premium.colors.border.subtle,
         backgroundColor: "rgba(255,255,255,0.045)",
-        padding: 8,
-        gap: 6,
+        padding: 7,
+        gap: 5,
       }}
     >
       <Text
@@ -295,7 +295,7 @@ function StepperRow({
           style={{
             flex: 1,
             minWidth: 48,
-            height: 34,
+            height: 32,
             borderRadius: premium.radius.pill,
             borderWidth: 1,
             borderColor: "rgba(232, 200, 120, 0.18)",
@@ -549,7 +549,8 @@ function parseRangesValue(
         min,
         max,
         label:
-          typeof candidate.label === "string" && candidate.label.trim().length > 0
+          typeof candidate.label === "string" &&
+          candidate.label.trim().length > 0
             ? candidate.label
             : fallbackRange.label,
       };
@@ -608,11 +609,15 @@ function createNumberRange(min: number, max: number) {
 }
 
 function isCriticalSuccessParamsKey(paramsKey: string) {
-  return paramsKey.includes("crit_success") || paramsKey.includes("critical_success");
+  return (
+    paramsKey.includes("crit_success") || paramsKey.includes("critical_success")
+  );
 }
 
 function isCriticalFailureParamsKey(paramsKey: string) {
-  return paramsKey.includes("crit_failure") || paramsKey.includes("critical_failure");
+  return (
+    paramsKey.includes("crit_failure") || paramsKey.includes("critical_failure")
+  );
 }
 
 function getFacesParamValue(params: {
@@ -654,10 +659,7 @@ function getBehaviorNumberParamBounds(params: {
   const diceMax = adjustment.sides;
   const diceCount = Math.max(1, Math.floor(adjustment.qty));
 
-  if (
-    paramsKey === "success_at_or_above" ||
-    paramsKey === "successAtOrAbove"
-  ) {
+  if (paramsKey === "success_at_or_above" || paramsKey === "successAtOrAbove") {
     return {
       min: 1,
       max: diceMax,
@@ -770,12 +772,11 @@ function BehaviorFacesParamRow({
 
   const exactValue = [currentFace];
 
-  const rangeValue =
-    isFailureCritical
-      ? createNumberRange(min, currentFace)
-      : isSuccessCritical
-        ? createNumberRange(currentFace, max)
-        : exactValue;
+  const rangeValue = isFailureCritical
+    ? createNumberRange(min, currentFace)
+    : isSuccessCritical
+      ? createNumberRange(currentFace, max)
+      : exactValue;
 
   const isRangeAvailable = isFailureCritical || isSuccessCritical;
 
@@ -900,7 +901,9 @@ function BehaviorFacesParamRow({
                 fontWeight: "900",
               }}
             >
-              {isFailureCritical ? `${min} à ${currentFace}` : `${currentFace} à ${max}`}
+              {isFailureCritical
+                ? `${min} à ${currentFace}`
+                : `${currentFace} à ${max}`}
             </Text>
           </Pressable>
         </View>
@@ -1037,10 +1040,7 @@ function BehaviorRangesParamSection({
         ...patch,
         min: Math.min(nextMin, nextMax),
         max: Math.max(nextMin, nextMax),
-        label:
-          patch.label != null
-            ? patch.label
-            : range.label,
+        label: patch.label != null ? patch.label : range.label,
       };
     });
 
@@ -1439,7 +1439,9 @@ function BehaviorParamsSection({
   }
 
   const registryKey = getRoll3DBehaviorRegistryKey(behavior.kind);
-  const definition = registryKey ? getRuleBehaviorDefinition(registryKey) : null;
+  const definition = registryKey
+    ? getRuleBehaviorDefinition(registryKey)
+    : null;
 
   if (!definition) {
     return (
@@ -1551,8 +1553,8 @@ function BehaviorParamsSection({
   return (
     <View
       style={{
-        gap: 8,
-        paddingTop: 2,
+        gap: 7,
+        paddingTop: 1,
       }}
     >
       <View style={{ gap: 2 }}>
@@ -1585,7 +1587,7 @@ function BehaviorParamsSection({
           flexDirection: "row",
           flexWrap: "wrap",
           alignItems: "stretch",
-          gap: 8,
+          gap: 7,
         }}
       >
         {editableFields.map((field) => {
@@ -1614,7 +1616,7 @@ function BehaviorParamsSection({
               />
             );
           }
-          
+
           if (isNumberBehaviorField(field)) {
             const value = getNumberParamValue({
               field,
@@ -1725,12 +1727,12 @@ export function Roll3DActionEntryAdjustmentCard({
   return (
     <View
       style={{
-        borderRadius: premium.radius.xl,
+        borderRadius: premium.radius.lg,
         borderWidth: 1,
         borderColor: "rgba(232, 200, 120, 0.18)",
-        backgroundColor: "rgba(5, 6, 11, 0.72)",
-        padding: compact ? 9 : 11,
-        gap: 9,
+        backgroundColor: "rgba(5, 6, 11, 0.66)",
+        padding: compact ? 8 : 10,
+        gap: 7,
       }}
     >
       <View
@@ -1759,9 +1761,9 @@ export function Roll3DActionEntryAdjustmentCard({
             numberOfLines={1}
             style={{
               color: premium.colors.accent.primary,
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: "900",
-              marginTop: 2,
+              marginTop: 1,
             }}
           >
             {adjustment.entryLabel}
@@ -1771,9 +1773,9 @@ export function Roll3DActionEntryAdjustmentCard({
             numberOfLines={1}
             style={{
               color: premium.colors.text.secondary,
-              fontSize: 10,
+              fontSize: 9,
               fontWeight: "800",
-              marginTop: 2,
+              marginTop: 1,
             }}
           >
             {adjustment.actionName}
@@ -1785,10 +1787,10 @@ export function Roll3DActionEntryAdjustmentCard({
 
       <ScrollView
         style={{
-          maxHeight: compact ? 310 : 420,
+          maxHeight: compact ? 264 : 380,
         }}
         contentContainerStyle={{
-          gap: 9,
+          gap: 7,
           paddingBottom: 2,
         }}
         showsVerticalScrollIndicator={false}
@@ -1796,6 +1798,12 @@ export function Roll3DActionEntryAdjustmentCard({
       >
         <View
           style={{
+            borderRadius: premium.radius.md,
+            borderWidth: 1,
+            borderColor: "rgba(255,255,255,0.07)",
+            backgroundColor: "rgba(255,255,255,0.035)",
+            paddingHorizontal: 9,
+            paddingVertical: 7,
             gap: 2,
           }}
         >
@@ -1803,7 +1811,7 @@ export function Roll3DActionEntryAdjustmentCard({
             numberOfLines={1}
             style={{
               color: premium.colors.text.secondary,
-              fontSize: 10,
+              fontSize: 9,
               fontWeight: "800",
             }}
           >
@@ -1814,22 +1822,23 @@ export function Roll3DActionEntryAdjustmentCard({
             numberOfLines={1}
             style={{
               color: premium.colors.text.secondary,
-              fontSize: 10,
+              fontSize: 9,
               fontWeight: "800",
             }}
           >
-            Comportement : {adjustment.detail}
+            Règle : {adjustment.detail}
           </Text>
 
           <Text
+            numberOfLines={1}
             style={{
               color: premium.colors.text.muted,
-              fontSize: 9,
+              fontSize: 8,
               fontWeight: "700",
-              lineHeight: 13,
+              marginTop: 1,
             }}
           >
-            Ces réglages seront appliqués au moment du lancer.
+            Ces réglages s’appliquent au prochain lancer.
           </Text>
         </View>
 
@@ -1860,8 +1869,8 @@ export function Roll3DActionEntryAdjustmentCard({
             style={{
               flexGrow: 0,
               flexShrink: 0,
-              flexBasis: 96,
-              minWidth: 96,
+              flexBasis: 82,
+              minWidth: 82,
               borderRadius: premium.radius.lg,
               borderWidth: 1,
               borderColor:
@@ -1872,8 +1881,8 @@ export function Roll3DActionEntryAdjustmentCard({
                 adjustment.sign === -1
                   ? premium.colors.state.failureSoft
                   : premium.colors.state.successSoft,
-              padding: 8,
-              gap: 6,
+              padding: 7,
+              gap: 5,
             }}
           >
             <Text
@@ -1913,7 +1922,6 @@ export function Roll3DActionEntryAdjustmentCard({
           Appuie sur LANCER pour jeter cette entrée ajustée.
         </Text>
       </ScrollView>
-
     </View>
   );
 }

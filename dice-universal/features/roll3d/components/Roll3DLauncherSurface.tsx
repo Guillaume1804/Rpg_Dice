@@ -10,7 +10,10 @@ import { useDataRefresh } from "../../../data/state/DataRefreshProvider";
 import { useRollTableData } from "../../roll/hooks/useRollTableData";
 import { formatSavedActionDetail } from "../../roll/helpers/rollDisplaySummary";
 
-import { listTables, type TableRow } from "../../../data/repositories/tablesRepo";
+import {
+  listTables,
+  type TableRow,
+} from "../../../data/repositories/tablesRepo";
 
 import { useRoll3DLauncher } from "../hooks/useRoll3DLauncher";
 import { DiceTable3D } from "./DiceTable3D";
@@ -45,7 +48,6 @@ import {
   createRule,
   findCanonicalLocalRule,
   getRuleById,
-  type RuleRow,
 } from "../../../data/repositories/rulesRepo";
 import type { Db } from "../../../data/db/database";
 import { getRoll3DAvailableDiceSidesForTable } from "../logic/roll3DAvailableDice";
@@ -76,27 +78,11 @@ function hasBehaviorParamsOverride(
   return !!override && Object.keys(override).length > 0;
 }
 
-function getAdjustedEntryLabelForSave(
-  adjustment: Roll3DActionEntryAdjustment,
-) {
+function getAdjustedEntryLabelForSave(adjustment: Roll3DActionEntryAdjustment) {
   return adjustment.entryLabel.trim() &&
     adjustment.entryLabel.trim() !== adjustment.technicalLabel.trim()
     ? adjustment.entryLabel.trim()
     : null;
-}
-
-function getAdjustedBehaviorRefForTarget(
-  adjustment: Roll3DActionEntryAdjustment,
-) {
-  if (adjustment.behaviorParamsTarget === "group") {
-    return adjustment.groupBehavior;
-  }
-
-  if (adjustment.behaviorParamsTarget === "entry") {
-    return adjustment.behavior;
-  }
-
-  return null;
 }
 
 async function resolveAdjustedRuleIdForSave(params: {
@@ -337,7 +323,7 @@ export function Roll3DLauncherSurface({
       }
 
       void reloadGroups(tableId);
-    }, [tableId, reloadGroups, revision]),
+    }, [tableId, reloadGroups]),
   );
 
   useEffect(() => {
@@ -411,10 +397,11 @@ export function Roll3DLauncherSurface({
           rulesMap,
         }),
         entries: dice.map((die) => {
-          const technicalLabel = `${die.sign === -1 ? "- " : ""}${die.qty}d${die.sides}${die.modifier !== 0
-            ? ` ${die.modifier > 0 ? "+" : "-"} ${Math.abs(die.modifier)}`
-            : ""
-            }`;
+          const technicalLabel = `${die.sign === -1 ? "- " : ""}${die.qty}d${die.sides}${
+            die.modifier !== 0
+              ? ` ${die.modifier > 0 ? "+" : "-"} ${Math.abs(die.modifier)}`
+              : ""
+          }`;
 
           const customLabel =
             typeof die.label === "string" && die.label.trim().length > 0
@@ -502,7 +489,9 @@ export function Roll3DLauncherSurface({
         return;
       }
 
-      const tableExists = availableTables.some((entry) => entry.id === nextTableId);
+      const tableExists = availableTables.some(
+        (entry) => entry.id === nextTableId,
+      );
 
       if (!tableExists) {
         return;
@@ -532,7 +521,7 @@ export function Roll3DLauncherSurface({
       resetLauncher,
       setActiveTableId,
       reloadGroups,
-      notifyDataChanged
+      notifyDataChanged,
     ],
   );
 
@@ -542,7 +531,9 @@ export function Roll3DLauncherSurface({
         return;
       }
 
-      const profileExists = profiles.some((entry) => entry.profile.id === profileId);
+      const profileExists = profiles.some(
+        (entry) => entry.profile.id === profileId,
+      );
 
       if (!profileExists) {
         return;
@@ -563,11 +554,7 @@ export function Roll3DLauncherSurface({
       setIsRolling(false);
       setSkipRollRequestId(0);
     },
-    [
-      selectedProfileId,
-      profiles,
-      clearResult,
-    ],
+    [selectedProfileId, profiles, clearResult],
   );
 
   const handleSelectAction = useCallback((actionId: string) => {
@@ -896,11 +883,7 @@ export function Roll3DLauncherSurface({
     return () => {
       clearTimeout(timeoutId);
     };
-  }, [
-    pendingAdjustmentLaunch,
-    launcher.draft.id,
-    launcher.diceCount,
-  ]);
+  }, [pendingAdjustmentLaunch, launcher.draft.id, launcher.diceCount]);
 
   const handleRollPress = useCallback(() => {
     if (isRolling || pendingAdjustmentLaunch) {
@@ -1028,7 +1011,14 @@ export function Roll3DLauncherSurface({
     } finally {
       setIsSavingAdjustedAction(false);
     }
-  }, [db, tableId, lastAppliedActionEntryAdjustment, reloadGroups, notifyDataChanged]);
+  }, [
+    db,
+    tableId,
+    lastAppliedActionEntryAdjustment,
+    reloadGroups,
+    notifyDataChanged,
+    clearResult,
+  ]);
 
   const handleRequestSaveAdjustedActionAsNew = useCallback(async () => {
     if (!lastAppliedActionEntryAdjustment || !tableId || !activeProfileEntry) {
@@ -1038,7 +1028,9 @@ export function Roll3DLauncherSurface({
     const safeName = newAdjustedActionName.trim();
 
     if (!safeName) {
-      setSaveAdjustedActionError("Le nom de la nouvelle action est obligatoire.");
+      setSaveAdjustedActionError(
+        "Le nom de la nouvelle action est obligatoire.",
+      );
       return;
     }
 
@@ -1057,10 +1049,10 @@ export function Roll3DLauncherSurface({
       const groupRuleId =
         adjustment.behaviorParamsTarget === "group"
           ? await resolveAdjustedGroupRuleIdForSave({
-            db,
-            tableId,
-            adjustment,
-          })
+              db,
+              tableId,
+              adjustment,
+            })
           : null;
 
       const newGroupId = await createGroupFromDraft(db, {
@@ -1100,7 +1092,8 @@ export function Roll3DLauncherSurface({
     lastAppliedActionEntryAdjustment,
     newAdjustedActionName,
     reloadGroups,
-    notifyDataChanged
+    notifyDataChanged,
+    clearResult,
   ]);
 
   const handleCloseSaveAdjustedActionModal = useCallback(() => {
@@ -1276,7 +1269,9 @@ export function Roll3DLauncherSurface({
       />
 
       <Roll3DAdjustedActionSaveModal
-        visible={showSaveAdjustedActionModal && !!lastAppliedActionEntryAdjustment}
+        visible={
+          showSaveAdjustedActionModal && !!lastAppliedActionEntryAdjustment
+        }
         adjustment={lastAppliedActionEntryAdjustment}
         newActionName={newAdjustedActionName}
         isSaving={isSavingAdjustedAction}
@@ -1386,8 +1381,8 @@ function Roll3DAdjustedActionSaveModal({
             {adjustment.sides}
             {adjustment.modifier !== 0
               ? ` ${adjustment.modifier > 0 ? "+" : "-"} ${Math.abs(
-                adjustment.modifier,
-              )}`
+                  adjustment.modifier,
+                )}`
               : ""}
           </Text>
 
@@ -1456,7 +1451,9 @@ function Roll3DAdjustedActionSaveModal({
                   textAlign: "center",
                 }}
               >
-                {isSaving ? "Sauvegarde..." : "Mettre à jour l’action existante"}
+                {isSaving
+                  ? "Sauvegarde..."
+                  : "Mettre à jour l’action existante"}
               </Text>
             </View>
           </Pressable>
@@ -1528,7 +1525,9 @@ function Roll3DAdjustedActionSaveModal({
                     textAlign: "center",
                   }}
                 >
-                  {isSaving ? "Sauvegarde..." : "Enregistrer comme nouvelle action"}
+                  {isSaving
+                    ? "Sauvegarde..."
+                    : "Enregistrer comme nouvelle action"}
                 </Text>
               </View>
             </Pressable>

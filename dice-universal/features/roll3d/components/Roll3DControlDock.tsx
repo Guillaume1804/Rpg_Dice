@@ -95,7 +95,7 @@ function DockTab({
     >
       <View
         style={{
-          minHeight: 34,
+          minHeight: 32,
           borderRadius: premium.radius.pill,
           borderWidth: 1,
           borderColor: selected
@@ -103,12 +103,12 @@ function DockTab({
             : premium.colors.border.subtle,
           backgroundColor: selected
             ? premium.colors.accent.soft
-            : "rgba(255,255,255,0.045)",
+            : "rgba(255,255,255,0.04)",
           alignItems: "center",
           justifyContent: "center",
           flexDirection: "row",
-          gap: 6,
-          paddingHorizontal: 10,
+          gap: 5,
+          paddingHorizontal: 9,
         }}
       >
         <Text
@@ -116,10 +116,10 @@ function DockTab({
             color: selected
               ? premium.colors.accent.primary
               : premium.colors.text.secondary,
-            fontSize: 11,
+            fontSize: 10,
             fontWeight: "900",
             textTransform: "uppercase",
-            letterSpacing: 0.8,
+            letterSpacing: 0.7,
           }}
         >
           {label}
@@ -128,8 +128,8 @@ function DockTab({
         {badge ? (
           <View
             style={{
-              minWidth: 18,
-              height: 18,
+              minWidth: 17,
+              height: 17,
               borderRadius: premium.radius.pill,
               backgroundColor: selected
                 ? premium.colors.accent.primary
@@ -144,7 +144,7 @@ function DockTab({
                 color: selected
                   ? premium.colors.text.inverse
                   : premium.colors.text.muted,
-                fontSize: 9,
+                fontSize: 8,
                 fontWeight: "900",
               }}
             >
@@ -171,8 +171,8 @@ function DockClearButton({
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => ({
-        minHeight: 34,
-        minWidth: 72,
+        minHeight: 32,
+        minWidth: 62,
         borderRadius: premium.radius.pill,
         borderWidth: 1,
         borderColor: disabled
@@ -199,10 +199,10 @@ function DockClearButton({
           color: disabled
             ? premium.colors.text.muted
             : premium.colors.state.failure,
-          fontSize: 10,
+          fontSize: 9,
           fontWeight: "900",
           textTransform: "uppercase",
-          letterSpacing: 0.75,
+          letterSpacing: 0.65,
         }}
       >
         Vider
@@ -241,16 +241,16 @@ function ContextPill({
     >
       <View
         style={{
-          minHeight: 34,
+          minHeight: 31,
           borderRadius: premium.radius.pill,
           borderWidth: 1,
           borderColor: onPress
             ? "rgba(232, 200, 120, 0.18)"
             : premium.colors.border.subtle,
           backgroundColor: onPress
-            ? "rgba(232, 200, 120, 0.08)"
-            : "rgba(255,255,255,0.045)",
-          paddingHorizontal: 10,
+            ? "rgba(232, 200, 120, 0.075)"
+            : "rgba(255,255,255,0.04)",
+          paddingHorizontal: 9,
           justifyContent: "center",
         }}
       >
@@ -258,10 +258,10 @@ function ContextPill({
           numberOfLines={1}
           style={{
             color: premium.colors.text.muted,
-            fontSize: 8,
+            fontSize: 7,
             fontWeight: "900",
             textTransform: "uppercase",
-            letterSpacing: 0.7,
+            letterSpacing: 0.65,
           }}
         >
           {label}
@@ -273,9 +273,9 @@ function ContextPill({
             color: onPress
               ? premium.colors.accent.primary
               : premium.colors.text.secondary,
-            fontSize: 11,
+            fontSize: 10,
             fontWeight: "900",
-            marginTop: 1,
+            marginTop: 0,
           }}
         >
           {value}
@@ -662,7 +662,9 @@ function Roll3DTableSelectorModal({
                           marginTop: 3,
                         }}
                       >
-                        {table.is_system === 1 ? "Table système" : "Table utilisateur"}
+                        {table.is_system === 1
+                          ? "Table système"
+                          : "Table utilisateur"}
                       </Text>
                     </View>
 
@@ -779,26 +781,26 @@ export function Roll3DControlDock({
   return (
     <View
       style={{
-        borderRadius: 30,
+        borderRadius: 26,
         borderWidth: 1,
         borderColor: "rgba(232, 200, 120, 0.14)",
-        backgroundColor: "rgba(5, 7, 19, 0.56)",
-        padding: 6,
-        gap: 8,
+        backgroundColor: "rgba(5, 7, 19, 0.54)",
+        padding: 5,
+        gap: 6,
         overflow: "hidden",
       }}
     >
       <View
         style={{
           flexDirection: "row",
-          gap: 7,
+          gap: 6,
           alignItems: "center",
         }}
       >
         <ContextPill
           label="Table"
           value={tableName ?? "Aucune table"}
-          disabled={!tableName || tables.length <= 1}
+          disabled={!tableName}
           onPress={
             tables.length > 1 ? () => setShowTableSelector(true) : undefined
           }
@@ -807,7 +809,7 @@ export function Roll3DControlDock({
         <ContextPill
           label="Profil"
           value={profileName ?? "Aucun profil"}
-          disabled={profiles.length <= 1}
+          disabled={!profileName}
           onPress={
             profiles.length > 1 ? () => setShowProfileSelector(true) : undefined
           }
@@ -817,7 +819,7 @@ export function Roll3DControlDock({
       <View
         style={{
           flexDirection: "row",
-          gap: 7,
+          gap: 6,
           alignItems: "center",
         }}
       >

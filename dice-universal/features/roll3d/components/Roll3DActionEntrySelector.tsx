@@ -38,7 +38,7 @@ function getActionIcon(index: number) {
 }
 
 function formatInsertModeLabel(mode: Roll3DActionEntryInsertMode) {
-  return mode === "replace" ? "Remplacer" : "Ajouter";
+  return mode === "replace" ? "Remplacer" : "Cumuler";
 }
 
 export function Roll3DActionEntrySelector({
@@ -62,14 +62,14 @@ export function Roll3DActionEntrySelector({
     <View
       style={{
         width: "100%",
-        borderRadius: premium.radius.xl,
+        borderRadius: premium.radius.lg,
         borderWidth: 1,
         borderColor: "rgba(232, 200, 120, 0.12)",
         backgroundColor: compact
-          ? "rgba(5, 6, 11, 0.58)"
-          : "rgba(5, 6, 11, 0.72)",
-        paddingVertical: compact ? 7 : 9,
-        paddingHorizontal: compact ? 7 : 9,
+          ? "rgba(5, 6, 11, 0.52)"
+          : "rgba(5, 6, 11, 0.68)",
+        paddingVertical: compact ? 6 : 8,
+        paddingHorizontal: compact ? 6 : 8,
         overflow: "hidden",
       }}
     >
@@ -92,7 +92,7 @@ export function Roll3DActionEntrySelector({
               letterSpacing: 1.1,
             }}
           >
-            {selectedAction ? "Entrées de l’action" : "Actions"}
+            {selectedAction ? "Choisir un jet" : "Actions"}
           </Text>
 
           <Text
@@ -142,8 +142,8 @@ export function Roll3DActionEntrySelector({
                     backgroundColor: selected
                       ? premium.colors.accent.soft
                       : "rgba(255,255,255,0.045)",
-                    paddingHorizontal: 9,
-                    paddingVertical: 5,
+                    paddingHorizontal: 8,
+                    paddingVertical: 4,
                   }}
                 >
                   <Text
@@ -151,10 +151,10 @@ export function Roll3DActionEntrySelector({
                       color: selected
                         ? premium.colors.accent.primary
                         : premium.colors.text.secondary,
-                      fontSize: 9,
+                      fontSize: 8,
                       fontWeight: "900",
                       textTransform: "uppercase",
-                      letterSpacing: 0.55,
+                      letterSpacing: 0.5,
                     }}
                   >
                     {formatInsertModeLabel(mode)}
@@ -221,7 +221,7 @@ export function Roll3DActionEntrySelector({
                 letterSpacing: 0.8,
               }}
             >
-              ← Retour aux actions
+              ← Actions
             </Text>
           </Pressable>
 
@@ -246,8 +246,8 @@ export function Roll3DActionEntrySelector({
                     })
                   }
                   style={({ pressed }) => ({
-                    width: compact ? 190 : 230,
-                    minHeight: compact ? 68 : 78,
+                    width: compact ? 166 : 210,
+                    minHeight: compact ? 60 : 72,
                     opacity: pressed ? 0.84 : 1,
                     transform: [
                       {
@@ -275,7 +275,7 @@ export function Roll3DActionEntrySelector({
                       borderColor: selected
                         ? premium.colors.border.accent
                         : premium.colors.border.subtle,
-                      padding: compact ? 10 : 12,
+                      padding: compact ? 9 : 11,
                       overflow: "hidden",
                     }}
                   >
@@ -285,7 +285,7 @@ export function Roll3DActionEntrySelector({
                         color: selected
                           ? premium.colors.accent.primary
                           : premium.colors.text.primary,
-                        fontSize: compact ? 13 : 14,
+                        fontSize: compact ? 12 : 13,
                         fontWeight: "900",
                       }}
                     >
@@ -293,13 +293,13 @@ export function Roll3DActionEntrySelector({
                     </Text>
 
                     <Text
-                      numberOfLines={2}
+                      numberOfLines={1}
                       style={{
                         color: premium.colors.text.secondary,
-                        fontSize: compact ? 10 : 11,
+                        fontSize: compact ? 9 : 10,
                         fontWeight: "700",
-                        lineHeight: compact ? 14 : 15,
-                        marginTop: 4,
+                        lineHeight: compact ? 13 : 14,
+                        marginTop: 3,
                       }}
                     >
                       {entry.detail}
@@ -316,7 +316,7 @@ export function Roll3DActionEntrySelector({
                         }}
                         style={({ pressed }) => ({
                           alignSelf: "flex-start",
-                          marginTop: 8,
+                          marginTop: 6,
                           borderRadius: premium.radius.pill,
                           borderWidth: 1,
                           borderColor: selected
@@ -325,8 +325,8 @@ export function Roll3DActionEntrySelector({
                           backgroundColor: pressed
                             ? premium.colors.surface.pressed
                             : "rgba(255,255,255,0.055)",
-                          paddingHorizontal: 10,
-                          paddingVertical: 5,
+                          paddingHorizontal: 9,
+                          paddingVertical: 4,
                           opacity: pressed ? 0.78 : 1,
                           transform: [
                             {
@@ -340,7 +340,7 @@ export function Roll3DActionEntrySelector({
                             color: selected
                               ? premium.colors.accent.primary
                               : premium.colors.text.secondary,
-                            fontSize: 9,
+                            fontSize: 8,
                             fontWeight: "900",
                             textTransform: "uppercase",
                             letterSpacing: 0.65,
@@ -350,7 +350,6 @@ export function Roll3DActionEntrySelector({
                         </Text>
                       </Pressable>
                     ) : null}
-                    
                   </LinearGradient>
                 </Pressable>
               );
@@ -371,8 +370,8 @@ export function Roll3DActionEntrySelector({
               key={`roll-3d-action-${action.id}`}
               onPress={() => onSelectAction(action.id)}
               style={({ pressed }) => ({
-                width: compact ? 176 : 210,
-                minHeight: compact ? 70 : 82,
+                width: compact ? 158 : 198,
+                minHeight: compact ? 60 : 74,
                 opacity: pressed ? 0.84 : 1,
                 transform: [
                   { scale: pressed ? premium.animation.pressScale : 1 },
@@ -388,7 +387,7 @@ export function Roll3DActionEntrySelector({
                   borderRadius: premium.radius.lg,
                   borderWidth: 1,
                   borderColor: premium.colors.border.subtle,
-                  padding: compact ? 10 : 12,
+                  padding: compact ? 9 : 11,
                   overflow: "hidden",
                 }}
               >
@@ -401,8 +400,8 @@ export function Roll3DActionEntrySelector({
                 >
                   <View
                     style={{
-                      width: compact ? 32 : 36,
-                      height: compact ? 32 : 36,
+                      width: compact ? 28 : 34,
+                      height: compact ? 28 : 34,
                       borderRadius: premium.radius.md,
                       borderWidth: 1,
                       borderColor: premium.colors.border.subtle,
@@ -414,7 +413,7 @@ export function Roll3DActionEntrySelector({
                     <Text
                       style={{
                         color: premium.colors.text.secondary,
-                        fontSize: compact ? 16 : 18,
+                        fontSize: compact ? 14 : 17,
                         fontWeight: "900",
                       }}
                     >
@@ -427,7 +426,7 @@ export function Roll3DActionEntrySelector({
                       numberOfLines={1}
                       style={{
                         color: premium.colors.text.primary,
-                        fontSize: compact ? 13 : 14,
+                        fontSize: compact ? 12 : 13,
                         fontWeight: "900",
                       }}
                     >
@@ -435,13 +434,13 @@ export function Roll3DActionEntrySelector({
                     </Text>
 
                     <Text
-                      numberOfLines={2}
+                      numberOfLines={1}
                       style={{
                         color: premium.colors.text.secondary,
-                        fontSize: compact ? 10 : 11,
+                        fontSize: compact ? 9 : 10,
                         fontWeight: "700",
-                        lineHeight: compact ? 14 : 15,
-                        marginTop: 3,
+                        lineHeight: compact ? 13 : 14,
+                        marginTop: 2,
                       }}
                     >
                       {action.detail}
