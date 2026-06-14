@@ -193,6 +193,136 @@ async function resolveAdjustedGroupRuleIdForSave(params: {
   });
 }
 
+function Roll3DEmptyTableHint({
+  hasActions,
+  tableName,
+  profileName,
+}: {
+  hasActions: boolean;
+  tableName: string | null;
+  profileName: string | null;
+}) {
+  return (
+    <View
+      pointerEvents="none"
+      style={{
+        position: "absolute",
+        top: 34,
+        left: 22,
+        right: 22,
+        zIndex: 3,
+        alignItems: "center",
+      }}
+    >
+      <View
+        style={{
+          maxWidth: 340,
+          borderRadius: 26,
+          borderWidth: 1,
+          borderColor: "rgba(232, 200, 120, 0.13)",
+          backgroundColor: "rgba(5, 7, 19, 0.34)",
+          paddingHorizontal: 16,
+          paddingVertical: 13,
+          alignItems: "center",
+        }}
+      >
+        <Text
+          style={{
+            color: "rgba(232, 200, 120, 0.92)",
+            fontSize: 10,
+            fontWeight: "900",
+            textTransform: "uppercase",
+            letterSpacing: 1.2,
+            textAlign: "center",
+          }}
+        >
+          Table de lancer
+        </Text>
+
+        <Text
+          style={{
+            color: "rgba(255,255,255,0.92)",
+            fontSize: 18,
+            fontWeight: "900",
+            textAlign: "center",
+            marginTop: 6,
+            letterSpacing: -0.2,
+          }}
+        >
+          Prépare ton jet
+        </Text>
+
+        <Text
+          style={{
+            color: "rgba(255,255,255,0.58)",
+            fontSize: 12,
+            fontWeight: "700",
+            textAlign: "center",
+            lineHeight: 17,
+            marginTop: 6,
+          }}
+        >
+          Ajoute des dés libres
+          {hasActions ? " ou ouvre tes actions préparées" : ""}, puis lance
+          depuis le bouton principal.
+        </Text>
+
+        <View
+          style={{
+            flexDirection: "row",
+            flexWrap: "wrap",
+            justifyContent: "center",
+            gap: 7,
+            marginTop: 10,
+          }}
+        >
+          <View
+            style={{
+              borderRadius: 999,
+              borderWidth: 1,
+              borderColor: "rgba(255,255,255,0.08)",
+              backgroundColor: "rgba(255,255,255,0.045)",
+              paddingHorizontal: 9,
+              paddingVertical: 5,
+            }}
+          >
+            <Text
+              style={{
+                color: "rgba(255,255,255,0.62)",
+                fontSize: 9,
+                fontWeight: "900",
+              }}
+            >
+              {tableName ?? "Aucune table"}
+            </Text>
+          </View>
+
+          <View
+            style={{
+              borderRadius: 999,
+              borderWidth: 1,
+              borderColor: "rgba(255,255,255,0.08)",
+              backgroundColor: "rgba(255,255,255,0.045)",
+              paddingHorizontal: 9,
+              paddingVertical: 5,
+            }}
+          >
+            <Text
+              style={{
+                color: "rgba(255,255,255,0.62)",
+                fontSize: 9,
+                fontWeight: "900",
+              }}
+            >
+              {profileName ?? "Aucun profil"}
+            </Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 export function Roll3DLauncherSurface({
   height = 300,
   maxDice = 99,
@@ -1123,6 +1253,12 @@ export function Roll3DLauncherSurface({
 
   const shouldShowControls = !isRolling && !launcher.latestResult;
 
+  const shouldShowEmptyTableHint =
+    shouldShowControls &&
+    launcher.diceCount <= 0 &&
+    !actionEntryAdjustment &&
+    !pendingAdjustmentLaunch;
+
   const pendingAdjustmentDiceCount = actionEntryAdjustment
     ? Math.max(1, Math.floor(actionEntryAdjustment.qty))
     : 0;
@@ -1143,6 +1279,8 @@ export function Roll3DLauncherSurface({
     setIsSavingAdjustedAction(false);
   }, [lastAppliedActionEntryAdjustment]);
 
+  const hasActionItems = actionItems.length > 0;
+
   return (
     <View
       style={{
@@ -1162,6 +1300,14 @@ export function Roll3DLauncherSurface({
         skipRollRequestId={skipRollRequestId}
         onPhysicsRollSettled={handlePhysicsRollSettled}
       />
+
+      {shouldShowEmptyTableHint ? (
+        <Roll3DEmptyTableHint
+          hasActions={hasActionItems}
+          tableName={table?.name ?? null}
+          profileName={activeProfileEntry?.profile.name ?? null}
+        />
+      ) : null}
 
       {isRolling ? (
         <Pressable

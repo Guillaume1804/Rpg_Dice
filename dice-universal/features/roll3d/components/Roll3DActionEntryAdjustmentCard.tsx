@@ -10,9 +10,13 @@ import {
 import { usePremiumTheme } from "../../../theme/premium/usePremiumTheme";
 import type { Roll3DActionEntryAdjustment } from "../types";
 
+export type Roll3DAdjustmentSection = "dice" | "behavior" | "all";
+
 type Roll3DActionEntryAdjustmentCardProps = {
   adjustment: Roll3DActionEntryAdjustment;
   compact?: boolean;
+  hideHeader?: boolean;
+  section?: Roll3DAdjustmentSection;
   onChangeQty: (delta: number) => void;
   onChangeModifier: (delta: number) => void;
   onToggleSign: () => void;
@@ -1709,6 +1713,8 @@ function BehaviorParamsSection({
 export function Roll3DActionEntryAdjustmentCard({
   adjustment,
   compact = true,
+  hideHeader = false,
+  section = "all",
   onChangeQty,
   onChangeModifier,
   onToggleSign,
@@ -1724,6 +1730,16 @@ export function Roll3DActionEntryAdjustmentCard({
 
   const signLabel = adjustment.sign === -1 ? "−" : "+";
 
+  const showDiceSection = section === "dice" || section === "all";
+  const showBehaviorSection = section === "behavior" || section === "all";
+
+  const helperText =
+    section === "dice"
+      ? "Ces réglages modifient la quantité, le bonus ou le signe du prochain lancer."
+      : section === "behavior"
+        ? "Ces réglages modifient la règle appliquée au prochain lancer."
+        : "Appuie sur LANCER pour jeter cette entrée ajustée.";
+
   return (
     <View
       style={{
@@ -1735,55 +1751,57 @@ export function Roll3DActionEntryAdjustmentCard({
         gap: 7,
       }}
     >
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          gap: 10,
-        }}
-      >
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text
-            numberOfLines={1}
-            style={{
-              color: premium.colors.text.muted,
-              fontSize: 9,
-              fontWeight: "900",
-              textTransform: "uppercase",
-              letterSpacing: 0.9,
-            }}
-          >
-            Ajuster l’entrée
-          </Text>
+      {!hideHeader ? (
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            gap: 10,
+          }}
+        >
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text
+              numberOfLines={1}
+              style={{
+                color: premium.colors.text.muted,
+                fontSize: 9,
+                fontWeight: "900",
+                textTransform: "uppercase",
+                letterSpacing: 0.9,
+              }}
+            >
+              Ajuster l’entrée
+            </Text>
 
-          <Text
-            numberOfLines={1}
-            style={{
-              color: premium.colors.accent.primary,
-              fontSize: 13,
-              fontWeight: "900",
-              marginTop: 1,
-            }}
-          >
-            {adjustment.entryLabel}
-          </Text>
+            <Text
+              numberOfLines={1}
+              style={{
+                color: premium.colors.accent.primary,
+                fontSize: 13,
+                fontWeight: "900",
+                marginTop: 1,
+              }}
+            >
+              {adjustment.entryLabel}
+            </Text>
 
-          <Text
-            numberOfLines={1}
-            style={{
-              color: premium.colors.text.secondary,
-              fontSize: 9,
-              fontWeight: "800",
-              marginTop: 1,
-            }}
-          >
-            {adjustment.actionName}
-          </Text>
+            <Text
+              numberOfLines={1}
+              style={{
+                color: premium.colors.text.secondary,
+                fontSize: 9,
+                fontWeight: "800",
+                marginTop: 1,
+              }}
+            >
+              {adjustment.actionName}
+            </Text>
+          </View>
+
+          <SmallButton label="×" variant="danger" onPress={onClose} />
         </View>
-
-        <SmallButton label="×" variant="danger" onPress={onClose} />
-      </View>
+      ) : null}
 
       <ScrollView
         style={{
@@ -1842,74 +1860,78 @@ export function Roll3DActionEntryAdjustmentCard({
           </Text>
         </View>
 
-        <View
-          style={{
-            flexDirection: "row",
-            flexWrap: "wrap",
-            alignItems: "stretch",
-            gap: 8,
-          }}
-        >
-          <StepperRow
-            label="Quantité"
-            value={`${adjustment.qty}`}
-            minusDisabled={adjustment.qty <= 1}
-            onMinus={() => onChangeQty(-1)}
-            onPlus={() => onChangeQty(1)}
-          />
-
-          <StepperRow
-            label="Modif. entrée"
-            value={modifierLabel}
-            onMinus={() => onChangeModifier(-1)}
-            onPlus={() => onChangeModifier(1)}
-          />
-
+        {showDiceSection ? (
           <View
             style={{
-              flexGrow: 0,
-              flexShrink: 0,
-              flexBasis: 82,
-              minWidth: 82,
-              borderRadius: premium.radius.lg,
-              borderWidth: 1,
-              borderColor:
-                adjustment.sign === -1
-                  ? "rgba(239, 111, 145, 0.32)"
-                  : "rgba(136, 211, 154, 0.28)",
-              backgroundColor:
-                adjustment.sign === -1
-                  ? premium.colors.state.failureSoft
-                  : premium.colors.state.successSoft,
-              padding: 7,
-              gap: 5,
+              flexDirection: "row",
+              flexWrap: "wrap",
+              alignItems: "stretch",
+              gap: 8,
             }}
           >
-            <Text
-              numberOfLines={1}
+            <StepperRow
+              label="Quantité"
+              value={`${adjustment.qty}`}
+              minusDisabled={adjustment.qty <= 1}
+              onMinus={() => onChangeQty(-1)}
+              onPlus={() => onChangeQty(1)}
+            />
+
+            <StepperRow
+              label="Modif. entrée"
+              value={modifierLabel}
+              onMinus={() => onChangeModifier(-1)}
+              onPlus={() => onChangeModifier(1)}
+            />
+
+            <View
               style={{
-                color: premium.colors.text.muted,
-                fontSize: 9,
-                fontWeight: "900",
-                textTransform: "uppercase",
-                letterSpacing: 0.7,
+                flexGrow: 0,
+                flexShrink: 0,
+                flexBasis: 82,
+                minWidth: 82,
+                borderRadius: premium.radius.lg,
+                borderWidth: 1,
+                borderColor:
+                  adjustment.sign === -1
+                    ? "rgba(239, 111, 145, 0.32)"
+                    : "rgba(136, 211, 154, 0.28)",
+                backgroundColor:
+                  adjustment.sign === -1
+                    ? premium.colors.state.failureSoft
+                    : premium.colors.state.successSoft,
+                padding: 7,
+                gap: 5,
               }}
             >
-              Signe
-            </Text>
+              <Text
+                numberOfLines={1}
+                style={{
+                  color: premium.colors.text.muted,
+                  fontSize: 9,
+                  fontWeight: "900",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.7,
+                }}
+              >
+                Signe
+              </Text>
 
-            <SmallButton
-              label={signLabel}
-              variant={adjustment.sign === -1 ? "danger" : "accent"}
-              onPress={onToggleSign}
-            />
+              <SmallButton
+                label={signLabel}
+                variant={adjustment.sign === -1 ? "danger" : "accent"}
+                onPress={onToggleSign}
+              />
+            </View>
           </View>
-        </View>
+        ) : null}
 
-        <BehaviorParamsSection
-          adjustment={adjustment}
-          onChangeBehaviorParam={onChangeBehaviorParam}
-        />
+        {showBehaviorSection ? (
+          <BehaviorParamsSection
+            adjustment={adjustment}
+            onChangeBehaviorParam={onChangeBehaviorParam}
+          />
+        ) : null}
 
         <Text
           style={{
@@ -1919,7 +1941,7 @@ export function Roll3DActionEntryAdjustmentCard({
             lineHeight: 13,
           }}
         >
-          Appuie sur LANCER pour jeter cette entrée ajustée.
+          {helperText}
         </Text>
       </ScrollView>
     </View>

@@ -17,7 +17,8 @@ import {
   Roll3DActionEntrySelector,
   type Roll3DActionItem,
 } from "./Roll3DActionEntrySelector";
-import { Roll3DActionEntryAdjustmentCard } from "./Roll3DActionEntryAdjustmentCard";
+import { Roll3DAdjustmentSheet } from "./Roll3DAdjustmentSheet";
+import { Roll3DActionPickerSheet } from "./Roll3DActionPickerSheet";
 
 type Roll3DControlMode = "dice" | "actions";
 
@@ -723,6 +724,208 @@ function Roll3DTableSelectorModal({
   );
 }
 
+function Roll3DActionDockSummary({
+  profileName,
+  actionsCount,
+  selectedActionName,
+  selectedEntryLabel,
+  onOpen,
+}: {
+  profileName: string | null;
+  actionsCount: number;
+  selectedActionName: string | null;
+  selectedEntryLabel: string | null;
+  onOpen: () => void;
+}) {
+  const premium = usePremiumTheme();
+
+  const hasSelection = !!selectedActionName || !!selectedEntryLabel;
+
+  return (
+    <Pressable
+      onPress={onOpen}
+      style={({ pressed }) => ({
+        opacity: pressed ? 0.82 : 1,
+        transform: [
+          {
+            scale: pressed ? premium.animation.pressScale : 1,
+          },
+        ],
+      })}
+    >
+      <View
+        style={{
+          borderRadius: premium.radius.lg,
+          borderWidth: 1,
+          borderColor: hasSelection
+            ? "rgba(232, 200, 120, 0.22)"
+            : premium.colors.border.subtle,
+          backgroundColor: hasSelection
+            ? "rgba(232, 200, 120, 0.075)"
+            : "rgba(255,255,255,0.04)",
+          paddingHorizontal: 11,
+          paddingVertical: 10,
+          gap: 6,
+        }}
+      >
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+          }}
+        >
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text
+              style={{
+                color: premium.colors.text.muted,
+                fontSize: 9,
+                fontWeight: "900",
+                textTransform: "uppercase",
+                letterSpacing: 0.8,
+              }}
+            >
+              Actions
+            </Text>
+
+            <Text
+              numberOfLines={1}
+              style={{
+                color: hasSelection
+                  ? premium.colors.accent.primary
+                  : premium.colors.text.secondary,
+                fontSize: 12,
+                fontWeight: "900",
+                marginTop: 2,
+              }}
+            >
+              {selectedEntryLabel ??
+                selectedActionName ??
+                `${actionsCount} action${actionsCount > 1 ? "s" : ""} disponible${actionsCount > 1 ? "s" : ""}`}
+            </Text>
+
+            <Text
+              numberOfLines={1}
+              style={{
+                color: premium.colors.text.muted,
+                fontSize: 9,
+                fontWeight: "800",
+                marginTop: 2,
+              }}
+            >
+              {profileName
+                ? hasSelection
+                  ? "Toucher pour changer de jet ou ajuster"
+                  : `Profil : ${profileName}`
+                : "Aucun profil actif"}
+            </Text>
+          </View>
+
+          <View
+            style={{
+              borderRadius: premium.radius.pill,
+              borderWidth: 1,
+              borderColor: "rgba(232, 200, 120, 0.22)",
+              backgroundColor: "rgba(232, 200, 120, 0.08)",
+              paddingHorizontal: 10,
+              paddingVertical: 6,
+            }}
+          >
+            <Text
+              style={{
+                color: premium.colors.accent.primary,
+                fontSize: 10,
+                fontWeight: "900",
+                textTransform: "uppercase",
+                letterSpacing: 0.7,
+              }}
+            >
+              Ouvrir
+            </Text>
+          </View>
+        </View>
+      </View>
+    </Pressable>
+  );
+}
+
+function Roll3DDraftHudSummary({
+  mode,
+  diceCount,
+  selectedSides,
+  selectedEntryLabel,
+  selectedActionName,
+}: {
+  mode: Roll3DControlMode;
+  diceCount: number;
+  selectedSides: Roll3DDieSides;
+  selectedEntryLabel: string | null;
+  selectedActionName: string | null;
+}) {
+  const premium = usePremiumTheme();
+
+  const hasDice = diceCount > 0;
+
+  const title =
+    mode === "actions"
+      ? (selectedEntryLabel ?? selectedActionName ?? "Action prête")
+      : hasDice
+        ? `${diceCount} dé${diceCount > 1 ? "s" : ""} sur la table`
+        : "Table vide";
+
+  const subtitle =
+    mode === "actions"
+      ? hasDice
+        ? `${diceCount} dé${diceCount > 1 ? "s" : ""} prêt${diceCount > 1 ? "s" : ""}`
+        : "Choisis un jet préparé"
+      : hasDice
+        ? `Dernier dé sélectionné : d${selectedSides}`
+        : "Ajoute des dés ou choisis une action";
+
+  return (
+    <View
+      style={{
+        borderRadius: premium.radius.lg,
+        borderWidth: 1,
+        borderColor: hasDice
+          ? "rgba(232, 200, 120, 0.16)"
+          : "rgba(255,255,255,0.07)",
+        backgroundColor: hasDice
+          ? "rgba(232, 200, 120, 0.055)"
+          : "rgba(255,255,255,0.032)",
+        paddingHorizontal: 11,
+        paddingVertical: 8,
+      }}
+    >
+      <Text
+        numberOfLines={1}
+        style={{
+          color: hasDice
+            ? premium.colors.accent.primary
+            : premium.colors.text.secondary,
+          fontSize: 12,
+          fontWeight: "900",
+        }}
+      >
+        {title}
+      </Text>
+
+      <Text
+        numberOfLines={1}
+        style={{
+          color: premium.colors.text.muted,
+          fontSize: 9,
+          fontWeight: "800",
+          marginTop: 2,
+        }}
+      >
+        {subtitle}
+      </Text>
+    </View>
+  );
+}
+
 export function Roll3DControlDock({
   compact = true,
   selectedSides,
@@ -771,6 +974,10 @@ export function Roll3DControlDock({
 
   const [showTableSelector, setShowTableSelector] = useState(false);
 
+  const [showActionPicker, setShowActionPicker] = useState(false);
+
+  const [showAdjustmentSheet, setShowAdjustmentSheet] = useState(false);
+
   const safeMode: Roll3DControlMode =
     mode === "actions" && !hasActions ? "dice" : mode;
 
@@ -778,14 +985,34 @@ export function Roll3DControlDock({
     setMode(defaultMode);
   }, [defaultMode]);
 
+  useEffect(() => {
+    if (!actionEntryAdjustment) {
+      setShowAdjustmentSheet(false);
+    }
+  }, [actionEntryAdjustment]);
+
+  function handleAdjustEntry(params: { actionId: string; entryId: string }) {
+    onAdjustActionEntry(params);
+    setShowActionPicker(false);
+    setShowAdjustmentSheet(true);
+  }
+
+  const selectedAction =
+    actions.find((action) => action.id === selectedActionId) ?? null;
+
+  const selectedEntry =
+    selectedAction?.entries.find(
+      (entry) => entry.id === selectedActionEntryId,
+    ) ?? null;
+
   return (
     <View
       style={{
-        borderRadius: 26,
+        borderRadius: 28,
         borderWidth: 1,
-        borderColor: "rgba(232, 200, 120, 0.14)",
-        backgroundColor: "rgba(5, 7, 19, 0.54)",
-        padding: 5,
+        borderColor: "rgba(232, 200, 120, 0.12)",
+        backgroundColor: "rgba(5, 7, 19, 0.46)",
+        padding: 6,
         gap: 6,
         overflow: "hidden",
       }}
@@ -816,6 +1043,14 @@ export function Roll3DControlDock({
         />
       </View>
 
+      <Roll3DDraftHudSummary
+        mode={safeMode}
+        diceCount={diceCount}
+        selectedSides={selectedSides}
+        selectedActionName={selectedAction?.name ?? null}
+        selectedEntryLabel={selectedEntry?.label ?? null}
+      />
+
       <View
         style={{
           flexDirection: "row",
@@ -841,7 +1076,10 @@ export function Roll3DControlDock({
             selected={safeMode === "actions"}
             disabled={!hasActions}
             badge={hasActions ? String(actions.length) : null}
-            onPress={() => setMode("actions")}
+            onPress={() => {
+              setMode("actions");
+              setShowActionPicker(true);
+            }}
           />
         </View>
 
@@ -849,17 +1087,12 @@ export function Roll3DControlDock({
       </View>
 
       {safeMode === "actions" ? (
-        <Roll3DActionEntrySelector
-          compact={compact}
+        <Roll3DActionDockSummary
           profileName={profileName}
-          actions={actions}
-          selectedActionId={selectedActionId}
-          selectedEntryId={selectedActionEntryId}
-          insertMode={actionEntryInsertMode}
-          onSelectAction={onSelectAction}
-          onSelectEntry={onSelectActionEntry}
-          onChangeInsertMode={onChangeActionEntryInsertMode}
-          onAdjustEntry={onAdjustActionEntry}
+          actionsCount={actions.length}
+          selectedActionName={selectedAction?.name ?? null}
+          selectedEntryLabel={selectedEntry?.label ?? null}
+          onOpen={() => setShowActionPicker(true)}
         />
       ) : (
         <Roll3DDiceSelector
@@ -873,23 +1106,38 @@ export function Roll3DControlDock({
         />
       )}
 
-      {actionEntryAdjustment ? (
-        <Roll3DActionEntryAdjustmentCard
-          compact={compact}
-          adjustment={actionEntryAdjustment}
-          onChangeQty={onChangeActionEntryAdjustmentQty}
-          onChangeModifier={onChangeActionEntryAdjustmentModifier}
-          onToggleSign={onToggleActionEntryAdjustmentSign}
-          onChangeBehaviorParam={onChangeActionEntryBehaviorParam}
-          onClose={onCloseActionEntryAdjustment}
-        />
-      ) : null}
-
       <Roll3DRollButton
         compact={compact}
         disabled={rollDisabled}
         diceCount={diceCount}
         onPress={onRoll}
+      />
+
+      <Roll3DActionPickerSheet
+        visible={showActionPicker}
+        profileName={profileName}
+        actions={actions}
+        selectedActionId={selectedActionId}
+        selectedEntryId={selectedActionEntryId}
+        insertMode={actionEntryInsertMode}
+        onClose={() => setShowActionPicker(false)}
+        onSelectAction={onSelectAction}
+        onSelectEntry={onSelectActionEntry}
+        onChangeInsertMode={onChangeActionEntryInsertMode}
+        onAdjustEntry={handleAdjustEntry}
+      />
+
+      <Roll3DAdjustmentSheet
+        visible={showAdjustmentSheet && !!actionEntryAdjustment}
+        adjustment={actionEntryAdjustment}
+        onClose={() => {
+          setShowAdjustmentSheet(false);
+          onCloseActionEntryAdjustment();
+        }}
+        onChangeQty={onChangeActionEntryAdjustmentQty}
+        onChangeModifier={onChangeActionEntryAdjustmentModifier}
+        onToggleSign={onToggleActionEntryAdjustmentSign}
+        onChangeBehaviorParam={onChangeActionEntryBehaviorParam}
       />
 
       <Roll3DProfileSelectorModal
