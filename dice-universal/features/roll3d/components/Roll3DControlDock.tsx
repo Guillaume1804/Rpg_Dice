@@ -1,6 +1,5 @@
 // dice-universal/features/roll3d/components/Roll3DControlDock.tsx
 
-import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
@@ -76,15 +75,11 @@ function DockTab({
     >
       <View
         style={{
-          minHeight: 32,
-          borderRadius: premium.radius.pill,
-          borderWidth: 1,
-          borderColor: selected
-            ? premium.colors.border.accent
-            : premium.colors.border.subtle,
-          backgroundColor: selected
-            ? premium.colors.accent.soft
-            : "rgba(255,255,255,0.04)",
+          minHeight: 34,
+          borderRadius: 999,
+          borderWidth: selected ? 1 : 0,
+          borderColor: selected ? "rgba(232, 200, 120, 0.30)" : "transparent",
+          backgroundColor: selected ? "rgba(232, 200, 120, 0.15)" : "transparent",
           alignItems: "center",
           justifyContent: "center",
           flexDirection: "row",
@@ -96,7 +91,7 @@ function DockTab({
           style={{
             color: selected
               ? premium.colors.accent.primary
-              : premium.colors.text.secondary,
+              : "rgba(255,255,255,0.58)",
             fontSize: 10,
             fontWeight: "900",
             textTransform: "uppercase",
@@ -152,18 +147,18 @@ function DockClearButton({
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => ({
-        minHeight: 32,
-        minWidth: 62,
+        minHeight: 36,
+        minWidth: 58,
         borderRadius: premium.radius.pill,
         borderWidth: 1,
         borderColor: disabled
           ? premium.colors.border.subtle
           : "rgba(239, 111, 145, 0.34)",
         backgroundColor: disabled
-          ? premium.colors.surface.disabled
+          ? "rgba(255,255,255,0.025)"
           : pressed
-            ? premium.colors.surface.pressed
-            : premium.colors.state.failureSoft,
+            ? "rgba(239, 111, 145, 0.13)"
+            : "rgba(239, 111, 145, 0.08)",
         alignItems: "center",
         justifyContent: "center",
         paddingHorizontal: 10,
@@ -180,7 +175,7 @@ function DockClearButton({
           color: disabled
             ? premium.colors.text.muted
             : premium.colors.state.failure,
-          fontSize: 9,
+          fontSize: 10,
           fontWeight: "900",
           textTransform: "uppercase",
           letterSpacing: 0.65,
@@ -310,97 +305,6 @@ function Roll3DActionDockSummary({
   );
 }
 
-function Roll3DDraftHudSummary({
-  mode,
-  diceCount,
-  selectedSides,
-  selectedEntryLabel,
-  selectedActionName,
-}: {
-  mode: Roll3DControlMode;
-  diceCount: number;
-  selectedSides: Roll3DDieSides;
-  selectedEntryLabel: string | null;
-  selectedActionName: string | null;
-}) {
-  const premium = usePremiumTheme();
-
-  const hasDice = diceCount > 0;
-
-  const title =
-    mode === "actions"
-      ? (selectedEntryLabel ?? selectedActionName ?? "Action prête")
-      : hasDice
-        ? `${diceCount} dé${diceCount > 1 ? "s" : ""} sur la table`
-        : "Table vide";
-
-  const subtitle =
-    mode === "actions"
-      ? hasDice
-        ? `${diceCount} dé${diceCount > 1 ? "s" : ""} prêt${diceCount > 1 ? "s" : ""}`
-        : "Choisis un jet préparé"
-      : hasDice
-        ? `Dernier dé sélectionné : d${selectedSides}`
-        : "Ajoute des dés ou choisis une action";
-
-  return (
-    <View
-      style={{
-        paddingHorizontal: 8,
-        paddingVertical: 6,
-      }}
-    >
-      <Text
-        numberOfLines={1}
-        style={{
-          color: hasDice
-            ? premium.colors.accent.primary
-            : premium.colors.text.secondary,
-          fontSize: 12,
-          fontWeight: "900",
-        }}
-      >
-        {title}
-      </Text>
-
-      <Text
-        numberOfLines={1}
-        style={{
-          color: premium.colors.text.muted,
-          fontSize: 9,
-          fontWeight: "800",
-          marginTop: 2,
-        }}
-      >
-        {subtitle}
-      </Text>
-    </View>
-  );
-}
-
-function HudCluster({
-  children,
-  compact = false,
-}: {
-  children: React.ReactNode;
-  compact?: boolean;
-}) {
-  return (
-    <View
-      style={{
-        borderRadius: compact ? 22 : 24,
-        borderWidth: 1,
-        borderColor: "rgba(232, 200, 120, 0.10)",
-        backgroundColor: "rgba(5, 7, 19, 0.50)",
-        padding: compact ? 5 : 6,
-        overflow: "hidden",
-      }}
-    >
-      {children}
-    </View>
-  );
-}
-
 export function Roll3DControlDock({
   compact = true,
   selectedSides,
@@ -470,62 +374,63 @@ export function Roll3DControlDock({
   return (
     <View
       style={{
-        borderRadius: 28,
-        borderWidth: 0,
-        backgroundColor: "transparent",
-        padding: 0,
-        gap: 7,
-        overflow: "visible",
+        borderRadius: 30,
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.075)",
+        backgroundColor: "rgba(5, 7, 19, 0.46)",
+        padding: 8,
+        gap: 8,
+        overflow: "hidden",
       }}
     >
-      <HudCluster compact>
-        <Roll3DDraftHudSummary
-          mode={safeMode}
-          diceCount={diceCount}
-          selectedSides={selectedSides}
-          selectedActionName={selectedAction?.name ?? null}
-          selectedEntryLabel={selectedEntry?.label ?? null}
-        />
-      </HudCluster>
-
-      <HudCluster compact>
+      <View
+        style={{
+          flexDirection: "row",
+          gap: 8,
+          alignItems: "center",
+        }}
+      >
         <View
           style={{
+            flex: 1,
             flexDirection: "row",
             gap: 6,
-            alignItems: "center",
+            borderRadius: 999,
+            borderWidth: 1,
+            borderColor: "rgba(255,255,255,0.065)",
+            backgroundColor: "rgba(255,255,255,0.032)",
+            padding: 3,
           }}
         >
-          <View
-            style={{
-              flex: 1,
-              flexDirection: "row",
-              gap: 6,
+          <DockTab
+            label="Dés libres"
+            selected={safeMode === "dice"}
+            onPress={() => setMode("dice")}
+          />
+
+          <DockTab
+            label="Actions"
+            selected={safeMode === "actions"}
+            disabled={!hasActions}
+            badge={hasActions ? String(actions.length) : null}
+            onPress={() => {
+              setMode("actions");
+              setShowActionPicker(true);
             }}
-          >
-            <DockTab
-              label="Dés libres"
-              selected={safeMode === "dice"}
-              onPress={() => setMode("dice")}
-            />
-
-            <DockTab
-              label="Actions"
-              selected={safeMode === "actions"}
-              disabled={!hasActions}
-              badge={hasActions ? String(actions.length) : null}
-              onPress={() => {
-                setMode("actions");
-                setShowActionPicker(true);
-              }}
-            />
-          </View>
-
-          <DockClearButton disabled={diceCount <= 0} onPress={onClearDice} />
+          />
         </View>
-      </HudCluster>
 
-      <HudCluster>
+        <DockClearButton disabled={diceCount <= 0} onPress={onClearDice} />
+      </View>
+
+      <View
+        style={{
+          borderRadius: 24,
+          borderWidth: 0,
+          backgroundColor: "transparent",
+          padding: 2,
+        }}
+      >
         {safeMode === "actions" ? (
           <Roll3DActionDockSummary
             profileName={profileName}
@@ -545,7 +450,7 @@ export function Roll3DControlDock({
             onClearDice={undefined}
           />
         )}
-      </HudCluster>
+      </View>
 
       <Roll3DActionPickerSheet
         visible={showActionPicker}

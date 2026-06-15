@@ -93,41 +93,43 @@ export function Roll3DDiceSelector({
           </Text>
         </View>
 
-        <Pressable
-          disabled={!hasDice || !onClearDice}
-          onPress={onClearDice}
-          style={({ pressed }) => ({
-            opacity: !hasDice || !onClearDice ? 0.34 : pressed ? 0.72 : 1,
-            transform: [
-              {
-                scale: pressed ? premium.animation.pressScale : 1,
-              },
-            ],
-          })}
-        >
-          <View
-            style={{
-              borderRadius: premium.radius.pill,
-              borderWidth: 1,
-              borderColor: premium.colors.border.subtle,
-              backgroundColor: "rgba(255, 255, 255, 0.055)",
-              paddingHorizontal: compact ? 10 : 12,
-              paddingVertical: compact ? 5 : 7,
-            }}
+        {onClearDice ? (
+          <Pressable
+            disabled={!hasDice || !onClearDice}
+            onPress={onClearDice}
+            style={({ pressed }) => ({
+              opacity: !hasDice || !onClearDice ? 0.34 : pressed ? 0.72 : 1,
+              transform: [
+                {
+                  scale: pressed ? premium.animation.pressScale : 1,
+                },
+              ],
+            })}
           >
-            <Text
+            <View
               style={{
-                color: premium.colors.text.secondary,
-                fontSize: 10,
-                fontWeight: "900",
-                textTransform: "uppercase",
-                letterSpacing: 0.8,
+                borderRadius: premium.radius.pill,
+                borderWidth: 1,
+                borderColor: premium.colors.border.subtle,
+                backgroundColor: "rgba(255, 255, 255, 0.055)",
+                paddingHorizontal: compact ? 10 : 12,
+                paddingVertical: compact ? 5 : 7,
               }}
             >
-              Vider
-            </Text>
-          </View>
-        </Pressable>
+              <Text
+                style={{
+                  color: premium.colors.text.secondary,
+                  fontSize: 10,
+                  fontWeight: "900",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.8,
+                }}
+              >
+                Vider
+              </Text>
+            </View>
+          </Pressable>
+        ) : null}
       </View>
 
       {availableSides.length === 0 ? (
