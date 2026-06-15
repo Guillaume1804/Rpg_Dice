@@ -52,6 +52,7 @@ import {
 import type { Db } from "../../../data/db/database";
 import { getRoll3DAvailableDiceSidesForTable } from "../logic/roll3DAvailableDice";
 import { Roll3DRollButton } from "./Roll3DRollButton";
+import { Roll3DContextHeader } from "./Roll3DContextHeader";
 
 type Roll3DLauncherSurfaceProps = {
   height?: number;
@@ -208,7 +209,7 @@ function Roll3DEmptyTableHint({
       pointerEvents="none"
       style={{
         position: "absolute",
-        top: 34,
+        top: 110,
         left: 22,
         right: 22,
         zIndex: 3,
@@ -528,11 +529,10 @@ export function Roll3DLauncherSurface({
           rulesMap,
         }),
         entries: dice.map((die) => {
-          const technicalLabel = `${die.sign === -1 ? "- " : ""}${die.qty}d${die.sides}${
-            die.modifier !== 0
+          const technicalLabel = `${die.sign === -1 ? "- " : ""}${die.qty}d${die.sides}${die.modifier !== 0
               ? ` ${die.modifier > 0 ? "+" : "-"} ${Math.abs(die.modifier)}`
               : ""
-          }`;
+            }`;
 
           const customLabel =
             typeof die.label === "string" && die.label.trim().length > 0
@@ -1180,10 +1180,10 @@ export function Roll3DLauncherSurface({
       const groupRuleId =
         adjustment.behaviorParamsTarget === "group"
           ? await resolveAdjustedGroupRuleIdForSave({
-              db,
-              tableId,
-              adjustment,
-            })
+            db,
+            tableId,
+            adjustment,
+          })
           : null;
 
       const newGroupId = await createGroupFromDraft(db, {
@@ -1302,6 +1302,19 @@ export function Roll3DLauncherSurface({
         onPhysicsRollSettled={handlePhysicsRollSettled}
       />
 
+      {shouldShowControls ? (
+        <Roll3DContextHeader
+          tableName={table?.name ?? null}
+          profileName={activeProfileEntry?.profile.name ?? null}
+          tables={availableTables}
+          profiles={profileOptions}
+          selectedTableId={tableId || null}
+          selectedProfileId={activeProfileEntry?.profile.id ?? null}
+          onSelectTable={handleSelectTable}
+          onSelectProfile={handleSelectProfile}
+        />
+      ) : null}
+
       {shouldShowEmptyTableHint ? (
         <Roll3DEmptyTableHint
           hasActions={hasActionItems}
@@ -1368,17 +1381,10 @@ export function Roll3DLauncherSurface({
             selectedSides={launcher.selectedSides}
             availableDiceSides={availableDiceSides}
             diceCount={effectiveDiceCount}
-            maxDice={launcher.maxDice}
-            tableName={table?.name ?? null}
-            tables={availableTables}
-            selectedTableId={tableId || null}
-            profileName={activeProfileEntry?.profile.name ?? null}
-            profiles={profileOptions}
-            selectedProfileId={activeProfileEntry?.profile.id ?? null}
-            actions={actionItems}
-            onSelectProfile={handleSelectProfile}
-            onSelectSides={handleSelectFreeDie}
-            onSelectTable={handleSelectTable}
+            maxDice={launcher.maxDice}            
+            profileName={activeProfileEntry?.profile.name ?? null}            
+            actions={actionItems}            
+            onSelectSides={handleSelectFreeDie}            
             onClearDice={handleClearDice}
             selectedActionId={selectedActionId}
             selectedActionEntryId={selectedActionEntryId}
@@ -1544,8 +1550,8 @@ function Roll3DAdjustedActionSaveModal({
             {adjustment.sides}
             {adjustment.modifier !== 0
               ? ` ${adjustment.modifier > 0 ? "+" : "-"} ${Math.abs(
-                  adjustment.modifier,
-                )}`
+                adjustment.modifier,
+              )}`
               : ""}
           </Text>
 
