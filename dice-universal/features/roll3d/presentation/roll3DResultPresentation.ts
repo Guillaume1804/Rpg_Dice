@@ -27,13 +27,24 @@ export type Roll3DResultEvent =
   | "table_lookup"
   | "group_behavior";
 
+export type Roll3DResultPresentationSectionKind = "group" | "entry";
+
+export type Roll3DResultPresentationSectionStat = {
+  label: string;
+  value: string;
+  tone?: Roll3DResultTone;
+};
+
 export type Roll3DResultPresentationSection = {
   id: string;
+  kind: Roll3DResultPresentationSectionKind;
   title: string;
   subtitle?: string;
   tone: Roll3DResultTone;
   lines: string[];
   chips: string[];
+  stats: Roll3DResultPresentationSectionStat[];
+  diceValues: number[];
 };
 
 export type Roll3DResultPresentation = {
@@ -412,8 +423,17 @@ function formatEvalLines(evalResult: any | null | undefined): string[] {
   return [];
 }
 
-function getEntryTitle(entry: OfficialEntry) {
-  const signPrefix = entry.sign < 0 ? "-" : "";
+function getEntryPresentationMeta(
+  result: Roll3DRollSummary,
+  entry: OfficialEntry,
+) {
+  return result.presentationMeta?.entries.find(
+    (meta) => meta.rollEntryId === entry.entryId,
+  );
+}
+
+function getEntryFormula(entry: OfficialEntry) {
+  const signPrefix = entry.sign < 0 ? "- " : "";
   const modifierLabel =
     entry.modifier !== 0
       ? ` ${entry.modifier > 0 ? "+" : "-"} ${Math.abs(entry.modifier)}`
@@ -422,17 +442,93 @@ function getEntryTitle(entry: OfficialEntry) {
   return `${signPrefix}${entry.qty}d${entry.sides}${modifierLabel}`;
 }
 
-function buildEntryChips(entry: OfficialEntry) {
-  const chips = [`Dés : ${formatNumberArray(entry.natural_values)}`];
+function getEntryTitle(
+  entry: OfficialEntry,
+  index: number,
+  meta?: ReturnType<typeof getEntryPresentationMeta>,
+) {
+  const label = meta?.entryLabel?.trim();
 
-  if (entry.base_total !== entry.total_with_modifier) {
-    chips.push(`Base : ${entry.base_total}`);
-    chips.push(`Modifié : ${entry.total_with_modifier}`);
+  if (label) {
+    return label;
   }
 
-  chips.push(`Final : ${entry.final_total}`);
+  return `Entrée ${index + 1} · ${getEntryFormula(entry)}`;
+}
+
+function getEntrySubtitle(
+  entry: OfficialEntry,
+  meta?: ReturnType<typeof getEntryPresentationMeta>,
+) {
+  const formula = meta?.technicalLabel?.trim() || getEntryFormula(entry);
+  const ruleLabel = entry.rule?.name ?? "Somme simple";
+  const actionName = meta?.actionName?.trim();
+
+  if (actionName) {
+    return `${actionName} · ${formula} · ${ruleLabel}`;
+  }
+
+  return `${formula} · ${ruleLabel}`;
+}
+
+function buildEntryChips(
+  entry: OfficialEntry,
+  meta?: ReturnType<typeof getEntryPresentationMeta>,
+) {
+  const chips = [
+    meta?.source === "action"
+      ? "Action"
+      : meta?.source === "prepared"
+        ? "Préparé"
+        : "Libre",
+    `${entry.qty} dé${entry.qty > 1 ? "s" : ""}`,
+  ];
+
+  chips.push(`d${entry.sides}`);
+
+  if (entry.sign < 0) {
+    chips.push("Soustrait");
+  }
+
+  if (entry.rule?.name) {
+    chips.push(entry.rule.name);
+  } else {
+    chips.push("Somme simple");
+  }
 
   return chips;
+}
+
+function buildEntryStats(entry: OfficialEntry): Roll3DResultPresentationSectionStat[] {
+  const stats: Roll3DResultPresentationSectionStat[] = [
+    {
+      label: "Base",
+      value: String(entry.base_total),
+    },
+  ];
+
+  if (entry.modifier !== 0) {
+    stats.push({
+      label: "Modif.",
+      value: `${entry.modifier > 0 ? "+" : ""}${entry.modifier}`,
+      tone: entry.modifier > 0 ? "success" : "failure",
+    });
+  }
+
+  if (entry.total_with_modifier !== entry.base_total) {
+    stats.push({
+      label: "Avec modif.",
+      value: String(entry.total_with_modifier),
+    });
+  }
+
+  stats.push({
+    label: "Final entrée",
+    value: String(entry.final_total),
+    tone: entry.sign < 0 ? "failure" : undefined,
+  });
+
+  return stats;
 }
 
 function buildSubtitle(result: Roll3DRollSummary) {
@@ -449,6 +545,34 @@ function buildSubtitle(result: Roll3DRollSummary) {
   }
 
   return "Moteur officiel · somme";
+}
+
+function buildGlobalSummaryLines(
+  result: Roll3DRollSummary,
+  primaryEvalResult: any | null | undefined,
+) {
+  const lines = [...formatEvalLines(primaryEvalResult)];
+
+  const entryCount = result.officialResult.entries.length;
+  const diceCount = result.dice.length;
+
+  if (entryCount > 1) {
+    lines.unshift(
+      `${entryCount} entrées résolues · ${diceCount} dés lancés · total global ${result.total}`,
+    );
+  } else if (diceCount > 1) {
+    lines.unshift(`${diceCount} dés lancés · total global ${result.total}`);
+  }
+
+  if (
+    result.officialResult.entries_total !== result.officialResult.total ||
+    result.officialResult.group_eval_result
+  ) {
+    lines.push(`Total des entrées : ${result.officialResult.entries_total}`);
+    lines.push(`Total final : ${result.officialResult.total}`);
+  }
+
+  return lines;
 }
 
 export function buildRoll3DResultPresentation(
@@ -482,32 +606,53 @@ export function buildRoll3DResultPresentation(
     }
   }
 
-  const summaryLines = formatEvalLines(primaryEvalResult);
+  const summaryLines = buildGlobalSummaryLines(result, primaryEvalResult);
 
   const groupSection =
     result.officialResult.group_eval_result != null
       ? {
-          id: "group-behavior",
-          title: "Comportement de groupe",
-          subtitle: result.officialResult.group_rule?.name ?? undefined,
-          tone: getToneFromOutcome(
-            getOutcomeFromEval(result.officialResult.group_eval_result),
-          ),
-          lines: formatEvalLines(result.officialResult.group_eval_result),
-          chips: [],
-        }
+        id: "group-behavior",
+        kind: "group" as const,
+        title: "Résultat global du groupe",
+        subtitle: result.officialResult.group_rule?.name ?? undefined,
+        tone: getToneFromOutcome(
+          getOutcomeFromEval(result.officialResult.group_eval_result),
+        ),
+        lines: formatEvalLines(result.officialResult.group_eval_result),
+        chips: [
+          `${result.officialResult.entries.length} entrée${result.officialResult.entries.length > 1 ? "s" : ""}`,
+          `${result.dice.length} dé${result.dice.length > 1 ? "s" : ""}`,
+        ],
+        stats: [
+          {
+            label: "Total entrées",
+            value: String(result.officialResult.entries_total),
+          },
+          {
+            label: "Total final",
+            value: String(result.officialResult.total),
+          },
+        ],
+        diceValues: result.officialResult.entries.flatMap(
+          (entry) => entry.natural_values,
+        ),
+      }
       : null;
 
-  const entrySections = result.officialResult.entries.map((entry) => {
+  const entrySections = result.officialResult.entries.map((entry, index) => {
     const entryOutcome = getOutcomeFromEval(entry.eval_result);
+    const meta = getEntryPresentationMeta(result, entry);
 
     return {
       id: entry.entryId,
-      title: getEntryTitle(entry),
-      subtitle: entry.rule?.name ?? "Somme simple",
+      kind: "entry" as const,
+      title: getEntryTitle(entry, index, meta),
+      subtitle: getEntrySubtitle(entry, meta),
       tone: getToneFromOutcome(entryOutcome),
       lines: formatEvalLines(entry.eval_result),
-      chips: buildEntryChips(entry),
+      chips: buildEntryChips(entry, meta),
+      stats: buildEntryStats(entry),
+      diceValues: entry.natural_values,
     };
   });
 

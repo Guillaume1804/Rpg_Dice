@@ -45,6 +45,22 @@ function groupDiceByRollEntry(diceInstances: Roll3DDieInstance[]) {
   }));
 }
 
+function buildPresentationMetaFromEntryGroups(
+  entryGroups: ReturnType<typeof groupDiceByRollEntry>,
+): Roll3DRollSummary["presentationMeta"] {
+  return {
+    entries: entryGroups.map(({ rollEntryId, instances }) => {
+      const first = instances[0];
+
+      return {
+        rollEntryId,
+        source: first?.source ?? "free",
+        ...(first?.rollEntryMeta ?? {}),
+      };
+    }),
+  };
+}
+
 export function buildOfficialRoll3DSummary(
   draft: Roll3DDraft,
 ): Roll3DRollSummary {
@@ -103,6 +119,8 @@ export function buildOfficialRoll3DSummary(
     });
   });
 
+  const presentationMeta = buildPresentationMetaFromEntryGroups(entryGroups);
+
   return {
     id: createRoll3DId("roll-3d-result"),
     createdAt: Date.now(),
@@ -116,6 +134,7 @@ export function buildOfficialRoll3DSummary(
       0,
     ),
     total: officialResult.total,
+    presentationMeta,
     officialResult,
   };
 }

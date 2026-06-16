@@ -74,6 +74,14 @@ export type Roll3DActionEntryValueSource = {
   externalKey?: string | null;
 };
 
+export type Roll3DEntryPresentationMeta = {
+  actionId?: string | null;
+  actionName?: string | null;
+  savedEntryId?: string | null;
+  entryLabel?: string | null;
+  technicalLabel?: string | null;
+};
+
 export type Roll3DActionEntryAdjustment = {
   actionId: string;
   entryId: string;
@@ -153,6 +161,13 @@ export type Roll3DDieInstance = {
   behavior: Roll3DDieBehaviorRef | null;
 
   /**
+ * Métadonnées UI de l'entrée logique.
+ * Elles ne servent pas au calcul, seulement à afficher correctement
+ * le résultat : nom d'action, label d'entrée, formule technique, etc.
+ */
+  rollEntryMeta?: Roll3DEntryPresentationMeta | null;
+
+  /**
    * Prépare la future connexion avec les feuilles de personnage :
    * attributs, compétences, difficultés, opposition, bonus/malus.
    * Non exploité en V1 immédiate, mais le modèle Roll3D est prêt.
@@ -185,6 +200,15 @@ export type Roll3DRollSummary = {
   rawTotal: number;
   modifierTotal: number;
   total: number;
+
+  presentationMeta?: {
+    entries: Array<
+      Roll3DEntryPresentationMeta & {
+        rollEntryId: string;
+        source: Roll3DDieSource;
+      }
+    >;
+  };
 
   /**
    * Résultat officiel produit par le moteur Dice Universal.

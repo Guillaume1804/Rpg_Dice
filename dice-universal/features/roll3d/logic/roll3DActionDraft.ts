@@ -246,6 +246,26 @@ export function createRoll3DDiceInputsFromSavedActionEntry(params: {
 
   const rollEntryId = `${group.id}-die-${die.id}-${Date.now()}`;
 
+  const technicalLabel = formatTechnicalEntryLabel({
+    sign,
+    qty,
+    sides,
+    modifier,
+  });
+
+  const customLabel =
+    typeof die.label === "string" && die.label.trim().length > 0
+      ? die.label.trim()
+      : null;
+
+  const rollEntryMeta = {
+    actionId: group.id,
+    actionName: group.name,
+    savedEntryId: die.id,
+    entryLabel: customLabel ?? technicalLabel,
+    technicalLabel,
+  };
+
   const diceInputs: CreateRoll3DDieInput[] = [];
 
   for (let index = 0; index < qty; index += 1) {
@@ -256,6 +276,7 @@ export function createRoll3DDiceInputsFromSavedActionEntry(params: {
       modifier: index === 0 ? modifier : 0,
       source,
       behavior,
+      rollEntryMeta,
     });
   }
 
@@ -277,6 +298,14 @@ export function createRoll3DDiceInputsFromActionEntryAdjustment(params: {
 
   const qty = Math.max(1, Math.floor(adjustment.qty));
   const rollEntryId = `${adjustment.actionId}-entry-${adjustment.entryId}-${Date.now()}`;
+
+  const rollEntryMeta = {
+    actionId: adjustment.actionId,
+    actionName: adjustment.actionName,
+    savedEntryId: adjustment.entryId,
+    entryLabel: adjustment.entryLabel,
+    technicalLabel: adjustment.technicalLabel,
+  };
 
   const behavior =
     adjustment.behaviorParamsTarget === "entry"
@@ -304,6 +333,7 @@ export function createRoll3DDiceInputsFromActionEntryAdjustment(params: {
       modifier: index === 0 ? adjustment.modifier : 0,
       source,
       behavior,
+      rollEntryMeta,
       valueSources: adjustment.valueSources ?? [],
     });
   }
