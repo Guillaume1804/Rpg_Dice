@@ -4,6 +4,8 @@ import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
 import { usePremiumTheme } from "../../../theme/premium/usePremiumTheme";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 import type { Roll3DRollSummary } from "../types";
 import { buildRoll3DResultPresentation } from "../presentation/roll3DResultPresentation";
 import {
@@ -38,6 +40,8 @@ export function Roll3DResultOverlay({
 }: Roll3DResultOverlayProps) {
   const premium = usePremiumTheme();
 
+  const insets = useSafeAreaInsets();
+
   if (!result) {
     return null;
   }
@@ -61,8 +65,9 @@ export function Roll3DResultOverlay({
           backgroundColor: "rgba(0, 0, 0, 0.62)",
           alignItems: "center",
           justifyContent: "center",
-          paddingHorizontal: 18,
-          paddingVertical: 28,
+          paddingHorizontal: 16,
+          paddingTop: Math.max(28, insets.top + 18),
+          paddingBottom: Math.max(28, insets.bottom + 18),
         }}
       >
         <Pressable
@@ -72,6 +77,7 @@ export function Roll3DResultOverlay({
           style={{
             width: "100%",
             maxWidth: 420,
+            maxHeight: "94%",
           }}
         >
           <LinearGradient
@@ -297,7 +303,7 @@ export function Roll3DResultOverlay({
 
             <ScrollView
               style={{
-                maxHeight: 260,
+                maxHeight: 220,
                 marginTop: 14,
               }}
               showsVerticalScrollIndicator={false}

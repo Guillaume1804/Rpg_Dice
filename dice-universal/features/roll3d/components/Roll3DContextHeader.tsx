@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type ContextOption = {
     id: string;
@@ -47,22 +48,22 @@ function ContextChip({
         >
             <View
                 style={{
-                    minHeight: 46,
+                    minHeight: 42,
                     borderRadius: 999,
                     borderWidth: 1,
                     borderColor: "rgba(232, 200, 120, 0.20)",
                     backgroundColor: "rgba(5, 7, 19, 0.68)",
-                    paddingHorizontal: 13,
-                    paddingVertical: 8,
+                    paddingHorizontal: 11,
+                    paddingVertical: 7,
                     flexDirection: "row",
                     alignItems: "center",
-                    gap: 10,
+                    gap: 8,
                 }}
             >
                 <View
                     style={{
-                        width: 28,
-                        height: 28,
+                        width: 26,
+                        height: 26,
                         borderRadius: 999,
                         alignItems: "center",
                         justifyContent: "center",
@@ -138,6 +139,7 @@ function ContextSelectorModal({
     onClose: () => void;
     onSelect: (id: string) => void;
 }) {
+    const insets = useSafeAreaInsets();
     return (
         <Modal
             visible={visible}
@@ -153,8 +155,9 @@ function ContextSelectorModal({
                     backgroundColor: "rgba(0,0,0,0.66)",
                     alignItems: "center",
                     justifyContent: "center",
-                    paddingHorizontal: 18,
-                    paddingVertical: 28,
+                    paddingHorizontal: 16,
+                    paddingTop: Math.max(28, insets.top + 18),
+                    paddingBottom: Math.max(28, insets.bottom + 18),
                 }}
             >
                 <Pressable
@@ -368,18 +371,20 @@ export function Roll3DContextHeader({
     const [showTableSelector, setShowTableSelector] = useState(false);
     const [showProfileSelector, setShowProfileSelector] = useState(false);
 
+    const insets = useSafeAreaInsets();
+
     return (
         <>
             <View
                 pointerEvents="box-none"
                 style={{
                     position: "absolute",
-                    top: 18,
-                    left: 14,
-                    right: 14,
+                    top: Math.max(12, insets.top + 8),
+                    left: 12,
+                    right: 12,
                     zIndex: 7,
                     flexDirection: "row",
-                    gap: 10,
+                    gap: 8,
                 }}
             >
                 <ContextChip

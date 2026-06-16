@@ -10,6 +10,8 @@ import { useDataRefresh } from "../../../data/state/DataRefreshProvider";
 import { useRollTableData } from "../../roll/hooks/useRollTableData";
 import { formatSavedActionDetail } from "../../roll/helpers/rollDisplaySummary";
 
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 import {
   listTables,
   type TableRow,
@@ -199,17 +201,19 @@ function Roll3DEmptyTableHint({
   hasActions,
   tableName,
   profileName,
+  topOffset,
 }: {
   hasActions: boolean;
   tableName: string | null;
   profileName: string | null;
+  topOffset: number;
 }) {
   return (
     <View
       pointerEvents="none"
       style={{
         position: "absolute",
-        top: 110,
+        top: topOffset,
         left: 22,
         right: 22,
         zIndex: 3,
@@ -333,6 +337,7 @@ export function Roll3DLauncherSurface({
   const launcher = useRoll3DLauncher({
     maxDice,
   });
+  const insets = useSafeAreaInsets();
 
   const {
     resetLauncher,
@@ -530,8 +535,8 @@ export function Roll3DLauncherSurface({
         }),
         entries: dice.map((die) => {
           const technicalLabel = `${die.sign === -1 ? "- " : ""}${die.qty}d${die.sides}${die.modifier !== 0
-              ? ` ${die.modifier > 0 ? "+" : "-"} ${Math.abs(die.modifier)}`
-              : ""
+            ? ` ${die.modifier > 0 ? "+" : "-"} ${Math.abs(die.modifier)}`
+            : ""
             }`;
 
           const customLabel =
@@ -1320,6 +1325,7 @@ export function Roll3DLauncherSurface({
           hasActions={hasActionItems}
           tableName={table?.name ?? null}
           profileName={activeProfileEntry?.profile.name ?? null}
+          topOffset={Math.max(104, insets.top + 86)}
         />
       ) : null}
 
@@ -1335,7 +1341,7 @@ export function Roll3DLauncherSurface({
             zIndex: 4,
             justifyContent: "flex-start",
             alignItems: "center",
-            paddingTop: 18,
+            paddingTop: Math.max(18, insets.top + 10),
           }}
         >
           <View
@@ -1371,7 +1377,7 @@ export function Roll3DLauncherSurface({
             position: "absolute",
             left: 12,
             right: 12,
-            bottom: 14,
+            bottom: Math.max(14, insets.bottom + 10),
             zIndex: 5,
             gap: 9,
           }}
@@ -1381,10 +1387,10 @@ export function Roll3DLauncherSurface({
             selectedSides={launcher.selectedSides}
             availableDiceSides={availableDiceSides}
             diceCount={effectiveDiceCount}
-            maxDice={launcher.maxDice}            
-            profileName={activeProfileEntry?.profile.name ?? null}            
-            actions={actionItems}            
-            onSelectSides={handleSelectFreeDie}            
+            maxDice={launcher.maxDice}
+            profileName={activeProfileEntry?.profile.name ?? null}
+            actions={actionItems}
+            onSelectSides={handleSelectFreeDie}
             onClearDice={handleClearDice}
             selectedActionId={selectedActionId}
             selectedActionEntryId={selectedActionEntryId}

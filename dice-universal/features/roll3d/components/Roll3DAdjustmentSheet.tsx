@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { Modal, Pressable, Text, View } from "react-native";
 
 import { usePremiumTheme } from "../../../theme/premium/usePremiumTheme";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 import type { Roll3DActionEntryAdjustment } from "../types";
 import {
   Roll3DActionEntryAdjustmentCard,
@@ -41,6 +43,8 @@ export function Roll3DAdjustmentSheet({
 }: Roll3DAdjustmentSheetProps) {
   const premium = usePremiumTheme();
 
+  const insets = useSafeAreaInsets();
+
   const [activeSection, setActiveSection] =
     useState<Roll3DAdjustmentSection>("dice");
 
@@ -58,7 +62,7 @@ export function Roll3DAdjustmentSheet({
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
+      animationType="fade"
       statusBarTranslucent
       onRequestClose={onClose}
     >
@@ -70,7 +74,8 @@ export function Roll3DAdjustmentSheet({
           justifyContent: "center",
           alignItems: "center",
           paddingHorizontal: 16,
-          paddingVertical: 28,
+          paddingTop: Math.max(28, insets.top + 18),
+          paddingBottom: Math.max(28, insets.bottom + 18),
         }}
       >
         <Pressable
@@ -80,7 +85,7 @@ export function Roll3DAdjustmentSheet({
           style={{
             width: "100%",
             maxWidth: 430,
-            maxHeight: "84%",
+            maxHeight: "86%",
             borderRadius: 32,
             borderWidth: 1,
             borderColor: "rgba(232, 200, 120, 0.14)",

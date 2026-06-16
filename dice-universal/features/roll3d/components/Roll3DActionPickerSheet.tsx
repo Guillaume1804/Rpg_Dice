@@ -6,6 +6,8 @@ import { usePremiumTheme } from "../../../theme/premium/usePremiumTheme";
 import type { Roll3DActionEntryInsertMode } from "../types";
 import type { Roll3DActionItem } from "./Roll3DActionEntrySelector";
 
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 type Roll3DActionPickerSheetProps = {
   visible: boolean;
   profileName: string | null;
@@ -326,6 +328,8 @@ export function Roll3DActionPickerSheet({
 }: Roll3DActionPickerSheetProps) {
   const premium = usePremiumTheme();
 
+  const insets = useSafeAreaInsets();
+
   const selectedAction =
     actions.find((action) => action.id === selectedActionId) ?? null;
 
@@ -355,7 +359,8 @@ export function Roll3DActionPickerSheet({
           justifyContent: "center",
           alignItems: "center",
           paddingHorizontal: 16,
-          paddingVertical: 28,
+          paddingTop: Math.max(28, insets.top + 18),
+          paddingBottom: Math.max(28, insets.bottom + 18),
         }}
       >
         <Pressable
@@ -365,7 +370,7 @@ export function Roll3DActionPickerSheet({
           style={{
             width: "100%",
             maxWidth: 430,
-            maxHeight: "82%",
+            maxHeight: "84%",
             borderRadius: 32,
             borderWidth: 1,
             borderColor: "rgba(232, 200, 120, 0.14)",
@@ -507,7 +512,7 @@ export function Roll3DActionPickerSheet({
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{
               gap: 9,
-              paddingBottom: 18,
+              paddingBottom: 24,
             }}
           >
             {actions.length === 0 ? (
