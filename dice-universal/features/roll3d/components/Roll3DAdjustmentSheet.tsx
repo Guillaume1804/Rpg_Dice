@@ -1,3 +1,5 @@
+// dice-universal/features/roll3d/components/Roll3DAdjustmentSheet.tsx
+
 import { useEffect, useState } from "react";
 import { Modal, Pressable, Text, View } from "react-native";
 
@@ -24,8 +26,7 @@ type Roll3DAdjustmentSheetProps = {
 
 function getAdjustmentSectionLabel(section: Roll3DAdjustmentSection) {
   if (section === "dice") return "Dés";
-  if (section === "behavior") return "Règle";
-  return "Expert";
+  return "Règle";
 }
 
 export function Roll3DAdjustmentSheet({
@@ -244,7 +245,7 @@ export function Roll3DAdjustmentSheet({
               padding: 4,
             }}
           >
-            {(["dice", "behavior", "all"] as const).map((section) => {
+            {(["dice", "behavior"] as Roll3DAdjustmentSection[]).map((section) => {
               const selected = activeSection === section;
 
               return (

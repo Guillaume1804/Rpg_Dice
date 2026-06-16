@@ -10,7 +10,7 @@ import {
 import { usePremiumTheme } from "../../../theme/premium/usePremiumTheme";
 import type { Roll3DActionEntryAdjustment } from "../types";
 
-export type Roll3DAdjustmentSection = "dice" | "behavior" | "all";
+export type Roll3DAdjustmentSection = "dice" | "behavior";
 
 type Roll3DActionEntryAdjustmentCardProps = {
   adjustment: Roll3DActionEntryAdjustment;
@@ -554,7 +554,7 @@ function parseRangesValue(
         max,
         label:
           typeof candidate.label === "string" &&
-          candidate.label.trim().length > 0
+            candidate.label.trim().length > 0
             ? candidate.label
             : fallbackRange.label,
       };
@@ -1714,7 +1714,7 @@ export function Roll3DActionEntryAdjustmentCard({
   adjustment,
   compact = true,
   hideHeader = false,
-  section = "all",
+  section = "dice",
   onChangeQty,
   onChangeModifier,
   onToggleSign,
@@ -1730,15 +1730,13 @@ export function Roll3DActionEntryAdjustmentCard({
 
   const signLabel = adjustment.sign === -1 ? "−" : "+";
 
-  const showDiceSection = section === "dice" || section === "all";
-  const showBehaviorSection = section === "behavior" || section === "all";
+  const showDiceSection = section === "dice";
+  const showBehaviorSection = section === "behavior";
 
   const helperText =
     section === "dice"
       ? "Ajuste les dés, le bonus ou le malus avant de revenir à la table."
-      : section === "behavior"
-        ? "Ajuste la règle de résolution sans modifier l’action sauvegardée."
-        : "Mode expert : tous les réglages rapides disponibles pour ce jet.";
+      : "Ajuste la règle de résolution sans modifier l’action sauvegardée.";
 
   return (
     <View
