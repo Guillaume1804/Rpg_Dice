@@ -363,6 +363,11 @@ export function Roll3DControlDock({
     setShowAdjustmentSheet(true);
   }
 
+  function handleSelectActionEntry(params: { actionId: string; entryId: string }) {
+    onSelectActionEntry(params);
+    setShowActionPicker(false);
+  }
+
   const selectedAction =
     actions.find((action) => action.id === selectedActionId) ?? null;
 
@@ -461,7 +466,7 @@ export function Roll3DControlDock({
         insertMode={actionEntryInsertMode}
         onClose={() => setShowActionPicker(false)}
         onSelectAction={onSelectAction}
-        onSelectEntry={onSelectActionEntry}
+        onSelectEntry={handleSelectActionEntry}
         onChangeInsertMode={onChangeActionEntryInsertMode}
         onAdjustEntry={handleAdjustEntry}
       />
