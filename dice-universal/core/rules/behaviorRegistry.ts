@@ -15,6 +15,20 @@ export type RuleBehaviorKey =
   | "threshold_degrees"
   | "custom_pipeline";
 
+export type RuleBehaviorVerticalSlice =
+  | "sum"
+  | "single_check"
+  | "threshold_degrees"
+  | "success_pool"
+  | "keep_drop"
+  | "table_ranges"
+  | "custom_pipeline";
+
+export type RuleBehaviorProductStatus =
+  | "v1_core"
+  | "v1_advanced"
+  | "technical_variant";
+
 type BaseBehaviorField = {
   key: string;
   paramsKey?: string;
@@ -612,6 +626,112 @@ export const RULE_BEHAVIORS: RuleBehaviorRegistryItem[] = [
     ],
   },
 ];
+
+export const RULE_BEHAVIOR_VERTICAL_SLICE_ORDER: RuleBehaviorVerticalSlice[] = [
+  "sum",
+  "single_check",
+  "threshold_degrees",
+  "success_pool",
+  "keep_drop",
+  "table_ranges",
+  "custom_pipeline",
+];
+
+export function getRuleBehaviorVerticalSlice(
+  key: RuleBehaviorKey,
+): RuleBehaviorVerticalSlice {
+  switch (key) {
+    case "sum_total":
+      return "sum";
+
+    case "single_check":
+      return "single_check";
+
+    case "threshold_degrees":
+      return "threshold_degrees";
+
+    case "success_pool":
+      return "success_pool";
+
+    case "highest_of_pool":
+    case "lowest_of_pool":
+    case "keep_highest_n":
+    case "keep_lowest_n":
+    case "drop_highest_n":
+    case "drop_lowest_n":
+      return "keep_drop";
+
+    case "table_lookup":
+    case "banded_sum":
+      return "table_ranges";
+
+    case "custom_pipeline":
+      return "custom_pipeline";
+
+    default:
+      return "custom_pipeline";
+  }
+}
+
+export function getRuleBehaviorProductStatus(
+  key: RuleBehaviorKey,
+): RuleBehaviorProductStatus {
+  switch (key) {
+    case "sum_total":
+    case "single_check":
+    case "threshold_degrees":
+    case "success_pool":
+    case "table_lookup":
+    case "banded_sum":
+      return "v1_core";
+
+    case "keep_highest_n":
+    case "keep_lowest_n":
+    case "drop_highest_n":
+    case "drop_lowest_n":
+      return "v1_core";
+
+    case "highest_of_pool":
+    case "lowest_of_pool":
+      return "technical_variant";
+
+    case "custom_pipeline":
+      return "v1_advanced";
+
+    default:
+      return "v1_advanced";
+  }
+}
+
+export function getRuleBehaviorVerticalSliceLabel(
+  slice: RuleBehaviorVerticalSlice,
+) {
+  switch (slice) {
+    case "sum":
+      return "Somme simple";
+
+    case "single_check":
+      return "Test avec seuil";
+
+    case "threshold_degrees":
+      return "Seuil avec degrés";
+
+    case "success_pool":
+      return "Pool de succès";
+
+    case "keep_drop":
+      return "Garder / retirer des dés";
+
+    case "table_ranges":
+      return "Table / Paliers";
+
+    case "custom_pipeline":
+      return "Pipeline personnalisé";
+
+    default:
+      return "Comportement";
+  }
+}
 
 export function getRuleBehaviorDefinition(key: RuleBehaviorKey) {
   return RULE_BEHAVIORS.find((behavior) => behavior.key === key) ?? null;
