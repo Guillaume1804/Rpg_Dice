@@ -1,7 +1,7 @@
 // dice-universal\features\rules\ruleWizard\helpers.ts
 
 import type { RuleWizardDraft, RuleWizardStep } from "./types";
-import { RULE_BEHAVIORS } from "../../../core/rules/behaviorRegistry";
+import { getRuleBehaviorDefinition } from "../../../core/rules/behaviorRegistry";
 
 import type { PipelineParams, PipelineStep } from "../../../core/rules/types";
 
@@ -30,6 +30,27 @@ function parseSupportedSides(value: string): number[] {
   return parseNumberList(value).filter((side) => side > 0);
 }
 
+function formatSupportedSides(sides: number[]) {
+  return sides.map((side) => `d${side}`).join(", ");
+}
+
+function getEffectiveSupportedSides(
+  draft: RuleWizardDraft,
+  behavior: NonNullable<ReturnType<typeof getBehaviorDefinition>>,
+) {
+  const text = draft.supportedSidesText.trim().toLowerCase();
+
+  if (behavior.supportedSides && behavior.supportedSides.length > 0) {
+    return behavior.supportedSides;
+  }
+
+  if (text === "all") {
+    return [];
+  }
+
+  return parseSupportedSides(draft.supportedSidesText);
+}
+
 function parseRanges(draft: RuleWizardDraft) {
   return draft.ranges
     .map((row) => ({
@@ -47,9 +68,7 @@ function parseRanges(draft: RuleWizardDraft) {
 
 function getBehaviorDefinition(behaviorKey: RuleWizardDraft["behaviorKey"]) {
   if (!behaviorKey) return null;
-  return (
-    RULE_BEHAVIORS.find((behavior) => behavior.key === behaviorKey) ?? null
-  );
+  return getRuleBehaviorDefinition(behaviorKey) ?? null;
 }
 
 function getDraftValue(draft: RuleWizardDraft, key: string): unknown {
@@ -179,29 +198,50 @@ export function validateRuleWizardStep(
   const behavior = getBehaviorDefinition(draft.behaviorKey);
 
   if (step === "name" && !draft.name.trim()) {
-    return "Le nom de la règle est obligatoire.";
+    return "Le nom du comportement est obligatoire.";
   }
 
   if (step === "behavior" && !behavior) {
-    return "Choisis un comportement de règle.";
+    return "Choisis un type de comportement.";
   }
 
   if (step === "dice") {
-    const sides = parseSupportedSides(draft.supportedSidesText);
-    const isAll = draft.supportedSidesText.trim().toLowerCase() === "all";
-
-    if (!isAll && sides.length === 0) {
-      return "Indique au moins un type de dé, par exemple 20 ou 6,10,100.";
+    if (!behavior) {
+      return "Choisis d’abord un type de comportement.";
     }
 
-    if (behavior?.supportedSides && !isAll) {
+    const text = draft.supportedSidesText.trim().toLowerCase();
+    const isAll = text === "all";
+    const sides = parseSupportedSides(draft.supportedSidesText);
+
+    if (behavior.supportedSides && behavior.supportedSides.length > 0) {
+      if (isAll) {
+        return `${behavior.label} est limité à ${formatSupportedSides(
+          behavior.supportedSides,
+        )}. Remplace “all” par ${behavior.supportedSides.join(", ")}.`;
+      }
+
       const invalidSide = sides.find(
         (side) => !behavior.supportedSides?.includes(side),
       );
 
       if (invalidSide) {
-        return `Le d${invalidSide} n’est pas compatible avec ce comportement.`;
+        return `Le d${invalidSide} n’est pas compatible avec ${behavior.label}. Dés autorisés : ${formatSupportedSides(
+          behavior.supportedSides,
+        )}.`;
       }
+
+      if (sides.length === 0) {
+        return `Indique au moins un dé compatible : ${formatSupportedSides(
+          behavior.supportedSides,
+        )}.`;
+      }
+
+      return null;
+    }
+
+    if (!isAll && sides.length === 0) {
+      return "Indique au moins un type de dé, par exemple 20 ou 6,10,100, ou laisse “all” pour tous les dés.";
     }
   }
 
@@ -377,11 +417,9 @@ export function buildRulePayloadFromRuleWizard(draft: RuleWizardDraft) {
     throw new Error("Comportement manquant.");
   }
 
-  const supportedSides = parseSupportedSides(draft.supportedSidesText);
+  const supportedSides = getEffectiveSupportedSides(draft, behavior);
   const supported_sides_json =
-    draft.supportedSidesText.trim().toLowerCase() === "all"
-      ? null
-      : JSON.stringify(supportedSides);
+    supportedSides.length === 0 ? null : JSON.stringify(supportedSides);
 
   const params: Record<string, unknown> = {};
 

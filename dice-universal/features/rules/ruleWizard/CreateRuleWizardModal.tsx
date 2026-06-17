@@ -11,7 +11,12 @@ import {
 import type { RuleBehaviorKey } from "../../../core/rules/behaviorRegistry";
 import type { RuleWizardDraft, RuleWizardScope, RuleWizardStep } from "./types";
 
-import { RULE_BEHAVIORS } from "../../../core/rules/behaviorRegistry";
+import {
+  RULE_BEHAVIOR_VERTICAL_SLICE_ORDER,
+  getRuleBehaviorVerticalSlice,
+  getRuleBehaviorVerticalSliceLabel,
+  getVisibleRuleBehaviorsByVerticalSlice,
+} from "../../../core/rules/behaviorRegistry";
 
 import { useArcaneTheme } from "../../../theme/ArcaneThemeProvider";
 
@@ -155,6 +160,72 @@ function formatPreviewResult(result: unknown): string {
     default:
       return "Résultat non formaté.";
   }
+}
+
+function getStepTitle(step: RuleWizardStep) {
+  switch (step) {
+    case "name":
+      return "Nommer";
+    case "behavior":
+      return "Choisir";
+    case "dice":
+      return "Dés";
+    case "scope":
+      return "Portée";
+    case "summary":
+      return "Résumé";
+    default:
+      return "Étape";
+  }
+}
+
+function getStepDescription(step: RuleWizardStep) {
+  switch (step) {
+    case "name":
+      return "Donne un nom clair au comportement.";
+    case "behavior":
+      return "Choisis comment le jet doit être interprété.";
+    case "dice":
+      return "Définis les dés compatibles.";
+    case "scope":
+      return "Choisis où le comportement peut s’appliquer.";
+    case "summary":
+      return "Vérifie et teste avant sauvegarde.";
+    default:
+      return "";
+  }
+}
+
+function getBehaviorOptions() {
+  return RULE_BEHAVIOR_VERTICAL_SLICE_ORDER.flatMap((slice) =>
+    getVisibleRuleBehaviorsByVerticalSlice(slice).map((behavior) => ({
+      ...behavior,
+      categoryLabel: getRuleBehaviorVerticalSliceLabel(
+        getRuleBehaviorVerticalSlice(behavior.key),
+      ),
+    })),
+  );
+}
+
+function getScopeDisplayLabel(scope: RuleWizardScope) {
+  if (scope === "entry") return "Entrée";
+  if (scope === "group") return "Groupe";
+  return "Entrée ou groupe";
+}
+
+function getSupportedDiceDisplayLabel(value: string) {
+  const text = value.trim();
+
+  if (!text || text.toLowerCase() === "all") {
+    return "Tous les dés";
+  }
+
+  return text
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => (item.startsWith("d") ? item : `d${item}`))
+    .join(", ");
 }
 
 function WizardPillButton({
@@ -634,25 +705,28 @@ export function CreateRuleWizardModal({
 
   const isLastStep = stepIndex === totalSteps - 1;
 
-  const selectedBehavior = RULE_BEHAVIORS.find(
-    (behavior) => behavior.key === draft.behaviorKey,
-  );
+  const behaviorOptions = getBehaviorOptions();
+
+  const selectedBehavior =
+    behaviorOptions.find((behavior) => behavior.key === draft.behaviorKey) ??
+    null;
 
   const scopeOptions = [
     {
       key: "entry",
-      label: "Un dé / une entrée",
-      description: "Ex: 1d20 contre une difficulté.",
+      label: "Entrée de dés",
+      description: "S’applique à une ligne précise, comme 1d20 + 3 ou 2d6.",
     },
     {
       key: "group",
-      label: "Une action complète",
-      description: "Ex: pool de dés ou somme globale.",
+      label: "Groupe complet",
+      description:
+        "S’applique au jet entier, utile pour les pools ou résultats globaux.",
     },
     {
       key: "both",
-      label: "Les deux",
-      description: "Règle utilisable dans les deux contextes.",
+      label: "Entrée ou groupe",
+      description: "Comportement réutilisable dans les deux contextes.",
     },
   ].filter((option) =>
     selectedBehavior
@@ -684,17 +758,19 @@ export function CreateRuleWizardModal({
         <View style={{ gap: theme.spacing.xs }}>
           <Text
             style={{
-              color: theme.colors.textSubtle,
+              color: theme.colors.accent,
               fontSize: theme.typography.tiny,
               fontWeight: "900",
               textTransform: "uppercase",
-              letterSpacing: 0.8,
+              letterSpacing: 0.9,
             }}
           >
-            Création guidée
+            Création guidée · Comportement
           </Text>
 
-          <Text style={styles.sectionTitle}>Créer une règle</Text>
+          <Text style={styles.sectionTitle}>{getStepTitle(step)}</Text>
+
+          <Text style={styles.muted}>{getStepDescription(step)}</Text>
 
           <Text style={styles.muted}>
             Étape {stepIndex + 1}/{totalSteps}
@@ -742,23 +818,23 @@ export function CreateRuleWizardModal({
         >
           {step === "name" ? (
             <WizardSection
-              title="Nom de la règle"
-              description="Donne un nom clair à cette règle pour la retrouver facilement dans l’atelier."
+              title="Nom du comportement"
+              description="Choisis un nom simple. Ce comportement pourra ensuite être réutilisé dans tes tables, profils et actions."
             >
               <WizardFieldLabel>Nom</WizardFieldLabel>
 
               <WizardInput
                 value={draft.name}
                 onChangeText={(value) => onUpdateDraft("name", value)}
-                placeholder="Ex: Test D20 difficulté 15"
+                placeholder="Ex : Somme simple, Test D20 DD 15, Pool D6"
               />
             </WizardSection>
           ) : null}
 
           {step === "scope" ? (
             <WizardSection
-              title="Portée de la règle"
-              description="Choisis si cette règle s’applique à une entrée de dés, à une action complète, ou aux deux."
+              title="Portée du comportement"
+              description="Choisis si ce comportement s’applique à une entrée de dés, à une action complète, ou aux deux."
             >
               {scopeOptions.map((option) => (
                 <WizardChoiceCard
@@ -775,7 +851,7 @@ export function CreateRuleWizardModal({
           {step === "dice" ? (
             <WizardSection
               title="Dés compatibles"
-              description="Indique les types de dés utilisables avec cette règle. Tu peux écrire une liste séparée par des virgules, ou “all” pour tous les dés."
+              description="Indique les dés autorisés. Laisse “all” pour rendre le comportement utilisable avec tous les dés."
             >
               <WizardFieldLabel>Faces compatibles</WizardFieldLabel>
 
@@ -785,7 +861,7 @@ export function CreateRuleWizardModal({
                 onChangeText={(value) =>
                   onUpdateDraft("supportedSidesText", value)
                 }
-                placeholder="Ex: 20 ou 6,10,100 ou all"
+                placeholder="Ex : all, 20, 6,10,100"
               />
 
               {selectedBehavior?.supportedSides ? (
@@ -799,14 +875,14 @@ export function CreateRuleWizardModal({
           {step === "behavior" ? (
             <>
               <WizardSection
-                title="Comportement"
-                description="Choisis la logique principale de cette règle. Les paramètres précis apparaîtront ensuite selon le comportement sélectionné."
+                title="Type de comportement"
+                description="Choisis la façon dont le jet sera lu. Les comportements simples demandent peu ou pas de réglages."
               >
-                {RULE_BEHAVIORS.map((option) => (
+                {behaviorOptions.map((option) => (
                   <BehaviorChoiceCard
                     key={option.key}
                     title={option.label}
-                    description={option.description}
+                    description={`${option.categoryLabel} · ${option.description}`}
                     selected={draft.behaviorKey === option.key}
                     onPress={() => onSetBehaviorKey(option.key)}
                   />
@@ -1165,10 +1241,24 @@ export function CreateRuleWizardModal({
                     </>
                   ) : null}
 
-                  {draft.behaviorKey !== "custom_pipeline" ? (
+                  {draft.behaviorKey === "sum_total" ? (
+                    <WizardSection
+                      title="Somme simple"
+                      description="Aucune configuration nécessaire."
+                    >
+                      <Text style={styles.muted}>
+                        Ce comportement additionne simplement les dés et les
+                        modificateurs. C’est le comportement standard pour les
+                        jets sans interprétation spéciale.
+                      </Text>
+                    </WizardSection>
+                  ) : null}
+
+                  {draft.behaviorKey !== "custom_pipeline" &&
+                  draft.behaviorKey !== "sum_total" ? (
                     <WizardSection
                       title="Paramètres"
-                      description="Renseigne les valeurs nécessaires pour ce comportement."
+                      description="Renseigne uniquement les valeurs nécessaires à ce comportement."
                     >
                       {selectedBehavior.fields.map((field) => {
                         if (field.type === "text" || field.type === "number") {
@@ -1286,27 +1376,34 @@ export function CreateRuleWizardModal({
                 <Text
                   style={{ color: theme.colors.textMuted, fontWeight: "700" }}
                 >
-                  Portée : {draft.scope}
+                  Type : {selectedBehavior?.label ?? "—"}
                 </Text>
 
                 <Text
                   style={{ color: theme.colors.textMuted, fontWeight: "700" }}
                 >
-                  Dés : {draft.supportedSidesText || "—"}
+                  Famille : {selectedBehavior?.categoryLabel ?? "—"}
                 </Text>
 
                 <Text
                   style={{ color: theme.colors.textMuted, fontWeight: "700" }}
                 >
-                  Comportement : {draft.behaviorKey ?? "—"}
+                  Portée : {getScopeDisplayLabel(draft.scope)}
+                </Text>
+
+                <Text
+                  style={{ color: theme.colors.textMuted, fontWeight: "700" }}
+                >
+                  Dés compatibles :{" "}
+                  {getSupportedDiceDisplayLabel(draft.supportedSidesText)}
                 </Text>
               </View>
             </WizardSection>
           ) : null}
 
           <WizardSection
-            title="Test rapide"
-            description="Simule quelques valeurs pour vérifier que la règle produit le résultat attendu."
+            title="Aperçu du comportement"
+            description="Teste des valeurs fictives pour vérifier que le comportement produit une lecture cohérente."
           >
             <WizardFieldLabel>Valeurs</WizardFieldLabel>
             <WizardInput
@@ -1315,7 +1412,7 @@ export function CreateRuleWizardModal({
               placeholder="Ex: 12 ou 5,6,2"
             />
 
-            <WizardFieldLabel>Faces du dé</WizardFieldLabel>
+            <WizardFieldLabel>Type de dé</WizardFieldLabel>
             <WizardInput
               value={previewSidesText}
               onChangeText={onChangePreviewSidesText}
