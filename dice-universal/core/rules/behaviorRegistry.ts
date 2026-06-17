@@ -83,7 +83,7 @@ export const RULE_BEHAVIORS: RuleBehaviorRegistryItem[] = [
     defaultScope: "entry",
     allowedScopes: ["entry", "group", "both"],
     supportedSides: null,
-    visibleInQuickPicker: false,
+    visibleInQuickPicker: true,
     uxFamily: "default",
     fields: [],
   },

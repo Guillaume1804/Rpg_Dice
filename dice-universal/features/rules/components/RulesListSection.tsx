@@ -1,10 +1,12 @@
 // dice-universal/features/rules/components/RulesListSection.tsx
 
 import { View, Text, Pressable, ScrollView } from "react-native";
-import type { RuleRow } from "../../../data/repositories/rulesRepo";
+import {
+  parseSupportedSides,
+  type RuleRow,
+} from "../../../data/repositories/rulesRepo";
 
 import { useArcaneTheme } from "../../../theme/ArcaneThemeProvider";
-
 
 type Props = {
   systemRules: RuleRow[];
@@ -16,7 +18,7 @@ type Props = {
 function getRuleKindLabel(kind: string) {
   switch (kind) {
     case "sum":
-      return "Somme";
+      return "Somme simple";
     case "single_check":
       return "Test avec seuil";
     case "success_pool":
@@ -44,12 +46,20 @@ function getRuleKindLabel(kind: string) {
   }
 }
 
-
-
 function getScopeLabel(scope: RuleRow["scope"]) {
   if (scope === "entry") return "Entrée";
   if (scope === "group") return "Groupe";
   return "Les deux";
+}
+
+function getSupportedSidesLabel(rule: RuleRow) {
+  const sides = parseSupportedSides(rule);
+
+  if (sides.length === 0) {
+    return "Tous dés";
+  }
+
+  return `Dés : ${sides.map((side) => `d${side}`).join(", ")}`;
 }
 
 function SectionLabel({ children }: { children: string }) {
@@ -128,7 +138,7 @@ function RuleBadge({
   variant?: "default" | "system" | "custom" | "pipeline";
 }) {
   const { theme } = useArcaneTheme();
-  
+
   const borderColor =
     variant === "system"
       ? theme.colors.border
@@ -249,11 +259,7 @@ function RuleCard({
       >
         <RuleBadge label={`Portée : ${getScopeLabel(rule.scope)}`} />
 
-        {rule.supported_sides_json ? (
-          <RuleBadge label="Dés configurés" />
-        ) : (
-          <RuleBadge label="Tous dés" />
-        )}
+        <RuleBadge label={getSupportedSidesLabel(rule)} />
       </View>
 
       <View
@@ -313,7 +319,6 @@ export function RulesListSection({
   onEditRule,
   onDeleteRule,
 }: Props) {
-
   const { theme } = useArcaneTheme();
 
   return (

@@ -170,6 +170,16 @@ export function buildRulePayloadFromForm(state: RuleFormState): {
 
   const behaviorType = state.advancedBehaviorType ?? state.family;
 
+  if (behaviorType === "sum_total") {
+    return {
+      name,
+      kind: "sum",
+      params_json: JSON.stringify({}),
+      supported_sides_json: JSON.stringify(supportedSides),
+      scope,
+    };
+  }
+
   if (state.family === "single_check") {
     const threshold =
       state.successThreshold.trim() === ""
@@ -285,16 +295,6 @@ export function buildRulePayloadFromForm(state: RuleFormState): {
 
   if (ranges.length === 0) {
     throw new Error("Ajoute au moins une plage valide.");
-  }
-
-  if (behaviorType === "sum_total") {
-    return {
-      name,
-      kind: "sum",
-      params_json: JSON.stringify({}),
-      supported_sides_json: JSON.stringify(supportedSides),
-      scope,
-    };
   }
 
   if (behaviorType === "lowest_of_pool") {
@@ -616,7 +616,7 @@ export function fillRuleFormFromExistingRule(rule: {
       name: rule.name,
       family: "single_check",
       advancedBehaviorType: "sum_total",
-      supportedSidesText: supportedSidesText || "6",
+      supportedSidesText,
       scope: rule.scope ?? "entry",
     };
   }

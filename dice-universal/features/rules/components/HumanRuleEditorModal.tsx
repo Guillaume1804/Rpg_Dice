@@ -452,7 +452,21 @@ export function HumanRuleEditorModal({
               )}
             </SectionCard>
 
-            {(form.family === "single_check" ||
+            {form.advancedBehaviorType === "sum_total" ? (
+              <SectionCard
+                title="Somme simple"
+                description="Aucune configuration nécessaire."
+              >
+                <Text style={styles.muted}>
+                  Cette règle additionne simplement les dés et les
+                  modificateurs. Elle sert de comportement standard pour les
+                  jets sans interprétation spéciale.
+                </Text>
+              </SectionCard>
+            ) : null}
+
+            {((form.family === "single_check" &&
+              form.advancedBehaviorType !== "sum_total") ||
               form.family === "highest_of_pool") && (
               <SectionCard title="Test contre un seuil">
                 <FieldLabel>Comparaison</FieldLabel>
