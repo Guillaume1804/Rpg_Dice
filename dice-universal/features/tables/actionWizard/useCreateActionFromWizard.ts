@@ -36,6 +36,14 @@ function resolveRuleScopeFromDraft(
   return behavior.defaultScope;
 }
 
+function shouldAttachRuleToGroupFromScope(scope: "entry" | "group" | "both") {
+  return scope === "group";
+}
+
+function shouldAttachRuleToDieFromScope(scope: "entry" | "group" | "both") {
+  return scope === "entry" || scope === "both";
+}
+
 function getValidDice(draft: ActionWizardDraft) {
   const dice = draft.dice.length > 0 ? draft.dice : [draft.die];
 
@@ -131,14 +139,9 @@ export function useCreateActionFromWizard({
         }
       }
 
-      const shouldForceEntryRule =
-        draft.behaviorType === "custom_pipeline" ||
-        draft.behaviorType === "threshold_degrees";
-
       const shouldAttachRuleToGroup =
-        !shouldForceEntryRule && ruleScope === "group";
-      const shouldAttachRuleToDie =
-        shouldForceEntryRule || ruleScope !== "group";
+        shouldAttachRuleToGroupFromScope(ruleScope);
+      const shouldAttachRuleToDie = shouldAttachRuleToDieFromScope(ruleScope);
 
       const groupId = await createGroup(db, {
         profileId: profile.id,
