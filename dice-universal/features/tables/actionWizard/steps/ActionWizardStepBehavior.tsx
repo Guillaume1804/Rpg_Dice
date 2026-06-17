@@ -4,6 +4,12 @@ import type { ReactNode } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 import type { ActionWizardDraft } from "../types";
 
+import {
+  getRuleBehaviorDefinition,
+  getRuleBehaviorVerticalSlice,
+  getRuleBehaviorVerticalSliceLabel,
+} from "../../../../core/rules/behaviorRegistry";
+
 import { useArcaneTheme } from "../../../../theme/ArcaneThemeProvider";
 
 type Props = {
@@ -163,6 +169,141 @@ function InputGroup({
   );
 }
 
+function formatScopeLabel(scope: "entry" | "group" | "both") {
+  if (scope === "entry") return "Entrée";
+  if (scope === "group") return "Groupe";
+  return "Entrée ou groupe";
+}
+
+function formatSupportedSidesLabel(supportedSides: number[] | null) {
+  if (!supportedSides || supportedSides.length === 0) {
+    return "Tous les dés";
+  }
+
+  return supportedSides.map((side) => `d${side}`).join(", ");
+}
+
+function BehaviorCatalogContext({ draft }: { draft: ActionWizardDraft }) {
+  const { theme, styles } = useArcaneTheme();
+
+  if (!draft.behaviorType) {
+    return null;
+  }
+
+  const behavior = getRuleBehaviorDefinition(draft.behaviorType);
+
+  if (!behavior) {
+    return null;
+  }
+
+  const slice = getRuleBehaviorVerticalSlice(behavior.key);
+  const sliceLabel = getRuleBehaviorVerticalSliceLabel(slice);
+
+  const displayedLabel =
+    draft.behaviorType === "custom_pipeline" &&
+    draft.behaviorVariant === "keep_drop"
+      ? "Garder / retirer des dés"
+      : behavior.label;
+
+  const displayedDescription =
+    draft.behaviorType === "custom_pipeline" &&
+    draft.behaviorVariant === "keep_drop"
+      ? "Garde ou retire les meilleurs ou les plus faibles dés, puis calcule le résultat."
+      : behavior.description;
+
+  return (
+    <View
+      style={{
+        ...styles.cardSoft,
+        gap: theme.spacing.sm,
+        borderColor: "rgba(145, 113, 255, 0.22)",
+        backgroundColor: "rgba(32, 41, 88, 0.42)",
+      }}
+    >
+      <Text
+        style={{
+          color: theme.colors.textSubtle,
+          fontSize: theme.typography.tiny,
+          fontWeight: "900",
+          textTransform: "uppercase",
+          letterSpacing: 0.8,
+        }}
+      >
+        {sliceLabel}
+      </Text>
+
+      <Text
+        style={{
+          color: theme.colors.text,
+          fontSize: 16,
+          fontWeight: "900",
+        }}
+      >
+        {displayedLabel}
+      </Text>
+
+      <Text
+        style={{
+          color: theme.colors.textMuted,
+          lineHeight: 19,
+        }}
+      >
+        {displayedDescription}
+      </Text>
+
+      <View
+        style={{
+          flexDirection: "row",
+          flexWrap: "wrap",
+          gap: 7,
+        }}
+      >
+        <View
+          style={{
+            paddingVertical: 5,
+            paddingHorizontal: 9,
+            borderRadius: theme.radius.pill,
+            borderWidth: 1,
+            borderColor: "rgba(145, 113, 255, 0.22)",
+            backgroundColor: "rgba(13, 19, 43, 0.38)",
+          }}
+        >
+          <Text
+            style={{
+              color: theme.colors.textMuted,
+              fontSize: 10,
+              fontWeight: "900",
+            }}
+          >
+            Portée : {formatScopeLabel(behavior.defaultScope)}
+          </Text>
+        </View>
+
+        <View
+          style={{
+            paddingVertical: 5,
+            paddingHorizontal: 9,
+            borderRadius: theme.radius.pill,
+            borderWidth: 1,
+            borderColor: "rgba(145, 113, 255, 0.22)",
+            backgroundColor: "rgba(13, 19, 43, 0.38)",
+          }}
+        >
+          <Text
+            style={{
+              color: theme.colors.textMuted,
+              fontSize: 10,
+              fontWeight: "900",
+            }}
+          >
+            Dés : {formatSupportedSidesLabel(behavior.supportedSides)}
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 export function ActionWizardStepBehavior({
   draft,
   onUpdateDraft,
@@ -171,7 +312,7 @@ export function ActionWizardStepBehavior({
   onRemoveRangeRow,
 }: Props) {
   const { theme, styles } = useArcaneTheme();
-  
+
   return (
     <View style={{ gap: theme.spacing.md }}>
       <View style={{ gap: theme.spacing.xs }}>
@@ -181,6 +322,8 @@ export function ActionWizardStepBehavior({
           Configure la manière d’interpréter le résultat du jet.
         </Text>
       </View>
+
+      <BehaviorCatalogContext draft={draft} />
 
       {(draft.behaviorType === "single_check" ||
         draft.behaviorType === "highest_of_pool" ||
@@ -781,8 +924,8 @@ export function ActionWizardStepBehavior({
 
       {draft.behaviorType === "sum_total" && (
         <SectionCard
-          title="Somme totale"
-          description="Tous les dés lancés seront additionnés pour produire un total simple."
+          title="Somme simple"
+          description="Tous les dés lancés sont additionnés avec leurs modificateurs pour produire un total clair."
         />
       )}
 
