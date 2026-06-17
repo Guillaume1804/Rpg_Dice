@@ -3,6 +3,7 @@
 import { Text, View } from "react-native";
 import { buildActionWizardSummary } from "../helpers";
 import type { ActionWizardDraft } from "../types";
+import { getBehaviorLabel } from "../ruleNaming";
 
 import { useArcaneTheme } from "../../../../theme/ArcaneThemeProvider";
 
@@ -65,41 +66,6 @@ function formatDieLine(die: ActionWizardDraft["dice"][number]) {
   const sign = die.sign === -1 ? " en négatif" : "";
 
   return `${die.qty}d${sides}${modifier}${sign}`;
-}
-
-function getBehaviorLabel(value: ActionWizardDraft["behaviorType"]) {
-  if (!value) return "—";
-
-  switch (value) {
-    case "single_check":
-      return "Test avec seuil";
-    case "threshold_degrees":
-      return "Seuil avec degrés";
-    case "success_pool":
-      return "Pool de succès";
-    case "sum_total":
-      return "Somme totale";
-    case "banded_sum":
-      return "Résultat par paliers";
-    case "table_lookup":
-      return "Table / Intervalles";
-    case "highest_of_pool":
-      return "Meilleur dé du pool";
-    case "lowest_of_pool":
-      return "Plus faible dé du pool";
-    case "keep_highest_n":
-      return "Garder les meilleurs";
-    case "keep_lowest_n":
-      return "Garder les plus faibles";
-    case "drop_highest_n":
-      return "Retirer les meilleurs";
-    case "drop_lowest_n":
-      return "Retirer les plus faibles";
-    case "custom_pipeline":
-      return "Pipeline personnalisé";
-    default:
-      return String(value);
-  }
 }
 
 export function ActionWizardStepSummary({ draft }: Props) {

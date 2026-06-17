@@ -564,7 +564,7 @@ export function buildActionWizardSummary(draft: ActionWizardDraft): string {
   }
 
   if (draft.behaviorType === "lowest_of_pool") {
-    return `${draft.name} • ${dieLabel} • pire dé`;
+    return `${draft.name} • ${dieLabel} • plus faible dé`;
   }
 
   if (draft.behaviorType === "keep_highest_n") {
@@ -572,7 +572,7 @@ export function buildActionWizardSummary(draft: ActionWizardDraft): string {
   }
 
   if (draft.behaviorType === "keep_lowest_n") {
-    return `${draft.name} • ${dieLabel} • garder ${draft.keepCount} pires`;
+    return `${draft.name} • ${dieLabel} • garder ${draft.keepCount} plus faibles`;
   }
 
   if (draft.behaviorType === "drop_highest_n") {
@@ -580,7 +580,7 @@ export function buildActionWizardSummary(draft: ActionWizardDraft): string {
   }
 
   if (draft.behaviorType === "drop_lowest_n") {
-    return `${draft.name} • ${dieLabel} • retirer ${draft.dropCount} pires`;
+    return `${draft.name} • ${dieLabel} • retirer ${draft.dropCount} plus faibles`;
   }
 
   if (draft.behaviorType === "table_lookup") {

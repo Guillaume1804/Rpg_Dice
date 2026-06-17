@@ -2,7 +2,10 @@
 
 import { Pressable, Text, View } from "react-native";
 import {
-  RULE_BEHAVIORS,
+  RULE_BEHAVIOR_VERTICAL_SLICE_ORDER,
+  getRuleBehaviorVerticalSlice,
+  getRuleBehaviorVerticalSliceLabel,
+  getVisibleRuleBehaviorsByVerticalSlice,
   type RuleBehaviorKey,
 } from "../../../../core/rules/behaviorRegistry";
 import type { ActionBehaviorVariant } from "../types";
@@ -15,6 +18,7 @@ type ActionBehaviorOption = {
   label: string;
   description: string;
   variant: ActionBehaviorVariant;
+  categoryLabel: string;
 };
 
 type Props = {
@@ -24,49 +28,54 @@ type Props = {
 };
 
 function getVisibleActionBehaviorOptions(): ActionBehaviorOption[] {
-  const visibleBehaviors = RULE_BEHAVIORS.filter((behavior) => {
-    if (behavior.visibleInQuickPicker !== true) return false;
-    return true;
-  }).map<ActionBehaviorOption>((behavior) => ({
-    optionId: behavior.key,
-    behaviorKey: behavior.key,
-    label: behavior.label,
-    description: behavior.description,
-    variant: "default",
-  }));
+  const options: ActionBehaviorOption[] = [];
 
-  const customPipelineIndex = visibleBehaviors.findIndex(
-    (behavior) => behavior.behaviorKey === "custom_pipeline",
-  );
+  for (const slice of RULE_BEHAVIOR_VERTICAL_SLICE_ORDER) {
+    const categoryLabel = getRuleBehaviorVerticalSliceLabel(slice);
 
-  const keepDropOption: ActionBehaviorOption = {
-    optionId: "keep_drop_pipeline",
-    behaviorKey: "custom_pipeline",
-    label: "Garder / Retirer des dés",
-    description:
-      "Garde ou retire les meilleurs ou les plus faibles dés, puis calcule le résultat.",
-    variant: "keep_drop",
-  };
+    if (slice === "keep_drop") {
+      options.push({
+        optionId: "keep_drop_pipeline",
+        behaviorKey: "custom_pipeline",
+        label: "Garder / retirer des dés",
+        description:
+          "Garde ou retire les meilleurs ou les plus faibles dés, puis calcule le résultat.",
+        variant: "keep_drop",
+        categoryLabel,
+      });
 
-  if (customPipelineIndex >= 0) {
-    return [
-      ...visibleBehaviors.slice(0, customPipelineIndex),
-      keepDropOption,
-      ...visibleBehaviors.slice(customPipelineIndex),
-    ];
+      continue;
+    }
+
+    const visibleBehaviors = getVisibleRuleBehaviorsByVerticalSlice(slice);
+
+    for (const behavior of visibleBehaviors) {
+      options.push({
+        optionId: behavior.key,
+        behaviorKey: behavior.key,
+        label: behavior.label,
+        description: behavior.description,
+        variant: "default",
+        categoryLabel: getRuleBehaviorVerticalSliceLabel(
+          getRuleBehaviorVerticalSlice(behavior.key),
+        ),
+      });
+    }
   }
 
-  return [...visibleBehaviors, keepDropOption];
+  return options;
 }
 
 function BehaviorCard({
   label,
   description,
+  categoryLabel,
   selected,
   onPress,
 }: {
   label: string;
   description: string;
+  categoryLabel: string;
   selected: boolean;
   onPress: () => void;
 }) {
@@ -85,6 +94,18 @@ function BehaviorCard({
         transform: [{ scale: pressed ? 0.99 : 1 }],
       })}
     >
+      <Text
+        style={{
+          color: selected ? theme.colors.accent : theme.colors.textSubtle,
+          fontSize: theme.typography.tiny,
+          fontWeight: "900",
+          textTransform: "uppercase",
+          letterSpacing: 0.8,
+        }}
+      >
+        {categoryLabel}
+      </Text>
+
       <Text
         style={{
           color: theme.colors.text,
@@ -146,6 +167,7 @@ export function ActionWizardStepType({ value, variant, onSelect }: Props) {
               description={option.description}
               selected={selected}
               onPress={() => onSelect(option.behaviorKey, option.variant)}
+              categoryLabel={option.categoryLabel}
             />
           );
         })}
