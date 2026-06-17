@@ -733,6 +733,41 @@ export function getRuleBehaviorVerticalSliceLabel(
   }
 }
 
+export function getRuleBehaviorsByVerticalSlice(
+  slice: RuleBehaviorVerticalSlice,
+) {
+  return RULE_BEHAVIORS.filter(
+    (behavior) => getRuleBehaviorVerticalSlice(behavior.key) === slice,
+  );
+}
+
+export function getVisibleRuleBehaviorsByVerticalSlice(
+  slice: RuleBehaviorVerticalSlice,
+) {
+  return getRuleBehaviorsByVerticalSlice(slice).filter(
+    (behavior) => behavior.visibleInQuickPicker !== false,
+  );
+}
+
+export function getCoreRuleBehaviors() {
+  return RULE_BEHAVIORS.filter(
+    (behavior) => getRuleBehaviorProductStatus(behavior.key) === "v1_core",
+  );
+}
+
+export function getAdvancedRuleBehaviors() {
+  return RULE_BEHAVIORS.filter(
+    (behavior) => getRuleBehaviorProductStatus(behavior.key) === "v1_advanced",
+  );
+}
+
+export function getTechnicalVariantRuleBehaviors() {
+  return RULE_BEHAVIORS.filter(
+    (behavior) =>
+      getRuleBehaviorProductStatus(behavior.key) === "technical_variant",
+  );
+}
+
 export function getRuleBehaviorDefinition(key: RuleBehaviorKey) {
   return RULE_BEHAVIORS.find((behavior) => behavior.key === key) ?? null;
 }
