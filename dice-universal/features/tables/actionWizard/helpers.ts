@@ -4,6 +4,7 @@ import type { RuleScope } from "../../../data/repositories/rulesRepo";
 import type { ActionWizardDraft, ActionWizardStep } from "./types";
 import type { PipelineParams, PipelineStep } from "../../../core/rules/types";
 import { buildRuleFromBehavior } from "../../../core/rules/buildRuleFromBehavior";
+import { getRuleBehaviorDefinition } from "../../../core/rules/behaviorRegistry";
 
 export type BuiltActionRulePayload = {
   name: string;
@@ -48,6 +49,56 @@ function parseOptionalPositiveInt(value: string): number | null {
   if (!Number.isFinite(n) || n <= 0) return null;
 
   return Math.floor(n);
+}
+
+function formatSupportedSides(sides: number[]) {
+  return sides.map((side) => `d${side}`).join(", ");
+}
+
+function getUnsupportedDiceForBehavior(draft: ActionWizardDraft) {
+  if (!draft.behaviorType) {
+    return [];
+  }
+
+  const behavior = getRuleBehaviorDefinition(draft.behaviorType);
+
+  if (!behavior?.supportedSides || behavior.supportedSides.length === 0) {
+    return [];
+  }
+
+  const supportedSides = new Set(behavior.supportedSides);
+
+  return draft.dice.filter(
+    (die) => die.sides != null && !supportedSides.has(die.sides),
+  );
+}
+
+function validateDiceCompatibilityWithBehavior(
+  draft: ActionWizardDraft,
+): string | null {
+  if (!draft.behaviorType) {
+    return null;
+  }
+
+  const behavior = getRuleBehaviorDefinition(draft.behaviorType);
+
+  if (!behavior?.supportedSides || behavior.supportedSides.length === 0) {
+    return null;
+  }
+
+  const unsupportedDice = getUnsupportedDiceForBehavior(draft);
+
+  if (unsupportedDice.length === 0) {
+    return null;
+  }
+
+  const unsupportedLabels = unsupportedDice
+    .map((die) => (die.sides ? `d${die.sides}` : "dé inconnu"))
+    .join(", ");
+
+  return `${behavior.label} est compatible uniquement avec ${formatSupportedSides(
+    behavior.supportedSides,
+  )}. Dé non compatible : ${unsupportedLabels}.`;
 }
 
 function buildPipelineParamsFromDraft(
@@ -207,12 +258,24 @@ export function validateActionWizardStep(
       }
     }
 
+    const compatibilityError = validateDiceCompatibilityWithBehavior(draft);
+
+    if (compatibilityError) {
+      return compatibilityError;
+    }
+
     return null;
   }
 
   if (step === "behavior") {
     if (!draft.behaviorType) {
       return "Choisis un type d’action.";
+    }
+
+    const compatibilityError = validateDiceCompatibilityWithBehavior(draft);
+
+    if (compatibilityError) {
+      return compatibilityError;
     }
 
     if (draft.behaviorType === "custom_pipeline") {
@@ -529,14 +592,15 @@ export function buildActionWizardSummary(draft: ActionWizardDraft): string {
   const dieLabel =
     draft.dice && draft.dice.length > 0
       ? draft.dice
-        .map(
-          (die) =>
-            `${die.qty}d${die.sides}${die.modifier !== 0
-              ? ` ${die.modifier > 0 ? "+" : ""}${die.modifier}`
-              : ""
-            }${die.sign === -1 ? " (-)" : ""}`,
-        )
-        .join(" + ")
+          .map(
+            (die) =>
+              `${die.qty}d${die.sides}${
+                die.modifier !== 0
+                  ? ` ${die.modifier > 0 ? "+" : ""}${die.modifier}`
+                  : ""
+              }${die.sign === -1 ? " (-)" : ""}`,
+          )
+          .join(" + ")
       : "aucun dé";
 
   if (draft.behaviorType === "single_check") {
@@ -612,18 +676,20 @@ export function buildActionWizardSummary(draft: ActionWizardDraft): string {
 
     if (draft.pipelineRerollFaces.trim()) {
       parts.push(
-        `relance ${draft.pipelineRerollFaces}${draft.pipelineMaxRerollsPerDie.trim()
-          ? ` max ${draft.pipelineMaxRerollsPerDie}/dé`
-          : ""
+        `relance ${draft.pipelineRerollFaces}${
+          draft.pipelineMaxRerollsPerDie.trim()
+            ? ` max ${draft.pipelineMaxRerollsPerDie}/dé`
+            : ""
         }`,
       );
     }
 
     if (draft.pipelineExplodeFaces.trim()) {
       parts.push(
-        `explosion ${draft.pipelineExplodeFaces}${draft.pipelineMaxExplosionsPerDie.trim()
-          ? ` max ${draft.pipelineMaxExplosionsPerDie}/dé`
-          : ""
+        `explosion ${draft.pipelineExplodeFaces}${
+          draft.pipelineMaxExplosionsPerDie.trim()
+            ? ` max ${draft.pipelineMaxExplosionsPerDie}/dé`
+            : ""
         }`,
       );
     }
