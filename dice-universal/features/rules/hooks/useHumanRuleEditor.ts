@@ -47,6 +47,8 @@ function toHumanEditorAdvancedBehaviorType(
     case "drop_lowest_n":
       return behaviorType;
 
+    case "threshold_degrees":
+    case "custom_pipeline":
     default:
       return "single_check";
   }

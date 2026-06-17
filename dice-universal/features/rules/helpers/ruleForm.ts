@@ -14,16 +14,27 @@ export function mapActionBehaviorToRuleFamily(
   behaviorType: ActionBehaviorType | null,
 ): RuleFamilyKey {
   switch (behaviorType) {
-    case "single_check":
-      return "single_check";
     case "success_pool":
       return "success_pool";
+
     case "banded_sum":
       return "banded_sum";
-    case "highest_of_pool":
-      return "highest_of_pool";
+
     case "table_lookup":
       return "table_lookup";
+
+    case "highest_of_pool":
+    case "lowest_of_pool":
+    case "keep_highest_n":
+    case "keep_lowest_n":
+    case "drop_highest_n":
+    case "drop_lowest_n":
+      return "highest_of_pool";
+
+    case "single_check":
+    case "threshold_degrees":
+    case "sum_total":
+    case "custom_pipeline":
     default:
       return "single_check";
   }
@@ -48,17 +59,17 @@ export type RuleFormState = {
   ranges: RuleRangeFormRow[];
 
   advancedBehaviorType:
-  | "single_check"
-  | "success_pool"
-  | "banded_sum"
-  | "highest_of_pool"
-  | "table_lookup"
-  | "sum_total"
-  | "lowest_of_pool"
-  | "keep_highest_n"
-  | "keep_lowest_n"
-  | "drop_highest_n"
-  | "drop_lowest_n";
+    | "single_check"
+    | "success_pool"
+    | "banded_sum"
+    | "highest_of_pool"
+    | "table_lookup"
+    | "sum_total"
+    | "lowest_of_pool"
+    | "keep_highest_n"
+    | "keep_lowest_n"
+    | "drop_highest_n"
+    | "drop_lowest_n";
 
   keepCount: string;
   dropCount: string;
@@ -468,7 +479,7 @@ export function fillRuleFormFromExistingRule(rule: {
         : "1",
       glitchRule:
         parsed.glitch_rule === "ones_gte_successes" ||
-          parsed.glitch_rule === "none"
+        parsed.glitch_rule === "none"
           ? parsed.glitch_rule
           : "ones_gt_successes",
     };
@@ -488,10 +499,10 @@ export function fillRuleFormFromExistingRule(rule: {
       ),
       ranges: Array.isArray(parsed.bands)
         ? parsed.bands.map((row: any) => ({
-          min: String(row?.min ?? ""),
-          max: String(row?.max ?? ""),
-          label: String(row?.label ?? ""),
-        }))
+            min: String(row?.min ?? ""),
+            max: String(row?.max ?? ""),
+            label: String(row?.label ?? ""),
+          }))
         : base.ranges,
     };
   }
@@ -560,8 +571,7 @@ export function fillRuleFormFromExistingRule(rule: {
         "highest_of_pool",
         rule.scope ?? defaultScopeForFamily("highest_of_pool"),
       ),
-      keepCount:
-        parsed.keep == null ? "3" : String(parsed.keep),
+      keepCount: parsed.keep == null ? "3" : String(parsed.keep),
       resultMode: parsed.result_mode === "values" ? "values" : "sum",
     };
   }
@@ -578,8 +588,7 @@ export function fillRuleFormFromExistingRule(rule: {
         "highest_of_pool",
         rule.scope ?? defaultScopeForFamily("highest_of_pool"),
       ),
-      dropCount:
-        parsed.drop == null ? "1" : String(parsed.drop),
+      dropCount: parsed.drop == null ? "1" : String(parsed.drop),
       resultMode: parsed.result_mode === "values" ? "values" : "sum",
     };
   }
@@ -596,8 +605,7 @@ export function fillRuleFormFromExistingRule(rule: {
         "highest_of_pool",
         rule.scope ?? defaultScopeForFamily("highest_of_pool"),
       ),
-      dropCount:
-        parsed.drop == null ? "1" : String(parsed.drop),
+      dropCount: parsed.drop == null ? "1" : String(parsed.drop),
       resultMode: parsed.result_mode === "values" ? "values" : "sum",
     };
   }
@@ -626,10 +634,10 @@ export function fillRuleFormFromExistingRule(rule: {
     ),
     ranges: Array.isArray(parsed.ranges)
       ? parsed.ranges.map((row: any) => ({
-        min: String(row?.min ?? ""),
-        max: String(row?.max ?? ""),
-        label: String(row?.label ?? ""),
-      }))
+          min: String(row?.min ?? ""),
+          max: String(row?.max ?? ""),
+          label: String(row?.label ?? ""),
+        }))
       : base.ranges,
   };
 }
