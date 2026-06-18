@@ -1,4 +1,4 @@
-import { View, Text, Pressable, ScrollView } from "react-native";
+import { View, Text, Pressable } from "react-native";
 import {
   parseSupportedSides,
   type RuleRow,
@@ -559,12 +559,11 @@ export function RulesListSection({
   const premium = usePremiumTheme();
 
   return (
-    <ScrollView
-      contentContainerStyle={{
+    <View
+      style={{
         gap: 18,
         paddingBottom: premium.spacing.xl,
       }}
-      showsVerticalScrollIndicator={false}
     >
       <View style={{ gap: 10 }}>
         <LibrarySectionHeader
@@ -615,6 +614,6 @@ export function RulesListSection({
           ))
         )}
       </View>
-    </ScrollView>
+    </View>
   );
 }
