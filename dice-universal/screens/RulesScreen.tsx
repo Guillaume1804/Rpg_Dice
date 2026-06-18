@@ -697,7 +697,7 @@ export default function RulesScreen() {
         <View style={{ gap: 10 }}>
           <SectionHeader
             title="Créer un comportement"
-            description="Choisis le mode guidé pour les cas classiques. Garde le mode expert pour les règles très spécifiques."
+            description="Un seul parcours guidé, simple au départ, mais capable de construire des comportements avancés."
           />
 
           <View
@@ -708,18 +708,11 @@ export default function RulesScreen() {
             }}
           >
             <ActionButton
-              title="Création guidée"
-              description="Choisir une famille, tester, sauvegarder."
-              badge="Recommandé"
+              title="Nouveau comportement"
+              description="Crée une règle de lecture pour tes dés : somme, seuil, succès, paliers, critiques ou effets avancés."
+              badge="Créer"
               onPress={guidedBehaviorWizard.open}
               variant="accent"
-            />
-
-            <ActionButton
-              title="Mode expert"
-              description="Accéder aux paramètres techniques."
-              badge="Avancé"
-              onPress={openCreate}
             />
           </View>
         </View>
