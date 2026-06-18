@@ -1,0 +1,680 @@
+import { useMemo, useState } from "react";
+import type { CreateRuleInput } from "../../../data/repositories/rulesRepo";
+
+import {
+  DEFAULT_GUIDED_BEHAVIOR_DRAFT,
+  type GuidedBehaviorApplicationMode,
+  type GuidedBehaviorDraft,
+  type GuidedBehaviorIntent,
+  type GuidedBehaviorReadingMode,
+} from "./types";
+
+import { buildGuidedBehaviorPayload } from "./buildGuidedBehaviorPayload";
+import { resolveGuidedBehaviorScope } from "./resolveGuidedBehaviorScope";
+
+export type GuidedBehaviorWizardStep =
+  | "identity"
+  | "intent"
+  | "dice"
+  | "transforms"
+  | "reading"
+  | "events"
+  | "application"
+  | "summary";
+
+const GUIDED_BEHAVIOR_STEP_ORDER: GuidedBehaviorWizardStep[] = [
+  "identity",
+  "intent",
+  "dice",
+  "transforms",
+  "reading",
+  "events",
+  "application",
+  "summary",
+];
+
+function cloneDefaultDraft(): GuidedBehaviorDraft {
+  return JSON.parse(
+    JSON.stringify(DEFAULT_GUIDED_BEHAVIOR_DRAFT),
+  ) as GuidedBehaviorDraft;
+}
+
+function getDefaultReadingModeForIntent(
+  intent: GuidedBehaviorIntent,
+): GuidedBehaviorReadingMode {
+  switch (intent) {
+    case "sum":
+      return "sum";
+    case "check":
+      return "single_check";
+    case "degrees":
+      return "threshold_degrees";
+    case "success_pool":
+      return "success_pool";
+    case "table":
+      return "table_lookup";
+    case "keep_drop":
+      return "sum";
+    case "advanced":
+    default:
+      return "sum";
+  }
+}
+
+function getDefaultPrimaryOutputForIntent(
+  intent: GuidedBehaviorIntent,
+): GuidedBehaviorDraft["output"]["primary"] {
+  switch (intent) {
+    case "sum":
+      return "total";
+    case "check":
+      return "outcome";
+    case "degrees":
+      return "degrees";
+    case "success_pool":
+      return "successes";
+    case "table":
+      return "table_label";
+    case "keep_drop":
+      return "kept_values";
+    case "advanced":
+    default:
+      return "pipeline_final";
+  }
+}
+
+function getDefaultApplicationModeForIntent(
+  intent: GuidedBehaviorIntent,
+): GuidedBehaviorApplicationMode {
+  switch (intent) {
+    case "success_pool":
+    case "table":
+      return "whole_roll";
+    case "sum":
+    case "check":
+    case "degrees":
+    case "keep_drop":
+      return "single_entry";
+    case "advanced":
+    default:
+      return "auto";
+  }
+}
+
+function getDefaultDiceCompatibilityForIntent(
+  intent: GuidedBehaviorIntent,
+): GuidedBehaviorDraft["diceCompatibility"] {
+  switch (intent) {
+    case "degrees":
+      return { sides: [100] };
+    case "check":
+      return { sides: [20] };
+    case "success_pool":
+      return { sides: [6] };
+    default:
+      return "all";
+  }
+}
+
+function validateNumberList(value: string): boolean {
+  const text = value.trim();
+  if (!text) return true;
+
+  return text
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .every((item) => Number.isFinite(Number(item)));
+}
+
+function validatePositiveNumber(value: string): boolean {
+  const text = value.trim();
+  if (!text) return true;
+
+  const n = Number(text);
+  return Number.isFinite(n) && n > 0;
+}
+
+function hasValidTableRange(
+  ranges: GuidedBehaviorDraft["reading"]["tableRanges"],
+): boolean {
+  return ranges.some((range) => {
+    const min = Number(range.min);
+    const max = Number(range.max);
+
+    return (
+      Number.isFinite(min) &&
+      Number.isFinite(max) &&
+      range.label.trim().length > 0
+    );
+  });
+}
+
+function validateGuidedBehaviorStep(
+  step: GuidedBehaviorWizardStep,
+  draft: GuidedBehaviorDraft,
+): string | null {
+  if (step === "identity") {
+    if (!draft.name.trim()) {
+      return "Le nom du comportement est obligatoire.";
+    }
+
+    return null;
+  }
+
+  if (step === "dice") {
+    if (draft.diceCompatibility !== "all") {
+      if (draft.diceCompatibility.sides.length === 0) {
+        return "Choisis au moins un type de dé compatible.";
+      }
+
+      const invalidSide = draft.diceCompatibility.sides.find(
+        (side) => !Number.isFinite(side) || side <= 0,
+      );
+
+      if (invalidSide != null) {
+        return "Les dés compatibles doivent être des nombres positifs.";
+      }
+    }
+
+    return null;
+  }
+
+  if (step === "transforms") {
+    if (
+      draft.transforms.reroll.enabled &&
+      !validateNumberList(draft.transforms.reroll.faces)
+    ) {
+      return "Les faces à relancer doivent être une liste de nombres valide.";
+    }
+
+    if (
+      draft.transforms.reroll.enabled &&
+      !validatePositiveNumber(draft.transforms.reroll.maxRerollsPerDie)
+    ) {
+      return "Le maximum de relances par dé doit être vide ou supérieur à 0.";
+    }
+
+    if (
+      draft.transforms.explode.enabled &&
+      !validateNumberList(draft.transforms.explode.faces)
+    ) {
+      return "Les faces d’explosion doivent être une liste de nombres valide.";
+    }
+
+    if (
+      draft.transforms.explode.enabled &&
+      !validatePositiveNumber(draft.transforms.explode.maxExplosionsPerDie)
+    ) {
+      return "Le maximum d’explosions par dé doit être vide ou supérieur à 0.";
+    }
+
+    if (
+      draft.transforms.keepDrop.mode !== "none" &&
+      !validatePositiveNumber(draft.transforms.keepDrop.count)
+    ) {
+      return "Le nombre de dés à garder ou retirer doit être supérieur à 0.";
+    }
+
+    return null;
+  }
+
+  if (step === "reading") {
+    if (draft.reading.mode === "single_check") {
+      const threshold = Number(draft.reading.successThreshold);
+
+      if (!Number.isFinite(threshold)) {
+        return "Le seuil de réussite doit être renseigné.";
+      }
+    }
+
+    if (draft.reading.mode === "threshold_degrees") {
+      const target = Number(draft.reading.targetValue);
+      const degreeStep = Number(draft.reading.degreeStep);
+
+      if (!Number.isFinite(target)) {
+        return "La cible du test avec degrés doit être renseignée.";
+      }
+
+      if (!Number.isFinite(degreeStep) || degreeStep <= 0) {
+        return "Le pas de degré doit être supérieur à 0.";
+      }
+    }
+
+    if (draft.reading.mode === "success_pool") {
+      const successAtOrAbove = Number(draft.reading.successAtOrAbove);
+
+      if (!Number.isFinite(successAtOrAbove) || successAtOrAbove <= 0) {
+        return "Le seuil de succès du pool doit être supérieur à 0.";
+      }
+
+      if (!validateNumberList(draft.reading.failFaces)) {
+        return "Les faces de complication doivent être une liste de nombres valide.";
+      }
+    }
+
+    if (draft.reading.mode === "table_lookup") {
+      if (!hasValidTableRange(draft.reading.tableRanges)) {
+        return "Ajoute au moins une plage valide pour la table ou les paliers.";
+      }
+    }
+
+    return null;
+  }
+
+  if (step === "events") {
+    if (
+      draft.events.criticalSuccess.enabled &&
+      !validateNumberList(draft.events.criticalSuccess.faces)
+    ) {
+      return "Les faces de réussite critique doivent être une liste de nombres valide.";
+    }
+
+    if (
+      draft.events.criticalFailure.enabled &&
+      !validateNumberList(draft.events.criticalFailure.faces)
+    ) {
+      return "Les faces d’échec critique doivent être une liste de nombres valide.";
+    }
+
+    if (
+      draft.events.complication.enabled &&
+      !validateNumberList(draft.events.complication.faces)
+    ) {
+      return "Les faces de complication doivent être une liste de nombres valide.";
+    }
+
+    return null;
+  }
+
+  return null;
+}
+
+export function getGuidedBehaviorStepTitle(step: GuidedBehaviorWizardStep) {
+  switch (step) {
+    case "identity":
+      return "Nom & intention";
+    case "intent":
+      return "Type de comportement";
+    case "dice":
+      return "Dés concernés";
+    case "transforms":
+      return "Avant la lecture";
+    case "reading":
+      return "Lecture du résultat";
+    case "events":
+      return "Événements spéciaux";
+    case "application":
+      return "Application";
+    case "summary":
+      return "Résumé";
+    default:
+      return "Étape";
+  }
+}
+
+export function getGuidedBehaviorStepDescription(
+  step: GuidedBehaviorWizardStep,
+) {
+  switch (step) {
+    case "identity":
+      return "Donne un nom clair au comportement.";
+    case "intent":
+      return "Choisis l’intention principale du comportement.";
+    case "dice":
+      return "Définis les dés avec lesquels il peut être utilisé.";
+    case "transforms":
+      return "Ajoute des relances, explosions, ou règles pour garder/retirer des dés.";
+    case "reading":
+      return "Choisis comment le résultat final doit être lu.";
+    case "events":
+      return "Ajoute les critiques, échecs critiques ou complications.";
+    case "application":
+      return "Choisis si le comportement s’applique à une ligne de dés, au jet entier, ou automatiquement.";
+    case "summary":
+      return "Vérifie la configuration avant sauvegarde.";
+    default:
+      return "";
+  }
+}
+
+export function useGuidedBehaviorWizard() {
+  const [visible, setVisible] = useState(false);
+  const [step, setStep] = useState<GuidedBehaviorWizardStep>("identity");
+  const [draft, setDraft] = useState<GuidedBehaviorDraft>(cloneDefaultDraft());
+  const [error, setError] = useState<string | null>(null);
+
+  function open() {
+    setDraft(cloneDefaultDraft());
+    setStep("identity");
+    setError(null);
+    setVisible(true);
+  }
+
+  function close() {
+    setVisible(false);
+    setStep("identity");
+    setDraft(cloneDefaultDraft());
+    setError(null);
+  }
+
+  function updateDraft(patch: Partial<GuidedBehaviorDraft>) {
+    setDraft((prev) => ({
+      ...prev,
+      ...patch,
+    }));
+  }
+
+  function updateIdentity(params: { name?: string; description?: string }) {
+    setDraft((prev) => ({
+      ...prev,
+      ...params,
+    }));
+  }
+
+  function setIntent(intent: GuidedBehaviorIntent) {
+    setDraft((prev) => {
+      const readingMode = getDefaultReadingModeForIntent(intent);
+      const applicationMode = getDefaultApplicationModeForIntent(intent);
+      const next: GuidedBehaviorDraft = {
+        ...prev,
+        intent,
+        diceCompatibility: getDefaultDiceCompatibilityForIntent(intent),
+        applicationMode,
+        reading: {
+          ...prev.reading,
+          mode: readingMode,
+        },
+        output: {
+          ...prev.output,
+          primary: getDefaultPrimaryOutputForIntent(intent),
+        },
+      };
+
+      return {
+        ...next,
+        resolvedScope: resolveGuidedBehaviorScope(next),
+      };
+    });
+  }
+
+  function setDiceCompatibility(
+    diceCompatibility: GuidedBehaviorDraft["diceCompatibility"],
+  ) {
+    setDraft((prev) => ({
+      ...prev,
+      diceCompatibility,
+    }));
+  }
+
+  function setApplicationMode(applicationMode: GuidedBehaviorApplicationMode) {
+    setDraft((prev) => {
+      const next = {
+        ...prev,
+        applicationMode,
+      };
+
+      return {
+        ...next,
+        resolvedScope: resolveGuidedBehaviorScope(next),
+      };
+    });
+  }
+
+  function updateTransforms(patch: Partial<GuidedBehaviorDraft["transforms"]>) {
+    setDraft((prev) => {
+      const next = {
+        ...prev,
+        transforms: {
+          ...prev.transforms,
+          ...patch,
+        },
+      };
+
+      return {
+        ...next,
+        resolvedScope: resolveGuidedBehaviorScope(next),
+      };
+    });
+  }
+
+  function updateReroll(
+    patch: Partial<GuidedBehaviorDraft["transforms"]["reroll"]>,
+  ) {
+    updateTransforms({
+      reroll: {
+        ...draft.transforms.reroll,
+        ...patch,
+      },
+    });
+  }
+
+  function updateExplode(
+    patch: Partial<GuidedBehaviorDraft["transforms"]["explode"]>,
+  ) {
+    updateTransforms({
+      explode: {
+        ...draft.transforms.explode,
+        ...patch,
+      },
+    });
+  }
+
+  function updateKeepDrop(
+    patch: Partial<GuidedBehaviorDraft["transforms"]["keepDrop"]>,
+  ) {
+    updateTransforms({
+      keepDrop: {
+        ...draft.transforms.keepDrop,
+        ...patch,
+      },
+    });
+  }
+
+  function updateReading(patch: Partial<GuidedBehaviorDraft["reading"]>) {
+    setDraft((prev) => {
+      const next = {
+        ...prev,
+        reading: {
+          ...prev.reading,
+          ...patch,
+        },
+      };
+
+      return {
+        ...next,
+        resolvedScope: resolveGuidedBehaviorScope(next),
+      };
+    });
+  }
+
+  function setReadingMode(mode: GuidedBehaviorReadingMode) {
+    setDraft((prev) => {
+      const next = {
+        ...prev,
+        reading: {
+          ...prev.reading,
+          mode,
+        },
+      };
+
+      return {
+        ...next,
+        resolvedScope: resolveGuidedBehaviorScope(next),
+      };
+    });
+  }
+
+  function updateTableRange(
+    index: number,
+    key: "min" | "max" | "label",
+    value: string,
+  ) {
+    setDraft((prev) => ({
+      ...prev,
+      reading: {
+        ...prev.reading,
+        tableRanges: prev.reading.tableRanges.map((range, rangeIndex) =>
+          rangeIndex === index ? { ...range, [key]: value } : range,
+        ),
+      },
+    }));
+  }
+
+  function addTableRange() {
+    setDraft((prev) => ({
+      ...prev,
+      reading: {
+        ...prev.reading,
+        tableRanges: [
+          ...prev.reading.tableRanges,
+          { min: "", max: "", label: "" },
+        ],
+      },
+    }));
+  }
+
+  function removeTableRange(index: number) {
+    setDraft((prev) => ({
+      ...prev,
+      reading: {
+        ...prev.reading,
+        tableRanges: prev.reading.tableRanges.filter(
+          (_, rangeIndex) => rangeIndex !== index,
+        ),
+      },
+    }));
+  }
+
+  function updateEvents(patch: Partial<GuidedBehaviorDraft["events"]>) {
+    setDraft((prev) => ({
+      ...prev,
+      events: {
+        ...prev.events,
+        ...patch,
+      },
+    }));
+  }
+
+  function updateCriticalSuccess(
+    patch: Partial<GuidedBehaviorDraft["events"]["criticalSuccess"]>,
+  ) {
+    updateEvents({
+      criticalSuccess: {
+        ...draft.events.criticalSuccess,
+        ...patch,
+      },
+    });
+  }
+
+  function updateCriticalFailure(
+    patch: Partial<GuidedBehaviorDraft["events"]["criticalFailure"]>,
+  ) {
+    updateEvents({
+      criticalFailure: {
+        ...draft.events.criticalFailure,
+        ...patch,
+      },
+    });
+  }
+
+  function updateComplication(
+    patch: Partial<GuidedBehaviorDraft["events"]["complication"]>,
+  ) {
+    updateEvents({
+      complication: {
+        ...draft.events.complication,
+        ...patch,
+      },
+    });
+  }
+
+  function updateOutput(patch: Partial<GuidedBehaviorDraft["output"]>) {
+    setDraft((prev) => ({
+      ...prev,
+      output: {
+        ...prev.output,
+        ...patch,
+      },
+    }));
+  }
+
+  function goNext() {
+    const validationError = validateGuidedBehaviorStep(step, draft);
+
+    if (validationError) {
+      setError(validationError);
+      return false;
+    }
+
+    setError(null);
+
+    const currentIndex = GUIDED_BEHAVIOR_STEP_ORDER.indexOf(step);
+
+    if (currentIndex < GUIDED_BEHAVIOR_STEP_ORDER.length - 1) {
+      setStep(GUIDED_BEHAVIOR_STEP_ORDER[currentIndex + 1]);
+    }
+
+    return true;
+  }
+
+  function goBack() {
+    setError(null);
+
+    const currentIndex = GUIDED_BEHAVIOR_STEP_ORDER.indexOf(step);
+
+    if (currentIndex > 0) {
+      setStep(GUIDED_BEHAVIOR_STEP_ORDER[currentIndex - 1]);
+    }
+  }
+
+  function buildPayload(): CreateRuleInput {
+    return buildGuidedBehaviorPayload({
+      ...draft,
+      resolvedScope: resolveGuidedBehaviorScope(draft),
+    });
+  }
+
+  const stepIndex = useMemo(
+    () => GUIDED_BEHAVIOR_STEP_ORDER.indexOf(step),
+    [step],
+  );
+
+  return {
+    visible,
+    step,
+    stepIndex,
+    totalSteps: GUIDED_BEHAVIOR_STEP_ORDER.length,
+    draft,
+    error,
+
+    open,
+    close,
+    goNext,
+    goBack,
+
+    updateDraft,
+    updateIdentity,
+    setIntent,
+    setDiceCompatibility,
+    setApplicationMode,
+
+    updateReroll,
+    updateExplode,
+    updateKeepDrop,
+
+    updateReading,
+    setReadingMode,
+    updateTableRange,
+    addTableRange,
+    removeTableRange,
+
+    updateCriticalSuccess,
+    updateCriticalFailure,
+    updateComplication,
+
+    updateOutput,
+
+    buildPayload,
+  };
+}
