@@ -14,6 +14,8 @@ import { useRulesScreenActions } from "../features/rules/hooks/useRulesScreenAct
 
 import { CreateGuidedBehaviorWizardModal } from "../features/rules/guidedBehavior/CreateGuidedBehaviorWizardModal";
 import { useGuidedBehaviorWizard } from "../features/rules/guidedBehavior/useGuidedBehaviorWizard";
+import { GuidedBehaviorPreviewModal } from "../features/rules/guidedBehavior/GuidedBehaviorPreviewModal";
+import { useGuidedBehaviorPreview } from "../features/rules/guidedBehavior/useGuidedBehaviorPreview";
 
 import { useArcaneLayout } from "../theme/useArcaneLayout";
 import { usePremiumTheme } from "../theme/premium/usePremiumTheme";
@@ -136,7 +138,6 @@ function WorkshopHeader({
   customCount: number;
   onOpenInfo: () => void;
 }) {
-
   return (
     <View
       style={{
@@ -634,6 +635,10 @@ export default function RulesScreen() {
 
   const guidedBehaviorWizard = useGuidedBehaviorWizard();
 
+  const guidedBehaviorPreview = useGuidedBehaviorPreview(
+    guidedBehaviorWizard.draft,
+  );
+
   async function handleCreateFromWizard() {
     try {
       const payload = guidedBehaviorWizard.buildPayload();
@@ -791,6 +796,25 @@ export default function RulesScreen() {
         onUpdateCriticalFailure={guidedBehaviorWizard.updateCriticalFailure}
         onUpdateComplication={guidedBehaviorWizard.updateComplication}
         onUpdateOutput={guidedBehaviorWizard.updateOutput}
+        onOpenPreview={guidedBehaviorPreview.open}
+      />
+
+      <GuidedBehaviorPreviewModal
+        visible={guidedBehaviorPreview.visible}
+        allowedDice={guidedBehaviorPreview.allowedDice}
+        selectedSides={guidedBehaviorPreview.selectedSides}
+        quantity={guidedBehaviorPreview.quantity}
+        modifier={guidedBehaviorPreview.modifier}
+        lastRolls={guidedBehaviorPreview.lastRolls}
+        resultText={guidedBehaviorPreview.resultText}
+        error={guidedBehaviorPreview.error}
+        onClose={guidedBehaviorPreview.close}
+        onSelectSides={guidedBehaviorPreview.setSelectedSides}
+        onIncrementQuantity={guidedBehaviorPreview.incrementQuantity}
+        onDecrementQuantity={guidedBehaviorPreview.decrementQuantity}
+        onIncrementModifier={guidedBehaviorPreview.incrementModifier}
+        onDecrementModifier={guidedBehaviorPreview.decrementModifier}
+        onRollPreview={guidedBehaviorPreview.rollPreview}
       />
     </View>
   );
