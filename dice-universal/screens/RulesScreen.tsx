@@ -611,7 +611,6 @@ export default function RulesScreen() {
     setPreviewSides,
     setPreviewModifier,
     setPreviewSign,
-    openCreate,
     openEdit,
     closeEditor,
     updateForm,
