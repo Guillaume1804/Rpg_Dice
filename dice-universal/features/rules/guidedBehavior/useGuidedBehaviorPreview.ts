@@ -1,3 +1,5 @@
+// dice-universal\features\rules\guidedBehavior\useGuidedBehaviorPreview.ts
+
 import { useMemo, useState } from "react";
 import { evaluateRule } from "../../../core/rules/evaluate";
 import type { RuleInput } from "../../../core/rules/types";
@@ -147,13 +149,12 @@ export function useGuidedBehaviorPreview(draft: GuidedBehaviorDraft) {
         sign: 1,
       };
 
-      const result = evaluateRule(
-        {
-          kind: payload.kind,
-          params_json: payload.params_json,
-        },
-        input,
-      );
+      const result = evaluateRule(payload.kind, payload.params_json, {
+        values: input.values,
+        sides: input.sides ?? selectedSides,
+        modifier: input.modifier,
+        sign: input.sign,
+      });
 
       setLastRolls(rolls);
       setResultText(formatPreviewResult(result));
