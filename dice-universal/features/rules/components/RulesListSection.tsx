@@ -17,9 +17,10 @@ type Props = {
   customRules: RuleRow[];
   onEditRule: (rule: RuleRow) => void;
   onDeleteRule: (ruleId: string) => Promise<void>;
+  onShowSystemDetails: (item: OfficialBehaviorCatalogItem) => void;
 };
 
-type OfficialBehaviorCatalogItem = {
+export type OfficialBehaviorCatalogItem = {
   id: string;
   label: string;
   description: string;
@@ -450,10 +451,10 @@ function LibraryButton({
 
 function OfficialBehaviorCard({
   item,
-  onEditRule,
+  onShowSystemDetails,
 }: {
   item: OfficialBehaviorCatalogItem;
-  onEditRule: (rule: RuleRow) => void;
+  onShowSystemDetails: (item: OfficialBehaviorCatalogItem) => void;
 }) {
   const premium = usePremiumTheme();
 
@@ -580,12 +581,7 @@ function OfficialBehaviorCard({
       >
         <LibraryButton
           label="Voir détails"
-          disabled={!item.sourceRule}
-          onPress={() => {
-            if (item.sourceRule) {
-              onEditRule(item.sourceRule);
-            }
-          }}
+          onPress={() => onShowSystemDetails(item)}
         />
       </View>
     </View>
@@ -788,6 +784,7 @@ export function RulesListSection({
   customRules,
   onEditRule,
   onDeleteRule,
+  onShowSystemDetails,
 }: Props) {
   const premium = usePremiumTheme();
 
@@ -814,7 +811,7 @@ export function RulesListSection({
             <OfficialBehaviorCard
               key={item.id}
               item={item}
-              onEditRule={onEditRule}
+              onShowSystemDetails={onShowSystemDetails}
             />
           ))
         )}

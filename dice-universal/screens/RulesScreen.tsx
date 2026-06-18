@@ -17,6 +17,8 @@ import { useGuidedBehaviorWizard } from "../features/rules/guidedBehavior/useGui
 import { GuidedBehaviorPreviewModal } from "../features/rules/guidedBehavior/GuidedBehaviorPreviewModal";
 import { useGuidedBehaviorPreview } from "../features/rules/guidedBehavior/useGuidedBehaviorPreview";
 
+import type { OfficialBehaviorCatalogItem } from "../features/rules/components/RulesListSection";
+
 import { useArcaneLayout } from "../theme/useArcaneLayout";
 import { usePremiumTheme } from "../theme/premium/usePremiumTheme";
 
@@ -414,6 +416,209 @@ function BehaviorInfoModal({
   );
 }
 
+function SystemBehaviorDetailsModal({
+  item,
+  onClose,
+}: {
+  item: OfficialBehaviorCatalogItem | null;
+  onClose: () => void;
+}) {
+  const premium = usePremiumTheme();
+
+  if (!item) return null;
+
+  const diceLabel =
+    item.supportedSides && item.supportedSides.length > 0
+      ? item.supportedSides.map((side) => `d${side}`).join(", ")
+      : "Tous les dés";
+
+  return (
+    <Modal
+      visible={!!item}
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      onRequestClose={onClose}
+    >
+      <Pressable
+        onPress={onClose}
+        style={{
+          flex: 1,
+          backgroundColor: "rgba(0,0,0,0.70)",
+          justifyContent: "center",
+          padding: 18,
+        }}
+      >
+        <Pressable
+          onPress={() => {
+            return;
+          }}
+          style={{
+            borderRadius: 30,
+            borderWidth: 1,
+            borderColor: "rgba(232, 200, 120, 0.18)",
+            backgroundColor: "rgba(8, 11, 24, 0.98)",
+            paddingHorizontal: 16,
+            paddingVertical: 16,
+            gap: 14,
+          }}
+        >
+          <View style={{ gap: 8 }}>
+            <HeaderPill label="Comportement système" />
+
+            <Text
+              style={{
+                color: "rgba(255,255,255,0.96)",
+                fontSize: 23,
+                fontWeight: "900",
+                letterSpacing: -0.35,
+              }}
+            >
+              {item.icon} {item.label}
+            </Text>
+
+            <Text
+              style={{
+                color: "rgba(255,255,255,0.66)",
+                fontSize: 13,
+                fontWeight: "700",
+                lineHeight: 19,
+              }}
+            >
+              {item.description}
+            </Text>
+          </View>
+
+          <View
+            style={{
+              borderRadius: 22,
+              borderWidth: 1,
+              borderColor: "rgba(255,255,255,0.08)",
+              backgroundColor: "rgba(255,255,255,0.045)",
+              padding: 12,
+              gap: 8,
+            }}
+          >
+            <Text
+              style={{
+                color: premium.colors.accent.primary,
+                fontSize: 11,
+                fontWeight: "900",
+                textTransform: "uppercase",
+                letterSpacing: 0.75,
+              }}
+            >
+              À quoi ça sert ?
+            </Text>
+
+            <Text
+              style={{
+                color: "rgba(255,255,255,0.68)",
+                fontSize: 12,
+                fontWeight: "700",
+                lineHeight: 18,
+              }}
+            >
+              Ce comportement sert de modèle officiel. Tu peux l’utiliser dans
+              tes actions, tes entrées de dés ou comme base d’inspiration pour
+              créer un comportement personnalisé.
+            </Text>
+          </View>
+
+          <View
+            style={{
+              flexDirection: "row",
+              flexWrap: "wrap",
+              gap: 8,
+            }}
+          >
+            <ConceptChip title="Famille" description={item.family} />
+
+            <ConceptChip title="Dés" description={diceLabel} />
+
+            <ConceptChip
+              title="Source"
+              description={item.sourceRule ? "Modèle disponible" : "Catalogue"}
+            />
+          </View>
+
+          <View
+            style={{
+              borderRadius: 22,
+              borderWidth: 1,
+              borderColor: "rgba(255,255,255,0.08)",
+              backgroundColor: "rgba(255,255,255,0.045)",
+              padding: 12,
+              gap: 8,
+            }}
+          >
+            <Text
+              style={{
+                color: premium.colors.accent.primary,
+                fontSize: 11,
+                fontWeight: "900",
+                textTransform: "uppercase",
+                letterSpacing: 0.75,
+              }}
+            >
+              Conseil
+            </Text>
+
+            <Text
+              style={{
+                color: "rgba(255,255,255,0.68)",
+                fontSize: 12,
+                fontWeight: "700",
+                lineHeight: 18,
+              }}
+            >
+              Pour créer ta propre variante, utilise “Nouveau comportement”. Le
+              builder guidé te proposera les options adaptées selon tes choix :
+              seuil, succès, explosions, relances, critiques, complications ou
+              paliers.
+            </Text>
+          </View>
+
+          <Pressable
+            onPress={onClose}
+            style={({ pressed }) => ({
+              opacity: pressed ? 0.78 : 1,
+              transform: [
+                { scale: pressed ? premium.animation.pressScale : 1 },
+              ],
+            })}
+          >
+            <View
+              style={{
+                minHeight: 42,
+                borderRadius: premium.radius.pill,
+                borderWidth: 1,
+                borderColor: "rgba(232, 200, 120, 0.26)",
+                backgroundColor: "rgba(232, 200, 120, 0.10)",
+                alignItems: "center",
+                justifyContent: "center",
+                paddingHorizontal: 14,
+              }}
+            >
+              <Text
+                style={{
+                  color: premium.colors.accent.primary,
+                  fontSize: 12,
+                  fontWeight: "900",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.8,
+                }}
+              >
+                Fermer
+              </Text>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
 function ActionButton({
   title,
   description,
@@ -592,6 +797,9 @@ export default function RulesScreen() {
 
   const [showInfoModal, setShowInfoModal] = useState(false);
 
+  const [selectedSystemBehavior, setSelectedSystemBehavior] =
+    useState<OfficialBehaviorCatalogItem | null>(null);
+
   const { notifyDataChanged } = useDataRefresh();
 
   const { error, systemRules, customRules, saveRule, removeRule } =
@@ -727,6 +935,7 @@ export default function RulesScreen() {
             customRules={customRules}
             onEditRule={openEdit}
             onDeleteRule={handleDeleteRule}
+            onShowSystemDetails={setSelectedSystemBehavior}
           />
         </View>
       </ScrollView>
@@ -734,6 +943,11 @@ export default function RulesScreen() {
       <BehaviorInfoModal
         visible={showInfoModal}
         onClose={() => setShowInfoModal(false)}
+      />
+
+      <SystemBehaviorDetailsModal
+        item={selectedSystemBehavior}
+        onClose={() => setSelectedSystemBehavior(null)}
       />
 
       <HumanRuleEditorModal
