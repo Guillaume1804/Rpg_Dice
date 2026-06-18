@@ -27,6 +27,12 @@ import {
   type GuidedBehaviorWizardStep,
 } from "./useGuidedBehaviorWizard";
 
+import {
+  getGuidedBehaviorContext,
+  type GuidedBehaviorContext,
+  type GuidedBehaviorContextWarning,
+} from "./guidedBehaviorContext";
+
 type Props = {
   visible: boolean;
   step: GuidedBehaviorWizardStep;
@@ -369,11 +375,15 @@ function ChoiceCard({
   description,
   selected,
   onPress,
+  recommended = false,
+  advanced = false,
 }: {
   title: string;
   description?: string;
   selected: boolean;
   onPress: () => void;
+  recommended?: boolean;
+  advanced?: boolean;
 }) {
   const premium = usePremiumTheme();
 
@@ -397,20 +407,35 @@ function ChoiceCard({
             : "rgba(255,255,255,0.045)",
           paddingHorizontal: 12,
           paddingVertical: 11,
-          gap: 5,
+          gap: 6,
         }}
       >
-        <Text
+        <View
           style={{
-            color: selected
-              ? premium.colors.accent.primary
-              : "rgba(255,255,255,0.92)",
-            fontSize: 14,
-            fontWeight: "900",
+            flexDirection: "row",
+            flexWrap: "wrap",
+            alignItems: "center",
+            gap: 6,
           }}
         >
-          {title}
-        </Text>
+          <Text
+            style={{
+              color: selected
+                ? premium.colors.accent.primary
+                : "rgba(255,255,255,0.92)",
+              fontSize: 14,
+              fontWeight: "900",
+            }}
+          >
+            {title}
+          </Text>
+
+          {recommended ? (
+            <ContextBadge label="Conseillé" variant="recommended" />
+          ) : null}
+
+          {advanced ? <ContextBadge label="Avancé" variant="advanced" /> : null}
+        </View>
 
         {description ? (
           <Text
@@ -426,6 +451,120 @@ function ChoiceCard({
         ) : null}
       </View>
     </Pressable>
+  );
+}
+
+function ContextBadge({
+  label,
+  variant = "default",
+}: {
+  label: string;
+  variant?: "default" | "recommended" | "advanced";
+}) {
+  const premium = usePremiumTheme();
+
+  const isRecommended = variant === "recommended";
+  const isAdvanced = variant === "advanced";
+
+  return (
+    <View
+      style={{
+        alignSelf: "flex-start",
+        borderRadius: premium.radius.pill,
+        borderWidth: 1,
+        borderColor: isRecommended
+          ? "rgba(232, 200, 120, 0.28)"
+          : isAdvanced
+            ? "rgba(124, 92, 255, 0.26)"
+            : "rgba(255,255,255,0.09)",
+        backgroundColor: isRecommended
+          ? "rgba(232, 200, 120, 0.10)"
+          : isAdvanced
+            ? "rgba(124, 92, 255, 0.10)"
+            : "rgba(255,255,255,0.045)",
+        paddingHorizontal: 9,
+        paddingVertical: 4,
+      }}
+    >
+      <Text
+        style={{
+          color: isRecommended
+            ? premium.colors.accent.primary
+            : isAdvanced
+              ? "rgba(188, 174, 255, 0.92)"
+              : "rgba(255,255,255,0.58)",
+          fontSize: 9,
+          fontWeight: "900",
+          textTransform: "uppercase",
+          letterSpacing: 0.65,
+        }}
+      >
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+function ContextNotice({ warning }: { warning: GuidedBehaviorContextWarning }) {
+  const premium = usePremiumTheme();
+
+  const isWarning = warning.level === "warning";
+
+  return (
+    <View
+      style={{
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: isWarning
+          ? "rgba(239, 111, 145, 0.28)"
+          : "rgba(232, 200, 120, 0.18)",
+        backgroundColor: isWarning
+          ? "rgba(239, 111, 145, 0.07)"
+          : "rgba(232, 200, 120, 0.07)",
+        paddingHorizontal: 11,
+        paddingVertical: 10,
+        gap: 4,
+      }}
+    >
+      <Text
+        style={{
+          color: isWarning
+            ? premium.colors.state.failure
+            : premium.colors.accent.primary,
+          fontSize: 12,
+          fontWeight: "900",
+        }}
+      >
+        {warning.title}
+      </Text>
+
+      <Text
+        style={{
+          color: "rgba(255,255,255,0.62)",
+          fontSize: 11,
+          fontWeight: "700",
+          lineHeight: 16,
+        }}
+      >
+        {warning.message}
+      </Text>
+    </View>
+  );
+}
+
+function ContextNotices({
+  warnings,
+}: {
+  warnings: GuidedBehaviorContextWarning[];
+}) {
+  if (warnings.length === 0) return null;
+
+  return (
+    <View style={{ gap: 8 }}>
+      {warnings.map((warning, index) => (
+        <ContextNotice key={`${warning.title}-${index}`} warning={warning} />
+      ))}
+    </View>
   );
 }
 
@@ -1022,6 +1161,7 @@ function renderReadingStep(
 
 function renderEventsStep(
   draft: GuidedBehaviorDraft,
+  behaviorContext: GuidedBehaviorContext,
   props: Pick<
     Props,
     | "onUpdateCriticalSuccess"
@@ -1031,7 +1171,12 @@ function renderEventsStep(
 ) {
   return (
     <View style={{ gap: 12 }}>
-      <Section title="Réussite critique">
+      <ContextNotices warnings={behaviorContext.warnings} />
+
+      <Section
+        title="Réussite critique"
+        description="Les options proposées dépendent maintenant de la lecture du résultat et des transformations activées."
+      >
         <SwitchRow
           title="Activer la réussite critique"
           description="Permet de marquer certains résultats comme exceptionnels."
@@ -1039,22 +1184,59 @@ function renderEventsStep(
           onToggle={() =>
             props.onUpdateCriticalSuccess({
               enabled: !draft.events.criticalSuccess.enabled,
+              rule: draft.events.criticalSuccess.enabled
+                ? "none"
+                : (behaviorContext.criticalSuccessOptions.find(
+                    (option) => option.recommended,
+                  )?.key ?? "any_critical_face"),
             })
           }
         />
 
         {draft.events.criticalSuccess.enabled ? (
-          <FieldGroup label="Faces critiques">
-            <Input
-              value={draft.events.criticalSuccess.faces}
-              onChangeText={(faces) => props.onUpdateCriticalSuccess({ faces })}
-              placeholder="Ex : 20 ou 19,20"
-            />
-          </FieldGroup>
+          <>
+            {behaviorContext.criticalSuccessOptions.map((option) => (
+              <ChoiceCard
+                key={option.key}
+                title={option.label}
+                description={option.description}
+                selected={draft.events.criticalSuccess.rule === option.key}
+                recommended={option.recommended}
+                advanced={option.advanced}
+                onPress={() =>
+                  props.onUpdateCriticalSuccess({ rule: option.key })
+                }
+              />
+            ))}
+
+            <FieldGroup label="Faces critiques">
+              <Input
+                value={draft.events.criticalSuccess.faces}
+                onChangeText={(faces) =>
+                  props.onUpdateCriticalSuccess({ faces })
+                }
+                placeholder="Ex : 20 ou 19,20"
+              />
+            </FieldGroup>
+
+            <FieldGroup label="Seuil critique">
+              <Input
+                value={draft.events.criticalSuccess.threshold}
+                onChangeText={(threshold) =>
+                  props.onUpdateCriticalSuccess({ threshold })
+                }
+                placeholder="Ex : 5 succès"
+                keyboardType="number-pad"
+              />
+            </FieldGroup>
+          </>
         ) : null}
       </Section>
 
-      <Section title="Échec critique">
+      <Section
+        title="Échec critique"
+        description="Les options s’adaptent aux pools, seuils, complications et futures relances."
+      >
         <SwitchRow
           title="Activer l’échec critique"
           description="Permet de marquer certains résultats comme catastrophiques."
@@ -1062,18 +1244,41 @@ function renderEventsStep(
           onToggle={() =>
             props.onUpdateCriticalFailure({
               enabled: !draft.events.criticalFailure.enabled,
+              rule: draft.events.criticalFailure.enabled
+                ? "none"
+                : (behaviorContext.criticalFailureOptions.find(
+                    (option) => option.recommended,
+                  )?.key ?? "zero_successes"),
             })
           }
         />
 
         {draft.events.criticalFailure.enabled ? (
-          <FieldGroup label="Faces critiques">
-            <Input
-              value={draft.events.criticalFailure.faces}
-              onChangeText={(faces) => props.onUpdateCriticalFailure({ faces })}
-              placeholder="Ex : 1"
-            />
-          </FieldGroup>
+          <>
+            {behaviorContext.criticalFailureOptions.map((option) => (
+              <ChoiceCard
+                key={option.key}
+                title={option.label}
+                description={option.description}
+                selected={draft.events.criticalFailure.rule === option.key}
+                recommended={option.recommended}
+                advanced={option.advanced}
+                onPress={() =>
+                  props.onUpdateCriticalFailure({ rule: option.key })
+                }
+              />
+            ))}
+
+            <FieldGroup label="Faces critiques">
+              <Input
+                value={draft.events.criticalFailure.faces}
+                onChangeText={(faces) =>
+                  props.onUpdateCriticalFailure({ faces })
+                }
+                placeholder="Ex : 1"
+              />
+            </FieldGroup>
+          </>
         ) : null}
       </Section>
 
@@ -1085,18 +1290,67 @@ function renderEventsStep(
           onToggle={() =>
             props.onUpdateComplication({
               enabled: !draft.events.complication.enabled,
+              rule: draft.events.complication.enabled
+                ? "none"
+                : "any_special_failure",
             })
           }
         />
 
         {draft.events.complication.enabled ? (
-          <FieldGroup label="Faces de complication">
-            <Input
-              value={draft.events.complication.faces}
-              onChangeText={(faces) => props.onUpdateComplication({ faces })}
-              placeholder="Ex : 1"
+          <>
+            <ChoiceCard
+              title="Au moins une face problématique"
+              description="Déclenche une complication dès qu’une face indiquée apparaît."
+              selected={
+                draft.events.complication.rule === "any_special_failure"
+              }
+              recommended
+              onPress={() =>
+                props.onUpdateComplication({
+                  rule: "any_special_failure",
+                })
+              }
             />
-          </FieldGroup>
+
+            <ChoiceCard
+              title="Faces problématiques > succès"
+              description="Utile pour les pools de dés type Shadowrun-like."
+              selected={
+                draft.events.complication.rule ===
+                "special_failures_gt_successes"
+              }
+              advanced
+              onPress={() =>
+                props.onUpdateComplication({
+                  rule: "special_failures_gt_successes",
+                })
+              }
+            />
+
+            <ChoiceCard
+              title="Faces problématiques ≥ moitié du pool"
+              description="Déclenche une complication si les faces problématiques atteignent la moitié des dés."
+              selected={
+                draft.events.complication.rule ===
+                "special_failures_gte_half_dice"
+              }
+              advanced
+              onPress={() =>
+                props.onUpdateComplication({
+                  rule: "special_failures_gte_half_dice",
+                })
+              }
+            />
+
+            <FieldGroup label="Faces de complication">
+              <Input
+                value={draft.events.complication.faces}
+                onChangeText={(faces) => props.onUpdateComplication({ faces })}
+                placeholder="Ex : 1"
+              />
+            </FieldGroup>
+          </>
         ) : null}
       </Section>
     </View>
@@ -1105,6 +1359,7 @@ function renderEventsStep(
 
 function renderApplicationStep(
   draft: GuidedBehaviorDraft,
+  behaviorContext: GuidedBehaviorContext,
   onSetApplicationMode: Props["onSetApplicationMode"],
 ) {
   const options: {
@@ -1116,7 +1371,7 @@ function renderApplicationStep(
       key: "auto",
       title: "Automatique",
       description:
-        "L’application choisit selon la logique du comportement. Recommandé.",
+        "L’application choisit selon la logique du comportement. Recommandé pour la plupart des cas.",
     },
     {
       key: "single_entry",
@@ -1133,7 +1388,7 @@ function renderApplicationStep(
   return (
     <Section
       title="Application du comportement"
-      description="Cette étape remplace l’ancien choix technique Entrée / Groupe / Les deux."
+      description="Tu choisis en langage joueur, l’application convertit ensuite vers la portée technique."
     >
       {options.map((option) => (
         <ChoiceCard
@@ -1141,6 +1396,9 @@ function renderApplicationStep(
           title={option.title}
           description={option.description}
           selected={draft.applicationMode === option.key}
+          recommended={
+            behaviorContext.recommendedApplicationMode === option.key
+          }
           onPress={() => onSetApplicationMode(option.key)}
         />
       ))}
@@ -1161,36 +1419,81 @@ function renderApplicationStep(
   );
 }
 
-function renderSummaryStep(draft: GuidedBehaviorDraft) {
+function renderSummaryStep(
+  draft: GuidedBehaviorDraft,
+  behaviorContext: GuidedBehaviorContext,
+  onUpdateOutput: Props["onUpdateOutput"],
+) {
   return (
-    <Section
-      title="Résumé"
-      description="Vérifie la configuration avant de créer le comportement."
-    >
-      <Text style={{ color: "rgba(255,255,255,0.92)", fontWeight: "900" }}>
-        Nom : {draft.name || "—"}
-      </Text>
+    <View style={{ gap: 12 }}>
+      <Section
+        title="Sortie principale"
+        description="Choisis ce que le résultat doit mettre en avant en premier."
+      >
+        {behaviorContext.primaryOutputOptions.map((option) => (
+          <ChoiceCard
+            key={option.key}
+            title={option.label}
+            description={option.description}
+            selected={draft.output.primary === option.key}
+            recommended={option.recommended}
+            advanced={option.advanced}
+            onPress={() => onUpdateOutput({ primary: option.key })}
+          />
+        ))}
+      </Section>
 
-      <Text style={{ color: "rgba(255,255,255,0.62)", fontWeight: "700" }}>
-        Description : {draft.description || "—"}
-      </Text>
+      <Section
+        title="Résumé"
+        description="Vérifie la configuration avant de créer le comportement."
+      >
+        <Text style={{ color: "rgba(255,255,255,0.92)", fontWeight: "900" }}>
+          Nom : {draft.name || "—"}
+        </Text>
 
-      <Text style={{ color: "rgba(255,255,255,0.62)", fontWeight: "700" }}>
-        Dés : {diceCompatibilityToText(draft.diceCompatibility)}
-      </Text>
+        <Text style={{ color: "rgba(255,255,255,0.62)", fontWeight: "700" }}>
+          Description : {draft.description || "—"}
+        </Text>
 
-      <Text style={{ color: "rgba(255,255,255,0.62)", fontWeight: "700" }}>
-        Lecture : {draft.reading.mode}
-      </Text>
+        <Text style={{ color: "rgba(255,255,255,0.62)", fontWeight: "700" }}>
+          Dés : {diceCompatibilityToText(draft.diceCompatibility)}
+        </Text>
 
-      <Text style={{ color: "rgba(255,255,255,0.62)", fontWeight: "700" }}>
-        Application : {getGuidedBehaviorApplicationLabel(draft.applicationMode)}
-      </Text>
+        <Text style={{ color: "rgba(255,255,255,0.62)", fontWeight: "700" }}>
+          Lecture : {draft.reading.mode}
+        </Text>
 
-      <Text style={{ color: "rgba(255,255,255,0.62)", fontWeight: "700" }}>
-        Sortie principale : {draft.output.primary}
-      </Text>
-    </Section>
+        <Text style={{ color: "rgba(255,255,255,0.62)", fontWeight: "700" }}>
+          Application :{" "}
+          {getGuidedBehaviorApplicationLabel(draft.applicationMode)}
+        </Text>
+
+        <Text style={{ color: "rgba(255,255,255,0.62)", fontWeight: "700" }}>
+          Type :{" "}
+          {behaviorContext.isCompositeBehavior
+            ? "Comportement composé"
+            : "Comportement simple"}
+        </Text>
+
+        {behaviorContext.summaryHints.length > 0 ? (
+          <View style={{ gap: 6, marginTop: 4 }}>
+            {behaviorContext.summaryHints.map((hint, index) => (
+              <Text
+                key={`${hint}-${index}`}
+                style={{
+                  color: "rgba(255,255,255,0.58)",
+                  fontSize: 12,
+                  fontWeight: "700",
+                  lineHeight: 17,
+                }}
+              >
+                • {hint}
+              </Text>
+            ))}
+          </View>
+        ) : null}
+      </Section>
+    </View>
   );
 }
 
@@ -1228,6 +1531,8 @@ export function CreateGuidedBehaviorWizardModal({
   if (!visible) return null;
 
   const isLastStep = stepIndex === totalSteps - 1;
+
+  const behaviorContext = getGuidedBehaviorContext(draft);
 
   return (
     <Modal
@@ -1372,7 +1677,7 @@ export function CreateGuidedBehaviorWizardModal({
               : null}
 
             {step === "events"
-              ? renderEventsStep(draft, {
+              ? renderEventsStep(draft, behaviorContext, {
                   onUpdateCriticalSuccess,
                   onUpdateCriticalFailure,
                   onUpdateComplication,
@@ -1380,10 +1685,16 @@ export function CreateGuidedBehaviorWizardModal({
               : null}
 
             {step === "application"
-              ? renderApplicationStep(draft, onSetApplicationMode)
+              ? renderApplicationStep(
+                  draft,
+                  behaviorContext,
+                  onSetApplicationMode,
+                )
               : null}
 
-            {step === "summary" ? renderSummaryStep(draft) : null}
+            {step === "summary"
+              ? renderSummaryStep(draft, behaviorContext, onUpdateOutput)
+              : null}
           </ScrollView>
 
           <View
