@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import {
-  RULE_BEHAVIORS,
+  RULE_BEHAVIOR_VERTICAL_SLICE_ORDER,
   getRuleBehaviorDefinition,
+  getRuleBehaviorVerticalSliceLabel,
+  getVisibleRuleBehaviorsByVerticalSlice,
   type RuleBehaviorKey,
 } from "../../../core/rules/behaviorRegistry";
 import { buildDraftTempRuleFromPreset } from "../helpers/buildDraftTempRuleFromPreset";
@@ -17,17 +19,9 @@ export type QuickBehaviorPickerOption = {
   enabled: boolean;
   label?: string;
   description?: string;
+  categoryLabel?: string;
   variant: QuickBehaviorPickerVariant;
 };
-
-const QUICK_BEHAVIOR_ORDER: string[] = [
-  "single_check",
-  "threshold_degrees",
-  "success_pool",
-  "table_lookup",
-  "keep_drop_pipeline",
-  "custom_pipeline",
-];
 
 function isBehaviorCompatibleWithSides(params: {
   behaviorKey: RuleBehaviorKey;
@@ -36,23 +30,73 @@ function isBehaviorCompatibleWithSides(params: {
   const definition = getRuleBehaviorDefinition(params.behaviorKey);
   if (!definition) return false;
 
-  if (!definition.supportedSides) return true;
+  if (!definition.supportedSides || definition.supportedSides.length === 0) {
+    return true;
+  }
 
   return definition.supportedSides.includes(params.sides);
 }
 
-function sortQuickOptions(
-  options: QuickBehaviorPickerOption[],
+function buildQuickBehaviorOptionsForSides(
+  sides: number,
 ): QuickBehaviorPickerOption[] {
-  return [...options].sort((a, b) => {
-    const aIndex = QUICK_BEHAVIOR_ORDER.indexOf(a.optionId);
-    const bIndex = QUICK_BEHAVIOR_ORDER.indexOf(b.optionId);
+  const options: QuickBehaviorPickerOption[] = [];
 
-    const safeAIndex = aIndex >= 0 ? aIndex : QUICK_BEHAVIOR_ORDER.length;
-    const safeBIndex = bIndex >= 0 ? bIndex : QUICK_BEHAVIOR_ORDER.length;
+  for (const slice of RULE_BEHAVIOR_VERTICAL_SLICE_ORDER) {
+    const categoryLabel = getRuleBehaviorVerticalSliceLabel(slice);
 
-    return safeAIndex - safeBIndex;
-  });
+    if (slice === "keep_drop") {
+      const shouldShowKeepDrop = isBehaviorCompatibleWithSides({
+        behaviorKey: "custom_pipeline",
+        sides,
+      });
+
+      if (shouldShowKeepDrop) {
+        options.push({
+          optionId: "keep_drop_pipeline",
+          behaviorKey: "custom_pipeline",
+          context: "quick_roll",
+          enabled: true,
+          label: "Garder / retirer des dés",
+          description:
+            "Garde ou retire les meilleurs ou les plus faibles dés, puis calcule le résultat.",
+          categoryLabel,
+          variant: "keep_drop",
+        });
+      }
+
+      continue;
+    }
+
+    const visibleBehaviors = getVisibleRuleBehaviorsByVerticalSlice(slice);
+
+    for (const behavior of visibleBehaviors) {
+      if (
+        !isBehaviorCompatibleWithSides({
+          behaviorKey: behavior.key,
+          sides,
+        })
+      ) {
+        continue;
+      }
+
+      options.push({
+        optionId: behavior.key,
+        behaviorKey: behavior.key,
+        context: "quick_roll",
+        enabled: true,
+        label: behavior.label,
+        description: behavior.description,
+        categoryLabel,
+        variant: "default",
+      });
+    }
+  }
+
+  return options.filter(
+    (option, index, list) =>
+      list.findIndex((item) => item.optionId === option.optionId) === index,
+  );
 }
 
 export function useQuickDieBehaviorPicker({
@@ -82,49 +126,7 @@ export function useQuickDieBehaviorPicker({
 
   const behaviors = useMemo<QuickBehaviorPickerOption[]>(() => {
     if (editingDieSides == null) return [];
-
-    const visibleBehaviors: QuickBehaviorPickerOption[] = RULE_BEHAVIORS.filter(
-      (behavior) => {
-        if (behavior.visibleInQuickPicker === false) return false;
-
-        if (!behavior.supportedSides) return true;
-
-        return behavior.supportedSides.includes(editingDieSides);
-      },
-    ).map((behavior) => ({
-      optionId: behavior.key,
-      behaviorKey: behavior.key,
-      context: "quick_roll" as const,
-      enabled: true,
-      variant: "default" as const,
-    }));
-
-    const shouldShowKeepDrop = isBehaviorCompatibleWithSides({
-      behaviorKey: "custom_pipeline",
-      sides: editingDieSides,
-    });
-
-    const keepDropOption: QuickBehaviorPickerOption = {
-      optionId: "keep_drop_pipeline",
-      behaviorKey: "custom_pipeline",
-      context: "quick_roll",
-      enabled: shouldShowKeepDrop,
-      label: "Garder / Retirer des dés",
-      description:
-        "Garde ou retire les meilleurs ou les plus faibles dés, puis calcule le résultat.",
-      variant: "keep_drop",
-    };
-
-    const options = shouldShowKeepDrop
-      ? [...visibleBehaviors, keepDropOption]
-      : visibleBehaviors;
-
-    const uniqueOptions = options.filter(
-      (option, index, list) =>
-        list.findIndex((item) => item.optionId === option.optionId) === index,
-    );
-
-    return sortQuickOptions(uniqueOptions);
+    return buildQuickBehaviorOptionsForSides(editingDieSides);
   }, [editingDieSides]);
 
   function getDefinition(behaviorKey: RuleBehaviorKey) {

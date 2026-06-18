@@ -3,6 +3,12 @@ import {
   parseSupportedSides,
   type RuleRow,
 } from "../../../data/repositories/rulesRepo";
+import {
+  RULE_BEHAVIOR_VERTICAL_SLICE_ORDER,
+  getRuleBehaviorVerticalSliceLabel,
+  getVisibleRuleBehaviorsByVerticalSlice,
+  type RuleBehaviorKey,
+} from "../../../core/rules/behaviorRegistry";
 
 import { usePremiumTheme } from "../../../theme/premium/usePremiumTheme";
 
@@ -11,6 +17,18 @@ type Props = {
   customRules: RuleRow[];
   onEditRule: (rule: RuleRow) => void;
   onDeleteRule: (ruleId: string) => Promise<void>;
+};
+
+type OfficialBehaviorCatalogItem = {
+  id: string;
+  label: string;
+  description: string;
+  family: string;
+  icon: string;
+  supportedSides: number[] | null;
+  behaviorKeys: RuleBehaviorKey[];
+  ruleKinds: string[];
+  sourceRule: RuleRow | null;
 };
 
 function getRuleKindLabel(kind: string) {
@@ -49,11 +67,11 @@ function getRuleKindLabel(kind: string) {
 function getRuleKindDescription(kind: string) {
   switch (kind) {
     case "sum":
-      return "Additionne les dés et les modificateurs. C’est le comportement standard le plus simple.";
+      return "Additionne les dés et les modificateurs. C’est le comportement standard.";
     case "single_check":
-      return "Compare le résultat à un seuil pour déterminer une réussite, un échec ou un critique.";
+      return "Compare le résultat à un seuil pour déterminer réussite, échec ou critique.";
     case "threshold_degrees":
-      return "Compare un d100 à une cible et calcule des degrés selon la marge obtenue.";
+      return "Compare un d100 à une cible et calcule des degrés selon la marge.";
     case "success_pool":
       return "Compte les dés qui atteignent un seuil de réussite et peut détecter complications ou critiques.";
     case "banded_sum":
@@ -133,20 +151,96 @@ function getRuleKindIcon(kind: string) {
   }
 }
 
+function getBehaviorKeyRuleKinds(behaviorKey: RuleBehaviorKey): string[] {
+  switch (behaviorKey) {
+    case "sum_total":
+      return ["sum"];
+    case "custom_pipeline":
+      return ["pipeline"];
+    default:
+      return [behaviorKey];
+  }
+}
+
 function getScopeLabel(scope: RuleRow["scope"]) {
   if (scope === "entry") return "Entrée";
   if (scope === "group") return "Groupe";
   return "Entrée ou groupe";
 }
 
-function getSupportedSidesLabel(rule: RuleRow) {
-  const sides = parseSupportedSides(rule);
-
-  if (sides.length === 0) {
+function getSupportedSidesLabelFromSides(sides: number[] | null) {
+  if (!sides || sides.length === 0) {
     return "Tous les dés";
   }
 
   return sides.map((side) => `d${side}`).join(", ");
+}
+
+function getSupportedSidesLabelFromRule(rule: RuleRow) {
+  const sides = parseSupportedSides(rule);
+  return getSupportedSidesLabelFromSides(sides);
+}
+
+function findSystemRuleForKinds(systemRules: RuleRow[], kinds: string[]) {
+  return systemRules.find((rule) => kinds.includes(rule.kind)) ?? null;
+}
+
+function buildOfficialBehaviorCatalog(
+  systemRules: RuleRow[],
+): OfficialBehaviorCatalogItem[] {
+  const items: OfficialBehaviorCatalogItem[] = [];
+
+  for (const slice of RULE_BEHAVIOR_VERTICAL_SLICE_ORDER) {
+    const family = getRuleBehaviorVerticalSliceLabel(slice);
+
+    if (slice === "keep_drop") {
+      const ruleKinds = [
+        "keep_highest_n",
+        "keep_lowest_n",
+        "drop_highest_n",
+        "drop_lowest_n",
+        "pipeline",
+      ];
+
+      items.push({
+        id: "keep_drop",
+        label: "Garder / retirer des dés",
+        description:
+          "Garde ou retire les meilleurs ou les plus faibles dés, puis calcule le résultat.",
+        family,
+        icon: "◇",
+        supportedSides: null,
+        behaviorKeys: ["custom_pipeline"],
+        ruleKinds,
+        sourceRule: findSystemRuleForKinds(systemRules, ruleKinds),
+      });
+
+      continue;
+    }
+
+    const visibleBehaviors = getVisibleRuleBehaviorsByVerticalSlice(slice);
+
+    for (const behavior of visibleBehaviors) {
+      const ruleKinds = getBehaviorKeyRuleKinds(behavior.key);
+
+      items.push({
+        id: behavior.key,
+        label: behavior.label,
+        description: behavior.description,
+        family,
+        icon: getRuleKindIcon(behavior.kind),
+        supportedSides: behavior.supportedSides,
+        behaviorKeys: [behavior.key],
+        ruleKinds,
+        sourceRule: findSystemRuleForKinds(systemRules, ruleKinds),
+      });
+    }
+  }
+
+  return items.filter(
+    (item, index, list) =>
+      list.findIndex((candidate) => candidate.id === item.id) === index,
+  );
 }
 
 function LibrarySectionHeader({
@@ -172,7 +266,7 @@ function LibrarySectionHeader({
       <View style={{ flex: 1, gap: 4 }}>
         <Text
           style={{
-            color: premium.colors.text.primary,
+            color: "rgba(255,255,255,0.94)",
             fontSize: 16,
             fontWeight: "900",
             letterSpacing: -0.2,
@@ -183,7 +277,7 @@ function LibrarySectionHeader({
 
         <Text
           style={{
-            color: premium.colors.text.muted,
+            color: "rgba(255,255,255,0.56)",
             fontSize: 11,
             fontWeight: "700",
             lineHeight: 16,
@@ -205,7 +299,7 @@ function LibrarySectionHeader({
       >
         <Text
           style={{
-            color: premium.colors.text.muted,
+            color: "rgba(255,255,255,0.62)",
             fontSize: 10,
             fontWeight: "900",
           }}
@@ -251,7 +345,7 @@ function BehaviorBadge({
         ? premium.colors.state.warning
         : variant === "custom"
           ? premium.colors.accent.secondary
-          : premium.colors.text.muted;
+          : "rgba(255,255,255,0.58)";
 
   return (
     <View
@@ -283,10 +377,12 @@ function LibraryButton({
   label,
   onPress,
   variant = "default",
+  disabled = false,
 }: {
   label: string;
   onPress: () => void;
   variant?: "default" | "accent" | "danger";
+  disabled?: boolean;
 }) {
   const premium = usePremiumTheme();
 
@@ -309,14 +405,19 @@ function LibraryButton({
       ? premium.colors.accent.primary
       : variant === "danger"
         ? premium.colors.state.failure
-        : premium.colors.text.secondary;
+        : "rgba(255,255,255,0.62)";
 
   return (
     <Pressable
+      disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => ({
-        opacity: pressed ? 0.78 : 1,
-        transform: [{ scale: pressed ? premium.animation.pressScale : 1 }],
+        opacity: disabled ? 0.42 : pressed ? 0.78 : 1,
+        transform: [
+          {
+            scale: pressed && !disabled ? premium.animation.pressScale : 1,
+          },
+        ],
       })}
     >
       <View
@@ -347,25 +448,14 @@ function LibraryButton({
   );
 }
 
-function BehaviorCard({
-  rule,
-  origin,
+function OfficialBehaviorCard({
+  item,
   onEditRule,
-  onDeleteRule,
 }: {
-  rule: RuleRow;
-  origin: "system" | "custom";
+  item: OfficialBehaviorCatalogItem;
   onEditRule: (rule: RuleRow) => void;
-  onDeleteRule?: (ruleId: string) => Promise<void>;
 }) {
   const premium = usePremiumTheme();
-
-  const isSystem = origin === "system";
-  const isPipeline = rule.kind === "pipeline";
-  const label = getRuleKindLabel(rule.kind);
-  const description = getRuleKindDescription(rule.kind);
-  const family = getRuleKindFamily(rule.kind);
-  const icon = getRuleKindIcon(rule.kind);
 
   return (
     <View
@@ -392,26 +482,20 @@ function BehaviorCard({
             height: 40,
             borderRadius: 16,
             borderWidth: 1,
-            borderColor: isSystem
-              ? "rgba(232, 200, 120, 0.20)"
-              : "rgba(124, 92, 255, 0.28)",
-            backgroundColor: isSystem
-              ? "rgba(232, 200, 120, 0.08)"
-              : "rgba(124, 92, 255, 0.10)",
+            borderColor: "rgba(232, 200, 120, 0.20)",
+            backgroundColor: "rgba(232, 200, 120, 0.08)",
             alignItems: "center",
             justifyContent: "center",
           }}
         >
           <Text
             style={{
-              color: isSystem
-                ? premium.colors.accent.primary
-                : premium.colors.accent.secondary,
+              color: premium.colors.accent.primary,
               fontSize: 17,
               fontWeight: "900",
             }}
           >
-            {icon}
+            {item.icon}
           </Text>
         </View>
 
@@ -419,13 +503,13 @@ function BehaviorCard({
           <Text
             numberOfLines={1}
             style={{
-              color: premium.colors.text.primary,
+              color: "rgba(255,255,255,0.94)",
               fontSize: 16,
               fontWeight: "900",
               letterSpacing: -0.15,
             }}
           >
-            {rule.name}
+            {item.label}
           </Text>
 
           <Text
@@ -438,13 +522,165 @@ function BehaviorCard({
               letterSpacing: 0.7,
             }}
           >
+            {item.family}
+          </Text>
+
+          <Text
+            numberOfLines={3}
+            style={{
+              color: "rgba(255,255,255,0.56)",
+              fontSize: 11,
+              fontWeight: "700",
+              lineHeight: 16,
+            }}
+          >
+            {item.description}
+          </Text>
+        </View>
+      </View>
+
+      <View
+        style={{
+          flexDirection: "row",
+          flexWrap: "wrap",
+          gap: 7,
+        }}
+      >
+        <BehaviorBadge label="Système" />
+
+        <BehaviorBadge label={item.family} variant="accent" />
+
+        <BehaviorBadge
+          label={`Dés : ${getSupportedSidesLabelFromSides(
+            item.supportedSides,
+          )}`}
+        />
+
+        {item.id === "custom_pipeline" ? (
+          <BehaviorBadge label="Expert" variant="warning" />
+        ) : null}
+
+        {!item.sourceRule ? <BehaviorBadge label="Catalogue" /> : null}
+      </View>
+
+      <View
+        style={{
+          height: 1,
+          backgroundColor: "rgba(255,255,255,0.06)",
+        }}
+      />
+
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "flex-end",
+          flexWrap: "wrap",
+          gap: 8,
+        }}
+      >
+        <LibraryButton
+          label={item.sourceRule ? "Voir modèle" : "Disponible"}
+          disabled={!item.sourceRule}
+          onPress={() => {
+            if (item.sourceRule) {
+              onEditRule(item.sourceRule);
+            }
+          }}
+        />
+      </View>
+    </View>
+  );
+}
+
+function CustomBehaviorCard({
+  rule,
+  onEditRule,
+  onDeleteRule,
+}: {
+  rule: RuleRow;
+  onEditRule: (rule: RuleRow) => void;
+  onDeleteRule?: (ruleId: string) => Promise<void>;
+}) {
+  const premium = usePremiumTheme();
+
+  const label = getRuleKindLabel(rule.kind);
+  const description = getRuleKindDescription(rule.kind);
+  const family = getRuleKindFamily(rule.kind);
+  const icon = getRuleKindIcon(rule.kind);
+  const isPipeline = rule.kind === "pipeline";
+
+  return (
+    <View
+      style={{
+        borderRadius: 24,
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.075)",
+        backgroundColor: "rgba(255,255,255,0.04)",
+        paddingHorizontal: 13,
+        paddingVertical: 13,
+        gap: 12,
+      }}
+    >
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "flex-start",
+          gap: 12,
+        }}
+      >
+        <View
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: "rgba(124, 92, 255, 0.28)",
+            backgroundColor: "rgba(124, 92, 255, 0.10)",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text
+            style={{
+              color: premium.colors.accent.secondary,
+              fontSize: 17,
+              fontWeight: "900",
+            }}
+          >
+            {icon}
+          </Text>
+        </View>
+
+        <View style={{ flex: 1, minWidth: 0, gap: 5 }}>
+          <Text
+            numberOfLines={1}
+            style={{
+              color: "rgba(255,255,255,0.94)",
+              fontSize: 16,
+              fontWeight: "900",
+              letterSpacing: -0.15,
+            }}
+          >
+            {rule.name}
+          </Text>
+
+          <Text
+            numberOfLines={1}
+            style={{
+              color: premium.colors.accent.secondary,
+              fontSize: 11,
+              fontWeight: "900",
+              textTransform: "uppercase",
+              letterSpacing: 0.7,
+            }}
+          >
             {label}
           </Text>
 
           <Text
             numberOfLines={3}
             style={{
-              color: premium.colors.text.muted,
+              color: "rgba(255,255,255,0.56)",
               fontSize: 11,
               fontWeight: "700",
               lineHeight: 16,
@@ -462,16 +698,15 @@ function BehaviorCard({
           gap: 7,
         }}
       >
-        <BehaviorBadge
-          label={isSystem ? "Système" : "Perso"}
-          variant={isSystem ? "system" : "custom"}
-        />
+        <BehaviorBadge label="Perso" variant="custom" />
 
         <BehaviorBadge label={family} variant="accent" />
 
         <BehaviorBadge label={`Portée : ${getScopeLabel(rule.scope)}`} />
 
-        <BehaviorBadge label={getSupportedSidesLabel(rule)} />
+        <BehaviorBadge
+          label={`Dés : ${getSupportedSidesLabelFromRule(rule)}`}
+        />
 
         {isPipeline ? <BehaviorBadge label="Expert" variant="warning" /> : null}
       </View>
@@ -492,12 +727,12 @@ function BehaviorCard({
         }}
       >
         <LibraryButton
-          label={isSystem ? "Voir" : "Modifier"}
+          label="Modifier"
           onPress={() => onEditRule(rule)}
-          variant={isSystem ? "default" : "accent"}
+          variant="accent"
         />
 
-        {!isSystem && onDeleteRule ? (
+        {onDeleteRule ? (
           <LibraryButton
             label="Supprimer"
             onPress={() => {
@@ -512,8 +747,6 @@ function BehaviorCard({
 }
 
 function EmptyLibraryState({ text }: { text: string }) {
-  const premium = usePremiumTheme();
-
   return (
     <View
       style={{
@@ -528,7 +761,7 @@ function EmptyLibraryState({ text }: { text: string }) {
     >
       <Text
         style={{
-          color: premium.colors.text.primary,
+          color: "rgba(255,255,255,0.94)",
           fontSize: 13,
           fontWeight: "900",
         }}
@@ -538,7 +771,7 @@ function EmptyLibraryState({ text }: { text: string }) {
 
       <Text
         style={{
-          color: premium.colors.text.muted,
+          color: "rgba(255,255,255,0.56)",
           fontSize: 11,
           fontWeight: "700",
           lineHeight: 16,
@@ -558,6 +791,8 @@ export function RulesListSection({
 }: Props) {
   const premium = usePremiumTheme();
 
+  const officialCatalog = buildOfficialBehaviorCatalog(systemRules);
+
   return (
     <View
       style={{
@@ -568,18 +803,17 @@ export function RulesListSection({
       <View style={{ gap: 10 }}>
         <LibrarySectionHeader
           title="Comportements système"
-          description="Les comportements de base fournis par l’application. Ils servent de modèles fiables."
-          count={systemRules.length}
+          description="Le catalogue officiel des comportements disponibles dans l’application."
+          count={officialCatalog.length}
         />
 
-        {systemRules.length === 0 ? (
+        {officialCatalog.length === 0 ? (
           <EmptyLibraryState text="Aucun comportement système disponible." />
         ) : (
-          systemRules.map((rule) => (
-            <BehaviorCard
-              key={rule.id}
-              rule={rule}
-              origin="system"
+          officialCatalog.map((item) => (
+            <OfficialBehaviorCard
+              key={item.id}
+              item={item}
               onEditRule={onEditRule}
             />
           ))
@@ -604,10 +838,9 @@ export function RulesListSection({
           <EmptyLibraryState text="Aucun comportement personnalisé pour le moment. Utilise la création guidée pour créer ton premier comportement." />
         ) : (
           customRules.map((rule) => (
-            <BehaviorCard
+            <CustomBehaviorCard
               key={rule.id}
               rule={rule}
-              origin="custom"
               onEditRule={onEditRule}
               onDeleteRule={onDeleteRule}
             />
