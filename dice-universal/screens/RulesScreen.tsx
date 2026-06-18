@@ -1,3 +1,5 @@
+// dice-universal\screens\RulesScreen.tsx
+
 import { useState } from "react";
 import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { useDb } from "../data/db/DbProvider";
@@ -134,7 +136,6 @@ function WorkshopHeader({
   customCount: number;
   onOpenInfo: () => void;
 }) {
-  const premium = usePremiumTheme();
 
   return (
     <View
@@ -641,6 +642,7 @@ export default function RulesScreen() {
         editingRule: null,
         payload: {
           ...payload,
+          scope: payload.scope ?? "entry",
           supported_sides_json: payload.supported_sides_json ?? "[]",
         },
       });

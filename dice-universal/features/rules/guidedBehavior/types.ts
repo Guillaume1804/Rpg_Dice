@@ -1,3 +1,5 @@
+// dice-universal\features\rules\guidedBehavior\types.ts
+
 import type { RuleScope } from "../../../data/repositories/rulesRepo";
 
 export type GuidedBehaviorIntent =
@@ -132,11 +134,11 @@ export type GuidedBehaviorDraft = {
     successAtOrAbove: string;
     failFaces: string;
 
-    tableRanges: Array<{
+    tableRanges: {
       min: string;
       max: string;
       label: string;
-    }>;
+    }[];
   };
 
   events: {

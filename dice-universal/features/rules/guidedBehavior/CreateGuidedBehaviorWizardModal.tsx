@@ -1,3 +1,5 @@
+// dice-universal\features\rules\guidedBehavior\CreateGuidedBehaviorWizardModal.tsx
+
 import {
   Modal,
   Pressable,
@@ -625,11 +627,11 @@ function renderIntentStep(
   draft: GuidedBehaviorDraft,
   onSetIntent: Props["onSetIntent"],
 ) {
-  const options: Array<{
+  const options: {
     key: GuidedBehaviorIntent;
     title: string;
     description: string;
-  }> = [
+  }[] = [
     {
       key: "sum",
       title: "Additionner des dés",
@@ -1105,11 +1107,11 @@ function renderApplicationStep(
   draft: GuidedBehaviorDraft,
   onSetApplicationMode: Props["onSetApplicationMode"],
 ) {
-  const options: Array<{
+  const options: {
     key: GuidedBehaviorApplicationMode;
     title: string;
     description: string;
-  }> = [
+  }[] = [
     {
       key: "auto",
       title: "Automatique",
