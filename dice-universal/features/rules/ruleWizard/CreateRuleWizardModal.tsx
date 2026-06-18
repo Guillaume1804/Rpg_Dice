@@ -1,13 +1,13 @@
-// dice-universal/features/rules/ruleWizard/CreateRuleWizardModal.tsx
-
 import {
-  View,
-  Text,
+  Modal,
   Pressable,
-  TextInput,
   ScrollView,
+  Text,
+  TextInput,
+  View,
   type KeyboardTypeOptions,
 } from "react-native";
+
 import type { RuleBehaviorKey } from "../../../core/rules/behaviorRegistry";
 import type { RuleWizardDraft, RuleWizardScope, RuleWizardStep } from "./types";
 
@@ -18,7 +18,7 @@ import {
   getVisibleRuleBehaviorsByVerticalSlice,
 } from "../../../core/rules/behaviorRegistry";
 
-import { useArcaneTheme } from "../../../theme/ArcaneThemeProvider";
+import { usePremiumTheme } from "../../../theme/premium/usePremiumTheme";
 
 type Props = {
   visible: boolean;
@@ -100,6 +100,15 @@ function formatPreviewResult(result: unknown): string {
         .filter(Boolean)
         .join("\n");
 
+    case "threshold_degrees":
+      return [
+        `Résultat : ${formatOutcome(res.outcome)}`,
+        `Jet : ${res.roll}`,
+        `Final : ${res.final}`,
+        `Marge : ${res.margin}`,
+        `Degrés : ${res.degrees}`,
+      ].join("\n");
+
     case "success_pool":
       return [
         `Résultat : ${formatOutcome(res.outcome)}`,
@@ -114,13 +123,6 @@ function formatPreviewResult(result: unknown): string {
       return [`Total : ${res.total}`, `Palier : ${res.label}`].join("\n");
 
     case "highest_of_pool":
-      return [
-        `Résultat : ${formatOutcome(res.outcome)}`,
-        `Jets : ${res.natural_values?.join(" + ")}`,
-        `Gardé : ${res.kept}`,
-        `Final : ${res.final}`,
-      ].join("\n");
-
     case "lowest_of_pool":
       return [
         `Résultat : ${formatOutcome(res.outcome)}`,
@@ -169,7 +171,7 @@ function getStepTitle(step: RuleWizardStep) {
     case "behavior":
       return "Choisir";
     case "dice":
-      return "Dés";
+      return "Dés compatibles";
     case "scope":
       return "Portée";
     case "summary":
@@ -188,7 +190,7 @@ function getStepDescription(step: RuleWizardStep) {
     case "dice":
       return "Définis les dés compatibles.";
     case "scope":
-      return "Choisis où le comportement peut s’appliquer.";
+      return "Choisis où ce comportement peut s’appliquer.";
     case "summary":
       return "Vérifie et teste avant sauvegarde.";
     default:
@@ -228,6 +230,58 @@ function getSupportedDiceDisplayLabel(value: string) {
     .join(", ");
 }
 
+function WizardHeaderPill({ label }: { label: string }) {
+  const premium = usePremiumTheme();
+
+  return (
+    <View
+      style={{
+        alignSelf: "flex-start",
+        borderRadius: premium.radius.pill,
+        borderWidth: 1,
+        borderColor: "rgba(232, 200, 120, 0.28)",
+        backgroundColor: "rgba(232, 200, 120, 0.09)",
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+      }}
+    >
+      <Text
+        style={{
+          color: premium.colors.accent.primary,
+          fontSize: 9,
+          fontWeight: "900",
+          textTransform: "uppercase",
+          letterSpacing: 0.85,
+        }}
+      >
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+function WizardStepDot({ active }: { active: boolean }) {
+  const premium = usePremiumTheme();
+
+  return (
+    <View
+      style={{
+        flex: 1,
+        height: 6,
+        borderWidth: 1,
+        borderColor: active
+          ? "rgba(232, 200, 120, 0.34)"
+          : "rgba(255,255,255,0.08)",
+        borderRadius: premium.radius.pill,
+        backgroundColor: active
+          ? "rgba(232, 200, 120, 0.18)"
+          : "rgba(255,255,255,0.04)",
+        opacity: active ? 1 : 0.62,
+      }}
+    />
+  );
+}
+
 function WizardPillButton({
   label,
   onPress,
@@ -235,65 +289,76 @@ function WizardPillButton({
 }: {
   label: string;
   onPress: () => void;
-  variant?: "default" | "accent";
+  variant?: "default" | "accent" | "danger";
 }) {
-  const { theme } = useArcaneTheme();
-  const isAccent = variant === "accent";
+  const premium = usePremiumTheme();
+
+  const borderColor =
+    variant === "accent"
+      ? "rgba(232, 200, 120, 0.30)"
+      : variant === "danger"
+        ? "rgba(239, 111, 145, 0.34)"
+        : "rgba(255,255,255,0.10)";
+
+  const backgroundColor =
+    variant === "accent"
+      ? "rgba(232, 200, 120, 0.12)"
+      : variant === "danger"
+        ? "rgba(239, 111, 145, 0.08)"
+        : "rgba(255,255,255,0.055)";
+
+  const color =
+    variant === "accent"
+      ? premium.colors.accent.primary
+      : variant === "danger"
+        ? premium.colors.state.failure
+        : "rgba(255,255,255,0.70)";
 
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        paddingVertical: 10,
-        paddingHorizontal: 14,
-        borderWidth: 1,
-        borderColor: isAccent ? theme.colors.accent : theme.colors.border,
-        borderRadius: theme.radius.pill,
-        backgroundColor: isAccent
-          ? theme.colors.accentSoft
-          : theme.colors.surfaceAlt,
-        opacity: pressed ? 0.84 : 1,
-        transform: [{ scale: pressed ? 0.97 : 1 }],
+        opacity: pressed ? 0.82 : 1,
+        transform: [{ scale: pressed ? premium.animation.pressScale : 1 }],
       })}
     >
-      <Text
+      <View
         style={{
-          color: theme.colors.text,
-          fontWeight: "900",
+          minHeight: 42,
+          borderWidth: 1,
+          borderColor,
+          borderRadius: premium.radius.pill,
+          backgroundColor,
+          alignItems: "center",
+          justifyContent: "center",
+          paddingHorizontal: 14,
         }}
       >
-        {label}
-      </Text>
+        <Text
+          style={{
+            color,
+            fontSize: 12,
+            fontWeight: "900",
+            textTransform: "uppercase",
+            letterSpacing: 0.7,
+          }}
+        >
+          {label}
+        </Text>
+      </View>
     </Pressable>
   );
 }
 
-function WizardStepDot({ active }: { active: boolean }) {
-  const { theme } = useArcaneTheme();
-  return (
-    <View
-      style={{
-        flex: 1,
-        height: 6,
-        borderWidth: 1,
-        borderColor: active ? theme.colors.accent : theme.colors.border,
-        borderRadius: theme.radius.pill,
-        backgroundColor: active
-          ? theme.colors.accentSoft
-          : theme.colors.surfaceAlt,
-        opacity: active ? 1 : 0.55,
-      }}
-    />
-  );
-}
-
 function WizardFieldLabel({ children }: { children: string }) {
-  const { theme } = useArcaneTheme();
   return (
     <Text
       style={{
-        color: theme.colors.textMuted,
-        fontWeight: "800",
+        color: "rgba(255,255,255,0.58)",
+        fontSize: 11,
+        fontWeight: "900",
+        textTransform: "uppercase",
+        letterSpacing: 0.55,
       }}
     >
       {children}
@@ -314,28 +379,29 @@ function WizardInput({
   keyboardType?: KeyboardTypeOptions;
   editable?: boolean;
 }) {
-  const { theme } = useArcaneTheme();
+  const premium = usePremiumTheme();
+
   return (
     <TextInput
       value={value}
       onChangeText={onChangeText}
       placeholder={placeholder}
-      placeholderTextColor={theme.colors.textSubtle}
-      selectionColor={theme.colors.accent}
+      placeholderTextColor="rgba(255,255,255,0.32)"
+      selectionColor={premium.colors.accent.primary}
       keyboardType={keyboardType}
       editable={editable}
       style={{
-        minHeight: 48,
+        minHeight: 46,
         borderWidth: 1,
-        borderColor: theme.colors.border,
-        borderRadius: theme.radius.md,
+        borderColor: "rgba(255,255,255,0.09)",
+        borderRadius: premium.radius.md,
         paddingHorizontal: 12,
-        paddingVertical: 11,
-        backgroundColor: theme.colors.surfaceAlt,
-        color: theme.colors.text,
-        fontSize: 16,
-        fontWeight: "700",
-        opacity: editable ? 1 : 0.62,
+        paddingVertical: 10,
+        backgroundColor: "rgba(255,255,255,0.055)",
+        color: "rgba(255,255,255,0.92)",
+        fontSize: 15,
+        fontWeight: "800",
+        opacity: editable ? 1 : 0.55,
       }}
     />
   );
@@ -350,17 +416,23 @@ function WizardSection({
   description?: string;
   children: React.ReactNode;
 }) {
-  const { theme, styles } = useArcaneTheme();
+  const premium = usePremiumTheme();
+
   return (
     <View
       style={{
-        ...styles.cardSoft,
-        gap: theme.spacing.sm,
+        borderRadius: 24,
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.08)",
+        backgroundColor: "rgba(255,255,255,0.045)",
+        paddingHorizontal: 13,
+        paddingVertical: 13,
+        gap: premium.spacing.sm,
       }}
     >
       <Text
         style={{
-          color: theme.colors.text,
+          color: "rgba(255,255,255,0.94)",
           fontSize: 16,
           fontWeight: "900",
         }}
@@ -371,14 +443,33 @@ function WizardSection({
       {description ? (
         <Text
           style={{
-            color: theme.colors.textMuted,
-            lineHeight: 19,
+            color: "rgba(255,255,255,0.56)",
+            fontSize: 12,
+            fontWeight: "700",
+            lineHeight: 17,
           }}
         >
           {description}
         </Text>
       ) : null}
 
+      {children}
+    </View>
+  );
+}
+
+function WizardInputGroup({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  const premium = usePremiumTheme();
+
+  return (
+    <View style={{ gap: premium.spacing.sm }}>
+      <WizardFieldLabel>{label}</WizardFieldLabel>
       {children}
     </View>
   );
@@ -395,53 +486,71 @@ function WizardChoiceCard({
   selected: boolean;
   onPress: () => void;
 }) {
-  const { theme, styles } = useArcaneTheme();
+  const premium = usePremiumTheme();
+
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        ...styles.cardSoft,
-        gap: theme.spacing.xs,
-        borderColor: selected ? theme.colors.accent : theme.colors.border,
-        backgroundColor: selected
-          ? theme.colors.accentSoft
-          : theme.colors.surfaceAlt,
-        opacity: pressed ? 0.86 : 1,
-        transform: [{ scale: pressed ? 0.99 : 1 }],
+        opacity: pressed ? 0.84 : 1,
+        transform: [{ scale: pressed ? premium.animation.pressScale : 1 }],
       })}
     >
-      <Text
+      <View
         style={{
-          color: theme.colors.text,
-          fontSize: 15,
-          fontWeight: selected ? "900" : "800",
+          borderRadius: 20,
+          borderWidth: 1,
+          borderColor: selected
+            ? "rgba(232, 200, 120, 0.30)"
+            : "rgba(255,255,255,0.08)",
+          backgroundColor: selected
+            ? "rgba(232, 200, 120, 0.10)"
+            : "rgba(255,255,255,0.045)",
+          paddingHorizontal: 12,
+          paddingVertical: 11,
+          gap: 5,
         }}
       >
-        {title}
-      </Text>
-
-      {description ? (
         <Text
           style={{
-            color: theme.colors.textMuted,
-            lineHeight: 19,
-          }}
-        >
-          {description}
-        </Text>
-      ) : null}
-
-      {selected ? (
-        <Text
-          style={{
-            color: theme.colors.accent,
+            color: selected
+              ? premium.colors.accent.primary
+              : "rgba(255,255,255,0.92)",
+            fontSize: 14,
             fontWeight: "900",
-            marginTop: 2,
           }}
         >
-          Sélectionné
+          {title}
         </Text>
-      ) : null}
+
+        {description ? (
+          <Text
+            style={{
+              color: "rgba(255,255,255,0.56)",
+              fontSize: 11,
+              fontWeight: "700",
+              lineHeight: 16,
+            }}
+          >
+            {description}
+          </Text>
+        ) : null}
+
+        {selected ? (
+          <Text
+            style={{
+              color: premium.colors.accent.primary,
+              fontSize: 10,
+              fontWeight: "900",
+              textTransform: "uppercase",
+              letterSpacing: 0.65,
+              marginTop: 2,
+            }}
+          >
+            Sélectionné
+          </Text>
+        ) : null}
+      </View>
     </Pressable>
   );
 }
@@ -449,98 +558,79 @@ function WizardChoiceCard({
 function BehaviorChoiceCard({
   title,
   description,
+  categoryLabel,
   selected,
   onPress,
 }: {
   title: string;
   description: string;
+  categoryLabel: string;
   selected: boolean;
   onPress: () => void;
 }) {
-  const { theme, styles } = useArcaneTheme();
+  const premium = usePremiumTheme();
+
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        ...styles.cardSoft,
-        gap: theme.spacing.xs,
-        borderColor: selected ? theme.colors.accent : theme.colors.border,
-        backgroundColor: selected
-          ? theme.colors.accentSoft
-          : theme.colors.surfaceAlt,
-        opacity: pressed ? 0.86 : 1,
-        transform: [{ scale: pressed ? 0.99 : 1 }],
+        opacity: pressed ? 0.84 : 1,
+        transform: [{ scale: pressed ? premium.animation.pressScale : 1 }],
       })}
     >
       <View
         style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          gap: theme.spacing.sm,
+          borderRadius: 22,
+          borderWidth: 1,
+          borderColor: selected
+            ? "rgba(232, 200, 120, 0.34)"
+            : "rgba(255,255,255,0.08)",
+          backgroundColor: selected
+            ? "rgba(232, 200, 120, 0.105)"
+            : "rgba(255,255,255,0.045)",
+          paddingHorizontal: 13,
+          paddingVertical: 12,
+          gap: 6,
         }}
       >
-        <View style={{ flex: 1, gap: 4 }}>
-          <Text
-            style={{
-              color: theme.colors.text,
-              fontSize: 16,
-              fontWeight: selected ? "900" : "800",
-            }}
-          >
-            {title}
-          </Text>
+        <Text
+          style={{
+            color: selected
+              ? premium.colors.accent.primary
+              : "rgba(255,255,255,0.58)",
+            fontSize: 10,
+            fontWeight: "900",
+            textTransform: "uppercase",
+            letterSpacing: 0.75,
+          }}
+        >
+          {categoryLabel}
+        </Text>
 
-          <Text
-            style={{
-              color: theme.colors.textMuted,
-              lineHeight: 19,
-            }}
-          >
-            {description}
-          </Text>
-        </View>
+        <Text
+          style={{
+            color: selected
+              ? premium.colors.accent.primary
+              : "rgba(255,255,255,0.94)",
+            fontSize: 15,
+            fontWeight: "900",
+          }}
+        >
+          {title}
+        </Text>
 
-        {selected ? (
-          <View
-            style={{
-              paddingVertical: 5,
-              paddingHorizontal: 9,
-              borderWidth: 1,
-              borderColor: theme.colors.accent,
-              borderRadius: theme.radius.pill,
-              backgroundColor: theme.colors.accentSoft,
-            }}
-          >
-            <Text
-              style={{
-                color: theme.colors.text,
-                fontSize: 12,
-                fontWeight: "900",
-              }}
-            >
-              Actif
-            </Text>
-          </View>
-        ) : null}
+        <Text
+          style={{
+            color: "rgba(255,255,255,0.56)",
+            fontSize: 11,
+            fontWeight: "700",
+            lineHeight: 16,
+          }}
+        >
+          {description}
+        </Text>
       </View>
     </Pressable>
-  );
-}
-
-function WizardInputGroup({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  const { theme } = useArcaneTheme();
-  return (
-    <View style={{ gap: theme.spacing.sm }}>
-      <WizardFieldLabel>{label}</WizardFieldLabel>
-      {children}
-    </View>
   );
 }
 
@@ -553,31 +643,44 @@ function WizardChoicePill({
   selected: boolean;
   onPress: () => void;
 }) {
-  const { theme } = useArcaneTheme();
+  const premium = usePremiumTheme();
+
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        paddingVertical: 10,
-        paddingHorizontal: 14,
-        borderWidth: 1,
-        borderColor: selected ? theme.colors.accent : theme.colors.border,
-        borderRadius: theme.radius.pill,
-        backgroundColor: selected
-          ? theme.colors.accentSoft
-          : theme.colors.surfaceAlt,
-        opacity: pressed ? 0.84 : selected ? 1 : 0.78,
-        transform: [{ scale: pressed ? 0.97 : 1 }],
+        opacity: pressed ? 0.82 : selected ? 1 : 0.78,
+        transform: [{ scale: pressed ? premium.animation.pressScale : 1 }],
       })}
     >
-      <Text
+      <View
         style={{
-          color: theme.colors.text,
-          fontWeight: selected ? "900" : "800",
+          minHeight: 38,
+          borderWidth: 1,
+          borderColor: selected
+            ? "rgba(232, 200, 120, 0.30)"
+            : "rgba(255,255,255,0.09)",
+          borderRadius: premium.radius.pill,
+          backgroundColor: selected
+            ? "rgba(232, 200, 120, 0.12)"
+            : "rgba(255,255,255,0.05)",
+          alignItems: "center",
+          justifyContent: "center",
+          paddingHorizontal: 13,
         }}
       >
-        {label}
-      </Text>
+        <Text
+          style={{
+            color: selected
+              ? premium.colors.accent.primary
+              : "rgba(255,255,255,0.66)",
+            fontSize: 11,
+            fontWeight: "900",
+          }}
+        >
+          {label}
+        </Text>
+      </View>
     </Pressable>
   );
 }
@@ -597,24 +700,30 @@ function WizardRangeCard({
   ) => void;
   onRemoveRangeRow: (index: number) => void;
 }) {
-  const { theme, styles } = useArcaneTheme();
+  const premium = usePremiumTheme();
+
   return (
     <View
       style={{
-        ...styles.cardSoft,
-        gap: theme.spacing.sm,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.08)",
+        backgroundColor: "rgba(255,255,255,0.04)",
+        paddingHorizontal: 12,
+        paddingVertical: 12,
+        gap: premium.spacing.sm,
       }}
     >
       <Text
         style={{
-          color: theme.colors.text,
+          color: "rgba(255,255,255,0.92)",
           fontWeight: "900",
         }}
       >
         Plage {index + 1}
       </Text>
 
-      <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
+      <View style={{ flexDirection: "row", gap: premium.spacing.sm }}>
         <View style={{ flex: 1 }}>
           <WizardInputGroup label="Min">
             <WizardInput
@@ -642,33 +751,144 @@ function WizardRangeCard({
         <WizardInput
           value={row.label}
           onChangeText={(value) => onUpdateRangeRow(index, "label", value)}
-          placeholder="Ex: Réussite partielle"
+          placeholder="Ex : Réussite partielle"
         />
       </WizardInputGroup>
 
-      <Pressable
+      <WizardPillButton
+        label="Supprimer cette plage"
         onPress={() => onRemoveRangeRow(index)}
-        style={({ pressed }) => ({
-          alignSelf: "flex-start",
-          paddingVertical: 10,
-          paddingHorizontal: 12,
-          borderWidth: 1,
-          borderColor: theme.colors.failure,
-          borderRadius: theme.radius.pill,
-          backgroundColor: theme.colors.failureSoft,
-          opacity: pressed ? 0.84 : 1,
-        })}
+        variant="danger"
+      />
+    </View>
+  );
+}
+
+function renderCommonBehaviorFields(params: {
+  selectedBehavior: ReturnType<typeof getBehaviorOptions>[number];
+  draft: RuleWizardDraft;
+  onUpdateDraft: Props["onUpdateDraft"];
+  onUpdateRangeRow: Props["onUpdateRangeRow"];
+  onAddRangeRow: () => void;
+  onRemoveRangeRow: Props["onRemoveRangeRow"];
+}) {
+  const {
+    selectedBehavior,
+    draft,
+    onUpdateDraft,
+    onUpdateRangeRow,
+    onAddRangeRow,
+    onRemoveRangeRow,
+  } = params;
+
+  if (selectedBehavior.key === "sum_total") {
+    return (
+      <WizardSection
+        title="Somme simple"
+        description="Aucune configuration nécessaire."
       >
         <Text
           style={{
-            color: theme.colors.text,
-            fontWeight: "900",
+            color: "rgba(255,255,255,0.62)",
+            fontSize: 12,
+            fontWeight: "700",
+            lineHeight: 17,
           }}
         >
-          Supprimer cette plage
+          Ce comportement additionne simplement les dés et les modificateurs.
+          C’est le comportement standard pour les jets sans interprétation
+          spéciale.
         </Text>
-      </Pressable>
-    </View>
+      </WizardSection>
+    );
+  }
+
+  return (
+    <WizardSection
+      title="Paramètres"
+      description="Renseigne uniquement les valeurs nécessaires à ce comportement."
+    >
+      {selectedBehavior.fields.map((field) => {
+        if (field.type === "text" || field.type === "number") {
+          return (
+            <WizardInputGroup key={field.key} label={field.label}>
+              <WizardInput
+                value={String(draft[field.key as keyof RuleWizardDraft] ?? "")}
+                onChangeText={(value) =>
+                  onUpdateDraft(
+                    field.key as keyof RuleWizardDraft,
+                    value as RuleWizardDraft[keyof RuleWizardDraft],
+                  )
+                }
+                placeholder={field.placeholder ?? ""}
+                keyboardType={
+                  field.type === "number" ? "number-pad" : "default"
+                }
+              />
+            </WizardInputGroup>
+          );
+        }
+
+        if (field.type === "select") {
+          return (
+            <WizardInputGroup key={field.key} label={field.label}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  flexWrap: "wrap",
+                  gap: 8,
+                }}
+              >
+                {field.options.map((option) => {
+                  const selected =
+                    draft[field.key as keyof RuleWizardDraft] === option.value;
+
+                  return (
+                    <WizardChoicePill
+                      key={option.value}
+                      label={option.label}
+                      selected={selected}
+                      onPress={() =>
+                        onUpdateDraft(
+                          field.key as keyof RuleWizardDraft,
+                          option.value as RuleWizardDraft[keyof RuleWizardDraft],
+                        )
+                      }
+                    />
+                  );
+                })}
+              </View>
+            </WizardInputGroup>
+          );
+        }
+
+        if (field.type === "ranges") {
+          return (
+            <WizardInputGroup key={field.key} label={field.label}>
+              <View style={{ gap: 10 }}>
+                {draft.ranges.map((row, index) => (
+                  <WizardRangeCard
+                    key={`range-${index}`}
+                    index={index}
+                    row={row}
+                    onUpdateRangeRow={onUpdateRangeRow}
+                    onRemoveRangeRow={onRemoveRangeRow}
+                  />
+                ))}
+
+                <WizardPillButton
+                  label="+ Ajouter une plage"
+                  onPress={onAddRangeRow}
+                  variant="accent"
+                />
+              </View>
+            </WizardInputGroup>
+          );
+        }
+
+        return null;
+      })}
+    </WizardSection>
   );
 }
 
@@ -700,11 +920,11 @@ export function CreateRuleWizardModal({
   onChangePreviewModifierText,
   onChangePreviewSignText,
 }: Props) {
-  const { theme, styles } = useArcaneTheme();
+  const premium = usePremiumTheme();
+
   if (!visible) return null;
 
   const isLastStep = stepIndex === totalSteps - 1;
-
   const behaviorOptions = getBehaviorOptions();
 
   const selectedBehavior =
@@ -735,777 +955,373 @@ export function CreateRuleWizardModal({
   );
 
   return (
-    <View
-      style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: "rgba(0,0,0,0.68)",
-        justifyContent: "center",
-        padding: theme.spacing.md,
-      }}
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      onRequestClose={onClose}
     >
       <View
         style={{
-          ...styles.card,
-          gap: theme.spacing.md,
-          maxHeight: "92%",
-          borderColor: theme.colors.accent,
+          flex: 1,
+          backgroundColor: "rgba(0,0,0,0.72)",
+          justifyContent: "center",
+          padding: premium.spacing.md,
         }}
       >
-        <View style={{ gap: theme.spacing.xs }}>
-          <Text
-            style={{
-              color: theme.colors.accent,
-              fontSize: theme.typography.tiny,
-              fontWeight: "900",
-              textTransform: "uppercase",
-              letterSpacing: 0.9,
-            }}
-          >
-            Création guidée · Comportement
-          </Text>
-
-          <Text style={styles.sectionTitle}>{getStepTitle(step)}</Text>
-
-          <Text style={styles.muted}>{getStepDescription(step)}</Text>
-
-          <Text style={styles.muted}>
-            Étape {stepIndex + 1}/{totalSteps}
-          </Text>
-
+        <View
+          style={{
+            maxHeight: "92%",
+            borderRadius: 30,
+            borderWidth: 1,
+            borderColor: "rgba(232, 200, 120, 0.18)",
+            backgroundColor: "rgba(6, 8, 18, 0.98)",
+            padding: premium.spacing.md,
+            gap: premium.spacing.md,
+            overflow: "hidden",
+          }}
+        >
           <View
             style={{
-              flexDirection: "row",
-              gap: 6,
-              marginTop: theme.spacing.xs,
+              position: "absolute",
+              top: -90,
+              right: -80,
+              width: 190,
+              height: 190,
+              borderRadius: 999,
+              backgroundColor: "rgba(232, 200, 120, 0.075)",
             }}
-          >
-            {Array.from({ length: totalSteps }).map((_, index) => (
-              <WizardStepDot key={index} active={index <= stepIndex} />
-            ))}
-          </View>
-        </View>
+          />
 
-        {error ? (
-          <View
-            style={{
-              ...styles.cardSoft,
-              borderColor: theme.colors.failure,
-              backgroundColor: theme.colors.failureSoft,
-            }}
-          >
+          <View style={{ gap: premium.spacing.xs }}>
+            <WizardHeaderPill label="Création guidée · Comportement" />
+
             <Text
               style={{
-                color: theme.colors.text,
-                fontWeight: "800",
+                color: "rgba(255,255,255,0.96)",
+                fontSize: 24,
+                fontWeight: "900",
+                letterSpacing: -0.35,
               }}
             >
-              {error}
+              {getStepTitle(step)}
             </Text>
-          </View>
-        ) : null}
 
-        <ScrollView
-          contentContainerStyle={{
-            gap: theme.spacing.md,
-            paddingBottom: theme.spacing.sm,
-          }}
-          showsVerticalScrollIndicator
-          keyboardShouldPersistTaps="handled"
-        >
-          {step === "name" ? (
-            <WizardSection
-              title="Nom du comportement"
-              description="Choisis un nom simple. Ce comportement pourra ensuite être réutilisé dans tes tables, profils et actions."
+            <Text
+              style={{
+                color: "rgba(255,255,255,0.60)",
+                fontSize: 12,
+                fontWeight: "700",
+                lineHeight: 17,
+              }}
             >
-              <WizardFieldLabel>Nom</WizardFieldLabel>
-
-              <WizardInput
-                value={draft.name}
-                onChangeText={(value) => onUpdateDraft("name", value)}
-                placeholder="Ex : Somme simple, Test D20 DD 15, Pool D6"
-              />
-            </WizardSection>
-          ) : null}
-
-          {step === "scope" ? (
-            <WizardSection
-              title="Portée du comportement"
-              description="Choisis si ce comportement s’applique à une entrée de dés, à une action complète, ou aux deux."
-            >
-              {scopeOptions.map((option) => (
-                <WizardChoiceCard
-                  key={option.key}
-                  title={option.label}
-                  description={option.description}
-                  selected={draft.scope === option.key}
-                  onPress={() => onSetScope(option.key as RuleWizardScope)}
-                />
-              ))}
-            </WizardSection>
-          ) : null}
-
-          {step === "dice" ? (
-            <WizardSection
-              title="Dés compatibles"
-              description="Indique les dés autorisés. Laisse “all” pour rendre le comportement utilisable avec tous les dés."
-            >
-              <WizardFieldLabel>Faces compatibles</WizardFieldLabel>
-
-              <WizardInput
-                value={draft.supportedSidesText}
-                editable={!selectedBehavior?.supportedSides}
-                onChangeText={(value) =>
-                  onUpdateDraft("supportedSidesText", value)
-                }
-                placeholder="Ex : all, 20, 6,10,100"
-              />
-
-              {selectedBehavior?.supportedSides ? (
-                <Text style={styles.muted}>
-                  Déterminé automatiquement par le comportement sélectionné.
-                </Text>
-              ) : null}
-            </WizardSection>
-          ) : null}
-
-          {step === "behavior" ? (
-            <>
-              <WizardSection
-                title="Type de comportement"
-                description="Choisis la façon dont le jet sera lu. Les comportements simples demandent peu ou pas de réglages."
-              >
-                {behaviorOptions.map((option) => (
-                  <BehaviorChoiceCard
-                    key={option.key}
-                    title={option.label}
-                    description={`${option.categoryLabel} · ${option.description}`}
-                    selected={draft.behaviorKey === option.key}
-                    onPress={() => onSetBehaviorKey(option.key)}
-                  />
-                ))}
-              </WizardSection>
-
-              {selectedBehavior ? (
-                <>
-                  {draft.behaviorKey === "custom_pipeline" ? (
-                    <>
-                      <WizardSection
-                        title="Pipeline personnalisé"
-                        description="Combine plusieurs opérations : relances, explosions, dés gardés, comptage, seuils, critiques et complications."
-                      >
-                        <Text style={styles.muted}>
-                          Les champs laissés vides sont ignorés. Cela permet de
-                          composer une règle avancée sans devoir tout
-                          renseigner.
-                        </Text>
-                      </WizardSection>
-
-                      <WizardSection title="Relances">
-                        <WizardInputGroup label="Relancer les faces">
-                          <WizardInput
-                            value={draft.pipelineRerollFaces}
-                            onChangeText={(value) =>
-                              onUpdateDraft("pipelineRerollFaces", value)
-                            }
-                            placeholder="Ex: 1 ou 1,2"
-                          />
-                        </WizardInputGroup>
-
-                        <WizardInputGroup label="Mode de relance">
-                          <View
-                            style={{
-                              flexDirection: "row",
-                              flexWrap: "wrap",
-                              gap: 8,
-                            }}
-                          >
-                            <WizardChoicePill
-                              label="Une seule fois"
-                              selected={draft.pipelineRerollOnce}
-                              onPress={() =>
-                                onUpdateDraft("pipelineRerollOnce", true)
-                              }
-                            />
-
-                            <WizardChoicePill
-                              label="Tant que possible"
-                              selected={!draft.pipelineRerollOnce}
-                              onPress={() =>
-                                onUpdateDraft("pipelineRerollOnce", false)
-                              }
-                            />
-                          </View>
-                        </WizardInputGroup>
-
-                        <WizardInputGroup label="Max relances par dé">
-                          <WizardInput
-                            value={draft.pipelineMaxRerollsPerDie}
-                            onChangeText={(value) =>
-                              onUpdateDraft("pipelineMaxRerollsPerDie", value)
-                            }
-                            placeholder="Optionnel, ex: 2"
-                            keyboardType="number-pad"
-                          />
-                        </WizardInputGroup>
-                      </WizardSection>
-
-                      <WizardSection title="Explosions">
-                        <WizardInputGroup label="Explosion sur les faces">
-                          <WizardInput
-                            value={draft.pipelineExplodeFaces}
-                            onChangeText={(value) =>
-                              onUpdateDraft("pipelineExplodeFaces", value)
-                            }
-                            placeholder="Ex: 6 ou 10"
-                          />
-                        </WizardInputGroup>
-
-                        <WizardInputGroup label="Max explosions par dé">
-                          <WizardInput
-                            value={draft.pipelineMaxExplosionsPerDie}
-                            onChangeText={(value) =>
-                              onUpdateDraft(
-                                "pipelineMaxExplosionsPerDie",
-                                value,
-                              )
-                            }
-                            placeholder="Optionnel, ex: 3"
-                            keyboardType="number-pad"
-                          />
-                        </WizardInputGroup>
-                      </WizardSection>
-
-                      <WizardSection
-                        title="Garder / retirer"
-                        description="Contrôle les dés conservés ou exclus avant la sortie finale."
-                      >
-                        <WizardInputGroup label="Garder les meilleurs dés">
-                          <WizardInput
-                            value={draft.pipelineKeepHighest}
-                            onChangeText={(value) =>
-                              onUpdateDraft("pipelineKeepHighest", value)
-                            }
-                            placeholder="Ex: 2"
-                            keyboardType="number-pad"
-                          />
-                        </WizardInputGroup>
-
-                        <WizardInputGroup label="Garder les plus faibles dés">
-                          <WizardInput
-                            value={draft.pipelineKeepLowest}
-                            onChangeText={(value) =>
-                              onUpdateDraft("pipelineKeepLowest", value)
-                            }
-                            placeholder="Ex: 2"
-                            keyboardType="number-pad"
-                          />
-                        </WizardInputGroup>
-
-                        <WizardInputGroup label="Retirer les meilleurs dés">
-                          <WizardInput
-                            value={draft.pipelineDropHighest}
-                            onChangeText={(value) =>
-                              onUpdateDraft("pipelineDropHighest", value)
-                            }
-                            placeholder="Ex: 1"
-                            keyboardType="number-pad"
-                          />
-                        </WizardInputGroup>
-
-                        <WizardInputGroup label="Retirer les plus faibles dés">
-                          <WizardInput
-                            value={draft.pipelineDropLowest}
-                            onChangeText={(value) =>
-                              onUpdateDraft("pipelineDropLowest", value)
-                            }
-                            placeholder="Ex: 1"
-                            keyboardType="number-pad"
-                          />
-                        </WizardInputGroup>
-                      </WizardSection>
-
-                      <WizardSection
-                        title="Comptage"
-                        description="Transforme les dés en succès, faces exactes ou résultats dans une plage."
-                      >
-                        <WizardInputGroup label="Compter les succès à partir de">
-                          <WizardInput
-                            value={draft.pipelineCountSuccessAtOrAbove}
-                            onChangeText={(value) =>
-                              onUpdateDraft(
-                                "pipelineCountSuccessAtOrAbove",
-                                value,
-                              )
-                            }
-                            placeholder="Ex: 5"
-                            keyboardType="number-pad"
-                          />
-                        </WizardInputGroup>
-
-                        <WizardInputGroup label="Compter les faces exactes">
-                          <WizardInput
-                            value={draft.pipelineCountEqualFaces}
-                            onChangeText={(value) =>
-                              onUpdateDraft("pipelineCountEqualFaces", value)
-                            }
-                            placeholder="Ex: 1 ou 6,10"
-                          />
-                        </WizardInputGroup>
-
-                        <View
-                          style={{
-                            flexDirection: "row",
-                            gap: theme.spacing.sm,
-                          }}
-                        >
-                          <View style={{ flex: 1 }}>
-                            <WizardInputGroup label="Plage min">
-                              <WizardInput
-                                value={draft.pipelineCountRangeMin}
-                                onChangeText={(value) =>
-                                  onUpdateDraft("pipelineCountRangeMin", value)
-                                }
-                                placeholder="Ex: 2"
-                                keyboardType="number-pad"
-                              />
-                            </WizardInputGroup>
-                          </View>
-
-                          <View style={{ flex: 1 }}>
-                            <WizardInputGroup label="Plage max">
-                              <WizardInput
-                                value={draft.pipelineCountRangeMax}
-                                onChangeText={(value) =>
-                                  onUpdateDraft("pipelineCountRangeMax", value)
-                                }
-                                placeholder="Ex: 5"
-                                keyboardType="number-pad"
-                              />
-                            </WizardInputGroup>
-                          </View>
-                        </View>
-                      </WizardSection>
-
-                      <WizardSection
-                        title="Seuil final"
-                        description="Optionnel : compare la sortie finale à une difficulté."
-                      >
-                        <WizardInputGroup label="Seuil final">
-                          <WizardInput
-                            value={draft.pipelineSuccessThreshold}
-                            onChangeText={(value) =>
-                              onUpdateDraft("pipelineSuccessThreshold", value)
-                            }
-                            placeholder="Optionnel, ex: 3"
-                            keyboardType="number-pad"
-                          />
-                        </WizardInputGroup>
-
-                        <WizardInputGroup label="Comparaison">
-                          <View
-                            style={{
-                              flexDirection: "row",
-                              flexWrap: "wrap",
-                              gap: 8,
-                            }}
-                          >
-                            <WizardChoicePill
-                              label="≥ seuil"
-                              selected={draft.pipelineCompare === "gte"}
-                              onPress={() =>
-                                onUpdateDraft("pipelineCompare", "gte")
-                              }
-                            />
-
-                            <WizardChoicePill
-                              label="≤ seuil"
-                              selected={draft.pipelineCompare === "lte"}
-                              onPress={() =>
-                                onUpdateDraft("pipelineCompare", "lte")
-                              }
-                            />
-                          </View>
-                        </WizardInputGroup>
-                      </WizardSection>
-
-                      <WizardSection
-                        title="Critiques et complications"
-                        description="Optionnel : ajoute des signaux spéciaux au résultat."
-                      >
-                        <WizardInputGroup label="Faces de réussite critique">
-                          <WizardInput
-                            value={draft.pipelineCritSuccessFaces}
-                            onChangeText={(value) =>
-                              onUpdateDraft("pipelineCritSuccessFaces", value)
-                            }
-                            placeholder="Ex: 6 ou 20"
-                          />
-                        </WizardInputGroup>
-
-                        <WizardInputGroup label="Faces d’échec critique">
-                          <WizardInput
-                            value={draft.pipelineCritFailureFaces}
-                            onChangeText={(value) =>
-                              onUpdateDraft("pipelineCritFailureFaces", value)
-                            }
-                            placeholder="Ex: 1"
-                          />
-                        </WizardInputGroup>
-
-                        <WizardInputGroup label="Faces de complication">
-                          <WizardInput
-                            value={draft.pipelineComplicationFaces}
-                            onChangeText={(value) =>
-                              onUpdateDraft("pipelineComplicationFaces", value)
-                            }
-                            placeholder="Ex: 1 ou 1,2"
-                          />
-                        </WizardInputGroup>
-
-                        <WizardInputGroup label="Règle de complication">
-                          <View style={{ gap: theme.spacing.sm }}>
-                            {[
-                              { key: "none", label: "Aucune complication" },
-                              {
-                                key: "any",
-                                label: "Si au moins une face ciblée apparaît",
-                              },
-                              {
-                                key: "gt_successes",
-                                label: "Si complications > succès",
-                              },
-                              {
-                                key: "gte_successes",
-                                label: "Si complications ≥ succès",
-                              },
-                              {
-                                key: "zero_successes",
-                                label: "Si aucune réussite",
-                              },
-                            ].map((option) => (
-                              <WizardChoiceCard
-                                key={option.key}
-                                title={option.label}
-                                selected={
-                                  draft.pipelineComplicationRule === option.key
-                                }
-                                onPress={() =>
-                                  onUpdateDraft(
-                                    "pipelineComplicationRule",
-                                    option.key as RuleWizardDraft["pipelineComplicationRule"],
-                                  )
-                                }
-                              />
-                            ))}
-                          </View>
-                        </WizardInputGroup>
-                      </WizardSection>
-
-                      <WizardSection
-                        title="Sortie finale"
-                        description="Choisis ce que la règle renvoie après toutes les opérations."
-                      >
-                        <View
-                          style={{
-                            flexDirection: "row",
-                            flexWrap: "wrap",
-                            gap: 8,
-                          }}
-                        >
-                          {[
-                            { key: "sum", label: "Somme" },
-                            { key: "values", label: "Valeurs" },
-                            { key: "successes", label: "Succès" },
-                            { key: "count_equal", label: "Faces exactes" },
-                            { key: "count_range", label: "Plage" },
-                            { key: "first_value", label: "Première valeur" },
-                          ].map((option) => (
-                            <WizardChoicePill
-                              key={option.key}
-                              label={option.label}
-                              selected={draft.pipelineOutput === option.key}
-                              onPress={() =>
-                                onUpdateDraft(
-                                  "pipelineOutput",
-                                  option.key as RuleWizardDraft["pipelineOutput"],
-                                )
-                              }
-                            />
-                          ))}
-                        </View>
-                      </WizardSection>
-                    </>
-                  ) : null}
-
-                  {draft.behaviorKey === "sum_total" ? (
-                    <WizardSection
-                      title="Somme simple"
-                      description="Aucune configuration nécessaire."
-                    >
-                      <Text style={styles.muted}>
-                        Ce comportement additionne simplement les dés et les
-                        modificateurs. C’est le comportement standard pour les
-                        jets sans interprétation spéciale.
-                      </Text>
-                    </WizardSection>
-                  ) : null}
-
-                  {draft.behaviorKey !== "custom_pipeline" &&
-                  draft.behaviorKey !== "sum_total" ? (
-                    <WizardSection
-                      title="Paramètres"
-                      description="Renseigne uniquement les valeurs nécessaires à ce comportement."
-                    >
-                      {selectedBehavior.fields.map((field) => {
-                        if (field.type === "text" || field.type === "number") {
-                          return (
-                            <WizardInputGroup
-                              key={field.key}
-                              label={field.label}
-                            >
-                              <WizardInput
-                                value={String(
-                                  draft[field.key as keyof RuleWizardDraft] ??
-                                    "",
-                                )}
-                                onChangeText={(value) =>
-                                  onUpdateDraft(
-                                    field.key as keyof RuleWizardDraft,
-                                    value as RuleWizardDraft[keyof RuleWizardDraft],
-                                  )
-                                }
-                                placeholder={field.placeholder ?? ""}
-                                keyboardType={
-                                  field.type === "number"
-                                    ? "number-pad"
-                                    : "default"
-                                }
-                              />
-                            </WizardInputGroup>
-                          );
-                        }
-
-                        if (field.type === "select") {
-                          return (
-                            <WizardInputGroup
-                              key={field.key}
-                              label={field.label}
-                            >
-                              <View
-                                style={{
-                                  flexDirection: "row",
-                                  flexWrap: "wrap",
-                                  gap: 8,
-                                }}
-                              >
-                                {field.options.map((option) => {
-                                  const selected =
-                                    draft[
-                                      field.key as keyof RuleWizardDraft
-                                    ] === option.value;
-
-                                  return (
-                                    <WizardChoicePill
-                                      key={option.value}
-                                      label={option.label}
-                                      selected={selected}
-                                      onPress={() =>
-                                        onUpdateDraft(
-                                          field.key as keyof RuleWizardDraft,
-                                          option.value as RuleWizardDraft[keyof RuleWizardDraft],
-                                        )
-                                      }
-                                    />
-                                  );
-                                })}
-                              </View>
-                            </WizardInputGroup>
-                          );
-                        }
-
-                        if (field.type === "ranges") {
-                          return (
-                            <WizardInputGroup
-                              key={field.key}
-                              label={field.label}
-                            >
-                              <View style={{ gap: theme.spacing.sm }}>
-                                {draft.ranges.map((row, index) => (
-                                  <WizardRangeCard
-                                    key={`range-${index}`}
-                                    index={index}
-                                    row={row}
-                                    onUpdateRangeRow={onUpdateRangeRow}
-                                    onRemoveRangeRow={onRemoveRangeRow}
-                                  />
-                                ))}
-
-                                <WizardPillButton
-                                  label="+ Ajouter une plage"
-                                  onPress={onAddRangeRow}
-                                  variant="accent"
-                                />
-                              </View>
-                            </WizardInputGroup>
-                          );
-                        }
-
-                        return null;
-                      })}
-                    </WizardSection>
-                  ) : null}
-                </>
-              ) : null}
-            </>
-          ) : null}
-
-          {step === "summary" ? (
-            <WizardSection
-              title="Résumé"
-              description="Vérifie les informations avant de créer la règle."
-            >
-              <View style={{ gap: theme.spacing.sm }}>
-                <Text style={{ color: theme.colors.text, fontWeight: "900" }}>
-                  Nom : {draft.name || "—"}
-                </Text>
-
-                <Text
-                  style={{ color: theme.colors.textMuted, fontWeight: "700" }}
-                >
-                  Type : {selectedBehavior?.label ?? "—"}
-                </Text>
-
-                <Text
-                  style={{ color: theme.colors.textMuted, fontWeight: "700" }}
-                >
-                  Famille : {selectedBehavior?.categoryLabel ?? "—"}
-                </Text>
-
-                <Text
-                  style={{ color: theme.colors.textMuted, fontWeight: "700" }}
-                >
-                  Portée : {getScopeDisplayLabel(draft.scope)}
-                </Text>
-
-                <Text
-                  style={{ color: theme.colors.textMuted, fontWeight: "700" }}
-                >
-                  Dés compatibles :{" "}
-                  {getSupportedDiceDisplayLabel(draft.supportedSidesText)}
-                </Text>
-              </View>
-            </WizardSection>
-          ) : null}
-
-          <WizardSection
-            title="Aperçu du comportement"
-            description="Teste des valeurs fictives pour vérifier que le comportement produit une lecture cohérente."
-          >
-            <WizardFieldLabel>Valeurs</WizardFieldLabel>
-            <WizardInput
-              value={previewValuesText}
-              onChangeText={onChangePreviewValuesText}
-              placeholder="Ex: 12 ou 5,6,2"
-            />
-
-            <WizardFieldLabel>Type de dé</WizardFieldLabel>
-            <WizardInput
-              value={previewSidesText}
-              onChangeText={onChangePreviewSidesText}
-              placeholder="Ex: 20"
-              keyboardType="number-pad"
-            />
-
-            <WizardFieldLabel>Modificateur</WizardFieldLabel>
-            <WizardInput
-              value={previewModifierText}
-              onChangeText={onChangePreviewModifierText}
-              placeholder="Ex: 0"
-              keyboardType="numbers-and-punctuation"
-            />
-
-            <WizardFieldLabel>Signe</WizardFieldLabel>
-
-            <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
-              <WizardPillButton
-                label="Positif"
-                onPress={() => onChangePreviewSignText("1")}
-                variant={previewSignText === "1" ? "accent" : "default"}
-              />
-
-              <WizardPillButton
-                label="Négatif"
-                onPress={() => onChangePreviewSignText("-1")}
-                variant={previewSignText === "-1" ? "accent" : "default"}
-              />
-            </View>
+              {getStepDescription(step)} · Étape {stepIndex + 1}/{totalSteps}
+            </Text>
 
             <View
               style={{
-                ...styles.cardSoft,
-                backgroundColor: theme.colors.surfaceAlt,
+                flexDirection: "row",
+                gap: 6,
+                marginTop: premium.spacing.xs,
+              }}
+            >
+              {Array.from({ length: totalSteps }).map((_, index) => (
+                <WizardStepDot key={index} active={index <= stepIndex} />
+              ))}
+            </View>
+          </View>
+
+          {error ? (
+            <View
+              style={{
+                borderRadius: 20,
+                borderWidth: 1,
+                borderColor: "rgba(239, 111, 145, 0.34)",
+                backgroundColor: "rgba(239, 111, 145, 0.08)",
+                padding: 12,
               }}
             >
               <Text
                 style={{
-                  color: theme.colors.textSubtle,
-                  fontSize: theme.typography.tiny,
+                  color: premium.colors.state.failure,
                   fontWeight: "900",
-                  textTransform: "uppercase",
-                  letterSpacing: 0.8,
                 }}
               >
-                Résultat
-              </Text>
-
-              <Text
-                style={{
-                  color: theme.colors.text,
-                  marginTop: theme.spacing.xs,
-                  lineHeight: 20,
-                  fontWeight: "700",
-                }}
-              >
-                {formatPreviewResult(previewResult)}
+                {error}
               </Text>
             </View>
-          </WizardSection>
-        </ScrollView>
+          ) : null}
 
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: theme.spacing.sm,
-          }}
-        >
-          <WizardPillButton label="Annuler" onPress={onClose} />
+          <ScrollView
+            contentContainerStyle={{
+              gap: premium.spacing.md,
+              paddingBottom: premium.spacing.sm,
+            }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {step === "name" ? (
+              <WizardSection
+                title="Nom du comportement"
+                description="Choisis un nom simple. Ce comportement pourra ensuite être réutilisé dans tes tables, profils et actions."
+              >
+                <WizardFieldLabel>Nom</WizardFieldLabel>
+
+                <WizardInput
+                  value={draft.name}
+                  onChangeText={(value) => onUpdateDraft("name", value)}
+                  placeholder="Ex : Somme simple, Test D20 DD 15, Pool D6"
+                />
+              </WizardSection>
+            ) : null}
+
+            {step === "behavior" ? (
+              <>
+                <WizardSection
+                  title="Type de comportement"
+                  description="Choisis la façon dont le jet sera lu. Les comportements simples demandent peu ou pas de réglages."
+                >
+                  {behaviorOptions.map((option) => (
+                    <BehaviorChoiceCard
+                      key={option.key}
+                      title={option.label}
+                      description={option.description}
+                      categoryLabel={option.categoryLabel}
+                      selected={draft.behaviorKey === option.key}
+                      onPress={() => onSetBehaviorKey(option.key)}
+                    />
+                  ))}
+                </WizardSection>
+
+                {selectedBehavior
+                  ? renderCommonBehaviorFields({
+                      selectedBehavior,
+                      draft,
+                      onUpdateDraft,
+                      onUpdateRangeRow,
+                      onAddRangeRow,
+                      onRemoveRangeRow,
+                    })
+                  : null}
+              </>
+            ) : null}
+
+            {step === "dice" ? (
+              <WizardSection
+                title="Dés compatibles"
+                description="Indique les dés autorisés. Laisse “all” pour rendre le comportement utilisable avec tous les dés."
+              >
+                <WizardFieldLabel>Faces compatibles</WizardFieldLabel>
+
+                <WizardInput
+                  value={draft.supportedSidesText}
+                  editable={!selectedBehavior?.supportedSides}
+                  onChangeText={(value) =>
+                    onUpdateDraft("supportedSidesText", value)
+                  }
+                  placeholder="Ex : all, 20, 6,10,100"
+                />
+
+                {selectedBehavior?.supportedSides ? (
+                  <Text
+                    style={{
+                      color: "rgba(255,255,255,0.58)",
+                      fontSize: 12,
+                      fontWeight: "700",
+                      lineHeight: 17,
+                    }}
+                  >
+                    Déterminé automatiquement par le comportement sélectionné.
+                  </Text>
+                ) : null}
+              </WizardSection>
+            ) : null}
+
+            {step === "scope" ? (
+              <WizardSection
+                title="Portée du comportement"
+                description="Choisis si ce comportement s’applique à une entrée de dés, à un groupe complet, ou aux deux."
+              >
+                {scopeOptions.map((option) => (
+                  <WizardChoiceCard
+                    key={option.key}
+                    title={option.label}
+                    description={option.description}
+                    selected={draft.scope === option.key}
+                    onPress={() => onSetScope(option.key as RuleWizardScope)}
+                  />
+                ))}
+              </WizardSection>
+            ) : null}
+
+            {step === "summary" ? (
+              <WizardSection
+                title="Résumé"
+                description="Vérifie les informations avant de créer le comportement."
+              >
+                <View style={{ gap: premium.spacing.sm }}>
+                  <Text
+                    style={{
+                      color: "rgba(255,255,255,0.94)",
+                      fontWeight: "900",
+                    }}
+                  >
+                    Nom : {draft.name || "—"}
+                  </Text>
+
+                  <Text
+                    style={{
+                      color: "rgba(255,255,255,0.62)",
+                      fontWeight: "700",
+                    }}
+                  >
+                    Type : {selectedBehavior?.label ?? "—"}
+                  </Text>
+
+                  <Text
+                    style={{
+                      color: "rgba(255,255,255,0.62)",
+                      fontWeight: "700",
+                    }}
+                  >
+                    Famille : {selectedBehavior?.categoryLabel ?? "—"}
+                  </Text>
+
+                  <Text
+                    style={{
+                      color: "rgba(255,255,255,0.62)",
+                      fontWeight: "700",
+                    }}
+                  >
+                    Portée : {getScopeDisplayLabel(draft.scope)}
+                  </Text>
+
+                  <Text
+                    style={{
+                      color: "rgba(255,255,255,0.62)",
+                      fontWeight: "700",
+                    }}
+                  >
+                    Dés compatibles :{" "}
+                    {getSupportedDiceDisplayLabel(draft.supportedSidesText)}
+                  </Text>
+                </View>
+              </WizardSection>
+            ) : null}
+
+            <WizardSection
+              title="Aperçu du comportement"
+              description="Teste des valeurs fictives pour vérifier que le comportement produit une lecture cohérente."
+            >
+              <WizardFieldLabel>Valeurs</WizardFieldLabel>
+
+              <WizardInput
+                value={previewValuesText}
+                onChangeText={onChangePreviewValuesText}
+                placeholder="Ex : 12 ou 5,6,2"
+              />
+
+              <WizardFieldLabel>Type de dé</WizardFieldLabel>
+
+              <WizardInput
+                value={previewSidesText}
+                onChangeText={onChangePreviewSidesText}
+                placeholder="Ex : 20"
+                keyboardType="number-pad"
+              />
+
+              <WizardFieldLabel>Modificateur</WizardFieldLabel>
+
+              <WizardInput
+                value={previewModifierText}
+                onChangeText={onChangePreviewModifierText}
+                placeholder="Ex : 0"
+                keyboardType="numbers-and-punctuation"
+              />
+
+              <WizardFieldLabel>Signe</WizardFieldLabel>
+
+              <View style={{ flexDirection: "row", gap: premium.spacing.sm }}>
+                <WizardPillButton
+                  label="Positif"
+                  onPress={() => onChangePreviewSignText("1")}
+                  variant={previewSignText === "1" ? "accent" : "default"}
+                />
+
+                <WizardPillButton
+                  label="Négatif"
+                  onPress={() => onChangePreviewSignText("-1")}
+                  variant={previewSignText === "-1" ? "accent" : "default"}
+                />
+              </View>
+
+              <View
+                style={{
+                  borderRadius: 20,
+                  borderWidth: 1,
+                  borderColor: "rgba(255,255,255,0.08)",
+                  backgroundColor: "rgba(255,255,255,0.045)",
+                  padding: 12,
+                  gap: 6,
+                }}
+              >
+                <Text
+                  style={{
+                    color: "rgba(255,255,255,0.50)",
+                    fontSize: 10,
+                    fontWeight: "900",
+                    textTransform: "uppercase",
+                    letterSpacing: 0.8,
+                  }}
+                >
+                  Résultat
+                </Text>
+
+                <Text
+                  style={{
+                    color: "rgba(255,255,255,0.88)",
+                    lineHeight: 20,
+                    fontWeight: "700",
+                  }}
+                >
+                  {formatPreviewResult(previewResult)}
+                </Text>
+              </View>
+            </WizardSection>
+          </ScrollView>
 
           <View
             style={{
               flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
               flexWrap: "wrap",
-              gap: theme.spacing.sm,
+              gap: premium.spacing.sm,
             }}
           >
-            {stepIndex > 0 ? (
-              <WizardPillButton label="Retour" onPress={onBack} />
-            ) : null}
+            <WizardPillButton label="Annuler" onPress={onClose} />
 
-            <WizardPillButton
-              label={isLastStep ? "Créer" : "Suivant"}
-              onPress={isLastStep ? onSubmit : onNext}
-              variant="accent"
-            />
+            <View
+              style={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                gap: premium.spacing.sm,
+              }}
+            >
+              {stepIndex > 0 ? (
+                <WizardPillButton label="Retour" onPress={onBack} />
+              ) : null}
+
+              <WizardPillButton
+                label={isLastStep ? "Créer" : "Suivant"}
+                onPress={isLastStep ? onSubmit : onNext}
+                variant="accent"
+              />
+            </View>
           </View>
         </View>
       </View>
-    </View>
+    </Modal>
   );
 }

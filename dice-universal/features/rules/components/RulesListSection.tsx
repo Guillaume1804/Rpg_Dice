@@ -579,7 +579,7 @@ function OfficialBehaviorCard({
         }}
       >
         <LibraryButton
-          label={item.sourceRule ? "Voir modèle" : "Disponible"}
+          label="Voir détails"
           disabled={!item.sourceRule}
           onPress={() => {
             if (item.sourceRule) {
