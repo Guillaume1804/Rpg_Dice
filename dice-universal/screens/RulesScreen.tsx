@@ -10,9 +10,8 @@ import { HumanRuleEditorModal } from "../features/rules/components/HumanRuleEdit
 import { RulesListSection } from "../features/rules/components/RulesListSection";
 import { useRulesScreenActions } from "../features/rules/hooks/useRulesScreenActions";
 
-import { CreateRuleWizardModal } from "../features/rules/ruleWizard/CreateRuleWizardModal";
-import { useRuleWizard } from "../features/rules/ruleWizard/useRuleWizard";
-import { useRuleWizardPreview } from "../features/rules/ruleWizard/useRuleWizardPreview";
+import { CreateGuidedBehaviorWizardModal } from "../features/rules/guidedBehavior/CreateGuidedBehaviorWizardModal";
+import { useGuidedBehaviorWizard } from "../features/rules/guidedBehavior/useGuidedBehaviorWizard";
 
 import { useArcaneLayout } from "../theme/useArcaneLayout";
 import { usePremiumTheme } from "../theme/premium/usePremiumTheme";
@@ -632,16 +631,11 @@ export default function RulesScreen() {
     notifyDataChanged,
   });
 
-  const ruleWizard = useRuleWizard();
-
-  const ruleWizardPreview = useRuleWizardPreview({
-    buildPayload: ruleWizard.buildPayload,
-    deps: [ruleWizard.draft],
-  });
+  const guidedBehaviorWizard = useGuidedBehaviorWizard();
 
   async function handleCreateFromWizard() {
     try {
-      const payload = ruleWizard.buildPayload();
+      const payload = guidedBehaviorWizard.buildPayload();
 
       await saveRule({
         editingRule: null,
@@ -651,7 +645,7 @@ export default function RulesScreen() {
         },
       });
 
-      ruleWizard.close();
+      guidedBehaviorWizard.close();
       notifyDataChanged();
     } catch (err) {
       console.error(err);
@@ -710,7 +704,7 @@ export default function RulesScreen() {
               title="Création guidée"
               description="Choisir une famille, tester, sauvegarder."
               badge="Recommandé"
-              onPress={ruleWizard.open}
+              onPress={guidedBehaviorWizard.open}
               variant="accent"
             />
 
@@ -768,32 +762,33 @@ export default function RulesScreen() {
         onSetSupportedSidesText={setSupportedSidesText}
       />
 
-      <CreateRuleWizardModal
-        visible={ruleWizard.visible}
-        step={ruleWizard.step}
-        stepIndex={ruleWizard.stepIndex}
-        totalSteps={ruleWizard.totalSteps}
-        draft={ruleWizard.draft}
-        error={ruleWizard.error}
-        onClose={ruleWizard.close}
-        onBack={ruleWizard.goBack}
-        onNext={ruleWizard.goNext}
+      <CreateGuidedBehaviorWizardModal
+        visible={guidedBehaviorWizard.visible}
+        step={guidedBehaviorWizard.step}
+        stepIndex={guidedBehaviorWizard.stepIndex}
+        totalSteps={guidedBehaviorWizard.totalSteps}
+        draft={guidedBehaviorWizard.draft}
+        error={guidedBehaviorWizard.error}
+        onClose={guidedBehaviorWizard.close}
+        onBack={guidedBehaviorWizard.goBack}
+        onNext={guidedBehaviorWizard.goNext}
         onSubmit={handleCreateFromWizard}
-        onUpdateDraft={ruleWizard.updateDraft}
-        onSetScope={ruleWizard.setScope}
-        onSetBehaviorKey={ruleWizard.setBehaviorKey}
-        onUpdateRangeRow={ruleWizard.updateRangeRow}
-        onAddRangeRow={ruleWizard.addRangeRow}
-        onRemoveRangeRow={ruleWizard.removeRangeRow}
-        previewValuesText={ruleWizardPreview.valuesText}
-        previewSidesText={ruleWizardPreview.sidesText}
-        previewModifierText={ruleWizardPreview.modifierText}
-        previewSignText={ruleWizardPreview.signText}
-        previewResult={ruleWizardPreview.previewResult}
-        onChangePreviewValuesText={ruleWizardPreview.setValuesText}
-        onChangePreviewSidesText={ruleWizardPreview.setSidesText}
-        onChangePreviewModifierText={ruleWizardPreview.setModifierText}
-        onChangePreviewSignText={ruleWizardPreview.setSignText}
+        onUpdateIdentity={guidedBehaviorWizard.updateIdentity}
+        onSetIntent={guidedBehaviorWizard.setIntent}
+        onSetDiceCompatibility={guidedBehaviorWizard.setDiceCompatibility}
+        onSetApplicationMode={guidedBehaviorWizard.setApplicationMode}
+        onUpdateReroll={guidedBehaviorWizard.updateReroll}
+        onUpdateExplode={guidedBehaviorWizard.updateExplode}
+        onUpdateKeepDrop={guidedBehaviorWizard.updateKeepDrop}
+        onUpdateReading={guidedBehaviorWizard.updateReading}
+        onSetReadingMode={guidedBehaviorWizard.setReadingMode}
+        onUpdateTableRange={guidedBehaviorWizard.updateTableRange}
+        onAddTableRange={guidedBehaviorWizard.addTableRange}
+        onRemoveTableRange={guidedBehaviorWizard.removeTableRange}
+        onUpdateCriticalSuccess={guidedBehaviorWizard.updateCriticalSuccess}
+        onUpdateCriticalFailure={guidedBehaviorWizard.updateCriticalFailure}
+        onUpdateComplication={guidedBehaviorWizard.updateComplication}
+        onUpdateOutput={guidedBehaviorWizard.updateOutput}
       />
     </View>
   );
