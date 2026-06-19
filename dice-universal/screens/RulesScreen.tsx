@@ -994,7 +994,6 @@ export default function RulesScreen() {
         onUpdateExplode={guidedBehaviorWizard.updateExplode}
         onUpdateKeepDrop={guidedBehaviorWizard.updateKeepDrop}
         onUpdateReading={guidedBehaviorWizard.updateReading}
-        onSetReadingMode={guidedBehaviorWizard.setReadingMode}
         onUpdateTableRange={guidedBehaviorWizard.updateTableRange}
         onAddTableRange={guidedBehaviorWizard.addTableRange}
         onRemoveTableRange={guidedBehaviorWizard.removeTableRange}

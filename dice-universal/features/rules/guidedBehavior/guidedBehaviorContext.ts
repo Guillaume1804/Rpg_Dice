@@ -1,3 +1,5 @@
+// dice-universal/features/rules/guidedBehavior/guidedBehaviorContext.ts
+
 import type {
   GuidedBehaviorApplicationMode,
   GuidedBehaviorCriticalFailureRule,

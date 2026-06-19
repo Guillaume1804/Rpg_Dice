@@ -13,24 +13,22 @@ import { buildGuidedBehaviorPayload } from "./buildGuidedBehaviorPayload";
 import { resolveGuidedBehaviorScope } from "./resolveGuidedBehaviorScope";
 
 export type GuidedBehaviorWizardStep =
-  | "identity"
-  | "intent"
-  | "dice"
-  | "transforms"
-  | "reading"
-  | "events"
   | "application"
-  | "summary";
+  | "dice"
+  | "intent"
+  | "transforms"
+  | "events"
+  | "summary"
+  | "identity";
 
 const GUIDED_BEHAVIOR_STEP_ORDER: GuidedBehaviorWizardStep[] = [
-  "identity",
-  "intent",
-  "dice",
-  "transforms",
-  "reading",
-  "events",
   "application",
+  "dice",
+  "intent",
+  "transforms",
+  "events",
   "summary",
+  "identity",
 ];
 
 function cloneDefaultDraft(): GuidedBehaviorDraft {
@@ -219,7 +217,7 @@ function validateGuidedBehaviorStep(
     return null;
   }
 
-  if (step === "reading") {
+  if (step === "intent") {
     if (draft.reading.mode === "single_check") {
       const threshold = Number(draft.reading.successThreshold);
 
@@ -294,18 +292,16 @@ export function getGuidedBehaviorStepTitle(step: GuidedBehaviorWizardStep) {
   switch (step) {
     case "identity":
       return "Nom & intention";
+    case "application":
+      return "Utilisation prévue";
+    case "dice":
+      return "Dés compatibles";
     case "intent":
       return "Type de comportement";
-    case "dice":
-      return "Dés concernés";
     case "transforms":
-      return "Avant la lecture";
-    case "reading":
-      return "Lecture du résultat";
+      return "Avant le résultat";
     case "events":
       return "Événements spéciaux";
-    case "application":
-      return "Application";
     case "summary":
       return "Résumé";
     default:
@@ -319,18 +315,16 @@ export function getGuidedBehaviorStepDescription(
   switch (step) {
     case "identity":
       return "Donne un nom clair au comportement.";
-    case "intent":
-      return "Choisis l’intention principale du comportement.";
+    case "application":
+      return "Indique si ce comportement sert plutôt une ligne de dés, tout un jet, ou si l’application doit choisir.";
     case "dice":
-      return "Définis les dés avec lesquels il peut être utilisé.";
+      return "Choisis les dés avec lesquels ce comportement peut être utilisé.";
+    case "intent":
+      return "Choisis le comportement principal. L’application déterminera automatiquement comment lire le résultat.";
     case "transforms":
-      return "Ajoute des relances, explosions, ou règles pour garder/retirer des dés.";
-    case "reading":
-      return "Choisis comment le résultat final doit être lu.";
+      return "Ajoute des effets avant le résultat : relances, explosions, garder ou retirer des dés.";
     case "events":
       return "Ajoute les critiques, échecs critiques ou complications.";
-    case "application":
-      return "Choisis si le comportement s’applique à une ligne de dés, au jet entier, ou automatiquement.";
     case "summary":
       return "Vérifie la configuration avant sauvegarde.";
     default:

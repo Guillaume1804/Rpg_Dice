@@ -15,7 +15,6 @@ import type {
   GuidedBehaviorApplicationMode,
   GuidedBehaviorDraft,
   GuidedBehaviorIntent,
-  GuidedBehaviorReadingMode,
 } from "./types";
 import {
   getGuidedBehaviorApplicationLabel,
@@ -66,7 +65,6 @@ type Props = {
   ) => void;
 
   onUpdateReading: (patch: Partial<GuidedBehaviorDraft["reading"]>) => void;
-  onSetReadingMode: (mode: GuidedBehaviorReadingMode) => void;
   onUpdateTableRange: (
     index: number,
     key: "min" | "max" | "label",
@@ -764,67 +762,233 @@ function renderIdentityStep(
 
 function renderIntentStep(
   draft: GuidedBehaviorDraft,
-  onSetIntent: Props["onSetIntent"],
+  props: Pick<
+    Props,
+    | "onSetIntent"
+    | "onUpdateReading"
+    | "onUpdateTableRange"
+    | "onAddTableRange"
+    | "onRemoveTableRange"
+  >,
 ) {
   const options: {
     key: GuidedBehaviorIntent;
     title: string;
     description: string;
   }[] = [
-    {
-      key: "sum",
-      title: "Additionner des dés",
-      description: "Pour les jets simples : total des dés + modificateur.",
-    },
-    {
-      key: "check",
-      title: "Réussir contre un seuil",
-      description: "Pour les tests type d20, difficulté, réussite ou échec.",
-    },
-    {
-      key: "degrees",
-      title: "Seuil avec degrés",
-      description: "Pour les tests type d100 avec marge ou degrés.",
-    },
-    {
-      key: "success_pool",
-      title: "Compter des succès",
-      description:
-        "Pour les pools de dés où chaque dé peut produire un succès.",
-    },
-    {
-      key: "keep_drop",
-      title: "Garder ou retirer des dés",
-      description: "Pour avantage, désavantage, meilleurs dés ou plus faibles.",
-    },
-    {
-      key: "table",
-      title: "Lire une table ou un palier",
-      description: "Pour transformer un total en résultat textuel.",
-    },
-    {
-      key: "advanced",
-      title: "Combiner plusieurs effets",
-      description:
-        "Pour relances, explosions, complications et logique avancée.",
-    },
-  ];
+      {
+        key: "sum",
+        title: "Additionner des dés",
+        description: "Pour les jets simples : total des dés + modificateur.",
+      },
+      {
+        key: "check",
+        title: "Réussir contre un seuil",
+        description: "Pour les tests type d20, difficulté, réussite ou échec.",
+      },
+      {
+        key: "degrees",
+        title: "Seuil avec degrés",
+        description: "Pour les tests type d100 avec marge ou degrés.",
+      },
+      {
+        key: "success_pool",
+        title: "Compter des succès",
+        description:
+          "Pour les pools de dés où chaque dé peut produire un succès.",
+      },
+      {
+        key: "keep_drop",
+        title: "Garder ou retirer des dés",
+        description: "Pour avantage, désavantage, meilleurs dés ou plus faibles.",
+      },
+      {
+        key: "table",
+        title: "Lire une table ou un palier",
+        description: "Pour transformer un total en résultat textuel.",
+      },
+      {
+        key: "advanced",
+        title: "Combiner plusieurs effets",
+        description:
+          "Pour relances, explosions, complications et logique avancée.",
+      },
+    ];
 
   return (
-    <Section
-      title="Intention principale"
-      description="Choisis ce que le comportement doit faire en priorité. Tu pourras ajouter des effets ensuite."
-    >
-      {options.map((option) => (
-        <ChoiceCard
-          key={option.key}
-          title={option.title}
-          description={option.description}
-          selected={draft.intent === option.key}
-          onPress={() => onSetIntent(option.key)}
-        />
-      ))}
-    </Section>
+    <View style={{ gap: 12 }}>
+      <Section
+        title="Type de comportement"
+        description="Choisis le comportement principal. Cette étape détermine automatiquement comment le résultat sera lu."
+      >
+        {options.map((option) => (
+          <ChoiceCard
+            key={option.key}
+            title={option.title}
+            description={option.description}
+            selected={draft.intent === option.key}
+            onPress={() => props.onSetIntent(option.key)}
+          />
+        ))}
+      </Section>
+
+      {draft.reading.mode === "sum" ? (
+        <Section
+          title="Lecture automatique"
+          description="Ce comportement additionne les dés et les modificateurs. Aucun réglage supplémentaire n’est nécessaire."
+        >
+          <Text
+            style={{
+              color: "rgba(255,255,255,0.62)",
+              fontSize: 12,
+              fontWeight: "700",
+              lineHeight: 17,
+            }}
+          >
+            Résultat principal conseillé : total final.
+          </Text>
+        </Section>
+      ) : null}
+
+      {draft.reading.mode === "single_check" ? (
+        <Section
+          title="Paramètres du seuil"
+          description="Le résultat sera automatiquement lu comme réussite ou échec."
+        >
+          <FieldGroup label="Seuil de réussite">
+            <Input
+              value={draft.reading.successThreshold}
+              onChangeText={(successThreshold) =>
+                props.onUpdateReading({ successThreshold })
+              }
+              placeholder="Ex : 15"
+              keyboardType="number-pad"
+            />
+          </FieldGroup>
+        </Section>
+      ) : null}
+
+      {draft.reading.mode === "threshold_degrees" ? (
+        <Section
+          title="Paramètres des degrés"
+          description="Le résultat sera lu avec une cible, une marge et des degrés."
+        >
+          <FieldGroup label="Cible">
+            <Input
+              value={draft.reading.targetValue}
+              onChangeText={(targetValue) =>
+                props.onUpdateReading({ targetValue })
+              }
+              placeholder="Ex : 50"
+              keyboardType="number-pad"
+            />
+          </FieldGroup>
+
+          <FieldGroup label="Pas de degré">
+            <Input
+              value={draft.reading.degreeStep}
+              onChangeText={(degreeStep) =>
+                props.onUpdateReading({ degreeStep })
+              }
+              placeholder="Ex : 10"
+              keyboardType="number-pad"
+            />
+          </FieldGroup>
+        </Section>
+      ) : null}
+
+      {draft.reading.mode === "success_pool" ? (
+        <Section
+          title="Paramètres du pool"
+          description="Le résultat sera lu en nombre de succès."
+        >
+          <FieldGroup label="Succès à partir de">
+            <Input
+              value={draft.reading.successAtOrAbove}
+              onChangeText={(successAtOrAbove) =>
+                props.onUpdateReading({ successAtOrAbove })
+              }
+              placeholder="Ex : 5"
+              keyboardType="number-pad"
+            />
+          </FieldGroup>
+
+          <FieldGroup label="Faces problématiques">
+            <Input
+              value={draft.reading.failFaces}
+              onChangeText={(failFaces) =>
+                props.onUpdateReading({ failFaces })
+              }
+              placeholder="Ex : 1"
+            />
+          </FieldGroup>
+        </Section>
+      ) : null}
+
+      {draft.reading.mode === "table_lookup" ? (
+        <Section
+          title="Paliers"
+          description="Le résultat sera lu dans une table de plages."
+        >
+          {draft.reading.tableRanges.map((range, index) => (
+            <View key={index} style={{ gap: 8 }}>
+              <Text
+                style={{
+                  color: "rgba(255,255,255,0.92)",
+                  fontWeight: "900",
+                }}
+              >
+                Palier {index + 1}
+              </Text>
+
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <View style={{ flex: 1 }}>
+                  <Input
+                    value={range.min}
+                    onChangeText={(value) =>
+                      props.onUpdateTableRange(index, "min", value)
+                    }
+                    placeholder="Min"
+                    keyboardType="number-pad"
+                  />
+                </View>
+
+                <View style={{ flex: 1 }}>
+                  <Input
+                    value={range.max}
+                    onChangeText={(value) =>
+                      props.onUpdateTableRange(index, "max", value)
+                    }
+                    placeholder="Max"
+                    keyboardType="number-pad"
+                  />
+                </View>
+              </View>
+
+              <Input
+                value={range.label}
+                onChangeText={(value) =>
+                  props.onUpdateTableRange(index, "label", value)
+                }
+                placeholder="Libellé"
+              />
+
+              <PillButton
+                label="Supprimer"
+                onPress={() => props.onRemoveTableRange(index)}
+                variant="danger"
+              />
+            </View>
+          ))}
+
+          <PillButton
+            label="+ Ajouter un palier"
+            onPress={props.onAddTableRange}
+            variant="accent"
+          />
+        </Section>
+      ) : null}
+    </View>
   );
 }
 
@@ -978,187 +1142,6 @@ function renderTransformsStep(
   );
 }
 
-function renderReadingStep(
-  draft: GuidedBehaviorDraft,
-  props: Pick<
-    Props,
-    | "onSetReadingMode"
-    | "onUpdateReading"
-    | "onUpdateTableRange"
-    | "onAddTableRange"
-    | "onRemoveTableRange"
-  >,
-) {
-  return (
-    <View style={{ gap: 12 }}>
-      <Section
-        title="Lire le résultat"
-        description="Choisis comment le lancer doit être interprété une fois les dés obtenus."
-      >
-        <ChoiceCard
-          title="Somme simple"
-          description="Additionner les dés et modificateurs."
-          selected={draft.reading.mode === "sum"}
-          onPress={() => props.onSetReadingMode("sum")}
-        />
-
-        <ChoiceCard
-          title="Test avec seuil"
-          description="Comparer le total à une difficulté."
-          selected={draft.reading.mode === "single_check"}
-          onPress={() => props.onSetReadingMode("single_check")}
-        />
-
-        <ChoiceCard
-          title="Seuil avec degrés"
-          description="Comparer à une cible et calculer une marge."
-          selected={draft.reading.mode === "threshold_degrees"}
-          onPress={() => props.onSetReadingMode("threshold_degrees")}
-        />
-
-        <ChoiceCard
-          title="Pool de succès"
-          description="Compter les dés qui atteignent un seuil."
-          selected={draft.reading.mode === "success_pool"}
-          onPress={() => props.onSetReadingMode("success_pool")}
-        />
-
-        <ChoiceCard
-          title="Table / Paliers"
-          description="Associer une valeur à une plage."
-          selected={draft.reading.mode === "table_lookup"}
-          onPress={() => props.onSetReadingMode("table_lookup")}
-        />
-      </Section>
-
-      {draft.reading.mode === "single_check" ? (
-        <Section title="Paramètres du seuil">
-          <FieldGroup label="Seuil de réussite">
-            <Input
-              value={draft.reading.successThreshold}
-              onChangeText={(successThreshold) =>
-                props.onUpdateReading({ successThreshold })
-              }
-              placeholder="Ex : 15"
-              keyboardType="number-pad"
-            />
-          </FieldGroup>
-        </Section>
-      ) : null}
-
-      {draft.reading.mode === "threshold_degrees" ? (
-        <Section title="Paramètres des degrés">
-          <FieldGroup label="Cible">
-            <Input
-              value={draft.reading.targetValue}
-              onChangeText={(targetValue) =>
-                props.onUpdateReading({ targetValue })
-              }
-              placeholder="Ex : 50"
-              keyboardType="number-pad"
-            />
-          </FieldGroup>
-
-          <FieldGroup label="Pas de degré">
-            <Input
-              value={draft.reading.degreeStep}
-              onChangeText={(degreeStep) =>
-                props.onUpdateReading({ degreeStep })
-              }
-              placeholder="Ex : 10"
-              keyboardType="number-pad"
-            />
-          </FieldGroup>
-        </Section>
-      ) : null}
-
-      {draft.reading.mode === "success_pool" ? (
-        <Section title="Paramètres du pool">
-          <FieldGroup label="Succès à partir de">
-            <Input
-              value={draft.reading.successAtOrAbove}
-              onChangeText={(successAtOrAbove) =>
-                props.onUpdateReading({ successAtOrAbove })
-              }
-              placeholder="Ex : 5"
-              keyboardType="number-pad"
-            />
-          </FieldGroup>
-
-          <FieldGroup label="Faces de complication">
-            <Input
-              value={draft.reading.failFaces}
-              onChangeText={(failFaces) => props.onUpdateReading({ failFaces })}
-              placeholder="Ex : 1"
-            />
-          </FieldGroup>
-        </Section>
-      ) : null}
-
-      {draft.reading.mode === "table_lookup" ? (
-        <Section title="Paliers">
-          {draft.reading.tableRanges.map((range, index) => (
-            <View key={index} style={{ gap: 8 }}>
-              <Text
-                style={{
-                  color: "rgba(255,255,255,0.92)",
-                  fontWeight: "900",
-                }}
-              >
-                Palier {index + 1}
-              </Text>
-
-              <View style={{ flexDirection: "row", gap: 8 }}>
-                <View style={{ flex: 1 }}>
-                  <Input
-                    value={range.min}
-                    onChangeText={(value) =>
-                      props.onUpdateTableRange(index, "min", value)
-                    }
-                    placeholder="Min"
-                    keyboardType="number-pad"
-                  />
-                </View>
-
-                <View style={{ flex: 1 }}>
-                  <Input
-                    value={range.max}
-                    onChangeText={(value) =>
-                      props.onUpdateTableRange(index, "max", value)
-                    }
-                    placeholder="Max"
-                    keyboardType="number-pad"
-                  />
-                </View>
-              </View>
-
-              <Input
-                value={range.label}
-                onChangeText={(value) =>
-                  props.onUpdateTableRange(index, "label", value)
-                }
-                placeholder="Libellé"
-              />
-
-              <PillButton
-                label="Supprimer"
-                onPress={() => props.onRemoveTableRange(index)}
-                variant="danger"
-              />
-            </View>
-          ))}
-
-          <PillButton
-            label="+ Ajouter un palier"
-            onPress={props.onAddTableRange}
-            variant="accent"
-          />
-        </Section>
-      ) : null}
-    </View>
-  );
-}
-
 function renderEventsStep(
   draft: GuidedBehaviorDraft,
   behaviorContext: GuidedBehaviorContext,
@@ -1187,8 +1170,8 @@ function renderEventsStep(
               rule: draft.events.criticalSuccess.enabled
                 ? "none"
                 : (behaviorContext.criticalSuccessOptions.find(
-                    (option) => option.recommended,
-                  )?.key ?? "any_critical_face"),
+                  (option) => option.recommended,
+                )?.key ?? "any_critical_face"),
             })
           }
         />
@@ -1247,8 +1230,8 @@ function renderEventsStep(
               rule: draft.events.criticalFailure.enabled
                 ? "none"
                 : (behaviorContext.criticalFailureOptions.find(
-                    (option) => option.recommended,
-                  )?.key ?? "zero_successes"),
+                  (option) => option.recommended,
+                )?.key ?? "zero_successes"),
             })
           }
         />
@@ -1367,28 +1350,28 @@ function renderApplicationStep(
     title: string;
     description: string;
   }[] = [
-    {
-      key: "auto",
-      title: "Automatique",
-      description:
-        "L’application choisit selon la logique du comportement. Recommandé pour la plupart des cas.",
-    },
-    {
-      key: "single_entry",
-      title: "Une ligne de dés",
-      description: "Ex : 2d6 + 3, 1d20, 4d6 garder 3.",
-    },
-    {
-      key: "whole_roll",
-      title: "Tout le jet",
-      description: "Ex : compter les succès sur tout un pool.",
-    },
-  ];
+      {
+        key: "auto",
+        title: "Laisser Dice Universal choisir",
+        description:
+          "Recommandé. L’application choisira automatiquement selon le comportement.",
+      },
+      {
+        key: "single_entry",
+        title: "Une seule ligne de dés",
+        description: "Ex : 1d20 + 3, 2d6, 4d6 garder 3.",
+      },
+      {
+        key: "whole_roll",
+        title: "Plusieurs dés ou tout le jet",
+        description: "Ex : compter les succès sur tout un pool de dés.",
+      },
+    ];
 
   return (
     <Section
-      title="Application du comportement"
-      description="Tu choisis en langage joueur, l’application convertit ensuite vers la portée technique."
+      title="Ce comportement sert plutôt à..."
+      description="L’application utilisera ce choix pour savoir où appliquer le comportement, sans te demander une portée technique."
     >
       {options.map((option) => (
         <ChoiceCard
@@ -1411,9 +1394,7 @@ function renderApplicationStep(
           lineHeight: 17,
         }}
       >
-        Application actuelle :{" "}
-        {getGuidedBehaviorApplicationLabel(draft.applicationMode)}. Conversion
-        technique : {getRuleScopeUserLabel(draft.resolvedScope)}.
+        Conseil actuel : {getGuidedBehaviorApplicationLabel(draft.applicationMode)}.
       </Text>
     </Section>
   );
@@ -1516,7 +1497,6 @@ export function CreateGuidedBehaviorWizardModal({
   onUpdateExplode,
   onUpdateKeepDrop,
   onUpdateReading,
-  onSetReadingMode,
   onUpdateTableRange,
   onAddTableRange,
   onRemoveTableRange,
@@ -1652,7 +1632,15 @@ export function CreateGuidedBehaviorWizardModal({
               ? renderIdentityStep(draft, onUpdateIdentity)
               : null}
 
-            {step === "intent" ? renderIntentStep(draft, onSetIntent) : null}
+            {step === "intent"
+              ? renderIntentStep(draft, {
+                onSetIntent,
+                onUpdateReading,
+                onUpdateTableRange,
+                onAddTableRange,
+                onRemoveTableRange,
+              })
+              : null}
 
             {step === "dice"
               ? renderDiceStep(draft, onSetDiceCompatibility)
@@ -1660,36 +1648,26 @@ export function CreateGuidedBehaviorWizardModal({
 
             {step === "transforms"
               ? renderTransformsStep(draft, {
-                  onUpdateReroll,
-                  onUpdateExplode,
-                  onUpdateKeepDrop,
-                })
-              : null}
-
-            {step === "reading"
-              ? renderReadingStep(draft, {
-                  onSetReadingMode,
-                  onUpdateReading,
-                  onUpdateTableRange,
-                  onAddTableRange,
-                  onRemoveTableRange,
-                })
+                onUpdateReroll,
+                onUpdateExplode,
+                onUpdateKeepDrop,
+              })
               : null}
 
             {step === "events"
               ? renderEventsStep(draft, behaviorContext, {
-                  onUpdateCriticalSuccess,
-                  onUpdateCriticalFailure,
-                  onUpdateComplication,
-                })
+                onUpdateCriticalSuccess,
+                onUpdateCriticalFailure,
+                onUpdateComplication,
+              })
               : null}
 
             {step === "application"
               ? renderApplicationStep(
-                  draft,
-                  behaviorContext,
-                  onSetApplicationMode,
-                )
+                draft,
+                behaviorContext,
+                onSetApplicationMode,
+              )
               : null}
 
             {step === "summary"
