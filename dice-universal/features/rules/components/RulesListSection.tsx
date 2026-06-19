@@ -1,3 +1,5 @@
+// dice-universal/features/rules/components/RulesListSection.tsx
+
 import { View, Text, Pressable } from "react-native";
 import {
   parseSupportedSides,

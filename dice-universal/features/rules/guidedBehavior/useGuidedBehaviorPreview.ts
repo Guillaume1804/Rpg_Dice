@@ -136,7 +136,10 @@ export function useGuidedBehaviorPreview(draft: GuidedBehaviorDraft) {
 
   function rollPreview() {
     try {
-      const payload = buildGuidedBehaviorPayload(draft);
+      const payload = buildGuidedBehaviorPayload({
+        ...draft,
+        name: draft.name.trim() || "Aperçu du comportement",
+      });
 
       const rolls = Array.from({ length: normalizeQuantity(quantity) }).map(
         () => randomIntBetween(1, selectedSides),
