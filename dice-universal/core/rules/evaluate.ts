@@ -15,100 +15,100 @@ export type EvalContext = {
 export type RuleResult =
   | { kind: "sum"; total: number; values: number[] }
   | {
-      kind: "single_check";
-      outcome: "crit_success" | "crit_failure" | "success" | "failure";
-      threshold: number | null;
-      natural: number;
-      final: number;
-      compare: "gte" | "lte";
-    }
+    kind: "single_check";
+    outcome: "crit_success" | "crit_failure" | "success" | "failure";
+    threshold: number | null;
+    natural: number;
+    final: number;
+    compare: "gte" | "lte";
+  }
   | {
-      kind: "success_pool";
-      outcome:
-        | "crit_success"
-        | "success"
-        | "failure"
-        | "glitch"
-        | "crit_glitch"
-        | "crit_failure";
-      successes: number;
-      fail_count: number;
-      fail_faces: number[];
-      dice_count: number;
-      success_at_or_above: number;
-      complication: boolean;
-      critical_success: boolean;
-      critical_failure: boolean;
-      complication_rule: string;
-      critical_failure_rule: string;
-      critical_success_rule: string;
-    }
+    kind: "success_pool";
+    outcome:
+    | "crit_success"
+    | "success"
+    | "failure"
+    | "glitch"
+    | "crit_glitch"
+    | "crit_failure";
+    successes: number;
+    fail_count: number;
+    fail_faces: number[];
+    dice_count: number;
+    success_at_or_above: number;
+    complication: boolean;
+    critical_success: boolean;
+    critical_failure: boolean;
+    complication_rule: string;
+    critical_failure_rule: string;
+    critical_success_rule: string;
+  }
   | { kind: "table_lookup"; label: string; value: number }
   | { kind: "banded_sum"; total: number; label: string }
   | {
-      kind: "highest_of_pool";
-      kept: number;
-      natural_values: number[];
-      threshold: number | null;
-      final: number;
-      compare: "gte" | "lte";
-      outcome: "crit_success" | "crit_failure" | "success" | "failure";
-    }
+    kind: "highest_of_pool";
+    kept: number;
+    natural_values: number[];
+    threshold: number | null;
+    final: number;
+    compare: "gte" | "lte";
+    outcome: "crit_success" | "crit_failure" | "success" | "failure";
+  }
   | {
-      kind: "lowest_of_pool";
-      kept: number;
-      natural_values: number[];
-      threshold: number | null;
-      final: number;
-      compare: "gte" | "lte";
-      outcome: "crit_success" | "crit_failure" | "success" | "failure";
-    }
+    kind: "lowest_of_pool";
+    kept: number;
+    natural_values: number[];
+    threshold: number | null;
+    final: number;
+    compare: "gte" | "lte";
+    outcome: "crit_success" | "crit_failure" | "success" | "failure";
+  }
   | {
-      kind: "keep_highest_n";
-      kept: number[];
-      natural_values: number[];
-      final: number | number[] | null;
-      result_mode: "sum" | "values";
-    }
+    kind: "keep_highest_n";
+    kept: number[];
+    natural_values: number[];
+    final: number | number[] | null;
+    result_mode: "sum" | "values";
+  }
   | {
-      kind: "keep_lowest_n";
-      kept: number[];
-      natural_values: number[];
-      final: number | number[] | null;
-      result_mode: "sum" | "values";
-    }
+    kind: "keep_lowest_n";
+    kept: number[];
+    natural_values: number[];
+    final: number | number[] | null;
+    result_mode: "sum" | "values";
+  }
   | {
-      kind: "drop_highest_n";
-      remaining: number[];
-      natural_values: number[];
-      final: number | number[] | null;
-      result_mode: "sum" | "values";
-    }
+    kind: "drop_highest_n";
+    remaining: number[];
+    natural_values: number[];
+    final: number | number[] | null;
+    result_mode: "sum" | "values";
+  }
   | {
-      kind: "drop_lowest_n";
-      remaining: number[];
-      natural_values: number[];
-      final: number | number[] | null;
-      result_mode: "sum" | "values";
-    }
+    kind: "drop_lowest_n";
+    remaining: number[];
+    natural_values: number[];
+    final: number | number[] | null;
+    result_mode: "sum" | "values";
+  }
   | {
-      kind: "pipeline";
-      values: number[];
-      kept: number[];
-      final: number | null;
-      meta: any;
-    }
+    kind: "pipeline";
+    values: number[];
+    kept: number[];
+    final: number | null;
+    meta: any;
+  }
   | {
-      kind: "threshold_degrees";
-      roll: number;
-      final: number;
-      target: number;
-      compare: "gte" | "lte";
-      margin: number;
-      degrees: number;
-      outcome: "crit_success" | "crit_failure" | "success" | "failure";
-      degree_step: number;
-    }
+    kind: "threshold_degrees";
+    roll: number;
+    final: number;
+    target: number;
+    compare: "gte" | "lte";
+    margin: number;
+    degrees: number;
+    outcome: "crit_success" | "crit_failure" | "success" | "failure";
+    degree_step: number;
+  }
   | { kind: "unknown"; message: string };
 
 function safeParse(json: string) {
@@ -566,6 +566,14 @@ function runPipeline(
       thresholdFailed: !ok,
     });
 
+    const criticalSuccessFacesForRule =
+      params.critical_success_faces ?? params.crit_success_faces ?? [];
+
+    const criticalExplosionChain = resolvePipelineCriticalExplosionChain({
+      meta,
+      criticalSuccessFaces: criticalSuccessFacesForRule,
+    });
+
     const isCriticalSuccess = resolvePipelineCriticalSuccess({
       rule: criticalSuccessRule,
       values: kept,
@@ -573,11 +581,12 @@ function runPipeline(
       successAtOrAbove,
       criticalSuccessThreshold:
         typeof params.critical_success_threshold === "number" &&
-        Number.isFinite(params.critical_success_threshold)
+          Number.isFinite(params.critical_success_threshold)
           ? params.critical_success_threshold
           : null,
-      criticalSuccessFaces: params.critical_success_faces ?? [],
+      criticalSuccessFaces: criticalSuccessFacesForRule,
       sides,
+      criticalExplosionChain,
     });
 
     let outcome: string = degreeResult?.outcome ?? (ok ? "success" : "failure");
@@ -587,7 +596,7 @@ function runPipeline(
     } else if (isCriticalFailure) {
       outcome =
         criticalFailureRule === "complication_and_zero_successes" ||
-        criticalFailureRule === "complication_and_failed_threshold"
+          criticalFailureRule === "complication_and_failed_threshold"
           ? "crit_glitch"
           : "crit_failure";
     } else if (hasComplication) {
@@ -608,6 +617,7 @@ function runPipeline(
         complication: hasComplication,
         critical_failure: isCriticalFailure,
         critical_success: isCriticalSuccess,
+        critical_explosion_chain: criticalExplosionChain,
         complication_rule: complicationRule,
         critical_failure_rule: criticalFailureRule,
         critical_success_rule: criticalSuccessRule,
@@ -656,6 +666,14 @@ function runPipeline(
     thresholdFailed: false,
   });
 
+  const criticalSuccessFacesForRule =
+    params.critical_success_faces ?? params.crit_success_faces ?? [];
+
+  const criticalExplosionChain = resolvePipelineCriticalExplosionChain({
+    meta,
+    criticalSuccessFaces: criticalSuccessFacesForRule,
+  });
+
   const isCriticalSuccess = resolvePipelineCriticalSuccess({
     rule: criticalSuccessRule,
     values: kept,
@@ -663,11 +681,12 @@ function runPipeline(
     successAtOrAbove,
     criticalSuccessThreshold:
       typeof params.critical_success_threshold === "number" &&
-      Number.isFinite(params.critical_success_threshold)
+        Number.isFinite(params.critical_success_threshold)
         ? params.critical_success_threshold
         : null,
-    criticalSuccessFaces: params.critical_success_faces ?? [],
+    criticalSuccessFaces: criticalSuccessFacesForRule,
     sides,
+    criticalExplosionChain,
   });
 
   let outcome: string | undefined = degreeResult?.outcome;
@@ -677,7 +696,7 @@ function runPipeline(
   } else if (isCriticalFailure) {
     outcome =
       criticalFailureRule === "complication_and_zero_successes" ||
-      criticalFailureRule === "complication_and_failed_threshold"
+        criticalFailureRule === "complication_and_failed_threshold"
         ? "crit_glitch"
         : "crit_failure";
   } else if (hasComplication) {
@@ -698,6 +717,7 @@ function runPipeline(
       complication: hasComplication,
       critical_failure: isCriticalFailure,
       critical_success: isCriticalSuccess,
+      critical_explosion_chain: criticalExplosionChain,
       complication_rule: complicationRule,
       critical_failure_rule: criticalFailureRule,
       critical_success_rule: criticalSuccessRule,
@@ -936,6 +956,24 @@ function resolvePipelineCriticalFailure(params: {
   return false;
 }
 
+function resolvePipelineCriticalExplosionChain(params: {
+  meta: any;
+  criticalSuccessFaces: number[];
+}) {
+  const { meta, criticalSuccessFaces } = params;
+
+  if (criticalSuccessFaces.length === 0) return false;
+
+  const faces = new Set(criticalSuccessFaces);
+  const steps = Array.isArray(meta?.steps) ? meta.steps : [];
+
+  return steps.some((step: any) => {
+    if (step?.op !== "explode_one") return false;
+
+    return faces.has(Number(step.trigger)) && faces.has(Number(step.extra));
+  });
+}
+
 function resolvePipelineCriticalSuccess(params: {
   rule: string;
   values: number[];
@@ -944,6 +982,7 @@ function resolvePipelineCriticalSuccess(params: {
   criticalSuccessThreshold: number | null;
   criticalSuccessFaces: number[];
   sides: number;
+  criticalExplosionChain: boolean;
 }) {
   const {
     rule,
@@ -953,6 +992,7 @@ function resolvePipelineCriticalSuccess(params: {
     criticalSuccessThreshold,
     criticalSuccessFaces,
     sides,
+    criticalExplosionChain,
   } = params;
 
   if (rule === "none") return false;
@@ -979,6 +1019,10 @@ function resolvePipelineCriticalSuccess(params: {
 
   if (rule === "any_critical_face") {
     return countValuesMatchingFaces(values, criticalSuccessFaces) > 0;
+  }
+
+  if (rule === "explosion_chain_critical") {
+    return criticalExplosionChain;
   }
 
   return false;
@@ -1154,8 +1198,8 @@ export function evaluateRule(
 
     const criticalFailureRule = String(
       p.critical_failure_rule ??
-        p.criticalFailureRule ??
-        "complication_and_zero_successes",
+      p.criticalFailureRule ??
+      "complication_and_zero_successes",
     );
 
     const criticalSuccessRule = String(
@@ -1171,7 +1215,7 @@ export function evaluateRule(
 
     const resolvedCriticalSuccessThreshold =
       criticalSuccessThreshold != null &&
-      Number.isFinite(criticalSuccessThreshold)
+        Number.isFinite(criticalSuccessThreshold)
         ? criticalSuccessThreshold
         : null;
 
@@ -1223,7 +1267,7 @@ export function evaluateRule(
     } else if (criticalFailure) {
       outcome =
         criticalFailureRule === "complication_and_zero_successes" ||
-        criticalFailureRule === "complication_and_failure"
+          criticalFailureRule === "complication_and_failure"
           ? "crit_glitch"
           : "crit_failure";
     } else if (successes > 0) {
@@ -1387,35 +1431,36 @@ export function evaluateRule(
 
       complication_rule:
         p.complication_rule === "any" ||
-        p.complication_rule === "gt_successes" ||
-        p.complication_rule === "gte_successes" ||
-        p.complication_rule === "zero_successes" ||
-        p.complication_rule === "gt_half_dice" ||
-        p.complication_rule === "gte_half_dice" ||
-        p.complication_rule === "gt_half_successes" ||
-        p.complication_rule === "gte_half_successes" ||
-        p.complication_rule === "none"
+          p.complication_rule === "gt_successes" ||
+          p.complication_rule === "gte_successes" ||
+          p.complication_rule === "zero_successes" ||
+          p.complication_rule === "gt_half_dice" ||
+          p.complication_rule === "gte_half_dice" ||
+          p.complication_rule === "gt_half_successes" ||
+          p.complication_rule === "gte_half_successes" ||
+          p.complication_rule === "none"
           ? p.complication_rule
           : undefined,
 
       critical_failure_rule:
         p.critical_failure_rule === "zero_successes" ||
-        p.critical_failure_rule === "all_complication_faces" ||
-        p.critical_failure_rule === "complications_gt_successes" ||
-        p.critical_failure_rule === "complications_gte_successes" ||
-        p.critical_failure_rule === "complication_and_zero_successes" ||
-        p.critical_failure_rule === "complication_and_failed_threshold" ||
-        p.critical_failure_rule === "none"
+          p.critical_failure_rule === "all_complication_faces" ||
+          p.critical_failure_rule === "complications_gt_successes" ||
+          p.critical_failure_rule === "complications_gte_successes" ||
+          p.critical_failure_rule === "complication_and_zero_successes" ||
+          p.critical_failure_rule === "complication_and_failed_threshold" ||
+          p.critical_failure_rule === "none"
           ? p.critical_failure_rule
           : undefined,
 
       critical_success_rule:
         p.critical_success_rule === "successes_gte_threshold" ||
-        p.critical_success_rule === "all_dice_successes" ||
-        p.critical_success_rule === "all_dice_max_faces" ||
-        p.critical_success_rule === "any_max_face" ||
-        p.critical_success_rule === "any_critical_face" ||
-        p.critical_success_rule === "none"
+          p.critical_success_rule === "all_dice_successes" ||
+          p.critical_success_rule === "all_dice_max_faces" ||
+          p.critical_success_rule === "any_max_face" ||
+          p.critical_success_rule === "any_critical_face" ||
+          p.critical_success_rule === "explosion_chain_critical" ||
+          p.critical_success_rule === "none"
           ? p.critical_success_rule
           : undefined,
 

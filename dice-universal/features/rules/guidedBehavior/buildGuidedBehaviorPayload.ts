@@ -205,10 +205,28 @@ function mapCriticalSuccessRuleToPipeline(
       return "any_max_face";
     case "any_critical_face":
       return "any_critical_face";
+    case "explosion_chain_critical":
+      return "explosion_chain_critical";
     case "none":
     default:
       return "none";
   }
+}
+
+function getCriticalSuccessFacesForPipeline(
+  draft: GuidedBehaviorDraft,
+): number[] {
+  const explicitFaces = parseNumberList(draft.events.criticalSuccess.faces);
+
+  if (explicitFaces.length > 0) {
+    return explicitFaces;
+  }
+
+  if (draft.events.criticalSuccess.rule === "explosion_chain_critical") {
+    return parseNumberList(draft.transforms.explode.faces);
+  }
+
+  return explicitFaces;
 }
 
 function getPipelineOutputFromPrimaryOutput(
@@ -482,9 +500,9 @@ function buildPipelineParams(draft: GuidedBehaviorDraft): PipelineParams {
   }
 
   if (draft.events.criticalSuccess.enabled) {
-    params.crit_success_faces = parseNumberList(
-      draft.events.criticalSuccess.faces,
-    );
+    const criticalSuccessFaces = getCriticalSuccessFacesForPipeline(draft);
+
+    params.crit_success_faces = criticalSuccessFaces;
 
     params.critical_success_rule = mapCriticalSuccessRuleToPipeline(
       draft.events.criticalSuccess.rule,
@@ -494,9 +512,7 @@ function buildPipelineParams(draft: GuidedBehaviorDraft): PipelineParams {
       draft.events.criticalSuccess.threshold,
     );
 
-    params.critical_success_faces = parseNumberList(
-      draft.events.criticalSuccess.faces,
-    );
+    params.critical_success_faces = criticalSuccessFaces;
   }
 
   if (draft.events.criticalFailure.enabled) {

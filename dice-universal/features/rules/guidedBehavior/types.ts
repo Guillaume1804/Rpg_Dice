@@ -19,8 +19,8 @@ export type GuidedBehaviorApplicationMode =
 export type GuidedBehaviorDiceCompatibility =
   | "all"
   | {
-      sides: number[];
-    };
+    sides: number[];
+  };
 
 export type GuidedBehaviorCompareMode = "gte" | "lte";
 
@@ -63,7 +63,8 @@ export type GuidedBehaviorCriticalSuccessRule =
   | "all_dice_successes"
   | "all_dice_max_faces"
   | "any_max_face"
-  | "any_critical_face";
+  | "any_critical_face"
+  | "explosion_chain_critical";
 
 export type GuidedBehaviorPrimaryOutput =
   | "total"

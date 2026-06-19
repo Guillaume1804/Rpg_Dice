@@ -18,33 +18,33 @@ export type SuccessPoolParams = {
   success_at_or_above: number;
   fail_faces?: number[];
   glitch_rule?:
-    | "none"
-    | "any_special_failure"
-    | "special_failures_gt_successes"
-    | "special_failures_gte_successes"
-    | "special_failures_gt_half_dice"
-    | "special_failures_gte_half_dice"
-    | "special_failures_gt_half_successes"
-    | "special_failures_gte_half_successes"
-    | "ones_gt_successes"
-    | "ones_gte_successes";
+  | "none"
+  | "any_special_failure"
+  | "special_failures_gt_successes"
+  | "special_failures_gte_successes"
+  | "special_failures_gt_half_dice"
+  | "special_failures_gte_half_dice"
+  | "special_failures_gt_half_successes"
+  | "special_failures_gte_half_successes"
+  | "ones_gt_successes"
+  | "ones_gte_successes";
 
   critical_failure_rule?:
-    | "none"
-    | "zero_successes"
-    | "all_special_failures"
-    | "special_failures_gt_successes"
-    | "special_failures_gte_successes"
-    | "complication_and_zero_successes"
-    | "complication_and_failure";
+  | "none"
+  | "zero_successes"
+  | "all_special_failures"
+  | "special_failures_gt_successes"
+  | "special_failures_gte_successes"
+  | "complication_and_zero_successes"
+  | "complication_and_failure";
 
   critical_success_rule?:
-    | "none"
-    | "successes_gte_threshold"
-    | "all_dice_successes"
-    | "all_dice_max_faces"
-    | "any_max_face"
-    | "any_critical_face";
+  | "none"
+  | "successes_gte_threshold"
+  | "all_dice_successes"
+  | "all_dice_max_faces"
+  | "any_max_face"
+  | "any_critical_face";
 
   critical_success_threshold?: number | null;
   critical_success_faces?: number[];
@@ -121,19 +121,20 @@ export type PipelineCriticalSuccessRule =
   | "all_dice_successes"
   | "all_dice_max_faces"
   | "any_max_face"
-  | "any_critical_face";
+  | "any_critical_face"
+  | "explosion_chain_critical";
 
 export type PipelineParams = {
   steps: PipelineStep[];
   output?:
-    | "sum"
-    | "successes"
-    | "count_equal"
-    | "count_range"
-    | "first_value"
-    | "values"
-    | "lookup_label"
-    | "lookup_value";
+  | "sum"
+  | "successes"
+  | "count_equal"
+  | "count_range"
+  | "first_value"
+  | "values"
+  | "lookup_label"
+  | "lookup_value";
   crit_success_faces?: number[];
   crit_failure_faces?: number[];
   success_threshold?: number | null;
@@ -168,52 +169,52 @@ export type UniversalRuleParams =
 export type RuleResult =
   | { kind: "sum"; total: number; values?: number[] }
   | {
-      kind: "single_check";
-      outcome: "crit_success" | "crit_failure" | "success" | "failure";
-      threshold: number | null;
-      natural: number;
-      final: number;
-      compare: "gte" | "lte";
-    }
+    kind: "single_check";
+    outcome: "crit_success" | "crit_failure" | "success" | "failure";
+    threshold: number | null;
+    natural: number;
+    final: number;
+    compare: "gte" | "lte";
+  }
   | {
-      kind: "success_pool";
-      successes: number;
-      fail_count: number;
-      fail_faces: number[];
-      dice_count: number;
-      success_at_or_above: number;
-      complication: boolean;
-      critical_success: boolean;
-      critical_failure: boolean;
-      complication_rule: string;
-      critical_failure_rule: string;
-      critical_success_rule: string;
-      outcome:
-        | "crit_success"
-        | "crit_glitch"
-        | "crit_failure"
-        | "glitch"
-        | "success"
-        | "failure";
-    }
+    kind: "success_pool";
+    successes: number;
+    fail_count: number;
+    fail_faces: number[];
+    dice_count: number;
+    success_at_or_above: number;
+    complication: boolean;
+    critical_success: boolean;
+    critical_failure: boolean;
+    complication_rule: string;
+    critical_failure_rule: string;
+    critical_success_rule: string;
+    outcome:
+    | "crit_success"
+    | "crit_glitch"
+    | "crit_failure"
+    | "glitch"
+    | "success"
+    | "failure";
+  }
   | { kind: "table_lookup"; value: number; label: string }
   | { kind: "banded_sum"; total: number; label: string }
   | {
-      kind: "highest_of_pool";
-      kept: number;
-      natural_values: number[];
-      threshold: number | null;
-      final: number;
-      compare: "gte" | "lte";
-      outcome: "crit_success" | "crit_failure" | "success" | "failure";
-    }
+    kind: "highest_of_pool";
+    kept: number;
+    natural_values: number[];
+    threshold: number | null;
+    final: number;
+    compare: "gte" | "lte";
+    outcome: "crit_success" | "crit_failure" | "success" | "failure";
+  }
   | {
-      kind: "pipeline";
-      values: number[];
-      kept: number[];
-      final: number | null;
-      meta: any;
-    }
+    kind: "pipeline";
+    values: number[];
+    kept: number[];
+    final: number | null;
+    meta: any;
+  }
   | { kind: "unknown"; message: string };
 
 export type RuleEvaluator<TParams = UniversalRuleParams> = (

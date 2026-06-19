@@ -249,16 +249,16 @@ function getCriticalSuccessOptions(
       key: "any_critical_face",
       label: "Face critique, explosions comprises",
       description:
-        "Permettra de tenir compte des dés générés par explosion dans la détection critique.",
+        "Réussite critique si une face critique apparaît, y compris sur un dé généré par explosion.",
       advanced: true,
       recommended: true,
     });
 
     options.push({
-      key: "all_dice_max_faces",
+      key: "explosion_chain_critical",
       label: "Chaîne explosive critique",
       description:
-        "Base future pour les règles du type : explosion sur face critique puis nouvelle face critique.",
+        "Réussite critique si une explosion déclenchée sur une face critique retombe aussi sur une face critique.",
       advanced: true,
     });
   }
