@@ -12,6 +12,8 @@ import {
 import { buildGuidedBehaviorPayload } from "./buildGuidedBehaviorPayload";
 import { resolveGuidedBehaviorScope } from "./resolveGuidedBehaviorScope";
 
+import { applyIntentDefaultsToDraft } from "./guidedBehaviorDefaults";
+
 export type GuidedBehaviorWizardStep =
   | "application"
   | "dice"
@@ -35,83 +37,6 @@ function cloneDefaultDraft(): GuidedBehaviorDraft {
   return JSON.parse(
     JSON.stringify(DEFAULT_GUIDED_BEHAVIOR_DRAFT),
   ) as GuidedBehaviorDraft;
-}
-
-function getDefaultReadingModeForIntent(
-  intent: GuidedBehaviorIntent,
-): GuidedBehaviorReadingMode {
-  switch (intent) {
-    case "sum":
-      return "sum";
-    case "check":
-      return "single_check";
-    case "degrees":
-      return "threshold_degrees";
-    case "success_pool":
-      return "success_pool";
-    case "table":
-      return "table_lookup";
-    case "keep_drop":
-      return "sum";
-    case "advanced":
-    default:
-      return "sum";
-  }
-}
-
-function getDefaultPrimaryOutputForIntent(
-  intent: GuidedBehaviorIntent,
-): GuidedBehaviorDraft["output"]["primary"] {
-  switch (intent) {
-    case "sum":
-      return "total";
-    case "check":
-      return "outcome";
-    case "degrees":
-      return "degrees";
-    case "success_pool":
-      return "successes";
-    case "table":
-      return "table_label";
-    case "keep_drop":
-      return "kept_values";
-    case "advanced":
-    default:
-      return "pipeline_final";
-  }
-}
-
-function getDefaultApplicationModeForIntent(
-  intent: GuidedBehaviorIntent,
-): GuidedBehaviorApplicationMode {
-  switch (intent) {
-    case "success_pool":
-    case "table":
-      return "whole_roll";
-    case "sum":
-    case "check":
-    case "degrees":
-    case "keep_drop":
-      return "single_entry";
-    case "advanced":
-    default:
-      return "auto";
-  }
-}
-
-function getDefaultDiceCompatibilityForIntent(
-  intent: GuidedBehaviorIntent,
-): GuidedBehaviorDraft["diceCompatibility"] {
-  switch (intent) {
-    case "degrees":
-      return { sides: [100] };
-    case "check":
-      return { sides: [20] };
-    case "success_pool":
-      return { sides: [6] };
-    default:
-      return "all";
-  }
 }
 
 function validateNumberList(value: string): boolean {
@@ -368,22 +293,7 @@ export function useGuidedBehaviorWizard() {
 
   function setIntent(intent: GuidedBehaviorIntent) {
     setDraft((prev) => {
-      const readingMode = getDefaultReadingModeForIntent(intent);
-      const applicationMode = getDefaultApplicationModeForIntent(intent);
-      const next: GuidedBehaviorDraft = {
-        ...prev,
-        intent,
-        diceCompatibility: getDefaultDiceCompatibilityForIntent(intent),
-        applicationMode,
-        reading: {
-          ...prev.reading,
-          mode: readingMode,
-        },
-        output: {
-          ...prev.output,
-          primary: getDefaultPrimaryOutputForIntent(intent),
-        },
-      };
+      const next = applyIntentDefaultsToDraft(prev, intent);
 
       return {
         ...next,
