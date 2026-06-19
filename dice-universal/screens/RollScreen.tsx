@@ -491,6 +491,7 @@ export default function RollScreen() {
   const quickDieBehaviorPicker = useQuickDieBehaviorPicker({
     addQuickPresetDie,
     quickBehaviorConfig,
+    availableRules,
     onApplyPresetToExistingDraftDie: (_sides, preset) => {
       if (!draftBehaviorTarget) return false;
 

@@ -1,6 +1,7 @@
 // dice-universal\features\rules\hooks\useHumanRuleEditor.ts
 
 import { useMemo, useState } from "react";
+import { Alert } from "react-native";
 import type { RuleRow, RuleScope } from "../../../data/repositories/rulesRepo";
 import type { ActionWizardDraft } from "../../tables/actionWizard/types";
 import {
@@ -156,12 +157,15 @@ export function useHumanRuleEditor() {
   }
 
   function openEdit(rule: RuleRow) {
-    if (rule.kind === "pipeline") {
-      resetForm();
-      setEditingRule(null);
-      setFormError(
-        "Les règles pipeline personnalisées ne sont pas éditables dans cet ancien éditeur. Utilise le wizard de règle moderne.",
+    const isModernGuidedRule =
+      rule.kind === "pipeline" || rule.kind === "threshold_degrees";
+
+    if (isModernGuidedRule) {
+      Alert.alert(
+        "Édition guidée à venir",
+        "Ce comportement a été créé avec le nouveau builder guidé ou utilise une logique avancée. Pour l’instant, tu peux le supprimer puis le recréer. La prochaine étape sera de permettre de le modifier directement dans le builder guidé.",
       );
+
       return;
     }
 
