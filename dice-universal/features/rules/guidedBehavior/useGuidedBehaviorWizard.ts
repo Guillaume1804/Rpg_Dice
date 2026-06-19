@@ -264,15 +264,14 @@ export function useGuidedBehaviorWizard() {
   const [error, setError] = useState<string | null>(null);
 
   function open() {
-    setDraft(cloneDefaultDraft());
-    setStep("identity");
-    setError(null);
     setVisible(true);
+    setStep(GUIDED_BEHAVIOR_STEP_ORDER[0]);
+    setError(null);
   }
 
   function close() {
     setVisible(false);
-    setStep("identity");
+    setStep(GUIDED_BEHAVIOR_STEP_ORDER[0]);
     setDraft(cloneDefaultDraft());
     setError(null);
   }
