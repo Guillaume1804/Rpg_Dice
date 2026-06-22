@@ -22,6 +22,8 @@ import type { OfficialBehaviorCatalogItem } from "../features/rules/components/R
 import { useArcaneLayout } from "../theme/useArcaneLayout";
 import { usePremiumTheme } from "../theme/premium/usePremiumTheme";
 
+import { isRuleEditableWithGuidedBuilder } from "../features/rules/guidedBehavior/guidedBehaviorRuleAdapter";
+
 function ScreenGlow({
   position,
 }: {
@@ -30,27 +32,27 @@ function ScreenGlow({
   const styleByPosition =
     position === "topRight"
       ? {
-          top: -150,
-          right: -130,
-          width: 300,
-          height: 300,
-          backgroundColor: "rgba(232, 200, 120, 0.075)",
-        }
+        top: -150,
+        right: -130,
+        width: 300,
+        height: 300,
+        backgroundColor: "rgba(232, 200, 120, 0.075)",
+      }
       : position === "bottomLeft"
         ? {
-            bottom: -190,
-            left: -160,
-            width: 360,
-            height: 360,
-            backgroundColor: "rgba(124, 92, 255, 0.07)",
-          }
+          bottom: -190,
+          left: -160,
+          width: 360,
+          height: 360,
+          backgroundColor: "rgba(124, 92, 255, 0.07)",
+        }
         : {
-            top: "36%" as const,
-            left: -120,
-            width: 240,
-            height: 240,
-            backgroundColor: "rgba(255,255,255,0.025)",
-          };
+          top: "36%" as const,
+          left: -120,
+          width: 240,
+          height: 240,
+          backgroundColor: "rgba(255,255,255,0.025)",
+        };
 
   return (
     <View
@@ -846,12 +848,21 @@ export default function RulesScreen() {
     guidedBehaviorWizard.draft,
   );
 
+  function handleEditRule(rule: Parameters<typeof openEdit>[0]) {
+    if (isRuleEditableWithGuidedBuilder(rule)) {
+      guidedBehaviorWizard.openFromRule(rule);
+      return;
+    }
+
+    openEdit(rule);
+  }
+
   async function handleCreateFromWizard() {
     try {
       const payload = guidedBehaviorWizard.buildPayload();
 
       await saveRule({
-        editingRule: null,
+        editingRule: guidedBehaviorWizard.editingRule,
         payload: {
           ...payload,
           scope: payload.scope ?? "entry",
@@ -933,7 +944,7 @@ export default function RulesScreen() {
           <RulesListSection
             systemRules={systemRules}
             customRules={customRules}
-            onEditRule={openEdit}
+            onEditRule={handleEditRule}
             onDeleteRule={handleDeleteRule}
             onShowSystemDetails={setSelectedSystemBehavior}
           />

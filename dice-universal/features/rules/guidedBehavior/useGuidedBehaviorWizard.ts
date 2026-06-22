@@ -1,3 +1,5 @@
+// dice-universal/features/rules/guidedBehavior/useGuidedBehaviorWizard.ts
+
 import { useMemo, useState } from "react";
 import type { CreateRuleInput } from "../../../data/repositories/rulesRepo";
 
@@ -13,6 +15,9 @@ import { buildGuidedBehaviorPayload } from "./buildGuidedBehaviorPayload";
 import { resolveGuidedBehaviorScope } from "./resolveGuidedBehaviorScope";
 
 import { applyIntentDefaultsToDraft } from "./guidedBehaviorDefaults";
+
+import type { RuleRow } from "../../../data/repositories/rulesRepo";
+import { createGuidedBehaviorDraftFromRule } from "./guidedBehaviorRuleAdapter";
 
 export type GuidedBehaviorWizardStep =
   | "application"
@@ -259,20 +264,37 @@ export function getGuidedBehaviorStepDescription(
 
 export function useGuidedBehaviorWizard() {
   const [visible, setVisible] = useState(false);
-  const [step, setStep] = useState<GuidedBehaviorWizardStep>("identity");
+  const [step, setStep] = useState<GuidedBehaviorWizardStep>(
+    GUIDED_BEHAVIOR_STEP_ORDER[0],
+  );
   const [draft, setDraft] = useState<GuidedBehaviorDraft>(cloneDefaultDraft());
   const [error, setError] = useState<string | null>(null);
 
+  const [editingRule, setEditingRule] = useState<RuleRow | null>(null);
+
   function open() {
-    setVisible(true);
+    setEditingRule(null);
+    setDraft(cloneDefaultDraft());
     setStep(GUIDED_BEHAVIOR_STEP_ORDER[0]);
     setError(null);
+    setVisible(true);
+  }
+
+  function openFromRule(rule: RuleRow) {
+    const nextDraft = createGuidedBehaviorDraftFromRule(rule);
+
+    setEditingRule(rule);
+    setDraft(nextDraft);
+    setStep(GUIDED_BEHAVIOR_STEP_ORDER[0]);
+    setError(null);
+    setVisible(true);
   }
 
   function close() {
     setVisible(false);
-    setStep(GUIDED_BEHAVIOR_STEP_ORDER[0]);
+    setEditingRule(null);
     setDraft(cloneDefaultDraft());
+    setStep(GUIDED_BEHAVIOR_STEP_ORDER[0]);
     setError(null);
   }
 
@@ -545,6 +567,7 @@ export function useGuidedBehaviorWizard() {
 
   return {
     visible,
+    editingRule,
     step,
     stepIndex,
     totalSteps: GUIDED_BEHAVIOR_STEP_ORDER.length,
@@ -552,6 +575,7 @@ export function useGuidedBehaviorWizard() {
     error,
 
     open,
+    openFromRule,
     close,
     goNext,
     goBack,
