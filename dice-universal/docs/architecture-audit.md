@@ -141,6 +141,35 @@ Créer plus tard une couche de présentation commune pour transformer les résul
 
 ## 4. Écrans et responsabilités
 
+### Écran suspect majeur : `app/tables/[id].tsx`
+
+Diagnostic :
+
+Cet écran contient trop de responsabilités :
+
+- affichage détail table
+- gestion profils
+- gestion actions/groupes
+- gestion dés
+- sélection de règles
+- création d’action via wizard
+- création/édition de règle avancée
+- modales multiples
+- orchestration de refresh
+
+Décision :
+
+Ne pas le supprimer.
+
+Le transformer progressivement en écran de Préparation du jeu, puis extraire :
+
+- un conteneur de données
+- des sections UI
+- des hooks d’action
+- des modales spécialisées
+- le wizard de création de Set/Action
+- l’éditeur de comportement
+
 ### Table de lancer
 
 À compléter.
