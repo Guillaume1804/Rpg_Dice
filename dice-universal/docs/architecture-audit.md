@@ -59,6 +59,33 @@ Si on garde `Tables` comme destination principale, l’utilisateur est poussé v
 
 ## 2. Modèle de données actuel
 
+### Diagnostic
+
+Le modèle SQLite est fonctionnel mais certains noms techniques sont hérités d’une ancienne vision.
+
+- `tables` correspond bien à Table.
+- `profiles` correspond bien à Profil.
+- `groups` correspond plutôt à Action / Set.
+- `group_dice` correspond plutôt à Entrée.
+- `rules` correspond à Comportement.
+- `roll_events` correspond à Historique / événements de jet.
+
+### Décision provisoire
+
+Ne pas renommer les tables SQLite maintenant.
+
+Créer plus tard une couche de mapping :
+
+- GroupRow → ActionSet
+- GroupDieRow → ActionEntry
+- RuleRow → BehaviorDefinition / BehaviorRef
+- GroupRollResult → RollResultPresentation
+
+### Fichier suspect
+
+- `data/repositories/rulesetsRepo.ts`
+  - À vérifier : semble référencer une table `rulesets` absente du schéma actuel.
+
 ### Tables SQLite
 
 À compléter.
