@@ -552,3 +552,126 @@ Orientation recommandée :
 - moteur officiel calcule le résultat ;
 - animation 3D accompagne le lancer ;
 - reveal final oriente ou affiche les faces cohérentes avec le résultat officiel.
+
+## 15. Audit TableDetail / préparation legacy
+
+### Fichiers audités
+
+- `features/tables/hooks/useTableDetailData.ts`
+- `features/tables/hooks/useTableDetailActions.ts`
+- `features/tables/hooks/useTableDetailUi.ts`
+- `features/tables/actionWizard/useCreateActionWizard.ts`
+- `features/tables/actionWizard/useCreateActionFromWizard.ts`
+- `features/tables/actionWizard/types.ts`
+
+### Diagnostic global
+
+La zone `features/tables` est fonctionnelle et relativement structurée, mais elle correspond encore à une logique d'administration technique de table.
+
+Elle manipule encore les concepts legacy :
+
+- Group
+- GroupDie
+- Rule
+
+La cible produit doit reformuler ces concepts en :
+
+- Action / Set
+- Entrée
+- Comportement
+
+### `useTableDetailData.ts`
+
+Ce hook charge :
+
+- table
+- profils
+- groupes/actions
+- dés/entrées
+- règles
+
+Il est plutôt sain et peut servir de base à un futur hook de préparation.
+
+Décision :
+
+- conserver ;
+- renommer mentalement `groups` en `actions/sets` côté produit ;
+- filtrer plus tard les règles par compatibilité, table, scope et usage.
+
+### `useTableDetailActions.ts`
+
+Ce hook regroupe les actions CRUD :
+
+- table
+- profil
+- groupe/action
+- dé/entrée
+- règle de groupe
+
+Il est utile, mais trop large.
+
+Décision :
+
+- conserver pendant la transition ;
+- extraire plus tard en hooks plus orientés Préparation :
+  - table actions
+  - profile actions
+  - action/set actions
+  - entry actions
+  - behavior assignment
+
+### `useTableDetailUi.ts`
+
+Ce hook centralise beaucoup d’états de modales.
+
+Diagnostic :
+
+L’écran fonctionne encore comme une interface CRUD à modales.
+
+Décision :
+
+- conserver en Phase 0 ;
+- ne pas en faire le modèle final de `GamePreparationScreen`.
+
+### ActionWizard
+
+Le wizard suit actuellement :
+
+- name
+- type
+- dice
+- rule_choice
+- behavior
+- summary
+
+Il est déjà en transition entre une action à un seul dé et une action composée de plusieurs dés/entrées.
+
+Preuve :
+
+- `die` est conservé pour compatibilité legacy ;
+- `dice` devient la vraie source pour les actions composées.
+
+Décision :
+
+- conserver temporairement ;
+- faire évoluer vers un wizard Action/Set ;
+- ne pas supprimer tant que `GamePreparationScreen` n’a pas repris la création complète d’actions.
+
+### Création de comportement dans ActionWizard
+
+Le wizard d’action contient aussi beaucoup de paramètres de comportement.
+
+Diagnostic :
+
+Il existe un doublon fonctionnel partiel avec :
+
+- `RulesScreen`
+- `GuidedBehaviorWizard`
+- `QuickBehaviorConfigModal`
+- ajustements Roll3D
+
+Décision produit :
+
+- Comportements = création profonde et bibliothèque.
+- Préparation = création d’action/set avec choix ou variante simple de comportement.
+- Roll3D = ajustement temporaire avant lancer, avec sauvegarde possible en variante.
