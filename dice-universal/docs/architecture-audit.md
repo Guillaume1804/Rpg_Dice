@@ -209,3 +209,78 @@ Le transformer progressivement en écran de Préparation du jeu, puis extraire :
 ## 9. Checklist de non-régression
 
 À compléter.
+
+## 10. Premiers doublons fonctionnels identifiés
+
+### Doublon fonctionnel : préparation de jet
+
+Fichiers concernés :
+
+- `screens/RollScreen.tsx`
+- `screens/GamePreparationScreen.tsx`
+- `app/(tabs)/prepare.tsx`
+- `features/roll/*`
+- `features/roll3d/logic/roll3DHandoff.ts`
+
+Diagnostic :
+
+`RollScreen.tsx` contient encore beaucoup de logique de préparation, édition, sauvegarde, configuration rapide et handoff vers Roll3D.
+
+Décision provisoire :
+
+- `RollScreen.tsx` devient un fichier de transition.
+- `GamePreparationScreen.tsx` doit devenir l’écran cible de Préparation du jeu.
+- Ne rien supprimer avant d’avoir audité `GamePreparationScreen.tsx` et `app/(tabs)/prepare.tsx`.
+
+---
+
+### Doublon fonctionnel : résultat de jet
+
+Fichiers concernés :
+
+- `features/roll/components/ResultPanel.tsx`
+- `features/roll/components/RollResultCard.tsx`
+- `features/roll/premium/PremiumResultCard.tsx`
+- `features/roll/renderers/rollResultRenderer.ts`
+- `features/roll/result/rollResultViewModel.ts`
+- `features/roll3d/presentation/roll3DResultPresentation.ts`
+- `features/roll3d/presentation/roll3DResultSkinEvents.ts`
+- `features/roll3d/components/Roll3DResultOverlay.tsx`
+
+Diagnostic :
+
+Il existe probablement deux systèmes de présentation du résultat :
+
+- ancien système Roll/RollScreen
+- nouveau système Roll3D
+
+Décision provisoire :
+
+Créer en Phase 4 une couche commune `features/rollResult/presentation`.
+
+---
+
+### Doublon fonctionnel : création/configuration de comportements
+
+Fichiers concernés :
+
+- `features/rules/components/HumanRuleEditorModal.tsx`
+- `features/rules/ruleWizard/*`
+- `features/rules/guidedBehavior/*`
+- `features/tables/actionWizard/*`
+- `features/roll/components/QuickBehaviorConfigModal.tsx`
+- `features/roll/components/QuickDieBehaviorPickerModal.tsx`
+
+Diagnostic :
+
+Plusieurs parcours permettent de créer, choisir ou configurer des règles/comportements.
+
+Décision provisoire :
+
+Ne pas fusionner maintenant.
+
+En Phase 1/2, définir les responsabilités :
+
+- Comportements = création/édition profonde
+- Préparation = choix et configuration contrôlée
+- Table de lancer = ajustement rapide temporaire

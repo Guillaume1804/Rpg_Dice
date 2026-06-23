@@ -1,3 +1,5 @@
+// dice-universal/features/roll3d/components/Roll3DResultOverlay.tsx
+
 import { useEffect, useState } from "react";
 import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
