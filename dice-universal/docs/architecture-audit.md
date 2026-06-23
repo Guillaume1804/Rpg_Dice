@@ -388,3 +388,72 @@ Décision :
 Ne pas supprimer en Phase 0.
 
 Marquer comme candidat suppression Phase 6 après validation typecheck + recherche finale.
+
+## 13. Audit Roll3D
+
+### Chaîne Roll3D actuelle
+
+La chaîne actuelle est :
+
+- `screens/Roll3DScreen.tsx`
+- `features/roll3d/components/Roll3DLauncherSurface.tsx`
+- `features/roll3d/hooks/useRoll3DLauncher.ts`
+- `features/roll3d/logic/roll3DDraft.ts`
+- `features/roll3d/logic/roll3DEngine.ts`
+- `core/roll/roll.ts`
+- `core/rules/evaluate.ts`
+- `features/roll3d/presentation/roll3DResultPresentation.ts`
+- `features/roll3d/presentation/roll3DResultSkinEvents.ts`
+- `features/roll3d/components/Roll3DResultOverlay.tsx`
+
+### Diagnostic
+
+La structure globale Roll3D est saine : le calcul officiel reste centralisé dans `core/roll/roll.ts` et `core/rules/evaluate.ts`.
+
+`roll3DEngine.ts` sert de couche d’adaptation entre les dés visuels Roll3D et le moteur officiel.
+
+`roll3DResultPresentation.ts` est une bonne base pour le futur Result Reveal System commun.
+
+`roll3DResultSkinEvents.ts` prépare correctement les futurs thèmes, skins, sons, haptics et animations sans modifier la logique du jet.
+
+### Point important
+
+Le moteur physique / rendu 3D actuel ne correspond pas encore à la qualité souhaitée pour la V1.
+
+Décision :
+
+- Ne pas confondre architecture Roll3D et moteur physique actuel.
+- Préserver les couches draft / engine / presentation.
+- Remplacer ou améliorer plus tard la couche `DiceTable3D` / physique sans casser le reste.
+
+### Zone à refactorer plus tard
+
+`Roll3DLauncherSurface.tsx` est devenu trop chargé.
+
+Il gère actuellement :
+
+- table active
+- profils
+- actions
+- entrées
+- ajustements
+- sauvegarde d’action ajustée
+- sélection table/profil
+- conversion action vers draft
+- lancement
+- résultat
+- modal de sauvegarde
+- reset de scène 3D
+
+Décision :
+
+En Phase 0, ne pas modifier.
+
+En Phase 5 ou phase dédiée Roll3D, extraire progressivement :
+
+- un hook de session Roll3D
+- un hook d’actions Roll3D
+- un hook d’ajustement Roll3D
+- un hook de sauvegarde d’action ajustée
+- un mapper DB legacy vers draft Roll3D
+- un composant modal séparé pour la sauvegarde
