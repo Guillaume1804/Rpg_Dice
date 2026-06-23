@@ -107,6 +107,26 @@ Créer plus tard une couche de mapping :
 
 ## 3. Moteur de jet et comportements
 
+### Fichiers core détectés
+
+- `core/roll/roll.ts`
+- `core/rules/types.ts`
+- `core/rules/evaluate.ts`
+- `core/rules/behaviorRegistry.ts`
+- `core/rules/builtins.ts`
+
+### Diagnostic
+
+Le moteur est déjà relativement bien séparé de l’UI.
+
+Le risque principal n’est pas dans le moteur mais dans les couches qui préparent les jets et affichent les résultats.
+
+### Décision
+
+Ne pas modifier le moteur pendant la Phase 0.
+
+Créer plus tard une couche de présentation commune pour transformer les résultats moteur en résultat lisible joueur.
+
 ### Fichiers core
 
 À compléter.
