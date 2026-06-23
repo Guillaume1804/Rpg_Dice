@@ -284,3 +284,89 @@ En Phase 1/2, définir les responsabilités :
 - Comportements = création/édition profonde
 - Préparation = choix et configuration contrôlée
 - Table de lancer = ajustement rapide temporaire
+
+## 11. Audit des écrans de transition
+
+### Route `prepare`
+
+Fichiers :
+
+- `app/(tabs)/prepare.tsx`
+- `screens/GamePreparationScreen.tsx`
+- `screens/RollScreen.tsx`
+
+Diagnostic :
+
+La route `prepare` existe déjà, mais elle pointe vers `GamePreparationScreen`, qui réexporte temporairement `RollScreen`.
+
+`GamePreparationScreen` représente la bonne intention produit : Préparation du jeu.
+
+Cependant, l’écran cible n’est pas encore indépendant. Toute la logique de préparation est encore portée par `RollScreen`.
+
+Décision :
+
+- Conserver ce fonctionnement pendant la Phase 0.
+- Classer `RollScreen` comme écran de transition.
+- En Phase 5, commencer à extraire les responsabilités de préparation vers `GamePreparationScreen`.
+
+---
+
+### Route `tables`
+
+Fichiers :
+
+- `app/(tabs)/tables.tsx`
+- `screens/TablesScreen.tsx`
+- `app/tables/[id].tsx`
+- `features/tables/*`
+
+Diagnostic :
+
+`TablesScreen` est fonctionnel et relativement clair, mais son rôle produit devrait être intégré à Préparation du jeu.
+
+Il gère actuellement :
+
+- liste des tables
+- création de table
+- suppression de table
+- activation/désactivation de la table active
+- navigation vers le détail table
+- affichage de statistiques profils/actions/entrées
+
+Décision :
+
+- Garder `TablesScreen` temporairement.
+- Le considérer comme une future sous-section de Préparation.
+- Ne pas le supprimer tant que `GamePreparationScreen` n’a pas repris ce rôle.
+
+---
+
+### Route `rules`
+
+Fichiers :
+
+- `app/(tabs)/rules.tsx`
+- `screens/RulesScreen.tsx`
+- `features/rules/guidedBehavior/*`
+- `features/rules/components/HumanRuleEditorModal.tsx`
+- `features/rules/ruleWizard/*`
+
+Diagnostic :
+
+`RulesScreen` est déjà proche de la cible produit “Comportements”.
+
+Il propose :
+
+- un atelier de comportements
+- une bibliothèque
+- des comportements système et personnalisés
+- un builder guidé
+- un aperçu de comportement
+- un éditeur expert legacy
+
+Décision :
+
+- Renommer mentalement `rules` en `behaviors`.
+- Garder le builder guidé comme parcours principal.
+- Classer `HumanRuleEditorModal` comme mode expert / fallback legacy.
+- Auditer plus tard `ruleWizard/*`, qui semble probablement ancien ou redondant avec `guidedBehavior/*`.
