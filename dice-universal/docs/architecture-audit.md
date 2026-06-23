@@ -675,3 +675,107 @@ Décision produit :
 - Comportements = création profonde et bibliothèque.
 - Préparation = création d’action/set avec choix ou variante simple de comportement.
 - Roll3D = ajustement temporaire avant lancer, avec sauvegarde possible en variante.
+
+## 16. Audit Comportements — GuidedBehavior vs RuleWizard vs HumanRuleEditor
+
+### Fichiers audités
+
+- `features/rules/guidedBehavior/useGuidedBehaviorWizard.ts`
+- `features/rules/guidedBehavior/types.ts`
+- `features/rules/guidedBehavior/buildGuidedBehaviorPayload.ts`
+- `features/rules/guidedBehavior/guidedBehaviorRuleAdapter.ts`
+- `features/rules/ruleWizard/useRuleWizard.ts`
+- `features/rules/ruleWizard/types.ts`
+- `features/rules/components/HumanRuleEditorModal.tsx`
+
+### Diagnostic global
+
+La zone `guidedBehavior` est la meilleure base pour le futur atelier de comportements.
+
+Elle organise la création par intention utilisateur :
+
+- utilisation prévue
+- dés compatibles
+- type de comportement
+- transformations avant résultat
+- événements spéciaux
+- résumé
+- identité
+
+Cette approche correspond mieux à la cible premium de Dice Universal que les anciens formulaires techniques.
+
+### GuidedBehavior
+
+Décision :
+
+`features/rules/guidedBehavior/*` devient le builder principal futur.
+
+Points forts :
+
+- vocabulaire plus humain ;
+- applicationMode au lieu d’exposer directement entry/group/both ;
+- séparation claire transforms / reading / events / output ;
+- capacité à produire soit une règle simple, soit un pipeline ;
+- possibilité d’éditer des règles existantes compatibles via `guidedBehaviorRuleAdapter`.
+
+### buildGuidedBehaviorPayload
+
+Ce fichier est critique.
+
+Il transforme un `GuidedBehaviorDraft` en `CreateRuleInput`.
+
+Il décide automatiquement si la règle peut rester simple ou doit devenir un pipeline.
+
+Décision :
+
+À préserver.
+
+Cette logique incarne l’objectif produit : rendre la puissance technique invisible pour l’utilisateur.
+
+### guidedBehaviorRuleAdapter
+
+Ce fichier permet de reconstruire un draft guidé depuis une règle existante.
+
+Décision :
+
+À conserver.
+
+Point de vigilance :
+
+Toutes les anciennes règles ou pipelines complexes ne seront pas forcément parfaitement représentables dans le builder guidé. Le mode expert doit donc rester disponible.
+
+### RuleWizard
+
+`features/rules/ruleWizard/*` correspond à l’ancien parcours de création de règles.
+
+Il expose plus directement :
+
+- behaviorKey
+- scope
+- supportedSidesText
+- champs techniques de comportement
+
+Décision :
+
+Le classer comme legacy candidate.
+
+Ne pas supprimer en Phase 0.
+
+À terme, `CreateGuidedBehaviorWizardModal` doit remplacer `CreateRuleWizardModal`.
+
+### HumanRuleEditorModal
+
+`HumanRuleEditorModal` est un éditeur avancé.
+
+Il reste utile pour :
+
+- consulter des règles système ;
+- modifier des règles non compatibles avec le builder guidé ;
+- accéder à des paramètres techniques ;
+- tester manuellement une règle.
+
+Décision :
+
+Le conserver comme mode expert / fallback.
+
+Il ne doit pas être le parcours principal de création de comportements.
