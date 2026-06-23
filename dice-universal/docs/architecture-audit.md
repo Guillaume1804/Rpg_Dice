@@ -370,3 +370,21 @@ Décision :
 - Garder le builder guidé comme parcours principal.
 - Classer `HumanRuleEditorModal` comme mode expert / fallback legacy.
 - Auditer plus tard `ruleWizard/*`, qui semble probablement ancien ou redondant avec `guidedBehavior/*`.
+
+## 12. Candidat suppression Phase 6
+
+### `data/repositories/rulesetsRepo.ts`
+
+Diagnostic :
+
+Le fichier référence une table `rulesets`, mais aucun usage applicatif réel n’a été trouvé hors documentation et file-map.
+
+Commande utilisée :
+
+grep -R -E "rulesets|getRulesetById|RulesetRow" -n . --exclude-dir=node_modules --exclude-dir=.git
+
+Décision :
+
+Ne pas supprimer en Phase 0.
+
+Marquer comme candidat suppression Phase 6 après validation typecheck + recherche finale.
