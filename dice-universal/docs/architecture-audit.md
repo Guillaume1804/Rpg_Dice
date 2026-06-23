@@ -13,9 +13,33 @@ Auditer l’application existante avant refactor, sans casser le moteur ni ajout
 
 ## 1. Navigation actuelle
 
-### Routes Expo Router
+## 1. Navigation actuelle
 
-À compléter.
+### Routes Expo Router détectées
+
+- `/` → redirection actuelle vers `/roll`
+- `/(tabs)/roll` → écran Jet actuel / table de lancer actuelle
+- `/(tabs)/tables` → liste des tables
+- `/tables/[id]` → détail table, profils, actions, dés, règles
+- `/(tabs)/history` → historique
+- `/(tabs)/rules` → règles / comportements
+- `/(tabs)/settings` → paramètres
+
+### Diagnostic
+
+La navigation actuelle est encore organisée par modules techniques : Jet, Tables, Historique, Règles, Paramètres.
+
+La navigation cible doit être organisée par intention utilisateur :
+
+- Table de lancer
+- Préparation du jeu
+- Comportements
+- Réglages
+- Historique accessible depuis Table/Résultat ou onglet secondaire
+
+### Risque
+
+Si on garde `Tables` comme destination principale, l’utilisateur est poussé vers une logique d’administration au lieu d’une logique de jeu.
 
 ### Écrans principaux actuels
 
