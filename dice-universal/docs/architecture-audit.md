@@ -779,3 +779,78 @@ Décision :
 Le conserver comme mode expert / fallback.
 
 Il ne doit pas être le parcours principal de création de comportements.
+
+## 17. Vérification usages RuleWizard
+
+Commande utilisée :
+
+'''bash
+grep -R -E "useRuleWizard|CreateRuleWizardModal|RuleWizardDraft|ruleWizard" -n . \
+  --exclude-dir=node_modules \
+  --exclude-dir=.git
+
+### Résultat :
+
+features/rules/ruleWizard/* n’est référencé que par :
+
+lui-même ;
+docs/architecture-audit.md ;
+docs/file-map.txt.
+
+Aucun usage applicatif actif n’a été détecté dans RulesScreen, les routes, les hooks ou les composants principaux.
+
+### Décision :
+
+features/rules/ruleWizard/* est classé comme legacy confirmé et candidat suppression Phase 6.
+
+Ne pas supprimer pendant la Phase 0.
+
+## 18. Carte finale Phase 0
+### Socle à préserver
+core/roll/*
+core/rules/evaluate.ts
+core/rules/behaviorRegistry.ts
+data/db/*
+data/repositories/tablesRepo.ts
+data/repositories/profilesRepo.ts
+data/repositories/groupsRepo.ts
+data/repositories/rulesRepo.ts
+data/repositories/rollEventsRepo.ts
+features/roll3d/logic/roll3DEngine.ts
+features/roll3d/logic/roll3DDraft.ts
+features/roll3d/presentation/roll3DResultPresentation.ts
+features/roll3d/presentation/roll3DResultSkinEvents.ts
+features/rules/guidedBehavior/*
+
+### À refactorer progressivement
+features/roll3d/components/Roll3DLauncherSurface.tsx
+features/roll3d/components/DiceTable3D.tsx
+features/roll3d/logic/roll3DActionDraft.ts
+features/roll3d/logic/roll3DHandoff.ts
+screens/RollScreen.tsx
+screens/GamePreparationScreen.tsx
+screens/TablesScreen.tsx
+app/tables/[id].tsx
+features/tables/*
+
+### À fusionner vers une couche commune
+
+Les systèmes de présentation de résultat doivent être unifiés dans une future couche :
+
+features/rollResult/presentation
+features/rollResult/components
+
+### Sources actuelles à fusionner progressivement :
+
+features/roll/result/*
+features/roll/renderers/*
+features/roll/premium/PremiumResultCard.tsx
+features/roll3d/presentation/roll3DResultPresentation.ts
+features/roll3d/components/Roll3DResultOverlay.tsx
+Mode expert / fallback
+features/rules/components/HumanRuleEditorModal.tsx
+features/rules/hooks/useHumanRuleEditor.ts
+features/rules/helpers/ruleForm.ts
+Suppression candidate Phase 6
+data/repositories/rulesetsRepo.ts
+features/rules/ruleWizard/*
