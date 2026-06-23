@@ -457,3 +457,98 @@ En Phase 5 ou phase dédiée Roll3D, extraire progressivement :
 - un hook de sauvegarde d’action ajustée
 - un mapper DB legacy vers draft Roll3D
 - un composant modal séparé pour la sauvegarde
+
+
+## 14. Audit Roll3D — scène 3D, physique et renderer
+
+### Fichiers audités
+
+- `features/roll3d/components/DiceTable3D.tsx`
+- `features/roll3d/physics/Roll3DPhysicsWorld.ts`
+- `features/roll3d/physics/Roll3DPhysicsTypes.ts`
+- `features/roll3d/renderer/DiceMeshFactory.ts`
+
+### Diagnostic global
+
+La couche 3D actuelle est suffisante pour valider le flux Roll3D, mais pas encore suffisante pour la qualité premium attendue en V1.
+
+La bonne nouvelle est que la physique est déjà relativement isolée :
+
+- `DiceTable3D.tsx` orchestre Three.js / GLView / animation.
+- `Roll3DPhysicsWorld.ts` isole `cannon-es`.
+- `Roll3DPhysicsTypes.ts` fournit des types de transform/snapshot.
+- `DiceMeshFactory.ts` isole la création des meshes de dés.
+
+### Décision
+
+Ne pas remplacer le moteur physique pendant la Phase 0.
+
+Conserver l’architecture Roll3D actuelle, mais marquer la couche physique/rendu comme future zone de remplacement.
+
+### Point fort
+
+`DiceTable3D` expose déjà un contrat presque correct :
+
+- `diceInstances`
+- `rollRequestId`
+- `skipRollRequestId`
+- `onPhysicsRollSettled`
+
+Ce contrat doit être préservé afin de pouvoir remplacer l’implémentation 3D plus tard.
+
+### Point faible
+
+`DiceTable3D.tsx` mélange encore :
+
+- création scène Three.js
+- caméra
+- lumières
+- table visuelle
+- ombres
+- animation de chute
+- simulation physique
+- transition cinématique
+- skip / reveal
+- stabilisation
+- nettoyage mémoire
+
+Il doit être considéré comme une implémentation temporaire de scène, pas comme une architecture finale.
+
+### Physique actuelle
+
+`Roll3DPhysicsWorld.ts` utilise `cannon-es`, mais les collisions de dés sont approximées par des boîtes.
+
+Cela donne une simulation stable, mais pas assez réaliste pour une V1 premium.
+
+Décision :
+
+- garder temporairement pour valider le flux ;
+- remplacer ou améliorer avant publication V1 ;
+- éviter que la logique produit dépende de `cannon-es`.
+
+### Renderer actuel
+
+`DiceMeshFactory.ts` crée des géométries de dés simples et prépare plusieurs skins.
+
+Limites actuelles :
+
+- pas de vraies faces numérotées ;
+- pas de face finale orientée vers l’utilisateur ;
+- pas de correspondance visuelle stricte entre valeur officielle et face visible ;
+- matériaux encore simples.
+
+Décision :
+
+Le renderer actuel est une base temporaire. La V1 devra prévoir des dés plus qualitatifs ou une stratégie de reveal qui affiche clairement la valeur officielle.
+
+### Décision produit importante
+
+Pour la V1, la vérité du résultat doit rester le moteur officiel Dice Universal.
+
+La physique 3D doit servir l’expérience et la mise en scène, mais ne doit pas devenir la source de vérité des règles.
+
+Orientation recommandée :
+
+- moteur officiel calcule le résultat ;
+- animation 3D accompagne le lancer ;
+- reveal final oriente ou affiche les faces cohérentes avec le résultat officiel.
