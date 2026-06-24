@@ -854,3 +854,33 @@ features/rules/helpers/ruleForm.ts
 Suppression candidate Phase 6
 data/repositories/rulesetsRepo.ts
 features/rules/ruleWizard/*
+
+
+## 19. Clôture Phase 1 — Modèle métier canonique
+
+La Phase 1 a ajouté une couche `domain/*` sans modifier les écrans ni la base SQLite.
+
+Objectif atteint :
+
+- clarifier le vocabulaire produit ;
+- traduire les modèles legacy vers des modèles canoniques ;
+- préparer les futures migrations progressives ;
+- éviter de continuer à faire grossir les écrans autour des anciens noms `Group`, `GroupDie` et `Rule`.
+
+Fichiers principaux créés :
+
+- `domain/tables/*`
+- `domain/profiles/*`
+- `domain/actions/*`
+- `domain/behaviors/*`
+- `domain/rolls/*`
+- `domain/preparation/*`
+- `docs/domain-model.md`
+
+Décision :
+
+La Phase 2 peut commencer.
+
+Priorité Phase 2 :
+
+Clarifier les responsabilités des écrans, notamment `GamePreparationScreen`, `RollScreen`, `TablesScreen`, `TableDetail` et `Roll3D`.
