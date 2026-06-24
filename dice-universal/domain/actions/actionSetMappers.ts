@@ -4,19 +4,7 @@ import type {
 } from "../../data/repositories/groupsRepo";
 import type { RuleRow } from "../../data/repositories/rulesRepo";
 import type { ActionEntry, ActionSet } from "./actionSetModel";
-import type { BehaviorRef } from "../behaviors/behaviorModel";
-
-function mapRuleRowToBehaviorRef(rule: RuleRow | null | undefined): BehaviorRef | null {
-    if (!rule) return null;
-
-    return {
-        id: rule.id,
-        name: rule.name,
-        kind: rule.kind,
-        paramsJson: rule.params_json,
-        scope: rule.scope,
-    };
-}
+import { mapRuleRowToBehaviorRef } from "../behaviors/behaviorMappers";
 
 function formatTechnicalEntryLabel(params: {
     sign: 1 | -1;
