@@ -15,7 +15,7 @@ export type ActionEntry = {
 
 export type ActionSet = {
     id: string;
-    profileId: string;
+    profileId: string | null;
     name: string;
     behavior: BehaviorRef | null;
     entries: ActionEntry[];
