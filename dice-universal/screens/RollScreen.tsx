@@ -59,7 +59,6 @@ import {
   createGroup,
   createGroupDie,
   deleteGroupDie,
-  isDuplicateGroupNameError,
   updateGroupName,
   updateGroupRuleId,
 } from "../data/repositories/groupsRepo";
@@ -127,6 +126,7 @@ import {
   findStandardQuickGroup,
   formatPreparedCardDieLabel,
   resolvePreparedRuleId,
+  showDuplicateActionNameWarning,
   type PreparedRoll,
 } from "../features/preparation";
 
@@ -606,19 +606,6 @@ export default function RollScreen() {
     if (preparedRoll?.source === "action_draft") {
       setShowActionDraftSaveMenu(true);
     }
-  }
-
-  async function showDuplicateActionNameWarning(error: unknown) {
-    if (!isDuplicateGroupNameError(error)) {
-      return false;
-    }
-
-    Alert.alert(
-      "Nom d’action déjà utilisé",
-      "Une action avec ce nom existe déjà dans ce profil. Choisis un autre nom pour continuer.",
-    );
-
-    return true;
   }
 
   async function handleSaveDraftTarget(params: {
