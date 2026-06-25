@@ -121,6 +121,10 @@ import { createRoll3DHandoff } from "../features/roll3d/logic/roll3DHandoff";
 import {
   animatePreparationLayout,
   countFreeDiceBySides,
+  createEmptyTablesSessionMenuItem,
+  createFreeModeSessionMenuItem,
+  createLoadingTablesSessionMenuItem,
+  createNoProfileSessionMenuItem,
   createRoll3DBehaviorRefFromRuleLike,
   createRoll3DDiceInputsFromPreparedGroup,
   findDraftGroupById,
@@ -1567,16 +1571,8 @@ export default function RollScreen() {
   }, [isResettingPreparedRoll, resetSpinnerAnim, premium]);
 
   const tableSessionMenuItems = useMemo<SessionMenuItem[]>(() => {
-    const freeModeItem: SessionMenuItem = {
-      id: "free-mode",
-      label: "Mode libre",
-      description: activeTableId
-        ? "Revenir aux jets libres, sans table active."
-        : "Tu es déjà en mode libre.",
-      icon: "🎲",
-      selected: !activeTableId,
-      disabled: !activeTableId,
-      danger: !!activeTableId,
+    const freeModeItem = createFreeModeSessionMenuItem({
+      activeTableId,
       onPress: async (): Promise<void> => {
         if (!activeTableId) {
           setShowTableSessionMenu(false);
@@ -1585,29 +1581,10 @@ export default function RollScreen() {
 
         await handleClearActiveSession();
       },
-    };
+    });
 
-    const loadingItem: SessionMenuItem = {
-      id: "loading-tables",
-      label: "Chargement des tables…",
-      description: "Récupération des tables disponibles.",
-      icon: "⌛",
-      disabled: true,
-      onPress: (): void => {
-        return;
-      },
-    };
-
-    const emptyItem: SessionMenuItem = {
-      id: "no-tables",
-      label: "Aucune table disponible",
-      description: "Crée une table depuis l’écran Tables.",
-      icon: "◇",
-      disabled: true,
-      onPress: (): void => {
-        return;
-      },
-    };
+    const loadingItem = createLoadingTablesSessionMenuItem();
+    const emptyItem = createEmptyTablesSessionMenuItem();
 
     const tableItems: SessionMenuItem[] = allTables.map(
       (tableRow): SessionMenuItem => {
@@ -1673,18 +1650,7 @@ export default function RollScreen() {
             },
           }),
         )
-        : [
-          {
-            id: "no-profile",
-            label: "Aucun profil disponible",
-            description: "Active une table contenant des profils.",
-            icon: "◇",
-            disabled: true,
-            onPress: (): void => {
-              return;
-            },
-          },
-        ],
+        : [createNoProfileSessionMenuItem()],
     [profiles, activeProfile?.id],
   );
 
