@@ -120,11 +120,13 @@ import { createRoll3DHandoff } from "../features/roll3d/logic/roll3DHandoff";
 
 import {
   animatePreparationLayout,
+  countFreeDiceBySides,
   createRoll3DBehaviorRefFromRuleLike,
   createRoll3DDiceInputsFromPreparedGroup,
   findDraftGroupById,
   findStandardQuickGroup,
   formatPreparedCardDieLabel,
+  mapPreparedEditDiceToPreparedCardLines,
   resolvePreparedRuleId,
   showDuplicateActionNameWarning,
   STANDARD_DICE_SIDES,
@@ -1356,27 +1358,9 @@ export default function RollScreen() {
 
   const preparedCardLines = useMemo(
     () =>
-      preparedQuickEditDice.map((die, index) => {
-        const ruleLabel = die.ruleLabel ?? "Somme simple";
-        const hasBehavior = ruleLabel !== "Somme simple";
-        const technicalLabel = formatPreparedCardDieLabel(die);
-        const rawCustomLabel = typeof die.label === "string" ? die.label : "";
-
-        const displayCustomLabel =
-          rawCustomLabel.trim().length > 0 ? rawCustomLabel.trim() : null;
-
-        return {
-          id: `${editablePreparedDraftGroup?.id ?? "prepared"}-${index}-${die.sides}`,
-          label: displayCustomLabel ?? technicalLabel,
-          customLabel: rawCustomLabel,
-          technicalLabel,
-          detail: ruleLabel,
-          sign: die.sign ?? 1,
-          sides: die.sides,
-          qty: die.qty,
-          modifier: die.modifier ?? 0,
-          hasBehavior,
-        };
+      mapPreparedEditDiceToPreparedCardLines({
+        dice: preparedQuickEditDice,
+        draftGroupId: editablePreparedDraftGroup?.id,
       }),
     [preparedQuickEditDice, editablePreparedDraftGroup?.id],
   );
@@ -1407,17 +1391,11 @@ export default function RollScreen() {
   }, [focusedPreparedLineIndex, preparedRoll, editablePreparedDraftGroup]);
 
   const freeDiceCountsBySides = useMemo(() => {
-    const counts: Record<number, number> = {};
-
     if (preparedRoll?.source !== "free") {
-      return counts;
+      return {};
     }
 
-    for (const die of standardPreparedQuickGroup?.dice ?? []) {
-      counts[die.sides] = (counts[die.sides] ?? 0) + die.qty;
-    }
-
-    return counts;
+    return countFreeDiceBySides(standardPreparedQuickGroup?.dice);
   }, [preparedRoll?.source, standardPreparedQuickGroup]);
 
   const hasPreparedQuickRoll = !!preparedQuickRollDetail;
