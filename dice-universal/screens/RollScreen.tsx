@@ -125,6 +125,7 @@ import {
   createFreeModeSessionMenuItem,
   createLoadingTablesSessionMenuItem,
   createNoProfileSessionMenuItem,
+  createPreparedPreviewRollRule,
   createRoll3DBehaviorRefFromRuleLike,
   createRoll3DDiceInputsFromPreparedGroup,
   findDraftGroupById,
@@ -466,19 +467,10 @@ export default function RollScreen() {
     const dbRule = die.rule_id ? rulesMap[die.rule_id] : null;
     const sourceRule = tempRule ?? dbRule;
 
-    const rule = sourceRule
-      ? {
-        id: String(sourceRule.id ?? `temp-line-rule-${index}`),
-        name: String(sourceRule.name ?? "Comportement temporaire"),
-        kind: String(sourceRule.kind ?? "sum"),
-        params_json:
-          typeof sourceRule.params_json === "string"
-            ? sourceRule.params_json
-            : typeof sourceRule.paramsJson === "string"
-              ? sourceRule.paramsJson
-              : JSON.stringify(sourceRule.params_json ?? {}),
-      }
-      : null;
+    const rule = createPreparedPreviewRollRule({
+      sourceRule,
+      fallbackId: `temp-line-rule-${index}`,
+    });
 
     const lineLabel = formatPreparedCardDieLabel({
       sides: die.sides,
