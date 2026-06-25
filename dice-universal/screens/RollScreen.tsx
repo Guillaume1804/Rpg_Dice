@@ -42,7 +42,6 @@ import {
   Alert,
   Animated,
   Easing,
-  LayoutAnimation,
   Text,
   useWindowDimensions,
   View,
@@ -120,6 +119,7 @@ import {
 import { createRoll3DHandoff } from "../features/roll3d/logic/roll3DHandoff";
 
 import {
+  animatePreparationLayout,
   createRoll3DBehaviorRefFromRuleLike,
   createRoll3DDiceInputsFromPreparedGroup,
   findDraftGroupById,
@@ -130,23 +130,6 @@ import {
   STANDARD_DICE_SIDES,
   type PreparedRoll,
 } from "../features/preparation";
-
-function animateCockpitLayout() {
-  LayoutAnimation.configureNext({
-    duration: 180,
-    create: {
-      type: LayoutAnimation.Types.easeInEaseOut,
-      property: LayoutAnimation.Properties.opacity,
-    },
-    update: {
-      type: LayoutAnimation.Types.easeInEaseOut,
-    },
-    delete: {
-      type: LayoutAnimation.Types.easeInEaseOut,
-      property: LayoutAnimation.Properties.opacity,
-    },
-  });
-}
 
 export default function RollScreen() {
   const layout = useArcaneLayout();
@@ -427,7 +410,7 @@ export default function RollScreen() {
       useNativeDriver: true,
     }).start(() => {
       setTimeout(() => {
-        animateCockpitLayout();
+        animatePreparationLayout();
 
         resetFreeDraftState();
 
@@ -824,7 +807,7 @@ export default function RollScreen() {
 
     if (!action) return;
 
-    animateCockpitLayout();
+    animatePreparationLayout();
 
     const draftGroupId = loadSavedGroupIntoDraft({
       group: {
@@ -860,7 +843,7 @@ export default function RollScreen() {
   }
 
   function handleAddQuickStandardDie(sides: number) {
-    animateCockpitLayout();
+    animatePreparationLayout();
 
     if (
       preparedRoll?.source === "action" ||
@@ -1103,7 +1086,7 @@ export default function RollScreen() {
   }
 
   const handleClearActiveSession = useCallback(async (): Promise<void> => {
-    animateCockpitLayout();
+    animatePreparationLayout();
 
     await clearActiveTableId();
     notifyDataChanged();
@@ -1122,7 +1105,7 @@ export default function RollScreen() {
 
   const handleSelectActiveTable = useCallback(
     async (nextTableId: string): Promise<void> => {
-      animateCockpitLayout();
+      animatePreparationLayout();
 
       await setActiveTableId(nextTableId);
       notifyDataChanged();
@@ -1200,7 +1183,7 @@ export default function RollScreen() {
     }
 
     try {
-      animateCockpitLayout();
+      animatePreparationLayout();
 
       const resolvedGroupRuleId = await resolvePreparedRuleId(
         db,
@@ -1293,7 +1276,7 @@ export default function RollScreen() {
     const newActionName = trimmedName;
 
     try {
-      animateCockpitLayout();
+      animatePreparationLayout();
 
       const resolvedGroupRuleId = await resolvePreparedRuleId(
         db,
@@ -1705,7 +1688,7 @@ export default function RollScreen() {
             icon: entry.profile.id === activeProfile?.id ? "✦" : "◇",
             selected: entry.profile.id === activeProfile?.id,
             onPress: (): void => {
-              animateCockpitLayout();
+              animatePreparationLayout();
 
               setSelectedProfileId(entry.profile.id);
               setShowProfileSessionMenu(false);
