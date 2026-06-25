@@ -134,6 +134,10 @@ import {
   getDefaultActionCopyName,
   getDefaultFreeActionName,
   getDefaultNewTableName,
+  getPreparationBaseStageGap,
+  getPreparationDiceToPreparedOverlap,
+  getPreparationResultToDiceOverlap,
+  getPreparationScreenSizeFlags,
   mapPreparedEditDiceToPreparedCardLines,
   resetPreparationSessionUiState,
   resetPreparedRollUiState,
@@ -156,23 +160,16 @@ export default function RollScreen() {
 
   const { height: windowHeight } = useWindowDimensions();
 
-  const isVerySmallScreen = windowHeight < 760;
-  const isCompactScreen = windowHeight < 820;
+  const { isVerySmallScreen, isCompactScreen, cockpitDensity } =
+    getPreparationScreenSizeFlags(windowHeight);
 
-  const cockpitDensity = isVerySmallScreen
-    ? "tight"
-    : isCompactScreen
-      ? "compact"
-      : "comfortable";
-
-  const baseStageGap =
-    cockpitDensity === "tight" ? 0 : cockpitDensity === "compact" ? 2 : 4;
+  const baseStageGap = getPreparationBaseStageGap(cockpitDensity);
 
   const resultToDiceOverlap =
-    cockpitDensity === "tight" ? -14 : cockpitDensity === "compact" ? -12 : -8;
+    getPreparationResultToDiceOverlap(cockpitDensity);
 
   const diceToPreparedOverlap =
-    cockpitDensity === "tight" ? -18 : cockpitDensity === "compact" ? -16 : -12;
+    getPreparationDiceToPreparedOverlap(cockpitDensity);
 
   const [preparedRoll, setPreparedRoll] = useState<PreparedRoll | null>(null);
   const [latestResult, setLatestResult] = useState<GroupRollResult | null>(
