@@ -64,26 +64,19 @@ import {
   updateGroupRuleId,
 } from "../data/repositories/groupsRepo";
 
-import { createRule } from "../data/repositories/rulesRepo";
-
 import { PreparedRollSaveSheet } from "../features/roll/components/PreparedRollSaveSheet";
 
 import { useArcaneLayout } from "../theme/useArcaneLayout";
 import { useArcaneTheme } from "../theme/ArcaneThemeProvider";
 
-// import { SessionBar } from "../features/roll/components/SessionBar";
 import {
   SessionMenuModal,
   type SessionMenuItem,
 } from "../features/roll/components/SessionMenuModal";
 
-// import { PreparedRollCard } from "../features/roll/components/PreparedRollCard";
 import { ActionRail } from "../features/roll/components/ActionRail";
-// import { StickyRollButton } from "../features/roll/components/StickyRollButton";
 
-// import { ResultPanel } from "../features/roll/components/ResultPanel";
 import { PreparedRollEditSheet } from "../features/roll/components/PreparedRollEditSheet";
-// import { FreeDicePad } from "../features/roll/components/FreeDicePad";
 
 import { useDraftTableActions } from "../features/roll/hooks/useDraftTableActions";
 import { useQuickRollDraft } from "../features/roll/hooks/useQuickRollDraft";
@@ -133,6 +126,7 @@ import {
   findDraftGroupById,
   findStandardQuickGroup,
   formatPreparedCardDieLabel,
+  resolvePreparedRuleId,
   type PreparedRoll,
 } from "../features/preparation";
 
@@ -150,38 +144,6 @@ function animateCockpitLayout() {
       type: LayoutAnimation.Types.easeInEaseOut,
       property: LayoutAnimation.Properties.opacity,
     },
-  });
-}
-
-async function resolvePreparedRuleId(
-  db: ReturnType<typeof useDb>,
-  ruleId?: string | null,
-  ruleTemp?: {
-    id?: string;
-    name?: string;
-    kind?: string;
-    params_json?: string;
-    paramsJson?: string;
-  } | null,
-): Promise<string | null> {
-  if (ruleId) {
-    return ruleId;
-  }
-
-  if (!ruleTemp) {
-    return null;
-  }
-
-  return createRule(db, {
-    name: ruleTemp.name ?? "Comportement personnalisé",
-    kind: ruleTemp.kind ?? "pipeline",
-    params_json:
-      typeof ruleTemp.params_json === "string"
-        ? ruleTemp.params_json
-        : typeof ruleTemp.paramsJson === "string"
-          ? ruleTemp.paramsJson
-          : "{}",
-    is_system: 0,
   });
 }
 
