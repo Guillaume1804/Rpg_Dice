@@ -131,6 +131,9 @@ import {
   findDraftGroupById,
   findStandardQuickGroup,
   formatPreparedCardDieLabel,
+  getDefaultActionCopyName,
+  getDefaultFreeActionName,
+  getDefaultNewTableName,
   mapPreparedEditDiceToPreparedCardLines,
   resetPreparationSessionUiState,
   resetPreparedRollUiState,
@@ -564,12 +567,13 @@ export default function RollScreen() {
     try {
       const targets = await getAvailableSaveTargets();
       setAvailableSaveTargets(targets);
-      const defaultActionName =
-        editablePreparedDraftGroup?.name?.trim() || "Jet rapide";
-
-      setNewTableName(`Nouvelle table (${new Date().toLocaleDateString()})`);
+      setNewTableName(getDefaultNewTableName());
       setNewProfileName("Profil principal");
-      setFreeSaveActionName(defaultActionName);
+      setFreeSaveActionName(
+        getDefaultFreeActionName({
+          draftGroupName: editablePreparedDraftGroup?.name,
+        }),
+      );
       setShowSaveOptions(false);
       setShowNameModal(true);
     } finally {
@@ -1257,7 +1261,10 @@ export default function RollScreen() {
     if (!editablePreparedDraftGroup) return;
 
     setActionCopyName(
-      `${editablePreparedDraftGroup.name || preparedRoll.label} — variante`,
+      getDefaultActionCopyName({
+        draftGroupName: editablePreparedDraftGroup.name,
+        actionLabel: preparedRoll.label,
+      }),
     );
   }
 
