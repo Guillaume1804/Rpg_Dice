@@ -133,40 +133,14 @@ import {
 } from "../features/roll3d/logic/roll3DDraft";
 import { createRoll3DHandoff } from "../features/roll3d/logic/roll3DHandoff";
 
-function findStandardQuickGroup(groups: DraftGroupSummary[]) {
-  return (
-    groups.find(
-      (group) => group.name === "Jet libre" && group.dice.length > 0,
-    ) ?? null
-  );
-}
-
-function findDraftGroupById(
-  groups: DraftGroupSummary[],
-  groupId: string | null,
-) {
-  if (!groupId) return null;
-
-  return groups.find((group) => group.id === groupId) ?? null;
-}
-
-type PreparedRoll =
-  | {
-    source: "free";
-  }
-  | {
-    source: "action";
-    profileId: string;
-    groupId: string;
-    label: string;
-  }
-  | {
-    source: "action_draft";
-    profileId: string;
-    groupId: string;
-    draftGroupId: string;
-    label: string;
-  };
+import {
+  findDraftGroupById,
+  findStandardQuickGroup,
+  formatPreparedCardDieLabel,
+  type PreparedRoll,
+  toRoll3DDieSides,
+  toRoll3DDieSign,
+} from "../features/preparation";
 
 function animateCockpitLayout() {
   LayoutAnimation.configureNext({
@@ -183,23 +157,6 @@ function animateCockpitLayout() {
       property: LayoutAnimation.Properties.opacity,
     },
   });
-}
-
-function formatPreparedCardModifier(modifier?: number) {
-  const safeModifier = Number.isFinite(modifier ?? 0) ? (modifier ?? 0) : 0;
-
-  if (safeModifier === 0) return "";
-
-  return ` ${safeModifier > 0 ? "+" : "-"} ${Math.abs(safeModifier)}`;
-}
-
-function formatPreparedCardDieLabel(die: {
-  sides: number;
-  qty: number;
-  modifier?: number;
-  sign?: number;
-}) {
-  return `${die.qty}d${die.sides}${formatPreparedCardModifier(die.modifier)}`;
 }
 
 async function resolvePreparedRuleId(
@@ -232,26 +189,6 @@ async function resolvePreparedRuleId(
           : "{}",
     is_system: 0,
   });
-}
-
-function toRoll3DDieSides(value: number): Roll3DDieSides | null {
-  if (
-    value === 4 ||
-    value === 6 ||
-    value === 8 ||
-    value === 10 ||
-    value === 12 ||
-    value === 20 ||
-    value === 100
-  ) {
-    return value;
-  }
-
-  return null;
-}
-
-function toRoll3DDieSign(value?: number | null): Roll3DDieSign {
-  return value === -1 ? -1 : 1;
 }
 
 function createRoll3DBehaviorRefFromRuleLike(
