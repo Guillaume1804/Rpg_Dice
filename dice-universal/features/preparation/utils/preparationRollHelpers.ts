@@ -7,24 +7,6 @@ import type {
 
 import type { DraftGroupSummary } from "../../roll/helpers/rollDisplaySummary";
 
-export type PreparedRoll =
-    | {
-        source: "free";
-    }
-    | {
-        source: "action";
-        profileId: string;
-        groupId: string;
-        label: string;
-    }
-    | {
-        source: "action_draft";
-        profileId: string;
-        groupId: string;
-        draftGroupId: string;
-        label: string;
-    };
-
 export function findStandardQuickGroup(groups: DraftGroupSummary[]) {
     return (
         groups.find(

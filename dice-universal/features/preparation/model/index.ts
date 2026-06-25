@@ -2,3 +2,4 @@
 // Le modèle métier canonique reste dans domain/*.
 
 export * from "./preparationConstants";
+export * from "./preparationUiModel";
