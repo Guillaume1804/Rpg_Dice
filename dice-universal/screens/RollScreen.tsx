@@ -1,14 +1,41 @@
-// dice-universal/screens/RollScreen.tsx
-
-// NOTE PRODUIT / TRANSITION :
-// Cet écran est désormais la base temporaire de "Préparation du jeu".
-// Il doit conserver les fonctionnalités de préparation, sauvegarde,
-// modification d’actions, profils/tables et comportements.
+// NOTE ARCHITECTURE / TRANSITION :
+// -----------------------------------------------------------------------------
+// RollScreen n’est plus l’écran produit officiel de lancement.
 //
-// Le lancer principal et le rendu final du résultat migrent vers Roll3D.
-// Les fonctions de lancer encore présentes ici doivent être considérées comme
-// une prévisualisation technique/test de configuration, tant que Roll3D n’a pas
-// encore absorbé toute la logique de jets rapides, actions de table et comportements.
+// Historiquement, cet écran gérait à la fois :
+// - la session active ;
+// - les tables et profils ;
+// - les actions sauvegardées ;
+// - les jets libres ;
+// - le jet préparé ;
+// - l’édition des dés ;
+// - la sauvegarde / mise à jour / variante d’action ;
+// - la configuration rapide des comportements ;
+// - le lancer ;
+// - l’affichage du résultat.
+//
+// Depuis la refonte Roll3D / Préparation du jeu :
+// - Roll3D devient l’écran officiel de lancement ;
+// - GamePreparationScreen devient l’écran officiel de préparation ;
+// - RollScreen reste une implémentation legacy temporaire utilisée par
+//   GamePreparationScreen.
+//
+// Les fonctionnalités de préparation encore présentes ici doivent être
+// extraites progressivement vers des hooks/composants dédiés à la Préparation.
+//
+// Les fonctions de lancer et d’affichage de résultat présentes ici ne sont plus
+// le rendu final cible. Elles servent uniquement de prévisualisation technique
+// ou de transition, tant que Roll3D et le Result Reveal System n’ont pas absorbé
+// toute la logique nécessaire.
+//
+// Règle importante :
+// ne pas ajouter de nouvelle responsabilité produit majeure dans ce fichier.
+// Toute nouvelle logique durable doit aller dans :
+// - domain/* pour le modèle métier ;
+// - features/roll3d/* pour le lancement Roll3D ;
+// - features/rollResult/* pour le futur rendu commun des résultats ;
+// - features/preparation/* pour la préparation du jeu.
+// -----------------------------------------------------------------------------
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
