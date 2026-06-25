@@ -142,6 +142,8 @@ import {
   validateSourceActionFound,
   validateUserEditableTable,
   type PreparedRoll,
+  type PreparationSaveTarget,
+  type PreparationSaveTargetParams,
 } from "../features/preparation";
 
 export default function RollScreen() {
@@ -200,17 +202,7 @@ export default function RollScreen() {
   const [newTableName, setNewTableName] = useState("");
   const [newProfileName, setNewProfileName] = useState("Profil principal");
   const [availableSaveTargets, setAvailableSaveTargets] = useState<
-    {
-      table: {
-        id: string;
-        name: string;
-        is_system: number;
-      };
-      profiles: {
-        id: string;
-        name: string;
-      }[];
-    }[]
+    PreparationSaveTarget[]
   >([]);
   const [loadingSaveTargets, setLoadingSaveTargets] = useState(false);
   const [, setShowAdvanced] = useState(false);
@@ -596,16 +588,7 @@ export default function RollScreen() {
     }
   }
 
-  async function handleSaveDraftTarget(params: {
-    mode:
-    | "new_table_new_profile"
-    | "existing_table_new_profile"
-    | "existing_table_existing_profile";
-    tableName?: string;
-    profileName?: string;
-    tableId?: string;
-    profileId?: string;
-  }) {
+  async function handleSaveDraftTarget(params: PreparationSaveTargetParams) {
     try {
       const trimmedActionName = freeSaveActionName.trim();
 
