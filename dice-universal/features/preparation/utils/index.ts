@@ -1,0 +1,1 @@
+// Fonctions utilitaires de présentation ou de transition liées à la préparation.
