@@ -134,6 +134,10 @@ import {
   resolvePreparedRuleId,
   showDuplicateActionNameWarning,
   STANDARD_DICE_SIDES,
+  validateActionHasDice,
+  validateRequiredActionName,
+  validateSourceActionFound,
+  validateUserEditableTable,
   type PreparedRoll,
 } from "../features/preparation";
 
@@ -611,11 +615,10 @@ export default function RollScreen() {
 
       const sourceGroupId = editablePreparedDraftGroup?.id ?? null;
 
-      if (!trimmedActionName) {
-        Alert.alert(
-          "Nom d’action obligatoire",
-          "Donne un nom à cette action avant de la sauvegarder.",
-        );
+      const actionNameValidation = validateRequiredActionName(trimmedActionName);
+
+      if (!actionNameValidation.valid) {
+        Alert.alert("Nom d’action obligatoire", actionNameValidation.message);
         return;
       }
 
@@ -1165,13 +1168,22 @@ export default function RollScreen() {
     if (!editablePreparedDraftGroup) return;
     if (!table) return;
 
-    if (table.is_system === 1) {
-      console.warn("Impossible de modifier une action d’une table système.");
+    const tableValidation = validateUserEditableTable({
+      tableIsSystem: table.is_system === 1,
+      action: "update",
+    });
+
+    if (!tableValidation.valid) {
+      console.warn(tableValidation.message);
       return;
     }
 
-    if (editablePreparedDraftGroup.dice.length === 0) {
-      console.warn("Impossible de sauvegarder une action sans dé.");
+    const diceValidation = validateActionHasDice({
+      diceCount: editablePreparedDraftGroup.dice.length,
+    });
+
+    if (!diceValidation.valid) {
+      console.warn(diceValidation.message);
       return;
     }
 
@@ -1182,6 +1194,15 @@ export default function RollScreen() {
     const sourceAction = profileEntry?.groups.find(
       (entry) => entry.group.id === preparedRoll.groupId,
     );
+
+    const sourceActionValidation = validateSourceActionFound({
+      found: !!sourceAction,
+    });
+
+    if (!sourceActionValidation.valid) {
+      console.warn(sourceActionValidation.message);
+      return;
+    }
 
     if (!sourceAction) {
       console.warn("Action source introuvable.");
@@ -1262,20 +1283,31 @@ export default function RollScreen() {
     if (!editablePreparedDraftGroup) return;
     if (!table) return;
 
-    if (table.is_system === 1) {
-      console.warn("Impossible d’ajouter une action dans une table système.");
+    const tableValidation = validateUserEditableTable({
+      tableIsSystem: table.is_system === 1,
+      action: "create",
+    });
+
+    if (!tableValidation.valid) {
+      console.warn(tableValidation.message);
       return;
     }
 
-    if (editablePreparedDraftGroup.dice.length === 0) {
-      console.warn("Impossible de sauvegarder une action sans dé.");
+    const diceValidation = validateActionHasDice({
+      diceCount: editablePreparedDraftGroup.dice.length,
+    });
+
+    if (!diceValidation.valid) {
+      console.warn(diceValidation.message);
       return;
     }
 
     const trimmedName = actionCopyName.trim();
 
-    if (!trimmedName) {
-      console.warn("Le nom de la nouvelle action est obligatoire.");
+    const actionNameValidation = validateRequiredActionName(trimmedName);
+
+    if (!actionNameValidation.valid) {
+      console.warn(actionNameValidation.message);
       return;
     }
 
