@@ -1,21 +1,30 @@
 // dice-universal/screens/GamePreparationScreen.tsx
 
+import RollScreen from "./RollScreen";
+
 /**
- * Écran Préparation du jeu.
+ * Écran officiel de Préparation du jeu.
  *
- * Cet écran réutilise temporairement RollScreen, car RollScreen contient encore
- * la logique importante de préparation :
- * - table active
- * - profil actif
- * - actions sauvegardées
- * - jet préparé
- * - édition des dés
- * - sauvegarde / mise à jour / variante
- * - configuration des comportements
+ * Cet écran est désormais le point d’entrée produit pour :
+ * - table active ;
+ * - profil actif ;
+ * - actions / sets sauvegardés ;
+ * - jet préparé ;
+ * - édition des entrées de dés ;
+ * - sauvegarde / mise à jour / variante ;
+ * - configuration rapide des comportements ;
+ * - envoi vers Roll3D.
  *
- * Le lancer principal et l’affichage final du résultat appartiennent désormais
- * à Roll3DScreen. Les fonctions de lancer encore présentes ici servent
- * temporairement de prévisualisation/test, et seront migrées progressivement
- * vers Roll3D.
+ * Important :
+ * `RollScreen` reste utilisé comme implémentation temporaire, car il contient
+ * encore la logique de préparation historique.
+ *
+ * La responsabilité finale de cet écran sera progressivement extraite ici,
+ * tandis que `RollScreen` deviendra legacy ou sera supprimé après migration.
+ *
+ * Le lancer principal et l’affichage final premium du résultat appartiennent
+ * à Roll3D.
  */
-export { default } from "./RollScreen";
+export default function GamePreparationScreen() {
+  return <RollScreen />;
+}
