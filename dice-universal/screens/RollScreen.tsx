@@ -127,6 +127,7 @@ import {
   formatPreparedCardDieLabel,
   resolvePreparedRuleId,
   showDuplicateActionNameWarning,
+  STANDARD_DICE_SIDES,
   type PreparedRoll,
 } from "../features/preparation";
 
@@ -244,8 +245,6 @@ export default function RollScreen() {
   const quickBehaviorConfig = useQuickBehaviorConfigModal();
 
   const { revision, notifyDataChanged } = useDataRefresh();
-
-  const STANDARD_DICE = [4, 6, 8, 10, 12, 20, 100];
 
   const tableId = useMemo(
     () =>
@@ -1841,7 +1840,7 @@ export default function RollScreen() {
 
             <View style={{ marginTop: adaptiveResultToDiceOverlap }}>
               <PremiumDiceWheel
-                dice={STANDARD_DICE}
+                dice={[...STANDARD_DICE_SIDES]}
                 countsBySides={freeDiceCountsBySides}
                 modifierValue={quickModifier}
                 onIncrementModifier={handleIncrementQuickModifier}
