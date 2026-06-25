@@ -131,6 +131,8 @@ import {
   findStandardQuickGroup,
   formatPreparedCardDieLabel,
   mapPreparedEditDiceToPreparedCardLines,
+  resetPreparationSessionUiState,
+  resetPreparedRollUiState,
   resolvePreparedRuleId,
   showDuplicateActionNameWarning,
   STANDARD_DICE_SIDES,
@@ -424,11 +426,13 @@ export default function RollScreen() {
 
         resetFreeDraftState();
 
-        setPreparedRoll(null);
-        setLatestResult(null);
-        setShowPreparedEditSheet(false);
-        setQuickModifier(0);
-        setFocusedPreparedLineIndex(null);
+        resetPreparedRollUiState({
+          setPreparedRoll,
+          setLatestResult,
+          setShowPreparedEditSheet,
+          setQuickModifier,
+          setFocusedPreparedLineIndex,
+        });
 
         requestAnimationFrame(() => {
           setTimeout(() => {
@@ -1101,15 +1105,17 @@ export default function RollScreen() {
     notifyDataChanged();
 
     resetDraftState();
-    setQuickModifier(0);
-    setSelectedProfileId(null);
-    setResults([]);
-    setPreparedRoll(null);
-    setLatestResult(null);
-    setShowPreparedEditSheet(false);
-    setFocusedPreparedLineIndex(null);
-    setShowTableSessionMenu(false);
-    setShowProfileSessionMenu(false);
+    resetPreparationSessionUiState({
+      setPreparedRoll,
+      setLatestResult,
+      setShowPreparedEditSheet,
+      setQuickModifier,
+      setFocusedPreparedLineIndex,
+      setSelectedProfileId,
+      setResults,
+      setShowTableSessionMenu,
+      setShowProfileSessionMenu,
+    });
   }, [clearActiveTableId, resetDraftState, notifyDataChanged]);
 
   const handleSelectActiveTable = useCallback(
@@ -1120,15 +1126,17 @@ export default function RollScreen() {
       notifyDataChanged();
 
       resetDraftState();
-      setQuickModifier(0);
-      setSelectedProfileId(null);
-      setResults([]);
-      setPreparedRoll(null);
-      setLatestResult(null);
-      setShowPreparedEditSheet(false);
-      setFocusedPreparedLineIndex(null);
-      setShowTableSessionMenu(false);
-      setShowProfileSessionMenu(false);
+      resetPreparationSessionUiState({
+        setPreparedRoll,
+        setLatestResult,
+        setShowPreparedEditSheet,
+        setQuickModifier,
+        setFocusedPreparedLineIndex,
+        setSelectedProfileId,
+        setResults,
+        setShowTableSessionMenu,
+        setShowProfileSessionMenu,
+      });
     },
     [setActiveTableId, resetDraftState, notifyDataChanged],
   );
