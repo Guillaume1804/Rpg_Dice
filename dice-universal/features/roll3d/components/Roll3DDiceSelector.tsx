@@ -164,7 +164,7 @@ export function Roll3DDiceSelector({
             }}
           >
             {hasDice
-              ? `${diceCount} dé${diceCount > 1 ? "s" : ""} prêt${diceCount > 1 ? "s" : ""}`
+              ? `${diceCount} dé${diceCount > 1 ? "s" : ""} dans la Main actuelle`
               : "Ajoute un dé à la Main actuelle"}
           </Text>
         </View>
@@ -277,8 +277,8 @@ export function Roll3DDiceSelector({
               lineHeight: 14,
             }}
           >
-            Limite atteinte pour cette Main. Vide la table ou lance les dés
-            présents.
+            Limite atteinte pour cette Main. Lance les dés présents ou vide la
+            table pour composer une nouvelle Main.
           </Text>
         </View>
       ) : null}

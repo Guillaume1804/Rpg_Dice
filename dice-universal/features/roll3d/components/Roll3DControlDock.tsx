@@ -79,7 +79,9 @@ function DockTab({
           borderRadius: 999,
           borderWidth: selected ? 1 : 0,
           borderColor: selected ? "rgba(232, 200, 120, 0.30)" : "transparent",
-          backgroundColor: selected ? "rgba(232, 200, 120, 0.15)" : "transparent",
+          backgroundColor: selected
+            ? "rgba(232, 200, 120, 0.15)"
+            : "transparent",
           alignItems: "center",
           justifyContent: "center",
           flexDirection: "row",
@@ -363,7 +365,10 @@ export function Roll3DControlDock({
     setShowAdjustmentSheet(true);
   }
 
-  function handleSelectActionEntry(params: { actionId: string; entryId: string }) {
+  function handleSelectActionEntry(params: {
+    actionId: string;
+    entryId: string;
+  }) {
     onSelectActionEntry(params);
     setShowActionPicker(false);
   }
@@ -388,6 +393,39 @@ export function Roll3DControlDock({
         overflow: "hidden",
       }}
     >
+      <View
+        style={{
+          paddingHorizontal: 8,
+          paddingTop: 2,
+          paddingBottom: 1,
+          gap: 2,
+        }}
+      >
+        <Text
+          style={{
+            color: "rgba(232, 200, 120, 0.92)",
+            fontSize: 10,
+            fontWeight: "900",
+            textTransform: "uppercase",
+            letterSpacing: 1,
+          }}
+        >
+          Main actuelle
+        </Text>
+
+        <Text
+          numberOfLines={1}
+          style={{
+            color: "rgba(255,255,255,0.58)",
+            fontSize: 10,
+            fontWeight: "800",
+          }}
+        >
+          {diceCount > 0
+            ? `${diceCount} dé${diceCount > 1 ? "s" : ""} prêt${diceCount > 1 ? "s" : ""} · ajuste ou lance depuis la table`
+            : "Ajoute des dés libres ou pose une Main sauvegardée"}
+        </Text>
+      </View>
       <View
         style={{
           flexDirection: "row",

@@ -255,7 +255,7 @@ function Roll3DEmptyTableHint({
             letterSpacing: -0.2,
           }}
         >
-          Choisis ton lancer
+          Compose ta Main
         </Text>
 
         <Text
@@ -269,8 +269,8 @@ function Roll3DEmptyTableHint({
           }}
         >
           Ajoute des dés libres
-          {hasActions ? " ou ouvre tes Mains sauvegardées" : ""}, puis lance
-          depuis le bouton principal.
+          {hasActions ? " ou pose une Main sauvegardée" : ""}, puis lance ta
+          Main depuis le bouton principal.
         </Text>
 
         <View
@@ -534,10 +534,11 @@ export function Roll3DLauncherSurface({
           rulesMap,
         }),
         entries: dice.map((die) => {
-          const technicalLabel = `${die.sign === -1 ? "- " : ""}${die.qty}d${die.sides}${die.modifier !== 0
-            ? ` ${die.modifier > 0 ? "+" : "-"} ${Math.abs(die.modifier)}`
-            : ""
-            }`;
+          const technicalLabel = `${die.sign === -1 ? "- " : ""}${die.qty}d${die.sides}${
+            die.modifier !== 0
+              ? ` ${die.modifier > 0 ? "+" : "-"} ${Math.abs(die.modifier)}`
+              : ""
+          }`;
 
           const customLabel =
             typeof die.label === "string" && die.label.trim().length > 0
@@ -1164,9 +1165,7 @@ export function Roll3DLauncherSurface({
     const safeName = newAdjustedActionName.trim();
 
     if (!safeName) {
-      setSaveAdjustedActionError(
-        "Le nom de la nouvelle Main est obligatoire.",
-      );
+      setSaveAdjustedActionError("Le nom de la nouvelle Main est obligatoire.");
       return;
     }
 
@@ -1185,10 +1184,10 @@ export function Roll3DLauncherSurface({
       const groupRuleId =
         adjustment.behaviorParamsTarget === "group"
           ? await resolveAdjustedGroupRuleIdForSave({
-            db,
-            tableId,
-            adjustment,
-          })
+              db,
+              tableId,
+              adjustment,
+            })
           : null;
 
       const newGroupId = await createGroupFromDraft(db, {
@@ -1556,8 +1555,8 @@ function Roll3DAdjustedActionSaveModal({
             {adjustment.sides}
             {adjustment.modifier !== 0
               ? ` ${adjustment.modifier > 0 ? "+" : "-"} ${Math.abs(
-                adjustment.modifier,
-              )}`
+                  adjustment.modifier,
+                )}`
               : ""}
           </Text>
 
@@ -1590,8 +1589,8 @@ function Roll3DAdjustedActionSaveModal({
                 lineHeight: 16,
               }}
             >
-              Tu peux mettre à jour la Main actuelle ou créer une
-              nouvelle Main avec ces réglages.
+              Tu peux mettre à jour la Main actuelle ou créer une nouvelle Main
+              avec ces réglages.
             </Text>
           </View>
 
@@ -1626,9 +1625,7 @@ function Roll3DAdjustedActionSaveModal({
                   textAlign: "center",
                 }}
               >
-                {isSaving
-                  ? "Sauvegarde..."
-                  : "Mettre à jour la Main existante"}
+                {isSaving ? "Sauvegarde..." : "Mettre à jour la Main existante"}
               </Text>
             </View>
           </Pressable>

@@ -86,7 +86,7 @@ export function Roll3DRollButton({
             letterSpacing: 1.7,
           }}
         >
-          {isDisabled ? "Prépare un jet" : "Lancer"}
+          {isDisabled ? "Prépare une Main" : "Lancer"}
         </Text>
 
         <Text
@@ -102,8 +102,8 @@ export function Roll3DRollButton({
           }}
         >
           {isDisabled
-            ? "Ajoute des dés ou choisis un jet préparé"
-            : `${diceCount} dé${diceCount > 1 ? "s" : ""} prêt${diceCount > 1 ? "s" : ""} · toucher pour lancer`}
+            ? "Ajoute des dés ou choisis une Main sauvegardée"
+            : `${diceCount} dé${diceCount > 1 ? "s" : ""} dans la Main · toucher pour lancer`}
         </Text>
       </LinearGradient>
     </Pressable>
