@@ -8,7 +8,7 @@ La couche `domain/*` sert à traduire ces données legacy vers un modèle métie
 
 ---
 
-## Objectif
+## Objectif principaux
 
 Ne plus raisonner côté interface avec :
 
