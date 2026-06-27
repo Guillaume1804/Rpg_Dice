@@ -335,13 +335,13 @@ export function Roll3DActionPickerSheet({
 
   const showEntries = !!selectedAction;
 
-  const title = showEntries ? "Choisir un jet" : "Jets préparés";
+  const title = showEntries ? "Choisir une Main" : "Mains sauvegardées";
 
   const subtitle = showEntries
     ? selectedAction.name
     : profileName
-      ? `${actions.length} jet${actions.length > 1 ? "s" : ""} disponible${actions.length > 1 ? "s" : ""} · ${profileName}`
-      : "Choisis un jet préparé";
+      ? `${actions.length} Main${actions.length > 1 ? "s" : ""} sauvegardée${actions.length > 1 ? "s" : ""} · ${profileName}`
+      : "Choisis une Main sauvegardée";
 
   return (
     <Modal
@@ -502,7 +502,7 @@ export function Roll3DActionPickerSheet({
                     letterSpacing: 0.7,
                   }}
                 >
-                  Revenir aux actions
+                  Revenir aux Mains
                 </Text>
               </View>
             </Pressable>
@@ -534,8 +534,8 @@ export function Roll3DActionPickerSheet({
                     lineHeight: 17,
                   }}
                 >
-                  Aucun jet préparé. Crée des actions dans l’espace Préparation
-                  pour les retrouver ici.
+                  Aucune Main sauvegardée. Crée une Main depuis la table ou l’atelier
+                  pour la retrouver ici.
                 </Text>
               </View>
             ) : showEntries && selectedAction ? (

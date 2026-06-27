@@ -477,9 +477,9 @@ function buildEntryChips(
 ) {
   const chips = [
     meta?.source === "action"
-      ? "Action"
+      ? "Main"
       : meta?.source === "prepared"
-        ? "Préparé"
+        ? "Préparée"
         : "Libre",
     `${entry.qty} dé${entry.qty > 1 ? "s" : ""}`,
   ];
@@ -533,7 +533,7 @@ function buildEntryStats(entry: OfficialEntry): Roll3DResultPresentationSectionS
 
 function buildSubtitle(result: Roll3DRollSummary) {
   if (result.officialResult.group_eval_result) {
-    return "Moteur officiel · comportement de groupe";
+    return "Moteur officiel · comportement de Main";
   }
 
   if (result.officialResult.entries.some((entry) => entry.eval_result)) {
@@ -613,7 +613,7 @@ export function buildRoll3DResultPresentation(
       ? {
         id: "group-behavior",
         kind: "group" as const,
-        title: "Résultat global du groupe",
+        title: "Résultat global de la Main",
         subtitle: result.officialResult.group_rule?.name ?? undefined,
         tone: getToneFromOutcome(
           getOutcomeFromEval(result.officialResult.group_eval_result),

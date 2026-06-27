@@ -92,7 +92,7 @@ export function Roll3DActionEntrySelector({
               letterSpacing: 1.1,
             }}
           >
-            {selectedAction ? "Choisir un jet" : "Jets préparés"}
+            {selectedAction ? "Choisir une Main" : "Mains sauvegardées"}
           </Text>
 
           <Text
@@ -186,7 +186,7 @@ export function Roll3DActionEntrySelector({
               fontWeight: "900",
             }}
           >
-            Aucun jet préparé
+            Aucun Main sauvegardée
           </Text>
 
           <Text
@@ -198,7 +198,7 @@ export function Roll3DActionEntrySelector({
               marginTop: 3,
             }}
           >
-            Crée des actions depuis l’espace Préparation pour les retrouver ici
+            Crée des Mains depuis la table ou l’atelier pour les retrouver ici
           </Text>
         </View>
       ) : selectedAction ? (
@@ -221,7 +221,7 @@ export function Roll3DActionEntrySelector({
                 letterSpacing: 0.8,
               }}
             >
-              ← Actions
+              ← Mains
             </Text>
           </Pressable>
 

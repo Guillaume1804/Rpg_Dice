@@ -114,7 +114,7 @@ export function Roll3DAdjustmentSheet({
                   letterSpacing: 1.2,
                 }}
               >
-                Ajuster le jet
+                Ajuster la Main
               </Text>
 
               <Text
@@ -171,7 +171,7 @@ export function Roll3DAdjustmentSheet({
                         letterSpacing: 0.9,
                       }}
                     >
-                      Appliquer au jet
+                      Appliquer à la Main
                     </Text>
                   </View>
                 </Pressable>
@@ -331,7 +331,7 @@ export function Roll3DAdjustmentSheet({
                 lineHeight: 16,
               }}
             >
-              Applique ces réglages au jet, puis lance depuis la table. Tu
+              Applique ces réglages à la Main, puis lance depuis la table. Tu
               pourras sauvegarder la variante après le résultat.
             </Text>
           </View>

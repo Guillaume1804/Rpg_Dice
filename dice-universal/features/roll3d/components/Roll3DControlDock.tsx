@@ -241,7 +241,7 @@ function Roll3DActionDockSummary({
                 letterSpacing: 0.8,
               }}
             >
-              Jets préparés
+              Mains sauvegardées
             </Text>
 
             <Text
@@ -257,7 +257,7 @@ function Roll3DActionDockSummary({
             >
               {selectedEntryLabel ??
                 selectedActionName ??
-                `${actionsCount} jet${actionsCount > 1 ? "s" : ""} disponible${actionsCount > 1 ? "s" : ""}`}
+                `${actionsCount} Main${actionsCount > 1 ? "s" : ""} sauvegardée${actionsCount > 1 ? "s" : ""}`}
             </Text>
 
             <Text
@@ -271,7 +271,7 @@ function Roll3DActionDockSummary({
             >
               {profileName
                 ? hasSelection
-                  ? "Toucher pour choisir ou ajuster"
+                  ? "Toucher pour poser ou ajuster"
                   : `Profil : ${profileName}`
                 : "Aucun profil actif"}
             </Text>
@@ -414,7 +414,7 @@ export function Roll3DControlDock({
           />
 
           <DockTab
-            label="Actions"
+            label="Mains"
             selected={safeMode === "actions"}
             disabled={!hasActions}
             badge={hasActions ? String(actions.length) : null}

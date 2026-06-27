@@ -269,7 +269,7 @@ function Roll3DEmptyTableHint({
           }}
         >
           Ajoute des dés libres
-          {hasActions ? " ou ouvre tes actions préparées" : ""}, puis lance
+          {hasActions ? " ou ouvre tes Mains sauvegardées" : ""}, puis lance
           depuis le bouton principal.
         </Text>
 
@@ -1165,7 +1165,7 @@ export function Roll3DLauncherSurface({
 
     if (!safeName) {
       setSaveAdjustedActionError(
-        "Le nom de la nouvelle action est obligatoire.",
+        "Le nom de la nouvelle Main est obligatoire.",
       );
       return;
     }
@@ -1529,7 +1529,7 @@ function Roll3DAdjustedActionSaveModal({
               letterSpacing: 1.2,
             }}
           >
-            Sauvegarder ce réglage
+            Sauvegarder cette Main
           </Text>
 
           <Text
@@ -1590,8 +1590,8 @@ function Roll3DAdjustedActionSaveModal({
                 lineHeight: 16,
               }}
             >
-              Tu peux écraser volontairement l’action actuelle ou créer une
-              nouvelle action avec ces réglages.
+              Tu peux mettre à jour la Main actuelle ou créer une
+              nouvelle Main avec ces réglages.
             </Text>
           </View>
 
@@ -1628,7 +1628,7 @@ function Roll3DAdjustedActionSaveModal({
               >
                 {isSaving
                   ? "Sauvegarde..."
-                  : "Mettre à jour l’action existante"}
+                  : "Mettre à jour la Main existante"}
               </Text>
             </View>
           </Pressable>
@@ -1648,13 +1648,13 @@ function Roll3DAdjustedActionSaveModal({
                 letterSpacing: 0.8,
               }}
             >
-              Nouvelle action
+              Nouvelle Main
             </Text>
 
             <TextInput
               value={newActionName}
               onChangeText={onChangeNewActionName}
-              placeholder="Nom de la nouvelle action"
+              placeholder="Nom de la nouvelle main"
               placeholderTextColor="rgba(255,255,255,0.28)"
               selectTextOnFocus
               style={{
@@ -1702,7 +1702,7 @@ function Roll3DAdjustedActionSaveModal({
                 >
                   {isSaving
                     ? "Sauvegarde..."
-                    : "Enregistrer comme nouvelle action"}
+                    : "Enregistrer comme nouvelle main"}
                 </Text>
               </View>
             </Pressable>

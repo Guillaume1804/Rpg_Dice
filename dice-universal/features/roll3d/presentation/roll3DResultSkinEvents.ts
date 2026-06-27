@@ -387,16 +387,16 @@ export function formatRoll3DResultEventLabel(event: Roll3DResultEvent) {
       return "Succès";
 
     case "pipeline":
-      return "Pipeline";
+      return "Règle avancée";
 
     case "keep_drop":
-      return "Keep / Drop";
+      return "Garder / retirer";
 
     case "table_lookup":
       return "Table";
 
     case "group_behavior":
-      return "Groupe";
+      return "Main";
 
     case "modifier":
       return "Modificateur";
