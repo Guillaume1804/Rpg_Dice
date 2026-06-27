@@ -48,7 +48,9 @@ function ModeSegmentButton({
           borderRadius: 999,
           borderWidth: selected ? 1 : 0,
           borderColor: selected ? "rgba(232, 200, 120, 0.30)" : "transparent",
-          backgroundColor: selected ? "rgba(232, 200, 120, 0.15)" : "transparent",
+          backgroundColor: selected
+            ? "rgba(232, 200, 120, 0.15)"
+            : "transparent",
           alignItems: "center",
           justifyContent: "center",
           paddingHorizontal: 10,
@@ -165,7 +167,7 @@ function ActionCard({
               letterSpacing: 0.6,
             }}
           >
-            {selected ? "Actif" : "Choisir"}
+            {selected ? "Ouverte" : "Ouvrir"}
           </Text>
         </View>
       </View>
@@ -271,7 +273,7 @@ function EntryCard({
                 letterSpacing: 0.7,
               }}
             >
-              Poser sur la table
+              Poser cette ligne
             </Text>
           </View>
         </Pressable>
@@ -468,7 +470,7 @@ export function Roll3DActionPickerSheet({
             />
 
             <ModeSegmentButton
-              label="Cumuler"
+              label="Ajouter"
               selected={insertMode === "append"}
               onPress={() => onChangeInsertMode("append")}
             />
@@ -508,6 +510,31 @@ export function Roll3DActionPickerSheet({
             </Pressable>
           ) : null}
 
+          {showEntries ? (
+            <View
+              style={{
+                borderRadius: 20,
+                borderWidth: 1,
+                borderColor: "rgba(255,255,255,0.07)",
+                backgroundColor: "rgba(255,255,255,0.04)",
+                paddingHorizontal: 12,
+                paddingVertical: 9,
+              }}
+            >
+              <Text
+                style={{
+                  color: "rgba(255,255,255,0.58)",
+                  fontSize: 11,
+                  fontWeight: "800",
+                  lineHeight: 16,
+                }}
+              >
+                Choisis une ligne de dés à poser sur la table. Tu pourras
+                ensuite l’ajuster ou la lancer comme Main actuelle.
+              </Text>
+            </View>
+          ) : null}
+
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{
@@ -534,8 +561,8 @@ export function Roll3DActionPickerSheet({
                     lineHeight: 17,
                   }}
                 >
-                  Aucune Main sauvegardée. Crée une Main depuis la table ou l’atelier
-                  pour la retrouver ici.
+                  Aucune Main sauvegardée. Crée une Main depuis la table ou
+                  l’atelier pour la retrouver ici.
                 </Text>
               </View>
             ) : showEntries && selectedAction ? (

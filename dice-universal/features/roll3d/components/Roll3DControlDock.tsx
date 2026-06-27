@@ -273,9 +273,9 @@ function Roll3DActionDockSummary({
             >
               {profileName
                 ? hasSelection
-                  ? "Toucher pour poser ou ajuster"
-                  : `Profil : ${profileName}`
-                : "Aucun profil actif"}
+                  ? "Toucher pour poser une ligne ou ajuster"
+                  : `Personnage : ${profileName}`
+                : "Aucun personnage actif"}
             </Text>
           </View>
 
