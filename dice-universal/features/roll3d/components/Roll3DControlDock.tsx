@@ -35,6 +35,7 @@ type Roll3DControlDockProps = {
   onClearDice: () => void;
   onSelectAction: (actionId: string) => void;
   onSelectActionEntry: (params: { actionId: string; entryId: string }) => void;
+  onPlaceWholeAction: (actionId: string) => void;
   onChangeActionEntryInsertMode: (mode: Roll3DActionEntryInsertMode) => void;
 
   onAdjustActionEntry: (params: { actionId: string; entryId: string }) => void;
@@ -323,6 +324,7 @@ export function Roll3DControlDock({
   onClearDice,
   onSelectAction,
   onSelectActionEntry,
+  onPlaceWholeAction,
   onChangeActionEntryInsertMode,
   onAdjustActionEntry,
   onChangeActionEntryAdjustmentQty,
@@ -370,6 +372,11 @@ export function Roll3DControlDock({
     entryId: string;
   }) {
     onSelectActionEntry(params);
+    setShowActionPicker(false);
+  }
+
+  function handlePlaceWholeAction(actionId: string) {
+    onPlaceWholeAction(actionId);
     setShowActionPicker(false);
   }
 
@@ -505,6 +512,7 @@ export function Roll3DControlDock({
         onClose={() => setShowActionPicker(false)}
         onSelectAction={onSelectAction}
         onSelectEntry={handleSelectActionEntry}
+        onPlaceWholeAction={handlePlaceWholeAction}
         onChangeInsertMode={onChangeActionEntryInsertMode}
         onAdjustEntry={handleAdjustEntry}
       />

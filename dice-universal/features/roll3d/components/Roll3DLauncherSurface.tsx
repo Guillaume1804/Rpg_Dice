@@ -26,12 +26,15 @@ import {
   createRoll3DActionEntryAdjustmentFromSavedActionEntry,
   createRoll3DDiceInputsFromActionEntryAdjustment,
   createRoll3DDiceInputsFromSavedActionEntry,
+  createRoll3DDraftFromSavedAction,
 } from "../logic/roll3DActionDraft";
+
 import type {
   Roll3DActionEntryAdjustment,
   Roll3DActionEntryInsertMode,
   Roll3DDieSides,
 } from "../types";
+
 import {
   appendDiceToRoll3DDraft,
   createRoll3DDraftFromDice,
@@ -534,11 +537,10 @@ export function Roll3DLauncherSurface({
           rulesMap,
         }),
         entries: dice.map((die) => {
-          const technicalLabel = `${die.sign === -1 ? "- " : ""}${die.qty}d${die.sides}${
-            die.modifier !== 0
-              ? ` ${die.modifier > 0 ? "+" : "-"} ${Math.abs(die.modifier)}`
-              : ""
-          }`;
+          const technicalLabel = `${die.sign === -1 ? "- " : ""}${die.qty}d${die.sides}${die.modifier !== 0
+            ? ` ${die.modifier > 0 ? "+" : "-"} ${Math.abs(die.modifier)}`
+            : ""
+            }`;
 
           const customLabel =
             typeof die.label === "string" && die.label.trim().length > 0
@@ -745,6 +747,75 @@ export function Roll3DLauncherSurface({
       loadDraft(nextDraft);
     },
     [launcher.draft, launcher.maxDice, loadDraft],
+  );
+
+  const applyWholeActionDraft = useCallback(
+    (
+      draft: ReturnType<typeof createRoll3DDraftFromSavedAction>,
+      mode: Roll3DActionEntryInsertMode,
+    ) => {
+      if (draft.dice.length === 0) {
+        return;
+      }
+
+      setIsRolling(false);
+      setSkipRollRequestId(0);
+      setPendingAdjustmentLaunch(null);
+      setActionEntryAdjustment(null);
+      setLastAppliedActionEntryAdjustment(null);
+      clearResult();
+
+      if (mode === "replace") {
+        setSceneVersion((current) => current + 1);
+        loadDraft(draft);
+        return;
+      }
+
+      const nextDraft = {
+        ...launcher.draft,
+        updatedAt: Date.now(),
+        groupBehavior: draft.groupBehavior ?? launcher.draft.groupBehavior,
+        dice: [...launcher.draft.dice, ...draft.dice].slice(0, launcher.maxDice),
+      };
+
+      setSceneVersion((current) => current + 1);
+      loadDraft(nextDraft);
+    },
+    [launcher.draft, launcher.maxDice, loadDraft, clearResult],
+  );
+
+  const handlePlaceWholeAction = useCallback(
+    (actionId: string) => {
+      const selectedAction = activeProfileEntry?.groups.find(
+        (entry) => entry.group.id === actionId,
+      );
+
+      if (!selectedAction) {
+        return;
+      }
+
+      const draft = createRoll3DDraftFromSavedAction({
+        group: selectedAction.group,
+        dice: selectedAction.dice,
+        rulesMap,
+        source: "action",
+      });
+
+      if (draft.dice.length === 0) {
+        return;
+      }
+
+      setSelectedActionId(actionId);
+      setSelectedActionEntryId(null);
+
+      applyWholeActionDraft(draft, actionEntryInsertMode);
+    },
+    [
+      activeProfileEntry,
+      rulesMap,
+      actionEntryInsertMode,
+      applyWholeActionDraft,
+    ],
   );
 
   const handleSelectActionEntry = useCallback(
@@ -1184,10 +1255,10 @@ export function Roll3DLauncherSurface({
       const groupRuleId =
         adjustment.behaviorParamsTarget === "group"
           ? await resolveAdjustedGroupRuleIdForSave({
-              db,
-              tableId,
-              adjustment,
-            })
+            db,
+            tableId,
+            adjustment,
+          })
           : null;
 
       const newGroupId = await createGroupFromDraft(db, {
@@ -1396,6 +1467,7 @@ export function Roll3DLauncherSurface({
             actionEntryInsertMode={actionEntryInsertMode}
             onSelectAction={handleSelectAction}
             onSelectActionEntry={handleSelectActionEntry}
+            onPlaceWholeAction={handlePlaceWholeAction}
             onChangeActionEntryInsertMode={setActionEntryInsertMode}
             actionEntryAdjustment={actionEntryAdjustment}
             onAdjustActionEntry={handleAdjustActionEntry}
@@ -1555,8 +1627,8 @@ function Roll3DAdjustedActionSaveModal({
             {adjustment.sides}
             {adjustment.modifier !== 0
               ? ` ${adjustment.modifier > 0 ? "+" : "-"} ${Math.abs(
-                  adjustment.modifier,
-                )}`
+                adjustment.modifier,
+              )}`
               : ""}
           </Text>
 

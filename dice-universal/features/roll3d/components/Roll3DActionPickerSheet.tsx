@@ -19,6 +19,7 @@ type Roll3DActionPickerSheetProps = {
   onSelectAction: (actionId: string) => void;
   onSelectEntry: (params: { actionId: string; entryId: string }) => void;
   onChangeInsertMode: (mode: Roll3DActionEntryInsertMode) => void;
+  onPlaceWholeAction: (actionId: string) => void;
   onAdjustEntry: (params: { actionId: string; entryId: string }) => void;
 };
 
@@ -326,6 +327,7 @@ export function Roll3DActionPickerSheet({
   onSelectAction,
   onSelectEntry,
   onChangeInsertMode,
+  onPlaceWholeAction,
   onAdjustEntry,
 }: Roll3DActionPickerSheetProps) {
   const premium = usePremiumTheme();
@@ -533,6 +535,46 @@ export function Roll3DActionPickerSheet({
                 ensuite l’ajuster ou la lancer comme Main actuelle.
               </Text>
             </View>
+          ) : null}
+
+          {showEntries && selectedAction ? (
+            <Pressable
+              onPress={() => onPlaceWholeAction(selectedAction.id)}
+              style={({ pressed }) => ({
+                borderRadius: 22,
+                borderWidth: 1,
+                borderColor: "rgba(232, 200, 120, 0.34)",
+                backgroundColor: pressed
+                  ? "rgba(232, 200, 120, 0.18)"
+                  : "rgba(232, 200, 120, 0.1)",
+                paddingHorizontal: 14,
+                paddingVertical: 12,
+                opacity: pressed ? 0.86 : 1,
+              })}
+            >
+              <Text
+                style={{
+                  color: "rgba(255,255,255,0.96)",
+                  fontSize: 12,
+                  fontWeight: "900",
+                  textAlign: "center",
+                }}
+              >
+                Poser toute la Main
+              </Text>
+
+              <Text
+                style={{
+                  color: "rgba(255,255,255,0.56)",
+                  fontSize: 10,
+                  fontWeight: "800",
+                  textAlign: "center",
+                  marginTop: 3,
+                }}
+              >
+                Toutes les lignes seront ajoutées à la table
+              </Text>
+            </Pressable>
           ) : null}
 
           <ScrollView
