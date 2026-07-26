@@ -39,6 +39,7 @@ type Roll3DControlDockProps = {
   }) => void;
   onClearDice: () => void;
   onSaveCurrentHand: () => void;
+  onEditCurrentHand: () => void;
   onSelectAction: (actionId: string) => void;
   onSelectActionEntry: (params: { actionId: string; entryId: string }) => void;
   onPlaceWholeAction: (actionId: string) => void;
@@ -250,6 +251,62 @@ function DockSaveButton({
   );
 }
 
+function DockEditButton({
+  disabled,
+  onPress,
+}: {
+  disabled?: boolean;
+  onPress: () => void;
+}) {
+  const premium = usePremiumTheme();
+
+  return (
+    <Pressable
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        opacity: disabled ? 0.4 : pressed ? 0.76 : 1,
+        transform: [
+          {
+            scale: pressed && !disabled ? premium.animation.pressScale : 1,
+          },
+        ],
+      })}
+    >
+      <View
+        style={{
+          minHeight: 32,
+          borderRadius: premium.radius.pill,
+          borderWidth: 1,
+          borderColor: disabled
+            ? premium.colors.border.subtle
+            : "rgba(255,255,255,0.12)",
+          backgroundColor: disabled
+            ? "rgba(255,255,255,0.025)"
+            : "rgba(255,255,255,0.06)",
+          alignItems: "center",
+          justifyContent: "center",
+          paddingHorizontal: 11,
+        }}
+      >
+        <Text
+          style={{
+            color: disabled
+              ? premium.colors.text.muted
+              : premium.colors.text.secondary,
+            fontSize: 9,
+            fontWeight: "900",
+            textTransform: "uppercase",
+            letterSpacing: 0.65,
+          }}
+        >
+          Modifier
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
 function Roll3DActionDockSummary({
   profileName,
   actionsCount,
@@ -385,6 +442,7 @@ export function Roll3DControlDock({
   onAddMultipleDice,
   onClearDice,
   onSaveCurrentHand,
+  onEditCurrentHand,
   onSelectAction,
   onSelectActionEntry,
   onPlaceWholeAction,
@@ -468,34 +526,42 @@ export function Roll3DControlDock({
           paddingHorizontal: 8,
           paddingTop: 2,
           paddingBottom: 1,
-          gap: 2,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 10,
         }}
       >
-        <Text
-          style={{
-            color: "rgba(232, 200, 120, 0.92)",
-            fontSize: 10,
-            fontWeight: "900",
-            textTransform: "uppercase",
-            letterSpacing: 1,
-          }}
-        >
-          Main actuelle
-        </Text>
+        <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+          <Text
+            style={{
+              color: "rgba(232, 200, 120, 0.92)",
+              fontSize: 10,
+              fontWeight: "900",
+              textTransform: "uppercase",
+              letterSpacing: 1,
+            }}
+          >
+            Main actuelle
+          </Text>
 
-        <Text
-          numberOfLines={1}
-          style={{
-            color: "rgba(255,255,255,0.58)",
-            fontSize: 10,
-            fontWeight: "800",
-          }}
-        >
-          {diceCount > 0
-            ? `${diceCount} dé${diceCount > 1 ? "s" : ""} prêt${diceCount > 1 ? "s" : ""} · ajuste ou lance depuis la table`
-            : "Ajoute des dés libres ou pose une Main sauvegardée"}
-        </Text>
+          <Text
+            numberOfLines={1}
+            style={{
+              color: "rgba(255,255,255,0.58)",
+              fontSize: 10,
+              fontWeight: "800",
+            }}
+          >
+            {diceCount > 0
+              ? `${diceCount} dé${diceCount > 1 ? "s" : ""} prêt${diceCount > 1 ? "s" : ""} · ajuste ou lance depuis la table`
+              : "Ajoute des dés libres ou pose une Main sauvegardée"}
+          </Text>
+        </View>
+
+        <DockEditButton disabled={diceCount <= 0} onPress={onEditCurrentHand} />
       </View>
+
       <View
         style={{
           flexDirection: "row",

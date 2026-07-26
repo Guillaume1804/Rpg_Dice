@@ -34,6 +34,14 @@ export type CreateRoll3DDieInput = {
 };
 
 export type Roll3DSavableDraftLine = {
+  /**
+   * Identifiant stable de la ligne logique dans le draft courant.
+   *
+   * Pour une ligne sauvegardée, il dépend notamment du rollEntryId.
+   * Pour des dés libres, il dépend de leurs caractéristiques communes.
+   */
+  key: string;
+
   rollEntryId: string;
   label: string | null;
   sides: Roll3DDieSides;
@@ -41,6 +49,7 @@ export type Roll3DSavableDraftLine = {
   modifier: number;
   sign: Roll3DDieSign;
   ruleId: string | null;
+  behaviorLabel: string | null;
   source: Roll3DDieSource;
 };
 
@@ -168,9 +177,7 @@ export function appendDiceToRoll3DDraft(
   };
 }
 
-function getRoll3DSavableLineLabel(
-  die: Roll3DDieInstance,
-): string | null {
+function getRoll3DSavableLineLabel(die: Roll3DDieInstance): string | null {
   const entryLabel = die.rollEntryMeta?.entryLabel?.trim() ?? "";
   const technicalLabel = die.rollEntryMeta?.technicalLabel?.trim() ?? "";
 
@@ -197,14 +204,9 @@ function getRoll3DSavableLineKey(die: Roll3DDieInstance): string {
    * → une seule ligne 5d6
    */
   if (die.source === "free") {
-    return [
-      "free",
-      die.sides,
-      die.sign,
-      die.modifier,
-      behaviorId,
-      label,
-    ].join(":");
+    return ["free", die.sides, die.sign, die.modifier, behaviorId, label].join(
+      ":",
+    );
   }
 
   /**
@@ -240,6 +242,7 @@ export function createRoll3DSavableLinesFromDraft(
     }
 
     linesMap.set(key, {
+      key,
       rollEntryId: die.rollEntryId,
       label: getRoll3DSavableLineLabel(die),
       sides: die.sides,
@@ -247,9 +250,119 @@ export function createRoll3DSavableLinesFromDraft(
       modifier: die.modifier,
       sign: die.sign,
       ruleId: die.behavior?.id ?? null,
+      behaviorLabel: die.behavior?.label ?? null,
       source: die.source,
     });
   }
 
   return Array.from(linesMap.values());
+}
+
+export function updateRoll3DDraftLine(params: {
+  draft: Roll3DDraft;
+  lineKey: string;
+  maxDice: number;
+  qty?: number;
+  modifier?: number;
+  sign?: Roll3DDieSign;
+}): Roll3DDraft {
+  const { draft, lineKey, maxDice } = params;
+
+  const firstMatchingIndex = draft.dice.findIndex(
+    (die) => getRoll3DSavableLineKey(die) === lineKey,
+  );
+
+  if (firstMatchingIndex < 0) {
+    return draft;
+  }
+
+  const matchingDice = draft.dice.filter(
+    (die) => getRoll3DSavableLineKey(die) === lineKey,
+  );
+
+  const prototype = matchingDice[0];
+
+  if (!prototype) {
+    return draft;
+  }
+
+  const otherDice = draft.dice.filter(
+    (die) => getRoll3DSavableLineKey(die) !== lineKey,
+  );
+
+  const maximumLineQuantity = Math.max(1, maxDice - otherDice.length);
+
+  const requestedQuantity =
+    params.qty == null
+      ? matchingDice.length
+      : Math.max(1, Math.floor(params.qty));
+
+  const nextQuantity = Math.min(requestedQuantity, maximumLineQuantity);
+
+  const nextModifier =
+    params.modifier == null
+      ? prototype.modifier
+      : Math.max(-99, Math.min(99, Math.floor(params.modifier)));
+
+  const nextSign = params.sign ?? prototype.sign;
+
+  const nextLineDice = matchingDice.slice(0, nextQuantity).map((die) => ({
+    ...die,
+    modifier: nextModifier,
+    sign: nextSign,
+  }));
+
+  while (nextLineDice.length < nextQuantity) {
+    nextLineDice.push(
+      createRoll3DDieInstance(prototype.sides, {
+        /**
+         * Une ligne sauvegardée ou préparée doit conserver son identité logique.
+         * Un dé libre peut recevoir un nouvel identifiant individuel puisque
+         * son regroupement ne dépend pas du rollEntryId.
+         */
+        rollEntryId:
+          prototype.source === "free" ? undefined : prototype.rollEntryId,
+        sign: nextSign,
+        modifier: nextModifier,
+        source: prototype.source,
+        behavior: prototype.behavior,
+        rollEntryMeta: prototype.rollEntryMeta,
+        valueSources: prototype.valueSources,
+      }),
+    );
+  }
+
+  const diceBeforeLine = draft.dice
+    .slice(0, firstMatchingIndex)
+    .filter((die) => getRoll3DSavableLineKey(die) !== lineKey);
+
+  const diceAfterLine = draft.dice
+    .slice(firstMatchingIndex)
+    .filter((die) => getRoll3DSavableLineKey(die) !== lineKey);
+
+  return {
+    ...draft,
+    updatedAt: Date.now(),
+    dice: [...diceBeforeLine, ...nextLineDice, ...diceAfterLine],
+  };
+}
+
+export function removeRoll3DDraftLine(params: {
+  draft: Roll3DDraft;
+  lineKey: string;
+}): Roll3DDraft {
+  const nextDice = params.draft.dice.filter(
+    (die) => getRoll3DSavableLineKey(die) !== params.lineKey,
+  );
+
+  if (nextDice.length === params.draft.dice.length) {
+    return params.draft;
+  }
+
+  return {
+    ...params.draft,
+    updatedAt: Date.now(),
+    dice: nextDice,
+    groupBehavior: nextDice.length > 0 ? params.draft.groupBehavior : null,
+  };
 }

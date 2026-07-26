@@ -32,6 +32,7 @@ import {
 import type {
   Roll3DActionEntryAdjustment,
   Roll3DActionEntryInsertMode,
+  Roll3DDraft,
   Roll3DDieSides,
 } from "../types";
 
@@ -39,7 +40,11 @@ import {
   appendDiceToRoll3DDraft,
   createRoll3DDraftFromDice,
   createRoll3DSavableLinesFromDraft,
+  removeRoll3DDraftLine,
+  updateRoll3DDraftLine,
 } from "../logic/roll3DDraft";
+
+import { Roll3DCurrentHandEditSheet } from "./Roll3DCurrentHandEditSheet";
 
 import {
   createGroupFromDraft,
@@ -395,6 +400,17 @@ export function Roll3DLauncherSurface({
     [launcher.draft],
   );
 
+  const [currentHandEditDraft, setCurrentHandEditDraft] =
+    useState<Roll3DDraft | null>(null);
+
+  const currentHandEditLines = useMemo(
+    () =>
+      currentHandEditDraft
+        ? createRoll3DSavableLinesFromDraft(currentHandEditDraft)
+        : [],
+    [currentHandEditDraft],
+  );
+
   const [isRolling, setIsRolling] = useState(false);
   const [skipRollRequestId, setSkipRollRequestId] = useState(0);
   const [sceneVersion, setSceneVersion] = useState(0);
@@ -474,6 +490,7 @@ export function Roll3DLauncherSurface({
         setSaveCurrentHandError(null);
         setIsSavingCurrentHand(false);
         resetLauncher();
+        setCurrentHandEditDraft(null);
       };
     }, [resetLauncher]),
   );
@@ -641,8 +658,24 @@ export function Roll3DLauncherSurface({
     setSelectedActionEntryId(null);
     setActionEntryAdjustment(null);
     setLastAppliedActionEntryAdjustment(null);
+    setCurrentHandEditDraft(null);
     clearDice();
   }, [clearDice]);
+
+  const handleOpenCurrentHandEdit = useCallback(() => {
+    if (launcher.draft.dice.length === 0) {
+      return;
+    }
+
+    setCurrentHandEditDraft({
+      ...launcher.draft,
+      dice: [...launcher.draft.dice],
+    });
+  }, [launcher.draft]);
+
+  const handleCloseCurrentHandEdit = useCallback(() => {
+    setCurrentHandEditDraft(null);
+  }, []);
 
   const handleOpenSaveCurrentHand = useCallback(() => {
     if (launcher.diceCount <= 0 || !activeProfileEntry) {
@@ -740,6 +773,116 @@ export function Roll3DLauncherSurface({
     currentHandSavableLines,
   ]);
 
+  const handleChangeCurrentHandLineQty = useCallback(
+    (lineKey: string, delta: number) => {
+      setCurrentHandEditDraft((current) => {
+        if (!current) {
+          return current;
+        }
+
+        const line = createRoll3DSavableLinesFromDraft(current).find(
+          (entry) => entry.key === lineKey,
+        );
+
+        if (!line) {
+          return current;
+        }
+
+        return updateRoll3DDraftLine({
+          draft: current,
+          lineKey,
+          maxDice: launcher.maxDice,
+          qty: line.qty + delta,
+        });
+      });
+    },
+    [launcher.maxDice],
+  );
+
+  const handleChangeCurrentHandLineModifier = useCallback(
+    (lineKey: string, delta: number) => {
+      setCurrentHandEditDraft((current) => {
+        if (!current) {
+          return current;
+        }
+
+        const line = createRoll3DSavableLinesFromDraft(current).find(
+          (entry) => entry.key === lineKey,
+        );
+
+        if (!line) {
+          return current;
+        }
+
+        return updateRoll3DDraftLine({
+          draft: current,
+          lineKey,
+          maxDice: launcher.maxDice,
+          modifier: line.modifier + delta,
+        });
+      });
+    },
+    [launcher.maxDice],
+  );
+
+  const handleToggleCurrentHandLineSign = useCallback(
+    (lineKey: string) => {
+      setCurrentHandEditDraft((current) => {
+        if (!current) {
+          return current;
+        }
+
+        const line = createRoll3DSavableLinesFromDraft(current).find(
+          (entry) => entry.key === lineKey,
+        );
+
+        if (!line) {
+          return current;
+        }
+
+        return updateRoll3DDraftLine({
+          draft: current,
+          lineKey,
+          maxDice: launcher.maxDice,
+          sign: line.sign === -1 ? 1 : -1,
+        });
+      });
+    },
+    [launcher.maxDice],
+  );
+
+  const handleRemoveCurrentHandLine = useCallback((lineKey: string) => {
+    setCurrentHandEditDraft((current) => {
+      if (!current) {
+        return current;
+      }
+
+      return removeRoll3DDraftLine({
+        draft: current,
+        lineKey,
+      });
+    });
+  }, []);
+
+  const handleApplyCurrentHandEdit = useCallback(() => {
+    if (!currentHandEditDraft || currentHandEditDraft.dice.length === 0) {
+      return;
+    }
+
+    setIsRolling(false);
+    setSkipRollRequestId(0);
+    setPendingAdjustmentLaunch(null);
+    setActionEntryAdjustment(null);
+    setLastAppliedActionEntryAdjustment(null);
+
+    clearResult();
+
+    setSceneVersion((current) => current + 1);
+    loadDraft(currentHandEditDraft);
+
+    setCurrentHandEditDraft(null);
+  }, [currentHandEditDraft, clearResult, loadDraft]);
+
   const resetRoll3DTransientState = useCallback(() => {
     setIsRolling(false);
     setSkipRollRequestId(0);
@@ -757,6 +900,8 @@ export function Roll3DLauncherSurface({
     setCurrentHandName("");
     setSaveCurrentHandError(null);
     setIsSavingCurrentHand(false);
+
+    setCurrentHandEditDraft(null);
 
     clearResult();
   }, [clearResult]);
@@ -827,6 +972,8 @@ export function Roll3DLauncherSurface({
       setNewAdjustedActionName("");
       setSaveAdjustedActionError(null);
       setIsSavingAdjustedAction(false);
+
+      setCurrentHandEditDraft(null);
 
       clearResult();
       setIsRolling(false);
@@ -1607,6 +1754,7 @@ export function Roll3DLauncherSurface({
             onAddMultipleDice={handleAddMultipleFreeDice}
             onClearDice={handleClearDice}
             onSaveCurrentHand={handleOpenSaveCurrentHand}
+            onEditCurrentHand={handleOpenCurrentHandEdit}
             selectedActionId={selectedActionId}
             selectedActionEntryId={selectedActionEntryId}
             actionEntryInsertMode={actionEntryInsertMode}
@@ -1657,6 +1805,19 @@ export function Roll3DLauncherSurface({
         onClose={handleCloseResult}
         onRollAgain={handleRollAgain}
         onSaveAdjustedAction={handleSaveAdjustedAction}
+      />
+
+      <Roll3DCurrentHandEditSheet
+        visible={!!currentHandEditDraft}
+        lines={currentHandEditLines}
+        diceCount={currentHandEditDraft?.dice.length ?? 0}
+        maxDice={launcher.maxDice}
+        onClose={handleCloseCurrentHandEdit}
+        onApply={handleApplyCurrentHandEdit}
+        onChangeQty={handleChangeCurrentHandLineQty}
+        onChangeModifier={handleChangeCurrentHandLineModifier}
+        onToggleSign={handleToggleCurrentHandLineSign}
+        onRemoveLine={handleRemoveCurrentHandLine}
       />
 
       <Roll3DCurrentHandSaveModal
