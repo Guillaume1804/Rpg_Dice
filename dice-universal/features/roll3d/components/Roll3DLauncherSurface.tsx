@@ -346,6 +346,7 @@ export function Roll3DLauncherSurface({
     resetLauncher,
     loadDraft,
     addDie,
+    addDice,
     clearDice,
     rollDice,
     completeRollAfterPhysics,
@@ -537,10 +538,11 @@ export function Roll3DLauncherSurface({
           rulesMap,
         }),
         entries: dice.map((die) => {
-          const technicalLabel = `${die.sign === -1 ? "- " : ""}${die.qty}d${die.sides}${die.modifier !== 0
-            ? ` ${die.modifier > 0 ? "+" : "-"} ${Math.abs(die.modifier)}`
-            : ""
-            }`;
+          const technicalLabel = `${die.sign === -1 ? "- " : ""}${die.qty}d${die.sides}${
+            die.modifier !== 0
+              ? ` ${die.modifier > 0 ? "+" : "-"} ${Math.abs(die.modifier)}`
+              : ""
+          }`;
 
           const customLabel =
             typeof die.label === "string" && die.label.trim().length > 0
@@ -594,6 +596,20 @@ export function Roll3DLauncherSurface({
       addDie(sides);
     },
     [addDie],
+  );
+
+  const handleAddMultipleFreeDice = useCallback(
+    (params: { sides: Roll3DDieSides; quantity: number }) => {
+      setSelectedActionId(null);
+      setSelectedActionEntryId(null);
+      setActionEntryAdjustment(null);
+      setLastAppliedActionEntryAdjustment(null);
+      setPendingAdjustmentLaunch(null);
+      clearResult();
+
+      addDice(params.sides, params.quantity);
+    },
+    [addDice, clearResult],
   );
 
   const handleClearDice = useCallback(() => {
@@ -775,7 +791,10 @@ export function Roll3DLauncherSurface({
         ...launcher.draft,
         updatedAt: Date.now(),
         groupBehavior: draft.groupBehavior ?? launcher.draft.groupBehavior,
-        dice: [...launcher.draft.dice, ...draft.dice].slice(0, launcher.maxDice),
+        dice: [...launcher.draft.dice, ...draft.dice].slice(
+          0,
+          launcher.maxDice,
+        ),
       };
 
       setSceneVersion((current) => current + 1);
@@ -1255,10 +1274,10 @@ export function Roll3DLauncherSurface({
       const groupRuleId =
         adjustment.behaviorParamsTarget === "group"
           ? await resolveAdjustedGroupRuleIdForSave({
-            db,
-            tableId,
-            adjustment,
-          })
+              db,
+              tableId,
+              adjustment,
+            })
           : null;
 
       const newGroupId = await createGroupFromDraft(db, {
@@ -1461,6 +1480,7 @@ export function Roll3DLauncherSurface({
             profileName={activeProfileEntry?.profile.name ?? null}
             actions={actionItems}
             onSelectSides={handleSelectFreeDie}
+            onAddMultipleDice={handleAddMultipleFreeDice}
             onClearDice={handleClearDice}
             selectedActionId={selectedActionId}
             selectedActionEntryId={selectedActionEntryId}
@@ -1627,8 +1647,8 @@ function Roll3DAdjustedActionSaveModal({
             {adjustment.sides}
             {adjustment.modifier !== 0
               ? ` ${adjustment.modifier > 0 ? "+" : "-"} ${Math.abs(
-                adjustment.modifier,
-              )}`
+                  adjustment.modifier,
+                )}`
               : ""}
           </Text>
 

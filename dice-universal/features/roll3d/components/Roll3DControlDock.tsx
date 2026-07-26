@@ -32,6 +32,10 @@ type Roll3DControlDockProps = {
   actionEntryAdjustment: Roll3DActionEntryAdjustment | null;
 
   onSelectSides: (sides: Roll3DDieSides) => void;
+  onAddMultipleDice: (params: {
+    sides: Roll3DDieSides;
+    quantity: number;
+  }) => void;
   onClearDice: () => void;
   onSelectAction: (actionId: string) => void;
   onSelectActionEntry: (params: { actionId: string; entryId: string }) => void;
@@ -321,6 +325,7 @@ export function Roll3DControlDock({
   actionEntryInsertMode,
   actionEntryAdjustment,
   onSelectSides,
+  onAddMultipleDice,
   onClearDice,
   onSelectAction,
   onSelectActionEntry,
@@ -497,6 +502,7 @@ export function Roll3DControlDock({
             diceCount={diceCount}
             maxDice={maxDice}
             onSelectSides={onSelectSides}
+            onAddMultipleDice={onAddMultipleDice}
             onClearDice={undefined}
           />
         )}

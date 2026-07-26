@@ -53,6 +53,39 @@ export function useRoll3DLauncher({
     [maxDice],
   );
 
+  const addDice = useCallback(
+    (sides: Roll3DDieSides, quantity: number) => {
+      const safeQuantity = Math.max(1, Math.floor(quantity));
+
+      setSelectedSides(sides);
+
+      setDraft((currentDraft) => {
+        const remainingSlots = Math.max(0, maxDice - currentDraft.dice.length);
+
+        const quantityToAdd = Math.min(safeQuantity, remainingSlots);
+
+        if (quantityToAdd <= 0) {
+          return currentDraft;
+        }
+
+        setLatestResult(null);
+
+        let nextDraft = currentDraft;
+
+        for (let index = 0; index < quantityToAdd; index += 1) {
+          nextDraft = addDieToRoll3DDraft({
+            draft: nextDraft,
+            sides,
+            maxDice,
+          });
+        }
+
+        return nextDraft;
+      });
+    },
+    [maxDice],
+  );
+
   const clearDice = useCallback(() => {
     setDraft((currentDraft) => clearRoll3DDraft(currentDraft));
     setLatestResult(null);
@@ -100,6 +133,7 @@ export function useRoll3DLauncher({
       latestResult,
       rollRequestId,
       addDie,
+      addDice,
       clearDice,
       resetLauncher,
       loadDraft,
@@ -118,6 +152,7 @@ export function useRoll3DLauncher({
       latestResult,
       rollRequestId,
       addDie,
+      addDice,
       clearDice,
       resetLauncher,
       loadDraft,
