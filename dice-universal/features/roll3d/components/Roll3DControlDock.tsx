@@ -23,6 +23,7 @@ type Roll3DControlDockProps = {
   availableDiceSides: Roll3DDieSides[];
   diceCount: number;
   maxDice: number;
+  canSaveCurrentHand: boolean;
 
   profileName: string | null;
   actions: Roll3DActionItem[];
@@ -37,6 +38,7 @@ type Roll3DControlDockProps = {
     quantity: number;
   }) => void;
   onClearDice: () => void;
+  onSaveCurrentHand: () => void;
   onSelectAction: (actionId: string) => void;
   onSelectActionEntry: (params: { actionId: string; entryId: string }) => void;
   onPlaceWholeAction: (actionId: string) => void;
@@ -194,6 +196,60 @@ function DockClearButton({
   );
 }
 
+function DockSaveButton({
+  disabled,
+  onPress,
+}: {
+  disabled?: boolean;
+  onPress: () => void;
+}) {
+  const premium = usePremiumTheme();
+
+  return (
+    <Pressable
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        minHeight: 36,
+        minWidth: 76,
+        borderRadius: premium.radius.pill,
+        borderWidth: 1,
+        borderColor: disabled
+          ? premium.colors.border.subtle
+          : "rgba(232, 200, 120, 0.30)",
+        backgroundColor: disabled
+          ? "rgba(255,255,255,0.025)"
+          : pressed
+            ? "rgba(232, 200, 120, 0.17)"
+            : "rgba(232, 200, 120, 0.10)",
+        alignItems: "center",
+        justifyContent: "center",
+        paddingHorizontal: 11,
+        opacity: disabled ? 0.42 : pressed ? 0.78 : 1,
+        transform: [
+          {
+            scale: pressed && !disabled ? premium.animation.pressScale : 1,
+          },
+        ],
+      })}
+    >
+      <Text
+        style={{
+          color: disabled
+            ? premium.colors.text.muted
+            : premium.colors.accent.primary,
+          fontSize: 9,
+          fontWeight: "900",
+          textTransform: "uppercase",
+          letterSpacing: 0.6,
+        }}
+      >
+        Sauvegarder
+      </Text>
+    </Pressable>
+  );
+}
+
 function Roll3DActionDockSummary({
   profileName,
   actionsCount,
@@ -318,6 +374,7 @@ export function Roll3DControlDock({
   availableDiceSides,
   diceCount,
   maxDice,
+  canSaveCurrentHand,
   actions,
   profileName,
   selectedActionId,
@@ -327,6 +384,7 @@ export function Roll3DControlDock({
   onSelectSides,
   onAddMultipleDice,
   onClearDice,
+  onSaveCurrentHand,
   onSelectAction,
   onSelectActionEntry,
   onPlaceWholeAction,
@@ -475,7 +533,20 @@ export function Roll3DControlDock({
           />
         </View>
 
-        <DockClearButton disabled={diceCount <= 0} onPress={onClearDice} />
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <DockSaveButton
+            disabled={diceCount <= 0 || !canSaveCurrentHand}
+            onPress={onSaveCurrentHand}
+          />
+
+          <DockClearButton disabled={diceCount <= 0} onPress={onClearDice} />
+        </View>
       </View>
 
       <View

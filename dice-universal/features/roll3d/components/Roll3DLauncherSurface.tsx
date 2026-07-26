@@ -38,6 +38,7 @@ import type {
 import {
   appendDiceToRoll3DDraft,
   createRoll3DDraftFromDice,
+  createRoll3DSavableLinesFromDraft,
 } from "../logic/roll3DDraft";
 
 import {
@@ -389,6 +390,11 @@ export function Roll3DLauncherSurface({
     // Ce cas sera utile quand les tables limiteront vraiment les dés disponibles.
   }, [availableDiceSides, launcher.selectedSides]);
 
+  const currentHandSavableLines = useMemo(
+    () => createRoll3DSavableLinesFromDraft(launcher.draft),
+    [launcher.draft],
+  );
+
   const [isRolling, setIsRolling] = useState(false);
   const [skipRollRequestId, setSkipRollRequestId] = useState(0);
   const [sceneVersion, setSceneVersion] = useState(0);
@@ -433,6 +439,17 @@ export function Roll3DLauncherSurface({
     string | null
   >(null);
 
+  const [showSaveCurrentHandModal, setShowSaveCurrentHandModal] =
+    useState(false);
+
+  const [currentHandName, setCurrentHandName] = useState("");
+
+  const [isSavingCurrentHand, setIsSavingCurrentHand] = useState(false);
+
+  const [saveCurrentHandError, setSaveCurrentHandError] = useState<
+    string | null
+  >(null);
+
   const reloadAvailableTables = useCallback(async () => {
     const tables = await listTables(db);
     setAvailableTables(tables);
@@ -452,6 +469,10 @@ export function Roll3DLauncherSurface({
         setSelectedActionEntryId(null);
         setActionEntryAdjustment(null);
         setLastAppliedActionEntryAdjustment(null);
+        setShowSaveCurrentHandModal(false);
+        setCurrentHandName("");
+        setSaveCurrentHandError(null);
+        setIsSavingCurrentHand(false);
         resetLauncher();
       };
     }, [resetLauncher]),
@@ -623,6 +644,102 @@ export function Roll3DLauncherSurface({
     clearDice();
   }, [clearDice]);
 
+  const handleOpenSaveCurrentHand = useCallback(() => {
+    if (launcher.diceCount <= 0 || !activeProfileEntry) {
+      return;
+    }
+
+    setCurrentHandName("");
+    setSaveCurrentHandError(null);
+    setShowSaveCurrentHandModal(true);
+  }, [launcher.diceCount, activeProfileEntry]);
+
+  const handleCloseSaveCurrentHand = useCallback(() => {
+    if (isSavingCurrentHand) {
+      return;
+    }
+
+    setShowSaveCurrentHandModal(false);
+    setCurrentHandName("");
+    setSaveCurrentHandError(null);
+  }, [isSavingCurrentHand]);
+
+  const handleSaveCurrentHand = useCallback(async () => {
+    if (
+      !tableId ||
+      !activeProfileEntry ||
+      launcher.draft.dice.length === 0 ||
+      isSavingCurrentHand
+    ) {
+      return;
+    }
+
+    const safeName = currentHandName.trim();
+
+    if (!safeName) {
+      setSaveCurrentHandError("Le nom de la Main est obligatoire.");
+      return;
+    }
+
+    const savableLines = currentHandSavableLines;
+
+    if (savableLines.length === 0) {
+      setSaveCurrentHandError(
+        "La Main actuelle ne contient aucun dé sauvegardable.",
+      );
+      return;
+    }
+
+    setIsSavingCurrentHand(true);
+    setSaveCurrentHandError(null);
+
+    try {
+      const newGroupId = await createGroupFromDraft(db, {
+        profileId: activeProfileEntry.profile.id,
+        groupName: safeName,
+        groupRuleId: launcher.draft.groupBehavior?.id ?? null,
+        draftDice: savableLines.map((line) => ({
+          label: line.label,
+          sides: line.sides,
+          qty: line.qty,
+          modifier: line.modifier,
+          sign: line.sign,
+          rule_id: line.ruleId,
+        })),
+      });
+
+      await reloadGroups(tableId);
+      notifyDataChanged();
+
+      setSelectedActionId(newGroupId);
+      setSelectedActionEntryId(null);
+
+      setShowSaveCurrentHandModal(false);
+      setCurrentHandName("");
+      setSaveCurrentHandError(null);
+    } catch (error) {
+      const message = isDuplicateGroupNameError(error)
+        ? error.message
+        : error instanceof Error
+          ? error.message
+          : "Impossible de sauvegarder cette Main.";
+
+      setSaveCurrentHandError(message);
+    } finally {
+      setIsSavingCurrentHand(false);
+    }
+  }, [
+    db,
+    tableId,
+    activeProfileEntry,
+    launcher.draft,
+    currentHandName,
+    isSavingCurrentHand,
+    reloadGroups,
+    notifyDataChanged,
+    currentHandSavableLines,
+  ]);
+
   const resetRoll3DTransientState = useCallback(() => {
     setIsRolling(false);
     setSkipRollRequestId(0);
@@ -635,6 +752,12 @@ export function Roll3DLauncherSurface({
     setNewAdjustedActionName("");
     setSaveAdjustedActionError(null);
     setIsSavingAdjustedAction(false);
+
+    setShowSaveCurrentHandModal(false);
+    setCurrentHandName("");
+    setSaveCurrentHandError(null);
+    setIsSavingCurrentHand(false);
+
     clearResult();
   }, [clearResult]);
 
@@ -1477,11 +1600,13 @@ export function Roll3DLauncherSurface({
             availableDiceSides={availableDiceSides}
             diceCount={effectiveDiceCount}
             maxDice={launcher.maxDice}
+            canSaveCurrentHand={!!activeProfileEntry}
             profileName={activeProfileEntry?.profile.name ?? null}
             actions={actionItems}
             onSelectSides={handleSelectFreeDie}
             onAddMultipleDice={handleAddMultipleFreeDice}
             onClearDice={handleClearDice}
+            onSaveCurrentHand={handleOpenSaveCurrentHand}
             selectedActionId={selectedActionId}
             selectedActionEntryId={selectedActionEntryId}
             actionEntryInsertMode={actionEntryInsertMode}
@@ -1534,6 +1659,19 @@ export function Roll3DLauncherSurface({
         onSaveAdjustedAction={handleSaveAdjustedAction}
       />
 
+      <Roll3DCurrentHandSaveModal
+        visible={showSaveCurrentHandModal}
+        profileName={activeProfileEntry?.profile.name ?? null}
+        diceCount={launcher.diceCount}
+        lineCount={currentHandSavableLines.length}
+        handName={currentHandName}
+        isSaving={isSavingCurrentHand}
+        errorMessage={saveCurrentHandError}
+        onChangeHandName={setCurrentHandName}
+        onClose={handleCloseSaveCurrentHand}
+        onSave={handleSaveCurrentHand}
+      />
+
       <Roll3DAdjustedActionSaveModal
         visible={
           showSaveAdjustedActionModal && !!lastAppliedActionEntryAdjustment
@@ -1548,6 +1686,237 @@ export function Roll3DLauncherSurface({
         onSaveAsNew={handleRequestSaveAdjustedActionAsNew}
       />
     </View>
+  );
+}
+
+function Roll3DCurrentHandSaveModal({
+  visible,
+  profileName,
+  diceCount,
+  lineCount,
+  handName,
+  isSaving,
+  errorMessage,
+  onChangeHandName,
+  onClose,
+  onSave,
+}: {
+  visible: boolean;
+  profileName: string | null;
+  diceCount: number;
+  lineCount: number;
+  handName: string;
+  isSaving: boolean;
+  errorMessage: string | null;
+  onChangeHandName: (value: string) => void;
+  onClose: () => void;
+  onSave: () => void;
+}) {
+  const canSave = handName.trim().length > 0 && diceCount > 0 && !isSaving;
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      onRequestClose={onClose}
+    >
+      <Pressable
+        onPress={onClose}
+        style={{
+          flex: 1,
+          backgroundColor: "rgba(0,0,0,0.66)",
+          alignItems: "center",
+          justifyContent: "center",
+          paddingHorizontal: 18,
+          paddingVertical: 28,
+        }}
+      >
+        <Pressable
+          onPress={() => undefined}
+          style={{
+            width: "100%",
+            maxWidth: 420,
+            borderRadius: 28,
+            borderWidth: 1,
+            borderColor: "rgba(232, 200, 120, 0.22)",
+            backgroundColor: "rgba(12, 14, 24, 0.98)",
+            padding: 18,
+          }}
+        >
+          <Text
+            style={{
+              color: "rgba(232, 200, 120, 0.94)",
+              fontSize: 11,
+              fontWeight: "900",
+              textTransform: "uppercase",
+              letterSpacing: 1.2,
+            }}
+          >
+            Sauvegarder la Main actuelle
+          </Text>
+
+          <Text
+            style={{
+              color: "rgba(255,255,255,0.94)",
+              fontSize: 20,
+              fontWeight: "900",
+              marginTop: 8,
+            }}
+          >
+            {diceCount} dé{diceCount > 1 ? "s" : ""} dans la Main
+          </Text>
+
+          <Text
+            style={{
+              color: "rgba(255,255,255,0.56)",
+              fontSize: 11,
+              fontWeight: "700",
+              lineHeight: 17,
+              marginTop: 6,
+            }}
+          >
+            {lineCount} ligne{lineCount > 1 ? "s" : ""}{" "}
+            {lineCount > 1 ? "seront enregistrées" : "sera enregistrée"}
+            {profileName ? ` pour ${profileName}` : ""}.
+          </Text>
+
+          <View
+            style={{
+              marginTop: 16,
+              gap: 8,
+            }}
+          >
+            <Text
+              style={{
+                color: "rgba(255,255,255,0.62)",
+                fontSize: 10,
+                fontWeight: "900",
+                textTransform: "uppercase",
+                letterSpacing: 0.8,
+              }}
+            >
+              Nom de la Main
+            </Text>
+
+            <TextInput
+              value={handName}
+              onChangeText={onChangeHandName}
+              placeholder="Ex. Attaque à l’épée"
+              placeholderTextColor="rgba(255,255,255,0.28)"
+              autoFocus
+              selectTextOnFocus
+              style={{
+                minHeight: 48,
+                borderRadius: 18,
+                borderWidth: 1,
+                borderColor: "rgba(255,255,255,0.10)",
+                backgroundColor: "rgba(0,0,0,0.24)",
+                color: "rgba(255,255,255,0.94)",
+                paddingHorizontal: 14,
+                fontSize: 13,
+                fontWeight: "800",
+              }}
+            />
+          </View>
+
+          {errorMessage ? (
+            <View
+              style={{
+                marginTop: 12,
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: "rgba(239, 111, 145, 0.28)",
+                backgroundColor: "rgba(239, 111, 145, 0.10)",
+                paddingHorizontal: 12,
+                paddingVertical: 10,
+              }}
+            >
+              <Text
+                style={{
+                  color: "rgba(239, 111, 145, 0.96)",
+                  fontSize: 11,
+                  fontWeight: "800",
+                  lineHeight: 16,
+                }}
+              >
+                {errorMessage}
+              </Text>
+            </View>
+          ) : null}
+
+          <Pressable
+            disabled={!canSave}
+            onPress={onSave}
+            style={({ pressed }) => ({
+              marginTop: 16,
+              opacity: !canSave ? 0.42 : pressed ? 0.78 : 1,
+              transform: [{ scale: pressed ? 0.985 : 1 }],
+            })}
+          >
+            <View
+              style={{
+                minHeight: 48,
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: "rgba(232, 200, 120, 0.30)",
+                backgroundColor: "rgba(232, 200, 120, 0.13)",
+                alignItems: "center",
+                justifyContent: "center",
+                paddingHorizontal: 12,
+              }}
+            >
+              <Text
+                style={{
+                  color: "rgba(232, 200, 120, 0.96)",
+                  fontSize: 12,
+                  fontWeight: "900",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.8,
+                  textAlign: "center",
+                }}
+              >
+                {isSaving ? "Sauvegarde..." : "Enregistrer cette Main"}
+              </Text>
+            </View>
+          </Pressable>
+
+          <Pressable
+            disabled={isSaving}
+            onPress={onClose}
+            style={({ pressed }) => ({
+              marginTop: 10,
+              opacity: isSaving ? 0.42 : pressed ? 0.72 : 1,
+            })}
+          >
+            <View
+              style={{
+                minHeight: 42,
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: "rgba(255,255,255,0.08)",
+                backgroundColor: "rgba(255,255,255,0.045)",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text
+                style={{
+                  color: "rgba(255,255,255,0.66)",
+                  fontSize: 11,
+                  fontWeight: "900",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.8,
+                }}
+              >
+                Annuler
+              </Text>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 

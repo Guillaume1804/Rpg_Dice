@@ -33,6 +33,17 @@ export type CreateRoll3DDieInput = {
   rollEntryMeta?: Roll3DEntryPresentationMeta | null;
 };
 
+export type Roll3DSavableDraftLine = {
+  rollEntryId: string;
+  label: string | null;
+  sides: Roll3DDieSides;
+  qty: number;
+  modifier: number;
+  sign: Roll3DDieSign;
+  ruleId: string | null;
+  source: Roll3DDieSource;
+};
+
 export function createEmptyRoll3DDraft(): Roll3DDraft {
   const now = Date.now();
 
@@ -155,4 +166,90 @@ export function appendDiceToRoll3DDraft(
       ),
     ],
   };
+}
+
+function getRoll3DSavableLineLabel(
+  die: Roll3DDieInstance,
+): string | null {
+  const entryLabel = die.rollEntryMeta?.entryLabel?.trim() ?? "";
+  const technicalLabel = die.rollEntryMeta?.technicalLabel?.trim() ?? "";
+
+  if (!entryLabel) {
+    return null;
+  }
+
+  if (technicalLabel && entryLabel === technicalLabel) {
+    return null;
+  }
+
+  return entryLabel;
+}
+
+function getRoll3DSavableLineKey(die: Roll3DDieInstance): string {
+  const behaviorId = die.behavior?.id ?? "no-rule";
+  const label = getRoll3DSavableLineLabel(die) ?? "no-label";
+
+  /**
+   * Les dés libres sont créés avec un rollEntryId individuel.
+   * On les regroupe donc par caractéristiques pour sauvegarder :
+   *
+   * 5 dés d6 libres
+   * → une seule ligne 5d6
+   */
+  if (die.source === "free") {
+    return [
+      "free",
+      die.sides,
+      die.sign,
+      die.modifier,
+      behaviorId,
+      label,
+    ].join(":");
+  }
+
+  /**
+   * Les dés provenant d’une Main ou d’une entrée préparée partagent
+   * normalement leur rollEntryId. On conserve cette séparation logique.
+   *
+   * On ajoute aussi les caractéristiques au cas où un draft incohérent
+   * contiendrait plusieurs configurations sous le même rollEntryId.
+   */
+  return [
+    "entry",
+    die.rollEntryId,
+    die.sides,
+    die.sign,
+    die.modifier,
+    behaviorId,
+    label,
+  ].join(":");
+}
+
+export function createRoll3DSavableLinesFromDraft(
+  draft: Roll3DDraft,
+): Roll3DSavableDraftLine[] {
+  const linesMap = new Map<string, Roll3DSavableDraftLine>();
+
+  for (const die of draft.dice) {
+    const key = getRoll3DSavableLineKey(die);
+    const existingLine = linesMap.get(key);
+
+    if (existingLine) {
+      existingLine.qty += 1;
+      continue;
+    }
+
+    linesMap.set(key, {
+      rollEntryId: die.rollEntryId,
+      label: getRoll3DSavableLineLabel(die),
+      sides: die.sides,
+      qty: 1,
+      modifier: die.modifier,
+      sign: die.sign,
+      ruleId: die.behavior?.id ?? null,
+      source: die.source,
+    });
+  }
+
+  return Array.from(linesMap.values());
 }
