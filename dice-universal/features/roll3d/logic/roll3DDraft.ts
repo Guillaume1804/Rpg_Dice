@@ -366,3 +366,64 @@ export function removeRoll3DDraftLine(params: {
     groupBehavior: nextDice.length > 0 ? params.draft.groupBehavior : null,
   };
 }
+
+function areRoll3DBehaviorRefsEqual(
+  current: Roll3DDieBehaviorRef | null,
+  next: Roll3DDieBehaviorRef | null,
+): boolean {
+  if (!current && !next) {
+    return true;
+  }
+
+  if (!current || !next) {
+    return false;
+  }
+
+  return (
+    current.id === next.id &&
+    current.label === next.label &&
+    current.kind === next.kind &&
+    current.rule.id === next.rule.id &&
+    current.rule.kind === next.rule.kind &&
+    current.rule.name === next.rule.name &&
+    current.rule.params_json === next.rule.params_json
+  );
+}
+
+export function updateRoll3DDraftLineBehavior(params: {
+  draft: Roll3DDraft;
+  lineKey: string;
+  behavior: Roll3DDieBehaviorRef | null;
+}): Roll3DDraft {
+  let hasMatchingDice = false;
+  let hasChanged = false;
+
+  const nextDice = params.draft.dice.map((die) => {
+    if (getRoll3DSavableLineKey(die) !== params.lineKey) {
+      return die;
+    }
+
+    hasMatchingDice = true;
+
+    if (areRoll3DBehaviorRefsEqual(die.behavior, params.behavior)) {
+      return die;
+    }
+
+    hasChanged = true;
+
+    return {
+      ...die,
+      behavior: params.behavior,
+    };
+  });
+
+  if (!hasMatchingDice || !hasChanged) {
+    return params.draft;
+  }
+
+  return {
+    ...params.draft,
+    updatedAt: Date.now(),
+    dice: nextDice,
+  };
+}

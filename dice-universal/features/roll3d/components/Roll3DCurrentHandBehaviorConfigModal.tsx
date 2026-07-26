@@ -1,0 +1,167 @@
+import { QuickBehaviorConfigModal } from "../../roll/components/QuickBehaviorConfigModal";
+import { useQuickBehaviorConfigModal } from "../../roll/hooks/useQuickBehaviorConfigModal";
+
+type QuickBehaviorConfigController = ReturnType<
+  typeof useQuickBehaviorConfigModal
+>;
+
+type Roll3DCurrentHandBehaviorConfigModalProps = {
+  visible: boolean;
+  controller: QuickBehaviorConfigController;
+  onClose: () => void;
+  onConfirm: () => void;
+};
+
+export function Roll3DCurrentHandBehaviorConfigModal({
+  visible,
+  controller,
+  onClose,
+  onConfirm,
+}: Roll3DCurrentHandBehaviorConfigModalProps) {
+  return (
+    <QuickBehaviorConfigModal
+      visible={visible}
+      pendingBehaviorKey={controller.pendingBehaviorKey}
+      pendingBehaviorLabel={controller.pendingBehaviorLabel}
+      pendingConfigVariant={controller.pendingConfigVariant}
+      keepDropMode={controller.keepDropMode}
+      keepDropTarget={controller.keepDropTarget}
+      keepDropCount={controller.keepDropCount}
+      onChangeKeepDropMode={controller.setKeepDropMode}
+      onChangeKeepDropTarget={controller.setKeepDropTarget}
+      onChangeKeepDropCount={controller.setKeepDropCount}
+      configKeepCount={controller.configKeepCount}
+      configDropCount={controller.configDropCount}
+      configResultMode={controller.configResultMode}
+      configCompare={controller.configCompare}
+      configSuccessThreshold={controller.configSuccessThreshold}
+      configCritSuccessFaces={controller.configCritSuccessFaces}
+      configCritFailureFaces={controller.configCritFailureFaces}
+      configTargetValue={controller.configTargetValue}
+      configDegreeStep={controller.configDegreeStep}
+      configCritSuccessMin={controller.configCritSuccessMin}
+      configCritSuccessMax={controller.configCritSuccessMax}
+      configCritFailureMin={controller.configCritFailureMin}
+      configCritFailureMax={controller.configCritFailureMax}
+      onChangeTargetValue={controller.setConfigTargetValue}
+      onChangeDegreeStep={controller.setConfigDegreeStep}
+      onChangeCritSuccessMin={controller.setConfigCritSuccessMin}
+      onChangeCritSuccessMax={controller.setConfigCritSuccessMax}
+      onChangeCritFailureMin={controller.setConfigCritFailureMin}
+      onChangeCritFailureMax={controller.setConfigCritFailureMax}
+      configSuccessAtOrAbove={controller.configSuccessAtOrAbove}
+      configFailFaces={controller.configFailFaces}
+      configGlitchRule={controller.configGlitchRule}
+      configCriticalFailureRule={controller.configCriticalFailureRule}
+      configCriticalSuccessRule={controller.configCriticalSuccessRule}
+      configCriticalSuccessThreshold={controller.configCriticalSuccessThreshold}
+      configCriticalSuccessFaces={controller.configCriticalSuccessFaces}
+      configRanges={controller.configRanges}
+      onChangeKeepCount={controller.setConfigKeepCount}
+      onChangeDropCount={controller.setConfigDropCount}
+      onChangeResultMode={controller.setConfigResultMode}
+      onChangeCompare={controller.setConfigCompare}
+      onChangeSuccessThreshold={controller.setConfigSuccessThreshold}
+      onChangeCritSuccessFaces={controller.setConfigCritSuccessFaces}
+      onChangeCritFailureFaces={controller.setConfigCritFailureFaces}
+      onChangeSuccessAtOrAbove={controller.setConfigSuccessAtOrAbove}
+      onChangeFailFaces={controller.setConfigFailFaces}
+      onChangeGlitchRule={controller.setConfigGlitchRule}
+      onChangeCriticalFailureRule={controller.setConfigCriticalFailureRule}
+      onChangeCriticalSuccessRule={controller.setConfigCriticalSuccessRule}
+      onChangeCriticalSuccessThreshold={
+        controller.setConfigCriticalSuccessThreshold
+      }
+      onChangeCriticalSuccessFaces={controller.setConfigCriticalSuccessFaces}
+      onUpdateRange={controller.updateRange}
+      onAddRange={controller.addRange}
+      onRemoveRange={controller.removeRange}
+      pipelineRerollFaces={controller.pipelineRerollFaces}
+      pipelineRerollOnce={controller.pipelineRerollOnce}
+      pipelineExplodeFaces={controller.pipelineExplodeFaces}
+      pipelineMaxRerolls={controller.pipelineMaxRerolls}
+      pipelineMaxExplosions={controller.pipelineMaxExplosions}
+      pipelineKeepHighest={controller.pipelineKeepHighest}
+      pipelineKeepLowest={controller.pipelineKeepLowest}
+      pipelineDropHighest={controller.pipelineDropHighest}
+      pipelineDropLowest={controller.pipelineDropLowest}
+      pipelineCountSuccessAtOrAbove={controller.pipelineCountSuccessAtOrAbove}
+      pipelineCountEqualFaces={controller.pipelineCountEqualFaces}
+      pipelineCountRangeMin={controller.pipelineCountRangeMin}
+      pipelineCountRangeMax={controller.pipelineCountRangeMax}
+      pipelineOutput={controller.pipelineOutput}
+      pipelineSuccessThreshold={controller.pipelineSuccessThreshold}
+      pipelineCompare={controller.pipelineCompare}
+      pipelineCritSuccessFaces={controller.pipelineCritSuccessFaces}
+      pipelineCritFailureFaces={controller.pipelineCritFailureFaces}
+      pipelineComplicationFaces={controller.pipelineComplicationFaces}
+      pipelineComplicationRule={controller.pipelineComplicationRule}
+      pipelineCriticalFailureRule={controller.pipelineCriticalFailureRule}
+      pipelineCriticalSuccessRule={controller.pipelineCriticalSuccessRule}
+      pipelineCriticalSuccessThreshold={
+        controller.pipelineCriticalSuccessThreshold
+      }
+      pipelineCriticalSuccessFaces={controller.pipelineCriticalSuccessFaces}
+      pipelineDegreeTarget={controller.pipelineDegreeTarget}
+      pipelineDegreeCompare={controller.pipelineDegreeCompare}
+      pipelineDegreeStep={controller.pipelineDegreeStep}
+      pipelineDegreeCritSuccessMin={controller.pipelineDegreeCritSuccessMin}
+      pipelineDegreeCritSuccessMax={controller.pipelineDegreeCritSuccessMax}
+      pipelineDegreeCritFailureMin={controller.pipelineDegreeCritFailureMin}
+      pipelineDegreeCritFailureMax={controller.pipelineDegreeCritFailureMax}
+      onChangePipelineRerollFaces={controller.setPipelineRerollFaces}
+      onChangePipelineRerollOnce={controller.setPipelineRerollOnce}
+      onChangePipelineExplodeFaces={controller.setPipelineExplodeFaces}
+      onChangePipelineMaxRerolls={controller.setPipelineMaxRerolls}
+      onChangePipelineMaxExplosions={controller.setPipelineMaxExplosions}
+      onChangePipelineKeepHighest={controller.setPipelineKeepHighest}
+      onChangePipelineKeepLowest={controller.setPipelineKeepLowest}
+      onChangePipelineDropHighest={controller.setPipelineDropHighest}
+      onChangePipelineDropLowest={controller.setPipelineDropLowest}
+      onChangePipelineCountSuccessAtOrAbove={
+        controller.setPipelineCountSuccessAtOrAbove
+      }
+      onChangePipelineCountEqualFaces={controller.setPipelineCountEqualFaces}
+      onChangePipelineCountRangeMin={controller.setPipelineCountRangeMin}
+      onChangePipelineCountRangeMax={controller.setPipelineCountRangeMax}
+      onChangePipelineOutput={controller.setPipelineOutput}
+      onChangePipelineSuccessThreshold={controller.setPipelineSuccessThreshold}
+      onChangePipelineCompare={controller.setPipelineCompare}
+      onChangePipelineCritSuccessFaces={controller.setPipelineCritSuccessFaces}
+      onChangePipelineCritFailureFaces={controller.setPipelineCritFailureFaces}
+      onChangePipelineComplicationFaces={
+        controller.setPipelineComplicationFaces
+      }
+      onChangePipelineComplicationRule={controller.setPipelineComplicationRule}
+      onChangePipelineCriticalFailureRule={
+        controller.setPipelineCriticalFailureRule
+      }
+      onChangePipelineCriticalSuccessRule={
+        controller.setPipelineCriticalSuccessRule
+      }
+      onChangePipelineCriticalSuccessThreshold={
+        controller.setPipelineCriticalSuccessThreshold
+      }
+      onChangePipelineCriticalSuccessFaces={
+        controller.setPipelineCriticalSuccessFaces
+      }
+      onChangePipelineDegreeTarget={controller.setPipelineDegreeTarget}
+      onChangePipelineDegreeCompare={controller.setPipelineDegreeCompare}
+      onChangePipelineDegreeStep={controller.setPipelineDegreeStep}
+      onChangePipelineDegreeCritSuccessMin={
+        controller.setPipelineDegreeCritSuccessMin
+      }
+      onChangePipelineDegreeCritSuccessMax={
+        controller.setPipelineDegreeCritSuccessMax
+      }
+      onChangePipelineDegreeCritFailureMin={
+        controller.setPipelineDegreeCritFailureMin
+      }
+      onChangePipelineDegreeCritFailureMax={
+        controller.setPipelineDegreeCritFailureMax
+      }
+      onClose={onClose}
+      onConfirm={onConfirm}
+    />
+  );
+}

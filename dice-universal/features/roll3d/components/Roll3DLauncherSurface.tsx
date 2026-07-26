@@ -42,6 +42,7 @@ import {
   createRoll3DSavableLinesFromDraft,
   removeRoll3DDraftLine,
   updateRoll3DDraftLine,
+  updateRoll3DDraftLineBehavior,
 } from "../logic/roll3DDraft";
 
 import { Roll3DCurrentHandEditSheet } from "./Roll3DCurrentHandEditSheet";
@@ -64,6 +65,19 @@ import type { Db } from "../../../data/db/database";
 import { getRoll3DAvailableDiceSidesForTable } from "../logic/roll3DAvailableDice";
 import { Roll3DRollButton } from "./Roll3DRollButton";
 import { Roll3DContextHeader } from "./Roll3DContextHeader";
+
+import { QuickDieBehaviorPickerModal } from "../../roll/components/QuickDieBehaviorPickerModal";
+
+import { useQuickBehaviorConfigModal } from "../../roll/hooks/useQuickBehaviorConfigModal";
+import { useQuickDieBehaviorPicker } from "../../roll/hooks/useQuickDieBehaviorPicker";
+
+import type { QuickPresetSelection } from "../../roll/hooks/useQuickRollDraft";
+
+import { buildDraftTempRuleFromPreset } from "../../roll/helpers/buildDraftTempRuleFromPreset";
+
+import { Roll3DCurrentHandBehaviorConfigModal } from "./Roll3DCurrentHandBehaviorConfigModal";
+
+import { createRoll3DBehaviorRefFromRuleLike } from "../../preparation";
 
 type Roll3DLauncherSurfaceProps = {
   height?: number;
@@ -371,10 +385,11 @@ export function Roll3DLauncherSurface({
     [activeTableId],
   );
 
-  const { table, profiles, rulesMap, reloadGroups } = useRollTableData({
-    db,
-    tableId,
-  });
+  const { table, profiles, rulesMap, availableRules, reloadGroups } =
+    useRollTableData({
+      db,
+      tableId,
+    });
 
   const availableDiceSides = useMemo(
     () => getRoll3DAvailableDiceSidesForTable(table),
@@ -402,6 +417,11 @@ export function Roll3DLauncherSurface({
 
   const [currentHandEditDraft, setCurrentHandEditDraft] =
     useState<Roll3DDraft | null>(null);
+
+  const [currentHandBehaviorTargetKey, setCurrentHandBehaviorTargetKey] =
+    useState<string | null>(null);
+
+  const currentHandQuickBehaviorConfig = useQuickBehaviorConfigModal();
 
   const currentHandEditLines = useMemo(
     () =>
@@ -471,6 +491,202 @@ export function Roll3DLauncherSurface({
     setAvailableTables(tables);
   }, [db]);
 
+  const applyBehaviorPresetToCurrentHandLine = useCallback(
+    (lineKey: string, preset: QuickPresetSelection): boolean => {
+      if (!currentHandEditDraft) {
+        return false;
+      }
+
+      const behaviorRef = createRoll3DBehaviorRefFromRuleLike(preset.rule);
+
+      if (!behaviorRef) {
+        return false;
+      }
+
+      setCurrentHandEditDraft(
+        updateRoll3DDraftLineBehavior({
+          draft: currentHandEditDraft,
+          lineKey,
+          behavior: behaviorRef,
+        }),
+      );
+
+      return true;
+    },
+    [currentHandEditDraft],
+  );
+
+  const currentHandDieBehaviorPicker = useQuickDieBehaviorPicker({
+    /**
+     * Ce flux ne crée jamais un nouveau dé.
+     * Il modifie uniquement une ligne déjà présente dans le draft temporaire.
+     */
+    addQuickPresetDie: () => "unused-roll-3d-entry",
+
+    quickBehaviorConfig: currentHandQuickBehaviorConfig,
+    availableRules,
+
+    onApplyPresetToExistingDraftDie: (_sides, preset) => {
+      if (!currentHandBehaviorTargetKey) {
+        return false;
+      }
+
+      const applied = applyBehaviorPresetToCurrentHandLine(
+        currentHandBehaviorTargetKey,
+        preset,
+      );
+
+      if (applied) {
+        setCurrentHandBehaviorTargetKey(null);
+      }
+
+      return applied;
+    },
+  });
+
+  const currentHandBehaviorOptions = currentHandDieBehaviorPicker.behaviors.map(
+    (option) => {
+      const definition = currentHandDieBehaviorPicker.getDefinition(
+        option.behaviorKey,
+      );
+
+      const savedRuleScope = option.sourceRule?.scope ?? null;
+
+      const isGroupOnly =
+        savedRuleScope === "group" ||
+        (!option.sourceRule && definition?.defaultScope === "group");
+
+      if (!isGroupOnly) {
+        return option;
+      }
+
+      return {
+        ...option,
+        enabled: false,
+        description:
+          "Ce comportement s’applique à toute la Main. Sa configuration globale sera ajoutée séparément.",
+      };
+    },
+  );
+
+  const handleConfigureCurrentHandLineBehavior = useCallback(
+    (lineKey: string) => {
+      if (!currentHandEditDraft) {
+        return;
+      }
+
+      const line = createRoll3DSavableLinesFromDraft(currentHandEditDraft).find(
+        (entry) => entry.key === lineKey,
+      );
+
+      if (!line) {
+        return;
+      }
+
+      setCurrentHandBehaviorTargetKey(lineKey);
+
+      currentHandQuickBehaviorConfig.close();
+      currentHandDieBehaviorPicker.open(line.sides);
+    },
+    [
+      currentHandEditDraft,
+      currentHandQuickBehaviorConfig,
+      currentHandDieBehaviorPicker,
+    ],
+  );
+
+  const handleClearCurrentHandLineBehavior = useCallback((lineKey: string) => {
+    setCurrentHandEditDraft((current) => {
+      if (!current) {
+        return current;
+      }
+
+      return updateRoll3DDraftLineBehavior({
+        draft: current,
+        lineKey,
+        behavior: null,
+      });
+    });
+  }, []);
+
+  const handleConfirmCurrentHandBehaviorConfig = useCallback(() => {
+    const behaviorKey = currentHandQuickBehaviorConfig.pendingBehaviorKey;
+
+    const editingDieSides = currentHandDieBehaviorPicker.editingDieSides;
+
+    if (
+      !currentHandBehaviorTargetKey ||
+      !behaviorKey ||
+      editingDieSides == null
+    ) {
+      return;
+    }
+
+    if (!currentHandQuickBehaviorConfig.isValid()) {
+      return;
+    }
+
+    const behaviorLabel =
+      currentHandQuickBehaviorConfig.pendingBehaviorLabel || "Comportement";
+
+    const tempRule = buildDraftTempRuleFromPreset({
+      preset: {
+        key: behaviorKey,
+        label: behaviorLabel,
+        scope: currentHandQuickBehaviorConfig.pendingBehaviorScope,
+        behaviorKey,
+        defaultValues: currentHandQuickBehaviorConfig.buildDefaultValues(),
+      },
+      sides: editingDieSides,
+      actionName: behaviorLabel,
+    });
+
+    const behaviorRef = createRoll3DBehaviorRefFromRuleLike(tempRule);
+
+    if (!behaviorRef) {
+      return;
+    }
+
+    setCurrentHandEditDraft((current) => {
+      if (!current) {
+        return current;
+      }
+
+      return updateRoll3DDraftLineBehavior({
+        draft: current,
+        lineKey: currentHandBehaviorTargetKey,
+        behavior: behaviorRef,
+      });
+    });
+
+    currentHandQuickBehaviorConfig.close();
+    currentHandDieBehaviorPicker.close();
+    setCurrentHandBehaviorTargetKey(null);
+  }, [
+    currentHandBehaviorTargetKey,
+    currentHandQuickBehaviorConfig,
+    currentHandDieBehaviorPicker,
+  ]);
+
+  const handleCloseCurrentHandBehaviorPicker = useCallback(() => {
+    currentHandDieBehaviorPicker.close();
+    currentHandQuickBehaviorConfig.close();
+    setCurrentHandBehaviorTargetKey(null);
+  }, [currentHandDieBehaviorPicker, currentHandQuickBehaviorConfig]);
+
+  const handleBackToCurrentHandBehaviorPicker = useCallback(() => {
+    const sides = currentHandDieBehaviorPicker.editingDieSides;
+
+    currentHandQuickBehaviorConfig.close();
+
+    if (sides != null) {
+      currentHandDieBehaviorPicker.open(sides);
+      return;
+    }
+
+    setCurrentHandBehaviorTargetKey(null);
+  }, [currentHandDieBehaviorPicker, currentHandQuickBehaviorConfig]);
+
   useEffect(() => {
     void reloadAvailableTables();
   }, [revision, reloadAvailableTables]);
@@ -491,6 +707,7 @@ export function Roll3DLauncherSurface({
         setIsSavingCurrentHand(false);
         resetLauncher();
         setCurrentHandEditDraft(null);
+        setCurrentHandBehaviorTargetKey(null);
       };
     }, [resetLauncher]),
   );
@@ -659,8 +876,11 @@ export function Roll3DLauncherSurface({
     setActionEntryAdjustment(null);
     setLastAppliedActionEntryAdjustment(null);
     setCurrentHandEditDraft(null);
+    setCurrentHandBehaviorTargetKey(null);
+    currentHandQuickBehaviorConfig.close();
+    currentHandDieBehaviorPicker.close();
     clearDice();
-  }, [clearDice]);
+  }, [clearDice, currentHandQuickBehaviorConfig, currentHandDieBehaviorPicker]);
 
   const handleOpenCurrentHandEdit = useCallback(() => {
     if (launcher.draft.dice.length === 0) {
@@ -675,7 +895,11 @@ export function Roll3DLauncherSurface({
 
   const handleCloseCurrentHandEdit = useCallback(() => {
     setCurrentHandEditDraft(null);
-  }, []);
+    setCurrentHandBehaviorTargetKey(null);
+
+    currentHandQuickBehaviorConfig.close();
+    currentHandDieBehaviorPicker.close();
+  }, [currentHandQuickBehaviorConfig, currentHandDieBehaviorPicker]);
 
   const handleOpenSaveCurrentHand = useCallback(() => {
     if (launcher.diceCount <= 0 || !activeProfileEntry) {
@@ -880,8 +1104,16 @@ export function Roll3DLauncherSurface({
     setSceneVersion((current) => current + 1);
     loadDraft(currentHandEditDraft);
 
-    setCurrentHandEditDraft(null);
-  }, [currentHandEditDraft, clearResult, loadDraft]);
+    setCurrentHandBehaviorTargetKey(null);
+    currentHandQuickBehaviorConfig.close();
+    currentHandDieBehaviorPicker.close();
+  }, [
+    currentHandEditDraft,
+    clearResult,
+    loadDraft,
+    currentHandQuickBehaviorConfig,
+    currentHandDieBehaviorPicker,
+  ]);
 
   const resetRoll3DTransientState = useCallback(() => {
     setIsRolling(false);
@@ -903,8 +1135,16 @@ export function Roll3DLauncherSurface({
 
     setCurrentHandEditDraft(null);
 
+    setCurrentHandBehaviorTargetKey(null);
+    currentHandQuickBehaviorConfig.close();
+    currentHandDieBehaviorPicker.close();
+
     clearResult();
-  }, [clearResult]);
+  }, [
+    clearResult,
+    currentHandQuickBehaviorConfig,
+    currentHandDieBehaviorPicker,
+  ]);
 
   const handleSelectTable = useCallback(
     async (nextTableId: string) => {
@@ -975,11 +1215,21 @@ export function Roll3DLauncherSurface({
 
       setCurrentHandEditDraft(null);
 
+      setCurrentHandBehaviorTargetKey(null);
+      currentHandQuickBehaviorConfig.close();
+      currentHandDieBehaviorPicker.close();
+
       clearResult();
       setIsRolling(false);
       setSkipRollRequestId(0);
     },
-    [selectedProfileId, profiles, clearResult],
+    [
+      selectedProfileId,
+      profiles,
+      clearResult,
+      currentHandQuickBehaviorConfig,
+      currentHandDieBehaviorPicker,
+    ],
   );
 
   const handleSelectAction = useCallback((actionId: string) => {
@@ -1808,7 +2058,7 @@ export function Roll3DLauncherSurface({
       />
 
       <Roll3DCurrentHandEditSheet
-        visible={!!currentHandEditDraft}
+        visible={!!currentHandEditDraft && currentHandBehaviorTargetKey == null}
         lines={currentHandEditLines}
         diceCount={currentHandEditDraft?.dice.length ?? 0}
         maxDice={launcher.maxDice}
@@ -1818,6 +2068,29 @@ export function Roll3DLauncherSurface({
         onChangeModifier={handleChangeCurrentHandLineModifier}
         onToggleSign={handleToggleCurrentHandLineSign}
         onRemoveLine={handleRemoveCurrentHandLine}
+        onConfigureBehavior={handleConfigureCurrentHandLineBehavior}
+        onClearBehavior={handleClearCurrentHandLineBehavior}
+      />
+
+      <QuickDieBehaviorPickerModal
+        visible={
+          !!currentHandBehaviorTargetKey && currentHandDieBehaviorPicker.visible
+        }
+        editingDieSides={currentHandDieBehaviorPicker.editingDieSides}
+        behaviors={currentHandBehaviorOptions}
+        getDefinition={currentHandDieBehaviorPicker.getDefinition}
+        onSelectBehavior={currentHandDieBehaviorPicker.select}
+        onClose={handleCloseCurrentHandBehaviorPicker}
+      />
+
+      <Roll3DCurrentHandBehaviorConfigModal
+        visible={
+          !!currentHandBehaviorTargetKey &&
+          currentHandQuickBehaviorConfig.visible
+        }
+        controller={currentHandQuickBehaviorConfig}
+        onClose={handleBackToCurrentHandBehaviorPicker}
+        onConfirm={handleConfirmCurrentHandBehaviorConfig}
       />
 
       <Roll3DCurrentHandSaveModal

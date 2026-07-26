@@ -1,3 +1,5 @@
+// dice-universal\features\roll3d\components\Roll3DCurrentHandEditSheet.tsx
+
 import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -15,6 +17,8 @@ type Roll3DCurrentHandEditSheetProps = {
   onChangeModifier: (lineKey: string, delta: number) => void;
   onToggleSign: (lineKey: string) => void;
   onRemoveLine: (lineKey: string) => void;
+  onConfigureBehavior: (lineKey: string) => void;
+  onClearBehavior: (lineKey: string) => void;
 };
 
 function formatLineFormula(line: Roll3DSavableDraftLine) {
@@ -160,6 +164,8 @@ function CurrentHandLineCard({
   onChangeModifier,
   onToggleSign,
   onRemove,
+  onConfigureBehavior,
+  onClearBehavior,
 }: {
   line: Roll3DSavableDraftLine;
   totalDiceCount: number;
@@ -168,6 +174,8 @@ function CurrentHandLineCard({
   onChangeModifier: (delta: number) => void;
   onToggleSign: () => void;
   onRemove: () => void;
+  onConfigureBehavior: () => void;
+  onClearBehavior: () => void;
 }) {
   const premium = usePremiumTheme();
 
@@ -293,6 +301,98 @@ function CurrentHandLineCard({
         />
       </View>
 
+      <View style={{ gap: 7 }}>
+        <Text
+          style={{
+            color: premium.colors.text.muted,
+            fontSize: 9,
+            fontWeight: "900",
+            textTransform: "uppercase",
+            letterSpacing: 0.7,
+          }}
+        >
+          Comportement
+        </Text>
+
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          <Pressable
+            onPress={onConfigureBehavior}
+            style={({ pressed }) => ({
+              flex: 1,
+              opacity: pressed ? 0.76 : 1,
+              transform: [
+                {
+                  scale: pressed ? premium.animation.pressScale : 1,
+                },
+              ],
+            })}
+          >
+            <View
+              style={{
+                minHeight: 40,
+                borderRadius: premium.radius.pill,
+                borderWidth: 1,
+                borderColor: "rgba(232, 200, 120, 0.24)",
+                backgroundColor: "rgba(232, 200, 120, 0.08)",
+                alignItems: "center",
+                justifyContent: "center",
+                paddingHorizontal: 11,
+              }}
+            >
+              <Text
+                numberOfLines={1}
+                style={{
+                  color: premium.colors.accent.primary,
+                  fontSize: 10,
+                  fontWeight: "900",
+                }}
+              >
+                {line.behaviorLabel ?? "Somme simple"}
+              </Text>
+            </View>
+          </Pressable>
+
+          {line.ruleId ? (
+            <Pressable
+              onPress={onClearBehavior}
+              style={({ pressed }) => ({
+                opacity: pressed ? 0.72 : 1,
+              })}
+            >
+              <View
+                style={{
+                  minHeight: 40,
+                  borderRadius: premium.radius.pill,
+                  borderWidth: 1,
+                  borderColor: "rgba(255,255,255,0.09)",
+                  backgroundColor: "rgba(255,255,255,0.045)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  paddingHorizontal: 11,
+                }}
+              >
+                <Text
+                  style={{
+                    color: premium.colors.text.secondary,
+                    fontSize: 9,
+                    fontWeight: "900",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Réinitialiser
+                </Text>
+              </View>
+            </Pressable>
+          ) : null}
+        </View>
+      </View>
+
       <Pressable
         onPress={onToggleSign}
         style={({ pressed }) => ({
@@ -352,6 +452,8 @@ export function Roll3DCurrentHandEditSheet({
   onChangeModifier,
   onToggleSign,
   onRemoveLine,
+  onConfigureBehavior,
+  onClearBehavior,
 }: Roll3DCurrentHandEditSheetProps) {
   const premium = usePremiumTheme();
   const insets = useSafeAreaInsets();
@@ -486,6 +588,8 @@ export function Roll3DCurrentHandEditSheet({
                 onChangeModifier={(delta) => onChangeModifier(line.key, delta)}
                 onToggleSign={() => onToggleSign(line.key)}
                 onRemove={() => onRemoveLine(line.key)}
+                onConfigureBehavior={() => onConfigureBehavior(line.key)}
+                onClearBehavior={() => onClearBehavior(line.key)}
               />
             ))}
           </ScrollView>
