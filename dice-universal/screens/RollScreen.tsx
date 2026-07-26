@@ -109,13 +109,9 @@ import {
 import { runPremiumTiming } from "../theme/premium/premiumAnimation";
 import { usePremiumTheme } from "../theme/premium/usePremiumTheme";
 
-import type {
-  Roll3DDieSource,
-} from "../features/roll3d/types";
+import type { Roll3DDieSource } from "../features/roll3d/types";
 
-import {
-  createRoll3DDraftFromDice,
-} from "../features/roll3d/logic/roll3DDraft";
+import { createRoll3DDraftFromDice } from "../features/roll3d/logic/roll3DDraft";
 import { createRoll3DHandoff } from "../features/roll3d/logic/roll3DHandoff";
 
 import {
@@ -165,8 +161,7 @@ export default function RollScreen() {
 
   const baseStageGap = getPreparationBaseStageGap(cockpitDensity);
 
-  const resultToDiceOverlap =
-    getPreparationResultToDiceOverlap(cockpitDensity);
+  const resultToDiceOverlap = getPreparationResultToDiceOverlap(cockpitDensity);
 
   const diceToPreparedOverlap =
     getPreparationDiceToPreparedOverlap(cockpitDensity);
@@ -595,7 +590,8 @@ export default function RollScreen() {
 
       const sourceGroupId = editablePreparedDraftGroup?.id ?? null;
 
-      const actionNameValidation = validateRequiredActionName(trimmedActionName);
+      const actionNameValidation =
+        validateRequiredActionName(trimmedActionName);
 
       if (!actionNameValidation.valid) {
         Alert.alert("Nom d’action obligatoire", actionNameValidation.message);
@@ -929,9 +925,9 @@ export default function RollScreen() {
           dice: group.dice.map((die, dieIndex) =>
             dieIndex === index
               ? {
-                ...die,
-                label,
-              }
+                  ...die,
+                  label,
+                }
               : die,
           ),
         };
@@ -1652,23 +1648,23 @@ export default function RollScreen() {
     () =>
       profiles.length > 0
         ? profiles.map(
-          (entry): SessionMenuItem => ({
-            id: entry.profile.id,
-            label: entry.profile.name,
-            description:
-              entry.profile.id === activeProfile?.id
-                ? "Profil actuellement actif."
-                : "Activer ce profil pour ses actions rapides.",
-            icon: entry.profile.id === activeProfile?.id ? "✦" : "◇",
-            selected: entry.profile.id === activeProfile?.id,
-            onPress: (): void => {
-              animatePreparationLayout();
+            (entry): SessionMenuItem => ({
+              id: entry.profile.id,
+              label: entry.profile.name,
+              description:
+                entry.profile.id === activeProfile?.id
+                  ? "Profil actuellement actif."
+                  : "Activer ce profil pour ses actions rapides.",
+              icon: entry.profile.id === activeProfile?.id ? "✦" : "◇",
+              selected: entry.profile.id === activeProfile?.id,
+              onPress: (): void => {
+                animatePreparationLayout();
 
-              setSelectedProfileId(entry.profile.id);
-              setShowProfileSessionMenu(false);
-            },
-          }),
-        )
+                setSelectedProfileId(entry.profile.id);
+                setShowProfileSessionMenu(false);
+              },
+            }),
+          )
         : [createNoProfileSessionMenuItem()],
     [profiles, activeProfile?.id],
   );
@@ -1811,49 +1807,49 @@ export default function RollScreen() {
                 onEdit={
                   (preparedRoll?.source === "free" ||
                     preparedRoll?.source === "action_draft") &&
-                    hasPreparedRoll
+                  hasPreparedRoll
                     ? handleOpenPreparedEdit
                     : undefined
                 }
                 onAdjustLineQty={
                   (preparedRoll?.source === "free" ||
                     preparedRoll?.source === "action_draft") &&
-                    hasPreparedRoll
+                  hasPreparedRoll
                     ? handleAdjustPreparedDieQty
                     : undefined
                 }
                 onAdjustLineModifier={
                   (preparedRoll?.source === "free" ||
                     preparedRoll?.source === "action_draft") &&
-                    hasPreparedRoll
+                  hasPreparedRoll
                     ? handleAdjustPreparedDieModifier
                     : undefined
                 }
                 onToggleLineSign={
                   (preparedRoll?.source === "free" ||
                     preparedRoll?.source === "action_draft") &&
-                    hasPreparedRoll
+                  hasPreparedRoll
                     ? handleTogglePreparedDieSign
                     : undefined
                 }
                 onRemoveLine={
                   (preparedRoll?.source === "free" ||
                     preparedRoll?.source === "action_draft") &&
-                    hasPreparedRoll
+                  hasPreparedRoll
                     ? handleRemovePreparedDie
                     : undefined
                 }
                 onConfigureLineBehavior={
                   (preparedRoll?.source === "free" ||
                     preparedRoll?.source === "action_draft") &&
-                    hasPreparedRoll
+                  hasPreparedRoll
                     ? handleConfigurePreparedDieBehaviorFromTile
                     : undefined
                 }
                 onRollLine={
                   (preparedRoll?.source === "free" ||
                     preparedRoll?.source === "action_draft") &&
-                    hasPreparedRoll
+                  hasPreparedRoll
                     ? handleRollPreparedLine
                     : undefined
                 }
@@ -1865,21 +1861,21 @@ export default function RollScreen() {
                 onSave={
                   (preparedRoll?.source === "free" ||
                     preparedRoll?.source === "action_draft") &&
-                    hasPreparedRoll
+                  hasPreparedRoll
                     ? handleOpenPreparedSave
                     : undefined
                 }
                 onRenameLine={
                   (preparedRoll?.source === "free" ||
                     preparedRoll?.source === "action_draft") &&
-                    hasPreparedRoll
+                  hasPreparedRoll
                     ? handleRenamePreparedDie
                     : undefined
                 }
                 onFocusLine={
                   (preparedRoll?.source === "free" ||
                     preparedRoll?.source === "action_draft") &&
-                    hasPreparedRoll
+                  hasPreparedRoll
                     ? handleFocusPreparedLine
                     : undefined
                 }
@@ -1913,49 +1909,49 @@ export default function RollScreen() {
 
       {hasActiveTable
         ? (() => {
-          const floatingAnchorRight = layout.horizontalPadding + 2;
+            const floatingAnchorRight = layout.horizontalPadding + 2;
 
-          const floatingAnchorBottom =
-            screenBottomSafePadding +
-            (isFocusedLineMode
-              ? 104
-              : hasPreparedRoll || hasResult
-                ? 84
-                : 118);
+            const floatingAnchorBottom =
+              screenBottomSafePadding +
+              (isFocusedLineMode
+                ? 104
+                : hasPreparedRoll || hasResult
+                  ? 84
+                  : 118);
 
-          const floatingTopLimit =
-            screenTopPadding + (isVerySmallScreen ? 76 : 88);
+            const floatingTopLimit =
+              screenTopPadding + (isVerySmallScreen ? 76 : 88);
 
-          const floatingBottomLimit = Math.max(layout.insets.bottom + 14, 34);
+            const floatingBottomLimit = Math.max(layout.insets.bottom + 14, 34);
 
-          return (
-            <View
-              pointerEvents="box-none"
-              style={{
-                position: "absolute",
-                right: floatingAnchorRight,
-                bottom: floatingAnchorBottom,
-                zIndex: 35,
-                elevation: 35,
-              }}
-            >
-              <ActionRail
-                profileName={activeProfile?.name ?? null}
-                actions={actionRailItems}
-                selectedActionId={
-                  preparedRoll?.source === "action"
-                    ? preparedRoll.groupId
-                    : null
-                }
-                onPrepareAction={handlePrepareSavedAction}
-                floatingAnchorRight={floatingAnchorRight}
-                floatingAnchorBottom={floatingAnchorBottom}
-                floatingTopLimit={floatingTopLimit}
-                floatingBottomLimit={floatingBottomLimit}
-              />
-            </View>
-          );
-        })()
+            return (
+              <View
+                pointerEvents="box-none"
+                style={{
+                  position: "absolute",
+                  right: floatingAnchorRight,
+                  bottom: floatingAnchorBottom,
+                  zIndex: 35,
+                  elevation: 35,
+                }}
+              >
+                <ActionRail
+                  profileName={activeProfile?.name ?? null}
+                  actions={actionRailItems}
+                  selectedActionId={
+                    preparedRoll?.source === "action"
+                      ? preparedRoll.groupId
+                      : null
+                  }
+                  onPrepareAction={handlePrepareSavedAction}
+                  floatingAnchorRight={floatingAnchorRight}
+                  floatingAnchorBottom={floatingAnchorBottom}
+                  floatingTopLimit={floatingTopLimit}
+                  floatingBottomLimit={floatingBottomLimit}
+                />
+              </View>
+            );
+          })()
         : null}
 
       <Animated.View
@@ -2170,8 +2166,20 @@ export default function RollScreen() {
           onAddRange={quickBehaviorConfig.addRange}
           onRemoveRange={quickBehaviorConfig.removeRange}
           onClose={() => {
-            setDraftBehaviorTarget(null);
+            const editingDieSides = quickDieBehaviorPicker.editingDieSides;
+
             quickBehaviorConfig.close();
+
+            /**
+             * Annuler la configuration signifie revenir au choix
+             * du comportement pour le même dé.
+             */
+            if (editingDieSides != null) {
+              quickDieBehaviorPicker.open(editingDieSides);
+              return;
+            }
+
+            quickDieBehaviorPicker.close();
           }}
           onConfirm={handleConfirmBehaviorConfig}
           pipelineRerollFaces={quickBehaviorConfig.pipelineRerollFaces}

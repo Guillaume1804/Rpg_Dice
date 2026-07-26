@@ -308,12 +308,21 @@ export function useQuickDieBehaviorPicker({
       option.variant === "keep_drop" ||
       behaviorNeedsSelectionConfig(behaviorKey)
     ) {
+      /**
+       * On masque le sélecteur sans effacer editingDieSides.
+       *
+       * La configuration a encore besoin de connaître le type de dé ciblé
+       * lors de la confirmation.
+       */
+      setVisible(false);
+
       quickBehaviorConfig.open({
         behaviorKey,
         label,
         scope: quickScope,
         variant: option.variant,
       });
+
       return;
     }
 
