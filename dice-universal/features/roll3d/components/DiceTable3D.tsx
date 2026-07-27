@@ -20,7 +20,10 @@ import * as THREE from "three";
 import { createDiceMesh } from "../renderer/DiceMeshFactory";
 import { Roll3DPhysicsWorld } from "../physics/Roll3DPhysicsWorld";
 import type { Roll3DDieInstance } from "../types";
-import type { Roll3DPhysicsTransform } from "../physics/Roll3DPhysicsTypes";
+import type {
+  Roll3DPhysicsTransform,
+  Roll3DPhysicsVector3,
+} from "../physics/Roll3DPhysicsTypes";
 
 type DiceTable3DProps = {
   height?: number;
@@ -61,6 +64,11 @@ type DiceTableViewport = {
   height: number;
 };
 
+type DiceGestureSample = {
+  point: THREE.Vector3;
+  capturedAt: number;
+};
+
 type DiceDragState = {
   touchedDieId: string | null;
   dragDieIds: string[];
@@ -71,6 +79,12 @@ type DiceDragState = {
   hasMoved: boolean;
   selectionRequested: boolean;
   longPressTriggered: boolean;
+
+  /**
+   * Historique récent du mouvement, utilisé pour calculer la direction
+   * et la vitesse au moment du relâchement.
+   */
+  gestureSamples: DiceGestureSample[];
 };
 
 /**
@@ -116,6 +130,25 @@ const PICKUP_LONG_PRESS_DELAY_MS = 360;
  * sans quitter visuellement la zone de manipulation.
  */
 const PICKUP_LIFT_Y = 0.24;
+
+/**
+ * Seuls les derniers instants du mouvement sont utilisés.
+ * Cela rend le lancer sensible au geste de relâchement plutôt qu’à toute
+ * la trajectoire depuis le début de la prise en main.
+ */
+const GESTURE_SAMPLE_WINDOW_MS = 140;
+
+/**
+ * Vitesse minimale sur le plan de la table pour déclencher un lancer.
+ * En dessous, les dés sont simplement reposés.
+ */
+const GESTURE_THROW_MIN_SPEED = 2.2;
+
+/**
+ * Limites de sécurité de l’impulsion envoyée à cannon-es.
+ */
+const GESTURE_THROW_MIN_STRENGTH = 4.8;
+const GESTURE_THROW_MAX_STRENGTH = 13.5;
 
 function disposeObject3D(object: THREE.Object3D) {
   object.traverse((child) => {
@@ -475,6 +508,7 @@ export function DiceTable3D({
     hasMoved: false,
     selectionRequested: false,
     longPressTriggered: false,
+    gestureSamples: [],
   });
 
   const longPressTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -486,7 +520,10 @@ export function DiceTable3D({
   const physicsWorldRef = useRef<Roll3DPhysicsWorld | null>(null);
   const lastFrameAtRef = useRef<number | null>(null);
   const physicsActiveRef = useRef(false);
-  const physicsRollModeRef = useRef<"idle" | "adding" | "rolling">("idle");
+  const physicsRollModeRef = useRef<
+    "idle" | "adding" | "rolling" | "gesture"
+  >("idle");
+  const activeGestureDieIdsRef = useRef<string[]>([]);
   const physicsSettledNotifiedRef = useRef(false);
   const settleDelayTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
@@ -1204,6 +1241,7 @@ export function DiceTable3D({
     return () => {
       clearLongPressTimeout();
       pickedUpDieIdsRef.current.clear();
+      activeGestureDieIdsRef.current = [];
       if (animationFrameRef.current != null) {
         cancelAnimationFrame(animationFrameRef.current);
       }
@@ -1457,8 +1495,200 @@ export function DiceTable3D({
       hasMoved: false,
       selectionRequested: false,
       longPressTriggered: false,
+      gestureSamples: [],
     };
   }, [clearLongPressTimeout]);
+
+  const recordGestureSample = useCallback((point: THREE.Vector3) => {
+    const dragState = dragStateRef.current;
+    const now = Date.now();
+
+    dragState.gestureSamples.push({
+      point: point.clone(),
+      capturedAt: now,
+    });
+
+    const oldestAllowedTimestamp =
+      now - GESTURE_SAMPLE_WINDOW_MS * 2;
+
+    dragState.gestureSamples =
+      dragState.gestureSamples.filter(
+        (sample) => sample.capturedAt >= oldestAllowedTimestamp,
+      );
+  }, []);
+
+  const calculateGestureThrowVelocity = useCallback(
+    (): Roll3DPhysicsVector3 | null => {
+      const samples = dragStateRef.current.gestureSamples;
+
+      if (samples.length < 2) {
+        return null;
+      }
+
+      const latestSample = samples[samples.length - 1];
+
+      if (!latestSample) {
+        return null;
+      }
+
+      const minimumTimestamp =
+        latestSample.capturedAt - GESTURE_SAMPLE_WINDOW_MS;
+
+      const firstRelevantSample =
+        samples.find(
+          (sample) => sample.capturedAt >= minimumTimestamp,
+        ) ?? samples[0];
+
+      if (!firstRelevantSample) {
+        return null;
+      }
+
+      const elapsedSeconds = Math.max(
+        0.016,
+        (latestSample.capturedAt -
+          firstRelevantSample.capturedAt) /
+        1000,
+      );
+
+      const velocityX =
+        (latestSample.point.x - firstRelevantSample.point.x) /
+        elapsedSeconds;
+
+      const velocityZ =
+        (latestSample.point.z - firstRelevantSample.point.z) /
+        elapsedSeconds;
+
+      const planarSpeed = Math.sqrt(
+        velocityX * velocityX + velocityZ * velocityZ,
+      );
+
+      if (planarSpeed < GESTURE_THROW_MIN_SPEED) {
+        return null;
+      }
+
+      const safePlanarSpeed = clamp(
+        planarSpeed,
+        GESTURE_THROW_MIN_STRENGTH,
+        GESTURE_THROW_MAX_STRENGTH,
+      );
+
+      const directionX = velocityX / planarSpeed;
+      const directionZ = velocityZ / planarSpeed;
+
+      return {
+        x: directionX * safePlanarSpeed,
+        y: clamp(
+          1.25 + safePlanarSpeed * 0.075,
+          1.6,
+          2.45,
+        ),
+        z: directionZ * safePlanarSpeed,
+      };
+    },
+    [],
+  );
+
+  const startGesturePhysicsThrow = useCallback(
+    (linearVelocity: Roll3DPhysicsVector3): boolean => {
+      const physicsWorld = physicsWorldRef.current;
+      const dragState = dragStateRef.current;
+
+      if (
+        !physicsWorld ||
+        dragState.dragDieIds.length === 0 ||
+        physicsActiveRef.current
+      ) {
+        return false;
+      }
+
+      const gestureDieIds = new Set(dragState.dragDieIds);
+      const instanceById = new Map(
+        diceInstances.map((instance) => [instance.id, instance]),
+      );
+
+      const hasEveryGestureDie = dragState.dragDieIds.every(
+        (dieId) =>
+          !!instanceById.get(dieId) &&
+          !!diceItemsRef.current.get(dieId),
+      );
+
+      if (!hasEveryGestureDie) {
+        return false;
+      }
+
+      physicsWorld.clearDice();
+
+      activeGestureDieIdsRef.current = [...dragState.dragDieIds];
+      physicsSettledNotifiedRef.current = false;
+
+      if (settleDelayTimeoutRef.current != null) {
+        clearTimeout(settleDelayTimeoutRef.current);
+        settleDelayTimeoutRef.current = null;
+      }
+
+      /**
+       * Tous les dés sont placés dans le monde physique.
+       *
+       * Ceux qui ne sont pas lancés commencent immobiles, mais peuvent être
+       * heurtés et déplacés par la sélection lancée.
+       */
+      for (const instance of diceInstances) {
+        const item = diceItemsRef.current.get(instance.id);
+
+        if (!item) {
+          continue;
+        }
+
+        item.physicsActive = true;
+        item.mesh.scale.setScalar(DROP_TARGET_SCALE);
+        item.mesh.updateMatrixWorld(true);
+
+        const isGestureDie = gestureDieIds.has(instance.id);
+
+        const angularVelocity: Roll3DPhysicsVector3 | undefined =
+          isGestureDie
+            ? {
+              x: randomBetween(-18, 18),
+              y: randomBetween(-24, 24),
+              z: randomBetween(-18, 18),
+            }
+            : undefined;
+
+        physicsWorld.addDie(
+          instance,
+          toPhysicsTransform(item.mesh),
+          isGestureDie
+            ? {
+              launchMode: "gesture_throw",
+              linearVelocity: {
+                x:
+                  linearVelocity.x +
+                  randomBetween(-0.35, 0.35),
+                y:
+                  linearVelocity.y +
+                  randomBetween(-0.08, 0.2),
+                z:
+                  linearVelocity.z +
+                  randomBetween(-0.35, 0.35),
+              },
+              angularVelocity,
+            }
+            : {
+              launchMode: "resting",
+            },
+        );
+      }
+
+      pickedUpDieIdsRef.current.clear();
+
+      physicsActiveRef.current = true;
+      physicsRollModeRef.current = "gesture";
+      lastFrameAtRef.current = Date.now();
+
+      return true;
+    },
+    [diceInstances],
+  );
 
   const handleTableTouchStart = useCallback(
     (event: GestureResponderEvent) => {
@@ -1490,6 +1720,7 @@ export function DiceTable3D({
           hasMoved: false,
           selectionRequested: false,
           longPressTriggered: false,
+          gestureSamples: [],
         };
 
         return;
@@ -1529,6 +1760,12 @@ export function DiceTable3D({
         hasMoved: false,
         selectionRequested: touchedDieIsSelected,
         longPressTriggered: false,
+        gestureSamples: [
+          {
+            point: startWorldPoint.clone(),
+            capturedAt: Date.now(),
+          },
+        ],
       };
 
       longPressTimeoutRef.current = setTimeout(() => {
@@ -1664,6 +1901,10 @@ export function DiceTable3D({
         return;
       }
 
+      if (dragState.longPressTriggered) {
+        recordGestureSample(currentWorldPoint);
+      }
+
       const requestedDeltaX =
         currentWorldPoint.x - dragState.startWorldPoint.x;
 
@@ -1757,6 +1998,7 @@ export function DiceTable3D({
       clearLongPressTimeout,
       getTableWorldPoint,
       interactionsEnabled,
+      recordGestureSample,
     ],
   );
 
@@ -1765,30 +2007,42 @@ export function DiceTable3D({
 
     const dragState = dragStateRef.current;
 
-    /**
-     * Un appui long est déjà une interaction complète.
-     * Il ne doit pas être suivi d’un deuxième événement de toucher qui
-     * désélectionnerait immédiatement le dé.
-     */
     if (dragState.longPressTriggered) {
+      const gestureVelocity =
+        calculateGestureThrowVelocity();
+
+      if (
+        gestureVelocity &&
+        startGesturePhysicsThrow(gestureVelocity)
+      ) {
+        /**
+         * Le moteur physique possède maintenant les transformations courantes.
+         * On ne repose surtout pas les meshes manuellement.
+         */
+        resetDragState();
+        return;
+      }
+
+      /**
+       * Geste trop lent ou incomplet :
+       * la prise en main se termine par une simple repose.
+       */
       putPickedUpDiceBackOnTable();
       resetDragState();
       return;
     }
 
-    /**
-     * Aucun déplacement réel :
-     * l’interaction reste un simple toucher de sélection/désélection.
-     */
     if (!dragState.hasMoved) {
       onPressDieRef.current?.(dragState.touchedDieId);
     }
 
     resetDragState();
   }, [
+    calculateGestureThrowVelocity,
     clearLongPressTimeout,
     putPickedUpDiceBackOnTable,
     resetDragState,
+    startGesturePhysicsThrow,
   ]);
 
   const handleTableTouchCancel = useCallback(() => {
@@ -1921,8 +2175,15 @@ export function DiceTable3D({
             item.physicsActive = false;
           }
 
-          if (completedMode === "adding") {
+          if (
+            completedMode === "adding" ||
+            completedMode === "gesture"
+          ) {
             physicsWorld.clearDice();
+          }
+
+          if (completedMode === "gesture") {
+            activeGestureDieIdsRef.current = [];
           }
 
           if (

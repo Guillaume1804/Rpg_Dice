@@ -27,6 +27,23 @@ export type Roll3DPhysicsVector3 = {
   z: number;
 };
 
+export type Roll3DPhysicsLaunchMode =
+  | "drop"
+  | "resting"
+  | "surface_roll"
+  | "gesture_throw";
+
+export type Roll3DPhysicsAddDieOptions = {
+  launchMode?: Roll3DPhysicsLaunchMode;
+
+  /**
+   * Vitesses personnalisées utilisées principalement par le lancer gestuel.
+   * Lorsqu’elles sont absentes, Roll3DPhysicsWorld génère ses valeurs normales.
+   */
+  linearVelocity?: Roll3DPhysicsVector3;
+  angularVelocity?: Roll3DPhysicsVector3;
+};
+
 export type Roll3DPhysicsQuaternion = {
   x: number;
   y: number;

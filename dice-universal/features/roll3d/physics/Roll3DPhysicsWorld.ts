@@ -3,9 +3,13 @@
 import * as CANNON from "cannon-es";
 
 import type {
+  Roll3DPhysicsAddDieOptions,
   Roll3DPhysicsDieSnapshot,
+  Roll3DPhysicsLaunchMode,
   Roll3DPhysicsTransform,
+  Roll3DPhysicsVector3,
 } from "./Roll3DPhysicsTypes";
+
 import type { Roll3DDieInstance, Roll3DDieSides } from "../types";
 
 const PHYSICS_TIME_STEP = 1 / 60;
@@ -27,14 +31,8 @@ const WALL_IDS = {
   bottom: "roll-3d-physics-wall-bottom",
 } as const;
 
-type Roll3DPhysicsLaunchMode = "drop" | "surface_roll";
-
-type Roll3DPhysicsAddDieOptions = {
-  launchMode?: Roll3DPhysicsLaunchMode;
-};
-
-function createCannonVec3(transform: Roll3DPhysicsTransform["position"]) {
-  return new CANNON.Vec3(transform.x, transform.y, transform.z);
+function createCannonVec3(vector: Roll3DPhysicsVector3) {
+  return new CANNON.Vec3(vector.x, vector.y, vector.z);
 }
 
 function createCannonQuaternion(
@@ -102,6 +100,10 @@ function createDieShape(sides: Roll3DDieSides): CANNON.Shape {
 }
 
 function createInitialVelocity(mode: Roll3DPhysicsLaunchMode) {
+  if (mode === "resting") {
+    return new CANNON.Vec3(0, 0, 0);
+  }
+
   if (mode === "surface_roll") {
     const angle = Math.random() * Math.PI * 2;
     const strength = 9 + Math.random() * 5;
@@ -113,6 +115,14 @@ function createInitialVelocity(mode: Roll3DPhysicsLaunchMode) {
     );
   }
 
+  if (mode === "gesture_throw") {
+    /**
+     * Valeur de secours uniquement.
+     * Un vrai lancer gestuel fournit normalement sa vitesse personnalisée.
+     */
+    return new CANNON.Vec3(0, 1.8, -4.5);
+  }
+
   return new CANNON.Vec3(
     (Math.random() - 0.5) * 0.42,
     -5.4 - Math.random() * 1.4,
@@ -121,11 +131,23 @@ function createInitialVelocity(mode: Roll3DPhysicsLaunchMode) {
 }
 
 function createInitialAngularVelocity(mode: Roll3DPhysicsLaunchMode) {
+  if (mode === "resting") {
+    return new CANNON.Vec3(0, 0, 0);
+  }
+
   if (mode === "surface_roll") {
     return new CANNON.Vec3(
       (Math.random() - 0.5) * 26,
       (Math.random() - 0.5) * 31,
       (Math.random() - 0.5) * 26,
+    );
+  }
+
+  if (mode === "gesture_throw") {
+    return new CANNON.Vec3(
+      (Math.random() - 0.5) * 22,
+      (Math.random() - 0.5) * 28,
+      (Math.random() - 0.5) * 22,
     );
   }
 
@@ -230,8 +252,22 @@ export class Roll3DPhysicsWorld {
       sleepTimeLimit: 0.28,
     });
 
-    body.velocity.copy(createInitialVelocity(launchMode));
-    body.angularVelocity.copy(createInitialAngularVelocity(launchMode));
+    const initialVelocity = options.linearVelocity
+      ? createCannonVec3(options.linearVelocity)
+      : createInitialVelocity(launchMode);
+
+    const initialAngularVelocity = options.angularVelocity
+      ? createCannonVec3(options.angularVelocity)
+      : createInitialAngularVelocity(launchMode);
+
+    body.velocity.copy(initialVelocity);
+    body.angularVelocity.copy(initialAngularVelocity);
+
+    /**
+     * Les corps "resting" participent aux collisions.
+     * Ils peuvent donc être poussés par les dés lancés, même s’ils commencent
+     * avec une vitesse nulle.
+     */
     body.wakeUp();
 
     this.world.addBody(body);
