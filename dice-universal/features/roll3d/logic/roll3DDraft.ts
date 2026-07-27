@@ -198,7 +198,9 @@ function getRoll3DSavableLineLabel(die: Roll3DDieInstance): string | null {
   return entryLabel;
 }
 
-function getRoll3DSavableLineKey(die: Roll3DDieInstance): string {
+export function getRoll3DSavableLineKey(
+  die: Roll3DDieInstance,
+): string {
   const behaviorId = die.behavior?.id ?? "no-rule";
   const label = getRoll3DSavableLineLabel(die) ?? "no-label";
 
@@ -267,6 +269,27 @@ export function createRoll3DSavableLinesFromDraft(
   }
 
   return Array.from(linesMap.values());
+}
+
+export function getRoll3DDraftLineDieIds(params: {
+  draft: Roll3DDraft;
+  dieId: string;
+}): string[] {
+  const selectedDie = params.draft.dice.find(
+    (die) => die.id === params.dieId,
+  );
+
+  if (!selectedDie) {
+    return [];
+  }
+
+  const selectedLineKey = getRoll3DSavableLineKey(selectedDie);
+
+  return params.draft.dice
+    .filter(
+      (die) => getRoll3DSavableLineKey(die) === selectedLineKey,
+    )
+    .map((die) => die.id);
 }
 
 export function updateRoll3DDraftLine(params: {
@@ -381,6 +404,33 @@ export function removeRoll3DDraftLine(params: {
     updatedAt: Date.now(),
     dice: nextDice,
     groupBehavior: nextDice.length > 0 ? params.draft.groupBehavior : null,
+  };
+}
+
+export function removeRoll3DDiceByIds(params: {
+  draft: Roll3DDraft;
+  dieIds: string[];
+}): Roll3DDraft {
+  if (params.dieIds.length === 0) {
+    return params.draft;
+  }
+
+  const idsToRemove = new Set(params.dieIds);
+
+  const nextDice = params.draft.dice.filter(
+    (die) => !idsToRemove.has(die.id),
+  );
+
+  if (nextDice.length === params.draft.dice.length) {
+    return params.draft;
+  }
+
+  return {
+    ...params.draft,
+    updatedAt: Date.now(),
+    dice: nextDice,
+    groupBehavior:
+      nextDice.length > 0 ? params.draft.groupBehavior : null,
   };
 }
 

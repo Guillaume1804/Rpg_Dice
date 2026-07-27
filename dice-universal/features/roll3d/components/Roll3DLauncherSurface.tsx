@@ -44,11 +44,15 @@ import {
   updateRoll3DDraftLine,
   updateRoll3DDraftLineBehavior,
   splitRoll3DDraftLineByQuantities,
+  getRoll3DDraftLineDieIds,
+  removeRoll3DDiceByIds,
 } from "../logic/roll3DDraft";
 
 import { Roll3DCurrentHandEditSheet } from "./Roll3DCurrentHandEditSheet";
 
 import { Roll3DCurrentHandSplitModal } from "./Roll3DCurrentHandSplitModal";
+
+import { Roll3DDieSelectionBar } from "./Roll3DDieSelectionBar";
 
 import {
   createGroupFromDraft,
@@ -881,6 +885,31 @@ export function Roll3DLauncherSurface({
     loadDraft(payload.draft);
   }, [handoffId, loadDraft]);
 
+  const primarySelectedDie = useMemo(() => {
+    const primarySelectedId = selectedDieIds[0];
+
+    if (!primarySelectedId) {
+      return null;
+    }
+
+    return (
+      launcher.draft.dice.find(
+        (die) => die.id === primarySelectedId,
+      ) ?? null
+    );
+  }, [launcher.draft.dice, selectedDieIds]);
+
+  const selectedLineDieIds = useMemo(() => {
+    if (!primarySelectedDie) {
+      return [];
+    }
+
+    return getRoll3DDraftLineDieIds({
+      draft: launcher.draft,
+      dieId: primarySelectedDie.id,
+    });
+  }, [launcher.draft, primarySelectedDie]);
+
   const handlePressTableDie = useCallback((dieId: string | null) => {
     if (!dieId) {
       setSelectedDieIds([]);
@@ -895,12 +924,68 @@ export function Roll3DLauncherSurface({
     });
   }, []);
 
+  const handleClearTableDiceSelection = useCallback(() => {
+    setSelectedDieIds([]);
+  }, []);
+
+  const handleSelectCurrentTableDiceLine = useCallback(() => {
+    if (!primarySelectedDie) {
+      return;
+    }
+
+    const lineDieIds = getRoll3DDraftLineDieIds({
+      draft: launcher.draft,
+      dieId: primarySelectedDie.id,
+    });
+
+    setSelectedDieIds(lineDieIds);
+  }, [launcher.draft, primarySelectedDie]);
+
+  const handleRemoveSelectedTableDice = useCallback(() => {
+    if (selectedDieIds.length === 0) {
+      return;
+    }
+
+    const nextDraft = removeRoll3DDiceByIds({
+      draft: launcher.draft,
+      dieIds: selectedDieIds,
+    });
+
+    if (nextDraft === launcher.draft) {
+      setSelectedDieIds([]);
+      return;
+    }
+
+    setSelectedDieIds([]);
+    setActionEntryAdjustment(null);
+    setLastAppliedActionEntryAdjustment(null);
+    setPendingAdjustmentLaunch(null);
+
+    clearResult();
+
+    /**
+     * On conserve volontairement la scène Three existante.
+     *
+     * DiceTable3D supprimera uniquement les meshes correspondant aux dés
+     * absents du nouveau draft. Les dés restants conservent ainsi exactement
+     * leur position et leur rotation actuelles sur la table.
+     */
+    loadDraft(nextDraft);
+  }, [
+    launcher.draft,
+    selectedDieIds,
+    clearResult,
+    loadDraft,
+  ]);
+  
   const handleSelectFreeDie = useCallback(
     (sides: Roll3DDieSides) => {
       setSelectedActionId(null);
       setSelectedActionEntryId(null);
       setActionEntryAdjustment(null);
       setLastAppliedActionEntryAdjustment(null);
+      setSelectedDieIds([]);
+
       addDie(sides);
     },
     [addDie],
@@ -913,8 +998,9 @@ export function Roll3DLauncherSurface({
       setActionEntryAdjustment(null);
       setLastAppliedActionEntryAdjustment(null);
       setPendingAdjustmentLaunch(null);
-      clearResult();
+      setSelectedDieIds([]);
 
+      clearResult();
       addDice(params.sides, params.quantity);
     },
     [addDice, clearResult],
@@ -2045,6 +2131,20 @@ export function Roll3DLauncherSurface({
         interactionsEnabled={diceInteractionsEnabled}
         onPressDie={handlePressTableDie}
         onPhysicsRollSettled={handlePhysicsRollSettled}
+      />
+
+      <Roll3DDieSelectionBar
+        visible={
+          diceInteractionsEnabled &&
+          selectedDieIds.length > 0 &&
+          !!primarySelectedDie
+        }
+        selectedCount={selectedDieIds.length}
+        lineDiceCount={selectedLineDieIds.length}
+        selectedSides={primarySelectedDie?.sides ?? null}
+        onSelectLine={handleSelectCurrentTableDiceLine}
+        onRemoveSelection={handleRemoveSelectedTableDice}
+        onClearSelection={handleClearTableDiceSelection}
       />
 
       {shouldShowControls ? (
