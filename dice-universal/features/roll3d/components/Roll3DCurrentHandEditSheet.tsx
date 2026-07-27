@@ -19,7 +19,7 @@ type Roll3DCurrentHandEditSheetProps = {
   onRemoveLine: (lineKey: string) => void;
   onConfigureBehavior: (lineKey: string) => void;
   onClearBehavior: (lineKey: string) => void;
-  onSplitOneDie: (lineKey: string) => void;
+  onOpenSplitLine: (lineKey: string) => void;
 };
 
 function formatLineFormula(line: Roll3DSavableDraftLine) {
@@ -167,7 +167,7 @@ function CurrentHandLineCard({
   onRemove,
   onConfigureBehavior,
   onClearBehavior,
-  onSplitOneDie,
+  onOpenSplit,
 }: {
   line: Roll3DSavableDraftLine;
   totalDiceCount: number;
@@ -178,7 +178,7 @@ function CurrentHandLineCard({
   onRemove: () => void;
   onConfigureBehavior: () => void;
   onClearBehavior: () => void;
-  onSplitOneDie: () => void;
+  onOpenSplit: () => void;
 }) {
   const premium = usePremiumTheme();
 
@@ -306,7 +306,7 @@ function CurrentHandLineCard({
 
       {line.qty > 1 ? (
         <Pressable
-          onPress={onSplitOneDie}
+          onPress={onOpenSplit}
           style={({ pressed }) => ({
             opacity: pressed ? 0.76 : 1,
             transform: [
@@ -337,7 +337,7 @@ function CurrentHandLineCard({
                 letterSpacing: 0.65,
               }}
             >
-              Dissocier 1 dé
+              Répartir la ligne
             </Text>
           </View>
         </Pressable>
@@ -496,7 +496,7 @@ export function Roll3DCurrentHandEditSheet({
   onRemoveLine,
   onConfigureBehavior,
   onClearBehavior,
-  onSplitOneDie,
+  onOpenSplitLine,
 }: Roll3DCurrentHandEditSheetProps) {
   const premium = usePremiumTheme();
   const insets = useSafeAreaInsets();
@@ -633,7 +633,7 @@ export function Roll3DCurrentHandEditSheet({
                 onRemove={() => onRemoveLine(line.key)}
                 onConfigureBehavior={() => onConfigureBehavior(line.key)}
                 onClearBehavior={() => onClearBehavior(line.key)}
-                onSplitOneDie={() => onSplitOneDie(line.key)}
+                onOpenSplit={() => onOpenSplitLine(line.key)}
               />
             ))}
           </ScrollView>

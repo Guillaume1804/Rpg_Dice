@@ -43,10 +43,12 @@ import {
   removeRoll3DDraftLine,
   updateRoll3DDraftLine,
   updateRoll3DDraftLineBehavior,
-  splitOneDieFromRoll3DDraftLine,
+  splitRoll3DDraftLineByQuantities,
 } from "../logic/roll3DDraft";
 
 import { Roll3DCurrentHandEditSheet } from "./Roll3DCurrentHandEditSheet";
+
+import { Roll3DCurrentHandSplitModal } from "./Roll3DCurrentHandSplitModal";
 
 import {
   createGroupFromDraft,
@@ -422,6 +424,9 @@ export function Roll3DLauncherSurface({
   const [currentHandBehaviorTargetKey, setCurrentHandBehaviorTargetKey] =
     useState<string | null>(null);
 
+  const [currentHandSplitTargetKey, setCurrentHandSplitTargetKey] =
+    useState<string | null>(null);
+
   const currentHandQuickBehaviorConfig = useQuickBehaviorConfigModal();
 
   const currentHandEditLines = useMemo(
@@ -430,6 +435,16 @@ export function Roll3DLauncherSurface({
         ? createRoll3DSavableLinesFromDraft(currentHandEditDraft)
         : [],
     [currentHandEditDraft],
+  );
+
+  const currentHandSplitTargetLine = useMemo(
+    () =>
+      currentHandSplitTargetKey
+        ? currentHandEditLines.find(
+          (line) => line.key === currentHandSplitTargetKey,
+        ) ?? null
+        : null,
+    [currentHandEditLines, currentHandSplitTargetKey],
   );
 
   const [isRolling, setIsRolling] = useState(false);
@@ -709,6 +724,7 @@ export function Roll3DLauncherSurface({
         resetLauncher();
         setCurrentHandEditDraft(null);
         setCurrentHandBehaviorTargetKey(null);
+        setCurrentHandSplitTargetKey(null);
       };
     }, [resetLauncher]),
   );
@@ -877,6 +893,7 @@ export function Roll3DLauncherSurface({
     setLastAppliedActionEntryAdjustment(null);
     setCurrentHandEditDraft(null);
     setCurrentHandBehaviorTargetKey(null);
+    setCurrentHandSplitTargetKey(null);
     currentHandQuickBehaviorConfig.close();
     currentHandDieBehaviorPicker.close();
     clearDice();
@@ -896,6 +913,7 @@ export function Roll3DLauncherSurface({
   const handleCloseCurrentHandEdit = useCallback(() => {
     setCurrentHandEditDraft(null);
     setCurrentHandBehaviorTargetKey(null);
+    setCurrentHandSplitTargetKey(null);
 
     currentHandQuickBehaviorConfig.close();
     currentHandDieBehaviorPicker.close();
@@ -1088,20 +1106,50 @@ export function Roll3DLauncherSurface({
     });
   }, []);
 
-  const handleSplitOneCurrentHandDie = useCallback(
+  const handleOpenCurrentHandSplit = useCallback(
     (lineKey: string) => {
+      if (!currentHandEditDraft) {
+        return;
+      }
+
+      const line = createRoll3DSavableLinesFromDraft(
+        currentHandEditDraft,
+      ).find((entry) => entry.key === lineKey);
+
+      if (!line || line.qty <= 1) {
+        return;
+      }
+
+      setCurrentHandSplitTargetKey(lineKey);
+    },
+    [currentHandEditDraft],
+  );
+
+  const handleCloseCurrentHandSplit = useCallback(() => {
+    setCurrentHandSplitTargetKey(null);
+  }, []);
+
+  const handleApplyCurrentHandSplit = useCallback(
+    (quantities: number[]) => {
+      if (!currentHandSplitTargetKey) {
+        return;
+      }
+
       setCurrentHandEditDraft((current) => {
         if (!current) {
           return current;
         }
 
-        return splitOneDieFromRoll3DDraftLine({
+        return splitRoll3DDraftLineByQuantities({
           draft: current,
-          lineKey,
+          lineKey: currentHandSplitTargetKey,
+          quantities,
         });
       });
+
+      setCurrentHandSplitTargetKey(null);
     },
-    [],
+    [currentHandSplitTargetKey],
   );
 
   const handleApplyCurrentHandEdit = useCallback(() => {
@@ -1120,6 +1168,7 @@ export function Roll3DLauncherSurface({
     setSceneVersion((current) => current + 1);
     loadDraft(currentHandEditDraft);
     setCurrentHandEditDraft(null);
+    setCurrentHandSplitTargetKey(null);
 
     setCurrentHandBehaviorTargetKey(null);
     currentHandQuickBehaviorConfig.close();
@@ -1153,6 +1202,7 @@ export function Roll3DLauncherSurface({
     setCurrentHandEditDraft(null);
 
     setCurrentHandBehaviorTargetKey(null);
+    setCurrentHandSplitTargetKey(null);
     currentHandQuickBehaviorConfig.close();
     currentHandDieBehaviorPicker.close();
 
@@ -1233,6 +1283,8 @@ export function Roll3DLauncherSurface({
       setCurrentHandEditDraft(null);
 
       setCurrentHandBehaviorTargetKey(null);
+      setCurrentHandSplitTargetKey(null);
+
       currentHandQuickBehaviorConfig.close();
       currentHandDieBehaviorPicker.close();
 
@@ -2075,7 +2127,11 @@ export function Roll3DLauncherSurface({
       />
 
       <Roll3DCurrentHandEditSheet
-        visible={!!currentHandEditDraft && currentHandBehaviorTargetKey == null}
+        visible={
+          !!currentHandEditDraft &&
+          currentHandBehaviorTargetKey == null &&
+          currentHandSplitTargetKey == null
+        }
         lines={currentHandEditLines}
         diceCount={currentHandEditDraft?.dice.length ?? 0}
         maxDice={launcher.maxDice}
@@ -2087,7 +2143,14 @@ export function Roll3DLauncherSurface({
         onRemoveLine={handleRemoveCurrentHandLine}
         onConfigureBehavior={handleConfigureCurrentHandLineBehavior}
         onClearBehavior={handleClearCurrentHandLineBehavior}
-        onSplitOneDie={handleSplitOneCurrentHandDie}
+        onOpenSplitLine={handleOpenCurrentHandSplit}
+      />
+
+      <Roll3DCurrentHandSplitModal
+        visible={!!currentHandSplitTargetLine}
+        activeLine={currentHandSplitTargetLine}
+        onClose={handleCloseCurrentHandSplit}
+        onApply={handleApplyCurrentHandSplit}
       />
 
       <QuickDieBehaviorPickerModal

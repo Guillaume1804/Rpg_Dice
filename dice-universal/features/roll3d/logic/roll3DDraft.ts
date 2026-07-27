@@ -445,9 +445,10 @@ export function updateRoll3DDraftLineBehavior(params: {
   };
 }
 
-export function splitOneDieFromRoll3DDraftLine(params: {
+export function splitRoll3DDraftLineByQuantities(params: {
   draft: Roll3DDraft;
   lineKey: string;
+  quantities: number[];
 }): Roll3DDraft {
   const matchingIndexes: number[] = [];
 
@@ -457,44 +458,123 @@ export function splitOneDieFromRoll3DDraftLine(params: {
     }
   });
 
-  /**
-   * Une ligne d’un seul dé ne peut pas être dissociée.
-   */
-  if (matchingIndexes.length <= 1) {
+  const matchingDice = matchingIndexes
+    .map((index) => params.draft.dice[index])
+    .filter((die): die is Roll3DDieInstance => !!die);
+
+  if (matchingDice.length <= 1) {
     return params.draft;
   }
 
-  const isolatedDieIndex = matchingIndexes[matchingIndexes.length - 1];
-  const isolatedDie = params.draft.dice[isolatedDieIndex];
-
-  if (!isolatedDie) {
-    return params.draft;
-  }
-
-  const isolatedRollEntryId = createRoll3DId(
-    "roll-3d-split-entry",
+  const safeQuantities = params.quantities.map((quantity) =>
+    Math.floor(quantity),
   );
 
-  const nextDice = params.draft.dice.map((die, index) => {
-    if (index !== isolatedDieIndex) {
-      return die;
+  const hasInvalidQuantity = safeQuantities.some(
+    (quantity) => !Number.isFinite(quantity) || quantity <= 0,
+  );
+
+  if (hasInvalidQuantity || safeQuantities.length < 2) {
+    return params.draft;
+  }
+
+  const requestedTotal = safeQuantities.reduce(
+    (total, quantity) => total + quantity,
+    0,
+  );
+
+  /**
+   * Une répartition ne doit jamais ajouter ou supprimer de dés.
+   */
+  if (requestedTotal !== matchingDice.length) {
+    return params.draft;
+  }
+
+  const firstMatchingIndex = matchingIndexes[0];
+
+  if (firstMatchingIndex == null) {
+    return params.draft;
+  }
+
+  const prototype = matchingDice[0];
+
+  if (!prototype) {
+    return params.draft;
+  }
+
+  let sourceIndex = 0;
+
+  const nextLineDice: Roll3DDieInstance[] = [];
+
+  safeQuantities.forEach((quantity, groupIndex) => {
+    /**
+     * Le premier groupe conserve l’identité d’origine.
+     * Chaque groupe suivant reçoit une nouvelle identité logique.
+     */
+    const groupRollEntryId =
+      groupIndex === 0
+        ? prototype.rollEntryId
+        : createRoll3DId("roll-3d-split-entry");
+
+    for (let index = 0; index < quantity; index += 1) {
+      const sourceDie = matchingDice[sourceIndex];
+
+      sourceIndex += 1;
+
+      if (!sourceDie) {
+        continue;
+      }
+
+      nextLineDice.push({
+        ...sourceDie,
+        rollEntryId: groupRollEntryId,
+
+        /**
+         * Toutes les lignes issues d’une répartition doivent conserver
+         * explicitement leur identité logique.
+         *
+         * Cela évite que deux groupes libres identiques soient immédiatement
+         * fusionnés par le regroupement automatique.
+         */
+        preserveRollEntryGrouping: true,
+      });
     }
-
-    return {
-      ...die,
-      rollEntryId: isolatedRollEntryId,
-
-      /**
-       * Ce drapeau empêche le dé isolé d’être immédiatement regroupé avec
-       * les autres dés libres ayant les mêmes caractéristiques.
-       */
-      preserveRollEntryGrouping: true,
-    };
   });
+
+  if (nextLineDice.length !== matchingDice.length) {
+    return params.draft;
+  }
+
+  const diceBeforeLine = params.draft.dice
+    .slice(0, firstMatchingIndex)
+    .filter((die) => getRoll3DSavableLineKey(die) !== params.lineKey);
+
+  const diceAfterLine = params.draft.dice
+    .slice(firstMatchingIndex)
+    .filter((die) => getRoll3DSavableLineKey(die) !== params.lineKey);
 
   return {
     ...params.draft,
     updatedAt: Date.now(),
-    dice: nextDice,
+    dice: [...diceBeforeLine, ...nextLineDice, ...diceAfterLine],
   };
+}
+
+export function splitOneDieFromRoll3DDraftLine(params: {
+  draft: Roll3DDraft;
+  lineKey: string;
+}): Roll3DDraft {
+  const line = createRoll3DSavableLinesFromDraft(params.draft).find(
+    (entry) => entry.key === params.lineKey,
+  );
+
+  if (!line || line.qty <= 1) {
+    return params.draft;
+  }
+
+  return splitRoll3DDraftLineByQuantities({
+    draft: params.draft,
+    lineKey: params.lineKey,
+    quantities: [line.qty - 1, 1],
+  });
 }
