@@ -1,11 +1,17 @@
 // dice-universal/features/roll3d/components/DiceTable3D.tsx
 
-import { useCallback, useEffect, useRef } from "react";
 import {
-  Pressable,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
+import {
+  PanResponder,
   View,
   type GestureResponderEvent,
   type LayoutChangeEvent,
+  type PanResponderGestureState,
 } from "react-native";
 import { GLView, type ExpoWebGLRenderingContext } from "expo-gl";
 import { Renderer } from "expo-three";
@@ -55,6 +61,17 @@ type DiceTableViewport = {
   height: number;
 };
 
+type DiceDragState = {
+  touchedDieId: string | null;
+  dragDieIds: string[];
+
+  startWorldPoint: THREE.Vector3 | null;
+  startPositions: Map<string, THREE.Vector3>;
+
+  hasMoved: boolean;
+  selectionRequested: boolean;
+};
+
 /**
  * Scène cible :
  * le smartphone est une ouverture vue du dessus.
@@ -73,6 +90,18 @@ const DROP_TARGET_SCALE = 0.4;
 
 const TARGET_X_RANGE = 1.45;
 const TARGET_Z_RANGE = 2.25;
+
+/**
+ * Un léger mouvement du doigt ne doit pas transformer un simple toucher
+ * en déplacement.
+ */
+const DRAG_START_THRESHOLD_PX = 7;
+
+/**
+ * Marge intérieure empêchant le centre d’un dé d’atteindre les murs.
+ * Les véritables collisions physiques seront améliorées plus tard.
+ */
+const DRAG_TABLE_MARGIN = 0.46;
 
 function disposeObject3D(object: THREE.Object3D) {
   object.traverse((child) => {
@@ -424,6 +453,15 @@ export function DiceTable3D({
 
   const onPressDieRef = useRef(onPressDie);
 
+  const dragStateRef = useRef<DiceDragState>({
+    touchedDieId: null,
+    dragDieIds: [],
+    startWorldPoint: null,
+    startPositions: new Map(),
+    hasMoved: false,
+    selectionRequested: false,
+  });
+
   const physicsWorldRef = useRef<Roll3DPhysicsWorld | null>(null);
   const lastFrameAtRef = useRef<number | null>(null);
   const physicsActiveRef = useRef(false);
@@ -569,6 +607,17 @@ export function DiceTable3D({
         const physicsWorld = physicsWorldRef.current;
 
         if (physicsWorld) {
+          /**
+           * Lorsqu’aucune simulation n’est en cours, les éventuels anciens corps
+           * physiques ne doivent pas être réutilisés pour un nouvel ajout.
+           *
+           * Les meshes déjà posés restent dans la scène à leur position actuelle.
+           * Seuls les nouveaux dés sont réintroduits dans la physique.
+           */
+          if (physicsRollModeRef.current === "idle") {
+            physicsWorld.clearDice();
+          }
+
           physicsWorld.addDie(instance, toPhysicsTransform(mesh), {
             launchMode: "drop",
           });
@@ -1225,33 +1274,38 @@ export function DiceTable3D({
     [],
   );
 
-  const handleTablePress = useCallback(
-    (event: GestureResponderEvent) => {
-      if (!interactionsEnabled) {
-        return;
-      }
-
-      if (physicsActiveRef.current) {
-        return;
-      }
-
-      const camera = cameraRef.current;
+  const createPointerFromTableCoordinates = useCallback(
+    (locationX: number, locationY: number) => {
       const viewport = viewportRef.current;
 
-      if (
-        !camera ||
-        viewport.width <= 0 ||
-        viewport.height <= 0
-      ) {
-        return;
+      if (viewport.width <= 0 || viewport.height <= 0) {
+        return null;
       }
 
-      const { locationX, locationY } = event.nativeEvent;
-
-      const pointer = new THREE.Vector2(
+      return new THREE.Vector2(
         (locationX / viewport.width) * 2 - 1,
         -((locationY / viewport.height) * 2 - 1),
       );
+    },
+    [],
+  );
+
+  const getDieIdAtTableCoordinates = useCallback(
+    (locationX: number, locationY: number): string | null => {
+      const camera = cameraRef.current;
+
+      if (!camera) {
+        return null;
+      }
+
+      const pointer = createPointerFromTableCoordinates(
+        locationX,
+        locationY,
+      );
+
+      if (!pointer) {
+        return null;
+      }
 
       const raycaster = raycasterRef.current;
 
@@ -1273,16 +1327,341 @@ export function DiceTable3D({
         return typeof dieId === "string" && dieId.length > 0;
       });
 
-      const dieId = selectedIntersection?.object.userData
-        .roll3DDieId;
+      const dieId =
+        selectedIntersection?.object.userData.roll3DDieId;
 
-      onPressDieRef.current?.(
-        typeof dieId === "string" ? dieId : null,
-      );
+      return typeof dieId === "string" ? dieId : null;
     },
-    [interactionsEnabled],
+    [createPointerFromTableCoordinates],
   );
 
+  const getTableWorldPoint = useCallback(
+    (
+      locationX: number,
+      locationY: number,
+    ): THREE.Vector3 | null => {
+      const camera = cameraRef.current;
+
+      if (!camera) {
+        return null;
+      }
+
+      const pointer = createPointerFromTableCoordinates(
+        locationX,
+        locationY,
+      );
+
+      if (!pointer) {
+        return null;
+      }
+
+      const raycaster = raycasterRef.current;
+
+      raycaster.setFromCamera(pointer, camera);
+
+      /**
+       * Plan horizontal correspondant à la surface de la table.
+       *
+       * Pour un plan y = TABLE_SURFACE_Y :
+       * normal = (0, 1, 0)
+       * constante = -TABLE_SURFACE_Y
+       */
+      const tablePlane = new THREE.Plane(
+        new THREE.Vector3(0, 1, 0),
+        -TABLE_SURFACE_Y,
+      );
+
+      return raycaster.ray.intersectPlane(
+        tablePlane,
+        new THREE.Vector3(),
+      );
+    },
+    [createPointerFromTableCoordinates],
+  );
+
+  const resetDragState = useCallback(() => {
+    dragStateRef.current = {
+      touchedDieId: null,
+      dragDieIds: [],
+      startWorldPoint: null,
+      startPositions: new Map(),
+      hasMoved: false,
+      selectionRequested: false,
+    };
+  }, []);
+
+  const handleTableTouchStart = useCallback(
+    (event: GestureResponderEvent) => {
+      if (!interactionsEnabled || physicsActiveRef.current) {
+        resetDragState();
+        return;
+      }
+
+      const { locationX, locationY } = event.nativeEvent;
+
+      const touchedDieId = getDieIdAtTableCoordinates(
+        locationX,
+        locationY,
+      );
+
+      const startWorldPoint = getTableWorldPoint(
+        locationX,
+        locationY,
+      );
+
+      if (!touchedDieId || !startWorldPoint) {
+        dragStateRef.current = {
+          touchedDieId: null,
+          dragDieIds: [],
+          startWorldPoint,
+          startPositions: new Map(),
+          hasMoved: false,
+          selectionRequested: false,
+        };
+
+        return;
+      }
+
+      const touchedDieIsSelected =
+        selectedDieIdsRef.current.has(touchedDieId);
+
+      /**
+       * Si le dé touché appartient déjà à une sélection multiple,
+       * toute la sélection est déplacée.
+       *
+       * Sinon, seul le dé touché est déplacé.
+       */
+      const dragDieIds = touchedDieIsSelected
+        ? Array.from(selectedDieIdsRef.current)
+        : [touchedDieId];
+
+      const startPositions = new Map<string, THREE.Vector3>();
+
+      for (const dieId of dragDieIds) {
+        const item = diceItemsRef.current.get(dieId);
+
+        if (!item) {
+          continue;
+        }
+
+        startPositions.set(
+          dieId,
+          item.mesh.position.clone(),
+        );
+      }
+
+      dragStateRef.current = {
+        touchedDieId,
+        dragDieIds,
+        startWorldPoint,
+        startPositions,
+        hasMoved: false,
+
+        /**
+         * Une sélection déjà active n’a pas besoin d’être redemandée
+         * au composant parent.
+         */
+        selectionRequested: touchedDieIsSelected,
+      };
+    },
+    [
+      getDieIdAtTableCoordinates,
+      getTableWorldPoint,
+      interactionsEnabled,
+      resetDragState,
+    ],
+  );
+
+  const handleTableTouchMove = useCallback(
+    (
+      event: GestureResponderEvent,
+      gestureState: PanResponderGestureState,
+    ) => {
+      if (!interactionsEnabled || physicsActiveRef.current) {
+        return;
+      }
+
+      const dragState = dragStateRef.current;
+
+      if (
+        !dragState.touchedDieId ||
+        !dragState.startWorldPoint ||
+        dragState.dragDieIds.length === 0
+      ) {
+        return;
+      }
+
+      const movementDistance = Math.sqrt(
+        gestureState.dx * gestureState.dx +
+        gestureState.dy * gestureState.dy,
+      );
+
+      if (
+        !dragState.hasMoved &&
+        movementDistance < DRAG_START_THRESHOLD_PX
+      ) {
+        return;
+      }
+
+      if (!dragState.hasMoved) {
+        dragState.hasMoved = true;
+      }
+
+      /**
+       * Lorsqu’on commence à déplacer un dé qui n’était pas sélectionné,
+       * il devient la nouvelle sélection principale.
+       */
+      if (!dragState.selectionRequested) {
+        dragState.selectionRequested = true;
+        onPressDieRef.current?.(dragState.touchedDieId);
+      }
+
+      const { locationX, locationY } = event.nativeEvent;
+
+      const currentWorldPoint = getTableWorldPoint(
+        locationX,
+        locationY,
+      );
+
+      if (!currentWorldPoint) {
+        return;
+      }
+
+      const requestedDeltaX =
+        currentWorldPoint.x - dragState.startWorldPoint.x;
+
+      const requestedDeltaZ =
+        currentWorldPoint.z - dragState.startWorldPoint.z;
+
+      const safeX =
+        TABLE_WIDTH / 2 - DRAG_TABLE_MARGIN;
+
+      const safeZ =
+        TABLE_DEPTH / 2 - DRAG_TABLE_MARGIN;
+
+      /**
+       * On calcule une seule translation autorisée pour toute la sélection.
+       * Cela permet de conserver parfaitement les écarts entre les dés.
+       */
+      let minimumDeltaX = Number.NEGATIVE_INFINITY;
+      let maximumDeltaX = Number.POSITIVE_INFINITY;
+      let minimumDeltaZ = Number.NEGATIVE_INFINITY;
+      let maximumDeltaZ = Number.POSITIVE_INFINITY;
+
+      for (const startPosition of dragState.startPositions.values()) {
+        minimumDeltaX = Math.max(
+          minimumDeltaX,
+          -safeX - startPosition.x,
+        );
+
+        maximumDeltaX = Math.min(
+          maximumDeltaX,
+          safeX - startPosition.x,
+        );
+
+        minimumDeltaZ = Math.max(
+          minimumDeltaZ,
+          -safeZ - startPosition.z,
+        );
+
+        maximumDeltaZ = Math.min(
+          maximumDeltaZ,
+          safeZ - startPosition.z,
+        );
+      }
+
+      const safeDeltaX = clamp(
+        requestedDeltaX,
+        minimumDeltaX,
+        maximumDeltaX,
+      );
+
+      const safeDeltaZ = clamp(
+        requestedDeltaZ,
+        minimumDeltaZ,
+        maximumDeltaZ,
+      );
+
+      for (const dieId of dragState.dragDieIds) {
+        const item = diceItemsRef.current.get(dieId);
+        const startPosition =
+          dragState.startPositions.get(dieId);
+
+        if (!item || !startPosition) {
+          continue;
+        }
+
+        item.mesh.position.set(
+          startPosition.x + safeDeltaX,
+          startPosition.y,
+          startPosition.z + safeDeltaZ,
+        );
+
+        item.mesh.updateMatrixWorld(true);
+
+        updateContactShadow({
+          shadow: item.shadow,
+          dice: item.mesh,
+          progress: 1,
+          visible: true,
+        });
+
+        updateSelectionHalo({
+          halo: item.selectionHalo,
+          dice: item.mesh,
+          selected:
+            selectedDieIdsRef.current.has(dieId) ||
+            dieId === dragState.touchedDieId,
+        });
+      }
+    },
+    [getTableWorldPoint, interactionsEnabled],
+  );
+
+  const handleTableTouchEnd = useCallback(() => {
+    const dragState = dragStateRef.current;
+
+    /**
+     * Aucun déplacement réel :
+     * l’interaction reste un simple toucher de sélection/désélection.
+     */
+    if (!dragState.hasMoved) {
+      onPressDieRef.current?.(dragState.touchedDieId);
+    }
+
+    resetDragState();
+  }, [resetDragState]);
+
+  const handleTableTouchCancel = useCallback(() => {
+    resetDragState();
+  }, [resetDragState]);
+
+  const tablePanResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () =>
+          interactionsEnabled &&
+          !physicsActiveRef.current,
+
+        onMoveShouldSetPanResponder: () =>
+          interactionsEnabled &&
+          !physicsActiveRef.current,
+
+        onPanResponderGrant: handleTableTouchStart,
+        onPanResponderMove: handleTableTouchMove,
+        onPanResponderRelease: handleTableTouchEnd,
+        onPanResponderTerminate: handleTableTouchCancel,
+
+        onPanResponderTerminationRequest: () => true,
+      }),
+    [
+      handleTableTouchCancel,
+      handleTableTouchEnd,
+      handleTableTouchMove,
+      handleTableTouchStart,
+      interactionsEnabled,
+    ],
+  );
   function handleContextCreate(gl: ExpoWebGLRenderingContext) {
     const { drawingBufferWidth: width, drawingBufferHeight: bufferHeight } = gl;
 
@@ -1377,6 +1756,10 @@ export function DiceTable3D({
             item.physicsActive = false;
           }
 
+          if (completedMode === "adding") {
+            physicsWorld.clearDice();
+          }
+
           if (
             completedMode === "rolling" &&
             !physicsSettledNotifiedRef.current
@@ -1440,9 +1823,11 @@ export function DiceTable3D({
         onContextCreate={handleContextCreate}
       />
 
-      <Pressable
-        disabled={!interactionsEnabled}
-        onPress={handleTablePress}
+      <View
+        pointerEvents={
+          interactionsEnabled ? "auto" : "none"
+        }
+        {...tablePanResponder.panHandlers}
         style={{
           position: "absolute",
           top: 0,
