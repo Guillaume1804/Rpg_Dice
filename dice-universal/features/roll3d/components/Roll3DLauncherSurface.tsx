@@ -451,6 +451,27 @@ export function Roll3DLauncherSurface({
   const [skipRollRequestId, setSkipRollRequestId] = useState(0);
   const [sceneVersion, setSceneVersion] = useState(0);
 
+  const [selectedDieIds, setSelectedDieIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    const existingDieIds = new Set(
+      launcher.draft.dice.map((die) => die.id),
+    );
+
+    setSelectedDieIds((current) => {
+      const next = current.filter((id) => existingDieIds.has(id));
+
+      if (
+        next.length === current.length &&
+        next.every((id, index) => id === current[index])
+      ) {
+        return current;
+      }
+
+      return next;
+    });
+  }, [launcher.draft.dice]);
+
   const [availableTables, setAvailableTables] = useState<TableRow[]>([]);
   const [isChangingTable, setIsChangingTable] = useState(false);
 
@@ -725,6 +746,7 @@ export function Roll3DLauncherSurface({
         setCurrentHandEditDraft(null);
         setCurrentHandBehaviorTargetKey(null);
         setCurrentHandSplitTargetKey(null);
+        setSelectedDieIds([]);
       };
     }, [resetLauncher]),
   );
@@ -854,9 +876,24 @@ export function Roll3DLauncherSurface({
      * après navigation + injection de draft.
      */
     setSceneVersion((current) => current + 1);
+    setSelectedDieIds([]);
 
     loadDraft(payload.draft);
   }, [handoffId, loadDraft]);
+
+  const handlePressTableDie = useCallback((dieId: string | null) => {
+    if (!dieId) {
+      setSelectedDieIds([]);
+      return;
+    }
+
+    setSelectedDieIds((current) => {
+      const isAlreadySelected =
+        current.length === 1 && current[0] === dieId;
+
+      return isAlreadySelected ? [] : [dieId];
+    });
+  }, []);
 
   const handleSelectFreeDie = useCallback(
     (sides: Roll3DDieSides) => {
@@ -896,6 +933,7 @@ export function Roll3DLauncherSurface({
     setCurrentHandSplitTargetKey(null);
     currentHandQuickBehaviorConfig.close();
     currentHandDieBehaviorPicker.close();
+    setSelectedDieIds([]);
     clearDice();
   }, [clearDice, currentHandQuickBehaviorConfig, currentHandDieBehaviorPicker]);
 
@@ -904,6 +942,7 @@ export function Roll3DLauncherSurface({
       return;
     }
 
+    setSelectedDieIds([]);
     setCurrentHandEditDraft({
       ...launcher.draft,
       dice: [...launcher.draft.dice],
@@ -1166,6 +1205,7 @@ export function Roll3DLauncherSurface({
     clearResult();
 
     setSceneVersion((current) => current + 1);
+    setSelectedDieIds([]);
     loadDraft(currentHandEditDraft);
     setCurrentHandEditDraft(null);
     setCurrentHandSplitTargetKey(null);
@@ -1205,6 +1245,7 @@ export function Roll3DLauncherSurface({
     setCurrentHandSplitTargetKey(null);
     currentHandQuickBehaviorConfig.close();
     currentHandDieBehaviorPicker.close();
+    setSelectedDieIds([]);
 
     clearResult();
   }, [
@@ -1287,6 +1328,7 @@ export function Roll3DLauncherSurface({
 
       currentHandQuickBehaviorConfig.close();
       currentHandDieBehaviorPicker.close();
+      setSelectedDieIds([]);
 
       clearResult();
       setIsRolling(false);
@@ -1328,6 +1370,7 @@ export function Roll3DLauncherSurface({
       setIsRolling(false);
       setSkipRollRequestId(0);
       setPendingAdjustmentLaunch(null);
+      setSelectedDieIds([]);
 
       if (mode === "replace") {
         const draft = createRoll3DDraftFromDice(entryDraft.dice, {
@@ -1366,6 +1409,7 @@ export function Roll3DLauncherSurface({
       setIsRolling(false);
       setSkipRollRequestId(0);
       setPendingAdjustmentLaunch(null);
+      setSelectedDieIds([]);
       setActionEntryAdjustment(null);
       setLastAppliedActionEntryAdjustment(null);
       clearResult();
@@ -1599,6 +1643,7 @@ export function Roll3DLauncherSurface({
      * où les dés sont visibles mais où le rollRequest n’est pas consommé.
      */
     setSceneVersion((current) => current + 1);
+    setSelectedDieIds([]);
 
     loadDraft(draft);
 
@@ -1730,6 +1775,7 @@ export function Roll3DLauncherSurface({
     }
 
     setLastAppliedActionEntryAdjustment(null);
+    setSelectedDieIds([]);
     setIsRolling(true);
     rollDice();
   }, [
@@ -1753,6 +1799,7 @@ export function Roll3DLauncherSurface({
       return;
     }
 
+    setSelectedDieIds([]);
     setIsRolling(true);
     rollDice();
   }, [isRolling, launcher.diceCount, rollDice]);
@@ -1937,6 +1984,18 @@ export function Roll3DLauncherSurface({
 
   const shouldShowControls = !isRolling && !launcher.latestResult;
 
+  const hasBlockingRoll3DOverlay =
+    !!currentHandEditDraft ||
+    !!currentHandBehaviorTargetKey ||
+    !!currentHandSplitTargetKey ||
+    showSaveCurrentHandModal ||
+    showSaveAdjustedActionModal;
+
+  const diceInteractionsEnabled =
+    shouldShowControls &&
+    !pendingAdjustmentLaunch &&
+    !hasBlockingRoll3DOverlay;
+
   const shouldShowEmptyTableHint =
     shouldShowControls &&
     launcher.diceCount <= 0 &&
@@ -1982,6 +2041,9 @@ export function Roll3DLauncherSurface({
         diceInstances={launcher.diceInstances}
         rollRequestId={launcher.rollRequestId}
         skipRollRequestId={skipRollRequestId}
+        selectedDieIds={selectedDieIds}
+        interactionsEnabled={diceInteractionsEnabled}
+        onPressDie={handlePressTableDie}
         onPhysicsRollSettled={handlePhysicsRollSettled}
       />
 

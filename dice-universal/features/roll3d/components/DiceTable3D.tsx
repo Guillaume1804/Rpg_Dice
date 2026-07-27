@@ -1,7 +1,12 @@
 // dice-universal/features/roll3d/components/DiceTable3D.tsx
 
 import { useCallback, useEffect, useRef } from "react";
-import { View } from "react-native";
+import {
+  Pressable,
+  View,
+  type GestureResponderEvent,
+  type LayoutChangeEvent,
+} from "react-native";
 import { GLView, type ExpoWebGLRenderingContext } from "expo-gl";
 import { Renderer } from "expo-three";
 import * as THREE from "three";
@@ -16,6 +21,11 @@ type DiceTable3DProps = {
   diceInstances?: Roll3DDieInstance[];
   rollRequestId?: number;
   skipRollRequestId?: number;
+
+  selectedDieIds?: string[];
+  interactionsEnabled?: boolean;
+
+  onPressDie?: (dieId: string | null) => void;
   onPhysicsRollSettled?: () => void;
 };
 
@@ -31,12 +41,18 @@ type DiceSceneItem = {
   id: string;
   mesh: THREE.Group;
   shadow: THREE.Mesh;
+  selectionHalo: THREE.Mesh;
   physicsActive: boolean;
 };
 
 type DiceVisualTransform = {
   position: THREE.Vector3;
   quaternion: THREE.Quaternion;
+};
+
+type DiceTableViewport = {
+  width: number;
+  height: number;
 };
 
 /**
@@ -288,6 +304,69 @@ function createContactShadow() {
   return shadow;
 }
 
+function getSelectionHaloRadius(sides: number) {
+  if (sides === 100) {
+    return 0.58;
+  }
+
+  if (sides === 20 || sides === 12) {
+    return 0.48;
+  }
+
+  if (sides === 10 || sides === 8) {
+    return 0.44;
+  }
+
+  return 0.41;
+}
+
+function createSelectionHalo(sides: number) {
+  const radius = getSelectionHaloRadius(sides);
+
+  const geometry = new THREE.RingGeometry(
+    radius * 0.72,
+    radius,
+    48,
+  );
+
+  const material = new THREE.MeshBasicMaterial({
+    color: "#E8C878",
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+  });
+
+  const halo = new THREE.Mesh(geometry, material);
+
+  halo.name = "dice-selection-halo";
+  halo.rotation.x = -Math.PI / 2;
+  halo.position.set(0, TABLE_SURFACE_Y + 0.012, 0);
+  halo.visible = false;
+  halo.renderOrder = 3;
+
+  return halo;
+}
+
+function updateSelectionHalo(params: {
+  halo: THREE.Mesh;
+  dice: THREE.Group;
+  selected: boolean;
+}) {
+  const { halo, dice, selected } = params;
+  const material = halo.material as THREE.MeshBasicMaterial;
+
+  halo.position.set(
+    dice.position.x,
+    TABLE_SURFACE_Y + 0.012,
+    dice.position.z,
+  );
+
+  halo.visible = selected;
+  material.opacity = selected ? 0.72 : 0;
+}
+
 function updateContactShadow(params: {
   shadow: THREE.Mesh;
   dice: THREE.Group;
@@ -321,12 +400,29 @@ export function DiceTable3D({
   diceInstances = [],
   rollRequestId = 0,
   skipRollRequestId = 0,
+  selectedDieIds = [],
+  interactionsEnabled = true,
+  onPressDie,
   onPhysicsRollSettled,
 }: DiceTable3DProps) {
   const animationFrameRef = useRef<number | null>(null);
 
   const sceneRef = useRef<THREE.Scene | null>(null);
   const diceItemsRef = useRef<Map<string, DiceSceneItem>>(new Map());
+
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const raycasterRef = useRef(new THREE.Raycaster());
+
+  const viewportRef = useRef<DiceTableViewport>({
+    width: 0,
+    height,
+  });
+
+  const selectedDieIdsRef = useRef<Set<string>>(
+    new Set(selectedDieIds),
+  );
+
+  const onPressDieRef = useRef(onPressDie);
 
   const physicsWorldRef = useRef<Roll3DPhysicsWorld | null>(null);
   const lastFrameAtRef = useRef<number | null>(null);
@@ -345,6 +441,22 @@ export function DiceTable3D({
   useEffect(() => {
     onPhysicsRollSettledRef.current = onPhysicsRollSettled;
   }, [onPhysicsRollSettled]);
+
+  useEffect(() => {
+    onPressDieRef.current = onPressDie;
+  }, [onPressDie]);
+
+  useEffect(() => {
+    selectedDieIdsRef.current = new Set(selectedDieIds);
+
+    for (const [id, item] of diceItemsRef.current.entries()) {
+      updateSelectionHalo({
+        halo: item.selectionHalo,
+        dice: item.mesh,
+        selected: selectedDieIdsRef.current.has(id),
+      });
+    }
+  }, [selectedDieIds]);
 
   const createDropStateForMesh = useCallback(
     (mesh: THREE.Group): DiceDropState => {
@@ -391,6 +503,8 @@ export function DiceTable3D({
 
       const shadow = createContactShadow();
 
+      const selectionHalo = createSelectionHalo(instance.sides);
+
       const dropState = createDropStateForMesh(mesh);
 
       if (animate) {
@@ -418,12 +532,36 @@ export function DiceTable3D({
       }
 
       scene.add(shadow);
+      scene.add(selectionHalo);
       scene.add(mesh);
+
+      /**
+       * Le raycaster touche les sous-meshes qui composent visuellement le dé,
+       * pas nécessairement le THREE.Group parent.
+       *
+       * On inscrit donc l’identifiant logique du dé sur chaque objet enfant
+       * afin de retrouver le bon Roll3DDieInstance lors d’un toucher.
+       */
+      mesh.traverse((child) => {
+        child.userData.roll3DDieId = instance.id;
+      });
+
+      /**
+       * Le halo est créé séparément du dé.
+       * On le positionne immédiatement afin qu’il soit prêt même si le dé
+       * était déjà sélectionné au moment du montage de la scène.
+       */
+      updateSelectionHalo({
+        halo: selectionHalo,
+        dice: mesh,
+        selected: selectedDieIdsRef.current.has(instance.id),
+      });
 
       diceItemsRef.current.set(instance.id, {
         id: instance.id,
         mesh,
         shadow,
+        selectionHalo,
         physicsActive: animate,
       });
 
@@ -509,6 +647,12 @@ export function DiceTable3D({
         dice: item.mesh,
         progress: 1,
         visible: true,
+      });
+
+      updateSelectionHalo({
+        halo: item.selectionHalo,
+        dice: item.mesh,
+        selected: selectedDieIdsRef.current.has(snapshot.id),
       });
 
       if (!snapshot.sleeping) {
@@ -884,6 +1028,11 @@ export function DiceTable3D({
             progress: 1,
             visible: true,
           });
+          updateSelectionHalo({
+            halo: item.selectionHalo,
+            dice: item.mesh,
+            selected: selectedDieIdsRef.current.has(id),
+          });
         }
 
         if (progress < 1) {
@@ -905,6 +1054,12 @@ export function DiceTable3D({
             dice: item.mesh,
             progress: 1,
             visible: true,
+          });
+
+          updateSelectionHalo({
+            halo: item.selectionHalo,
+            dice: item.mesh,
+            selected: selectedDieIdsRef.current.has(id),
           });
         }
 
@@ -984,9 +1139,14 @@ export function DiceTable3D({
 
       physicsWorldRef.current?.reset();
 
+      sceneRef.current = null;
+      cameraRef.current = null;
+      physicsWorldRef.current = null;
+
       for (const item of diceItems.values()) {
         disposeObject3D(item.mesh);
         disposeObject3D(item.shadow);
+        disposeObject3D(item.selectionHalo);
       }
 
       diceItems.clear();
@@ -1003,9 +1163,11 @@ export function DiceTable3D({
       if (!nextIds.has(id)) {
         scene.remove(item.mesh);
         scene.remove(item.shadow);
+        scene.remove(item.selectionHalo);
 
         disposeObject3D(item.mesh);
         disposeObject3D(item.shadow);
+        disposeObject3D(item.selectionHalo);
 
         diceItemsRef.current.delete(id);
         physicsWorldRef.current?.removeDie(id);
@@ -1051,6 +1213,76 @@ export function DiceTable3D({
     fastForwardPhysicsRollToRest();
   }, [skipRollRequestId, fastForwardPhysicsRollToRest]);
 
+  const handleTableLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      const { width, height: layoutHeight } = event.nativeEvent.layout;
+
+      viewportRef.current = {
+        width,
+        height: layoutHeight,
+      };
+    },
+    [],
+  );
+
+  const handleTablePress = useCallback(
+    (event: GestureResponderEvent) => {
+      if (!interactionsEnabled) {
+        return;
+      }
+
+      if (physicsActiveRef.current) {
+        return;
+      }
+
+      const camera = cameraRef.current;
+      const viewport = viewportRef.current;
+
+      if (
+        !camera ||
+        viewport.width <= 0 ||
+        viewport.height <= 0
+      ) {
+        return;
+      }
+
+      const { locationX, locationY } = event.nativeEvent;
+
+      const pointer = new THREE.Vector2(
+        (locationX / viewport.width) * 2 - 1,
+        -((locationY / viewport.height) * 2 - 1),
+      );
+
+      const raycaster = raycasterRef.current;
+
+      raycaster.setFromCamera(pointer, camera);
+
+      const diceMeshes = Array.from(
+        diceItemsRef.current.values(),
+        (item) => item.mesh,
+      );
+
+      const intersections = raycaster.intersectObjects(
+        diceMeshes,
+        true,
+      );
+
+      const selectedIntersection = intersections.find((intersection) => {
+        const dieId = intersection.object.userData.roll3DDieId;
+
+        return typeof dieId === "string" && dieId.length > 0;
+      });
+
+      const dieId = selectedIntersection?.object.userData
+        .roll3DDieId;
+
+      onPressDieRef.current?.(
+        typeof dieId === "string" ? dieId : null,
+      );
+    },
+    [interactionsEnabled],
+  );
+
   function handleContextCreate(gl: ExpoWebGLRenderingContext) {
     const { drawingBufferWidth: width, drawingBufferHeight: bufferHeight } = gl;
 
@@ -1078,6 +1310,8 @@ export function DiceTable3D({
       0.1,
       100,
     );
+
+    cameraRef.current = camera;
 
     const fovRadians = THREE.MathUtils.degToRad(cameraFov);
 
@@ -1170,6 +1404,12 @@ export function DiceTable3D({
             progress: 1,
             visible: true,
           });
+
+          updateSelectionHalo({
+            halo: item.selectionHalo,
+            dice: item.mesh,
+            selected: selectedDieIdsRef.current.has(item.id),
+          });
         }
       }
 
@@ -1184,6 +1424,7 @@ export function DiceTable3D({
 
   return (
     <View
+      onLayout={handleTableLayout}
       style={{
         height,
         width: "100%",
@@ -1197,6 +1438,18 @@ export function DiceTable3D({
           flex: 1,
         }}
         onContextCreate={handleContextCreate}
+      />
+
+      <Pressable
+        disabled={!interactionsEnabled}
+        onPress={handleTablePress}
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+        }}
       />
     </View>
   );
