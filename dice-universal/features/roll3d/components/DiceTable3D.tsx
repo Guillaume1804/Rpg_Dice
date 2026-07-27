@@ -70,6 +70,7 @@ type DiceDragState = {
 
   hasMoved: boolean;
   selectionRequested: boolean;
+  longPressTriggered: boolean;
 };
 
 /**
@@ -102,6 +103,19 @@ const DRAG_START_THRESHOLD_PX = 7;
  * Les véritables collisions physiques seront améliorées plus tard.
  */
 const DRAG_TABLE_MARGIN = 0.46;
+
+/**
+ * Durée avant qu’un toucher immobile soit considéré comme une prise en main.
+ */
+const PICKUP_LONG_PRESS_DELAY_MS = 360;
+
+/**
+ * Élévation visuelle temporaire d’un dé pris en main.
+ *
+ * Cette valeur est volontairement modeste : le dé doit sembler soulevé,
+ * sans quitter visuellement la zone de manipulation.
+ */
+const PICKUP_LIFT_Y = 0.24;
 
 function disposeObject3D(object: THREE.Object3D) {
   object.traverse((child) => {
@@ -460,7 +474,14 @@ export function DiceTable3D({
     startPositions: new Map(),
     hasMoved: false,
     selectionRequested: false,
+    longPressTriggered: false,
   });
+
+  const longPressTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+
+  const pickedUpDieIdsRef = useRef<Set<string>>(new Set());
 
   const physicsWorldRef = useRef<Roll3DPhysicsWorld | null>(null);
   const lastFrameAtRef = useRef<number | null>(null);
@@ -475,6 +496,15 @@ export function DiceTable3D({
   const lastHandledRollRequestIdRef = useRef(0);
   const lastHandledSkipRollRequestIdRef = useRef(0);
   const skipTransitionFrameRef = useRef<number | null>(null);
+
+  const clearLongPressTimeout = useCallback(() => {
+    if (longPressTimeoutRef.current == null) {
+      return;
+    }
+
+    clearTimeout(longPressTimeoutRef.current);
+    longPressTimeoutRef.current = null;
+  }, []);
 
   useEffect(() => {
     onPhysicsRollSettledRef.current = onPhysicsRollSettled;
@@ -1172,6 +1202,8 @@ export function DiceTable3D({
     const diceItems = diceItemsRef.current;
 
     return () => {
+      clearLongPressTimeout();
+      pickedUpDieIdsRef.current.clear();
       if (animationFrameRef.current != null) {
         cancelAnimationFrame(animationFrameRef.current);
       }
@@ -1200,7 +1232,7 @@ export function DiceTable3D({
 
       diceItems.clear();
     };
-  }, []);
+  }, [clearLongPressTimeout]);
 
   useEffect(() => {
     const scene = sceneRef.current;
@@ -1379,7 +1411,44 @@ export function DiceTable3D({
     [createPointerFromTableCoordinates],
   );
 
+  const putPickedUpDiceBackOnTable = useCallback(() => {
+    const dragState = dragStateRef.current;
+
+    for (const dieId of pickedUpDieIdsRef.current) {
+      const item = diceItemsRef.current.get(dieId);
+      const startPosition = dragState.startPositions.get(dieId);
+
+      if (!item || !startPosition) {
+        continue;
+      }
+
+      /**
+       * On conserve les coordonnées x/z éventuellement modifiées pendant
+       * le glissement, mais on remet le dé à sa hauteur de repos initiale.
+       */
+      item.mesh.position.y = startPosition.y;
+      item.mesh.updateMatrixWorld(true);
+
+      updateContactShadow({
+        shadow: item.shadow,
+        dice: item.mesh,
+        progress: 1,
+        visible: true,
+      });
+
+      updateSelectionHalo({
+        halo: item.selectionHalo,
+        dice: item.mesh,
+        selected: selectedDieIdsRef.current.has(dieId),
+      });
+    }
+
+    pickedUpDieIdsRef.current.clear();
+  }, []);
+
   const resetDragState = useCallback(() => {
+    clearLongPressTimeout();
+
     dragStateRef.current = {
       touchedDieId: null,
       dragDieIds: [],
@@ -1387,11 +1456,14 @@ export function DiceTable3D({
       startPositions: new Map(),
       hasMoved: false,
       selectionRequested: false,
+      longPressTriggered: false,
     };
-  }, []);
+  }, [clearLongPressTimeout]);
 
   const handleTableTouchStart = useCallback(
     (event: GestureResponderEvent) => {
+      clearLongPressTimeout();
+
       if (!interactionsEnabled || physicsActiveRef.current) {
         resetDragState();
         return;
@@ -1417,6 +1489,7 @@ export function DiceTable3D({
           startPositions: new Map(),
           hasMoved: false,
           selectionRequested: false,
+          longPressTriggered: false,
         };
 
         return;
@@ -1426,10 +1499,8 @@ export function DiceTable3D({
         selectedDieIdsRef.current.has(touchedDieId);
 
       /**
-       * Si le dé touché appartient déjà à une sélection multiple,
-       * toute la sélection est déplacée.
-       *
-       * Sinon, seul le dé touché est déplacé.
+       * Une sélection multiple est manipulée comme un seul ensemble.
+       * Un dé extérieur à la sélection devient une prise individuelle.
        */
       const dragDieIds = touchedDieIsSelected
         ? Array.from(selectedDieIdsRef.current)
@@ -1456,15 +1527,73 @@ export function DiceTable3D({
         startWorldPoint,
         startPositions,
         hasMoved: false,
+        selectionRequested: touchedDieIsSelected,
+        longPressTriggered: false,
+      };
+
+      longPressTimeoutRef.current = setTimeout(() => {
+        longPressTimeoutRef.current = null;
+
+        const currentDragState = dragStateRef.current;
 
         /**
-         * Une sélection déjà active n’a pas besoin d’être redemandée
-         * au composant parent.
+         * Le doigt peut avoir été relâché, déplacé ou remplacé par une nouvelle
+         * interaction avant l’expiration du délai.
          */
-        selectionRequested: touchedDieIsSelected,
-      };
+        if (
+          currentDragState.touchedDieId !== touchedDieId ||
+          currentDragState.hasMoved ||
+          physicsActiveRef.current
+        ) {
+          return;
+        }
+
+        currentDragState.longPressTriggered = true;
+
+        if (!currentDragState.selectionRequested) {
+          currentDragState.selectionRequested = true;
+          onPressDieRef.current?.(touchedDieId);
+        }
+
+        pickedUpDieIdsRef.current = new Set(
+          currentDragState.dragDieIds,
+        );
+
+        for (const dieId of currentDragState.dragDieIds) {
+          const item = diceItemsRef.current.get(dieId);
+          const startPosition =
+            currentDragState.startPositions.get(dieId);
+
+          if (!item || !startPosition) {
+            continue;
+          }
+
+          item.mesh.position.y =
+            startPosition.y + PICKUP_LIFT_Y;
+
+          item.mesh.updateMatrixWorld(true);
+
+          /**
+           * L’ombre reste sur la table alors que le dé s’élève.
+           * Elle donne un premier retour de profondeur, encore provisoire.
+           */
+          updateContactShadow({
+            shadow: item.shadow,
+            dice: item.mesh,
+            progress: 0.72,
+            visible: true,
+          });
+
+          updateSelectionHalo({
+            halo: item.selectionHalo,
+            dice: item.mesh,
+            selected: true,
+          });
+        }
+      }, PICKUP_LONG_PRESS_DELAY_MS);
     },
     [
+      clearLongPressTimeout,
       getDieIdAtTableCoordinates,
       getTableWorldPoint,
       interactionsEnabled,
@@ -1505,6 +1634,14 @@ export function DiceTable3D({
 
       if (!dragState.hasMoved) {
         dragState.hasMoved = true;
+
+        /**
+         * Si l’appui long n’a pas encore été déclenché, le mouvement devient
+         * un glissement ordinaire et annule le minuteur de prise en main.
+         */
+        if (!dragState.longPressTriggered) {
+          clearLongPressTimeout();
+        }
       }
 
       /**
@@ -1593,7 +1730,8 @@ export function DiceTable3D({
 
         item.mesh.position.set(
           startPosition.x + safeDeltaX,
-          startPosition.y,
+          startPosition.y +
+          (dragState.longPressTriggered ? PICKUP_LIFT_Y : 0),
           startPosition.z + safeDeltaZ,
         );
 
@@ -1615,11 +1753,28 @@ export function DiceTable3D({
         });
       }
     },
-    [getTableWorldPoint, interactionsEnabled],
+    [
+      clearLongPressTimeout,
+      getTableWorldPoint,
+      interactionsEnabled,
+    ],
   );
 
   const handleTableTouchEnd = useCallback(() => {
+    clearLongPressTimeout();
+
     const dragState = dragStateRef.current;
+
+    /**
+     * Un appui long est déjà une interaction complète.
+     * Il ne doit pas être suivi d’un deuxième événement de toucher qui
+     * désélectionnerait immédiatement le dé.
+     */
+    if (dragState.longPressTriggered) {
+      putPickedUpDiceBackOnTable();
+      resetDragState();
+      return;
+    }
 
     /**
      * Aucun déplacement réel :
@@ -1630,11 +1785,21 @@ export function DiceTable3D({
     }
 
     resetDragState();
-  }, [resetDragState]);
+  }, [
+    clearLongPressTimeout,
+    putPickedUpDiceBackOnTable,
+    resetDragState,
+  ]);
 
   const handleTableTouchCancel = useCallback(() => {
+    clearLongPressTimeout();
+    putPickedUpDiceBackOnTable();
     resetDragState();
-  }, [resetDragState]);
+  }, [
+    clearLongPressTimeout,
+    putPickedUpDiceBackOnTable,
+    resetDragState,
+  ]);
 
   const tablePanResponder = useMemo(
     () =>
