@@ -43,6 +43,7 @@ import {
   removeRoll3DDraftLine,
   updateRoll3DDraftLine,
   updateRoll3DDraftLineBehavior,
+  splitOneDieFromRoll3DDraftLine,
 } from "../logic/roll3DDraft";
 
 import { Roll3DCurrentHandEditSheet } from "./Roll3DCurrentHandEditSheet";
@@ -793,11 +794,10 @@ export function Roll3DLauncherSurface({
           rulesMap,
         }),
         entries: dice.map((die) => {
-          const technicalLabel = `${die.sign === -1 ? "- " : ""}${die.qty}d${die.sides}${
-            die.modifier !== 0
-              ? ` ${die.modifier > 0 ? "+" : "-"} ${Math.abs(die.modifier)}`
-              : ""
-          }`;
+          const technicalLabel = `${die.sign === -1 ? "- " : ""}${die.qty}d${die.sides}${die.modifier !== 0
+            ? ` ${die.modifier > 0 ? "+" : "-"} ${Math.abs(die.modifier)}`
+            : ""
+            }`;
 
           const customLabel =
             typeof die.label === "string" && die.label.trim().length > 0
@@ -1088,6 +1088,22 @@ export function Roll3DLauncherSurface({
     });
   }, []);
 
+  const handleSplitOneCurrentHandDie = useCallback(
+    (lineKey: string) => {
+      setCurrentHandEditDraft((current) => {
+        if (!current) {
+          return current;
+        }
+
+        return splitOneDieFromRoll3DDraftLine({
+          draft: current,
+          lineKey,
+        });
+      });
+    },
+    [],
+  );
+
   const handleApplyCurrentHandEdit = useCallback(() => {
     if (!currentHandEditDraft || currentHandEditDraft.dice.length === 0) {
       return;
@@ -1103,6 +1119,7 @@ export function Roll3DLauncherSurface({
 
     setSceneVersion((current) => current + 1);
     loadDraft(currentHandEditDraft);
+    setCurrentHandEditDraft(null);
 
     setCurrentHandBehaviorTargetKey(null);
     currentHandQuickBehaviorConfig.close();
@@ -1794,10 +1811,10 @@ export function Roll3DLauncherSurface({
       const groupRuleId =
         adjustment.behaviorParamsTarget === "group"
           ? await resolveAdjustedGroupRuleIdForSave({
-              db,
-              tableId,
-              adjustment,
-            })
+            db,
+            tableId,
+            adjustment,
+          })
           : null;
 
       const newGroupId = await createGroupFromDraft(db, {
@@ -2070,6 +2087,7 @@ export function Roll3DLauncherSurface({
         onRemoveLine={handleRemoveCurrentHandLine}
         onConfigureBehavior={handleConfigureCurrentHandLineBehavior}
         onClearBehavior={handleClearCurrentHandLineBehavior}
+        onSplitOneDie={handleSplitOneCurrentHandDie}
       />
 
       <QuickDieBehaviorPickerModal
@@ -2450,8 +2468,8 @@ function Roll3DAdjustedActionSaveModal({
             {adjustment.sides}
             {adjustment.modifier !== 0
               ? ` ${adjustment.modifier > 0 ? "+" : "-"} ${Math.abs(
-                  adjustment.modifier,
-                )}`
+                adjustment.modifier,
+              )}`
               : ""}
           </Text>
 

@@ -19,6 +19,7 @@ type Roll3DCurrentHandEditSheetProps = {
   onRemoveLine: (lineKey: string) => void;
   onConfigureBehavior: (lineKey: string) => void;
   onClearBehavior: (lineKey: string) => void;
+  onSplitOneDie: (lineKey: string) => void;
 };
 
 function formatLineFormula(line: Roll3DSavableDraftLine) {
@@ -166,6 +167,7 @@ function CurrentHandLineCard({
   onRemove,
   onConfigureBehavior,
   onClearBehavior,
+  onSplitOneDie,
 }: {
   line: Roll3DSavableDraftLine;
   totalDiceCount: number;
@@ -176,6 +178,7 @@ function CurrentHandLineCard({
   onRemove: () => void;
   onConfigureBehavior: () => void;
   onClearBehavior: () => void;
+  onSplitOneDie: () => void;
 }) {
   const premium = usePremiumTheme();
 
@@ -300,6 +303,45 @@ function CurrentHandLineCard({
           onIncrease={() => onChangeModifier(1)}
         />
       </View>
+
+      {line.qty > 1 ? (
+        <Pressable
+          onPress={onSplitOneDie}
+          style={({ pressed }) => ({
+            opacity: pressed ? 0.76 : 1,
+            transform: [
+              {
+                scale: pressed ? premium.animation.pressScale : 1,
+              },
+            ],
+          })}
+        >
+          <View
+            style={{
+              minHeight: 40,
+              borderRadius: premium.radius.pill,
+              borderWidth: 1,
+              borderColor: "rgba(126, 170, 255, 0.28)",
+              backgroundColor: "rgba(126, 170, 255, 0.09)",
+              alignItems: "center",
+              justifyContent: "center",
+              paddingHorizontal: 12,
+            }}
+          >
+            <Text
+              style={{
+                color: "rgba(154, 190, 255, 0.96)",
+                fontSize: 10,
+                fontWeight: "900",
+                textTransform: "uppercase",
+                letterSpacing: 0.65,
+              }}
+            >
+              Dissocier 1 dé
+            </Text>
+          </View>
+        </Pressable>
+      ) : null}
 
       <View style={{ gap: 7 }}>
         <Text
@@ -454,6 +496,7 @@ export function Roll3DCurrentHandEditSheet({
   onRemoveLine,
   onConfigureBehavior,
   onClearBehavior,
+  onSplitOneDie,
 }: Roll3DCurrentHandEditSheetProps) {
   const premium = usePremiumTheme();
   const insets = useSafeAreaInsets();
@@ -590,6 +633,7 @@ export function Roll3DCurrentHandEditSheet({
                 onRemove={() => onRemoveLine(line.key)}
                 onConfigureBehavior={() => onConfigureBehavior(line.key)}
                 onClearBehavior={() => onClearBehavior(line.key)}
+                onSplitOneDie={() => onSplitOneDie(line.key)}
               />
             ))}
           </ScrollView>

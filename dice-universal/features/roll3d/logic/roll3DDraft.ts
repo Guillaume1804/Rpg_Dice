@@ -14,6 +14,7 @@ import { createRoll3DId } from "./roll3DRandom";
 
 type CreateRoll3DDieInstanceOptions = {
   rollEntryId?: string;
+  preserveRollEntryGrouping?: boolean;
   sign?: Roll3DDieSign;
   modifier?: number;
   source?: Roll3DDieSource;
@@ -24,6 +25,7 @@ type CreateRoll3DDieInstanceOptions = {
 
 export type CreateRoll3DDieInput = {
   rollEntryId?: string;
+  preserveRollEntryGrouping?: boolean;
   sides: Roll3DDieSides;
   sign?: Roll3DDieSign;
   modifier?: number;
@@ -74,6 +76,8 @@ export function createRoll3DDieInstance(
   return {
     id: createRoll3DId("roll-3d-die"),
     rollEntryId,
+    preserveRollEntryGrouping:
+      options.preserveRollEntryGrouping ?? false,
     sides,
     createdAt: Date.now(),
     sign: options.sign ?? 1,
@@ -102,6 +106,7 @@ export function createRoll3DDraftFromDice(
       createRoll3DDieInstance(die.sides, {
         rollEntryId: die.rollEntryId,
         sign: die.sign,
+        preserveRollEntryGrouping: die.preserveRollEntryGrouping,
         modifier: die.modifier,
         source: die.source,
         behavior: die.behavior,
@@ -165,6 +170,7 @@ export function appendDiceToRoll3DDraft(
       ...diceToAppend.map((die) =>
         createRoll3DDieInstance(die.sides, {
           rollEntryId: die.rollEntryId,
+          preserveRollEntryGrouping: die.preserveRollEntryGrouping,
           sign: die.sign,
           modifier: die.modifier,
           source: die.source,
@@ -203,10 +209,15 @@ function getRoll3DSavableLineKey(die: Roll3DDieInstance): string {
    * 5 dés d6 libres
    * → une seule ligne 5d6
    */
-  if (die.source === "free") {
-    return ["free", die.sides, die.sign, die.modifier, behaviorId, label].join(
-      ":",
-    );
+  if (die.source === "free" && !die.preserveRollEntryGrouping) {
+    return [
+      "free-auto",
+      die.sides,
+      die.sign,
+      die.modifier,
+      behaviorId,
+      label,
+    ].join(":");
   }
 
   /**
@@ -217,7 +228,7 @@ function getRoll3DSavableLineKey(die: Roll3DDieInstance): string {
    * contiendrait plusieurs configurations sous le même rollEntryId.
    */
   return [
-    "entry",
+    die.source === "free" ? "free-preserved" : "entry",
     die.rollEntryId,
     die.sides,
     die.sign,
@@ -316,12 +327,18 @@ export function updateRoll3DDraftLine(params: {
     nextLineDice.push(
       createRoll3DDieInstance(prototype.sides, {
         /**
-         * Une ligne sauvegardée ou préparée doit conserver son identité logique.
-         * Un dé libre peut recevoir un nouvel identifiant individuel puisque
-         * son regroupement ne dépend pas du rollEntryId.
+         * Une ligne explicitement dissociée doit conserver son identité logique
+         * quand sa quantité augmente.
          */
         rollEntryId:
-          prototype.source === "free" ? undefined : prototype.rollEntryId,
+          prototype.source === "free" &&
+            !prototype.preserveRollEntryGrouping
+            ? undefined
+            : prototype.rollEntryId,
+
+        preserveRollEntryGrouping:
+          prototype.preserveRollEntryGrouping ?? false,
+
         sign: nextSign,
         modifier: nextModifier,
         source: prototype.source,
@@ -420,6 +437,60 @@ export function updateRoll3DDraftLineBehavior(params: {
   if (!hasMatchingDice || !hasChanged) {
     return params.draft;
   }
+
+  return {
+    ...params.draft,
+    updatedAt: Date.now(),
+    dice: nextDice,
+  };
+}
+
+export function splitOneDieFromRoll3DDraftLine(params: {
+  draft: Roll3DDraft;
+  lineKey: string;
+}): Roll3DDraft {
+  const matchingIndexes: number[] = [];
+
+  params.draft.dice.forEach((die, index) => {
+    if (getRoll3DSavableLineKey(die) === params.lineKey) {
+      matchingIndexes.push(index);
+    }
+  });
+
+  /**
+   * Une ligne d’un seul dé ne peut pas être dissociée.
+   */
+  if (matchingIndexes.length <= 1) {
+    return params.draft;
+  }
+
+  const isolatedDieIndex = matchingIndexes[matchingIndexes.length - 1];
+  const isolatedDie = params.draft.dice[isolatedDieIndex];
+
+  if (!isolatedDie) {
+    return params.draft;
+  }
+
+  const isolatedRollEntryId = createRoll3DId(
+    "roll-3d-split-entry",
+  );
+
+  const nextDice = params.draft.dice.map((die, index) => {
+    if (index !== isolatedDieIndex) {
+      return die;
+    }
+
+    return {
+      ...die,
+      rollEntryId: isolatedRollEntryId,
+
+      /**
+       * Ce drapeau empêche le dé isolé d’être immédiatement regroupé avec
+       * les autres dés libres ayant les mêmes caractéristiques.
+       */
+      preserveRollEntryGrouping: true,
+    };
+  });
 
   return {
     ...params.draft,

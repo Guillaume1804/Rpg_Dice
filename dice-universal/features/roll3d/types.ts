@@ -143,6 +143,15 @@ export type Roll3DDieBehaviorRef = {
 export type Roll3DDieInstance = {
   id: string;
   rollEntryId: string;
+  /**
+   * Force le regroupement de ce dé selon son rollEntryId.
+   *
+   * Les dés libres ordinaires restent regroupés automatiquement selon leurs
+   * caractéristiques. Les dés volontairement dissociés utilisent cette option
+   * pour conserver des lignes logiques distinctes.
+   */
+  preserveRollEntryGrouping?: boolean;
+
   sides: Roll3DDieSides;
   createdAt: number;
 
@@ -202,12 +211,12 @@ export type Roll3DRollSummary = {
   total: number;
 
   presentationMeta?: {
-    entries: Array<
+    entries: (
       Roll3DEntryPresentationMeta & {
         rollEntryId: string;
         source: Roll3DDieSource;
       }
-    >;
+    )[];
   };
 
   /**
