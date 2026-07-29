@@ -115,11 +115,45 @@ export function useRoll3DLauncher({
     setRollRequestId((current) => current + 1);
   }, [draft.dice.length]);
 
-  const completeRollAfterPhysics = useCallback(() => {
-    if (draft.dice.length === 0) return;
+  const completeRollAfterPhysics = useCallback(
+    (rolledDieIds?: string[]) => {
+      if (draft.dice.length === 0) {
+        return;
+      }
 
-    setLatestResult(buildOfficialRoll3DSummary(draft));
-  }, [draft]);
+      /**
+       * Sans identifiants explicites, il s’agit du lancer global classique :
+       * toute la Main est évaluée.
+       */
+      if (!rolledDieIds || rolledDieIds.length === 0) {
+        setLatestResult(buildOfficialRoll3DSummary(draft));
+        return;
+      }
+
+      /**
+       * Lors d’un lancer gestuel, seuls les dés réellement pris en main
+       * participent au résultat officiel.
+       *
+       * Les dés éventuellement déplacés par collision restent présents sur
+       * la table, mais ne sont pas évalués.
+       */
+      const rolledDieIdSet = new Set(rolledDieIds);
+
+      const rolledDice = draft.dice.filter((die) => rolledDieIdSet.has(die.id));
+
+      if (rolledDice.length === 0) {
+        return;
+      }
+
+      const partialDraft: Roll3DDraft = {
+        ...draft,
+        dice: rolledDice,
+      };
+
+      setLatestResult(buildOfficialRoll3DSummary(partialDraft));
+    },
+    [draft],
+  );
 
   return useMemo(
     () => ({

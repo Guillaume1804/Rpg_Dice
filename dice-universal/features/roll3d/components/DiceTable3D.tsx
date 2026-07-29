@@ -1,11 +1,6 @@
 // dice-universal/features/roll3d/components/DiceTable3D.tsx
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   PanResponder,
   View,
@@ -35,7 +30,17 @@ type DiceTable3DProps = {
   interactionsEnabled?: boolean;
 
   onPressDie?: (dieId: string | null) => void;
+
+  /**
+   * Lancer global déclenché par le bouton principal.
+   */
   onPhysicsRollSettled?: () => void;
+
+  /**
+   * Cycle spécifique d’un lancer gestuel partiel.
+   */
+  onGestureThrowStart?: (dieIds: string[]) => void;
+  onGestureThrowSettled?: (dieIds: string[]) => void;
 };
 
 type DiceDropState = {
@@ -399,11 +404,7 @@ function getSelectionHaloRadius(sides: number) {
 function createSelectionHalo(sides: number) {
   const radius = getSelectionHaloRadius(sides);
 
-  const geometry = new THREE.RingGeometry(
-    radius * 0.72,
-    radius,
-    48,
-  );
+  const geometry = new THREE.RingGeometry(radius * 0.72, radius, 48);
 
   const material = new THREE.MeshBasicMaterial({
     color: "#E8C878",
@@ -433,11 +434,7 @@ function updateSelectionHalo(params: {
   const { halo, dice, selected } = params;
   const material = halo.material as THREE.MeshBasicMaterial;
 
-  halo.position.set(
-    dice.position.x,
-    TABLE_SURFACE_Y + 0.012,
-    dice.position.z,
-  );
+  halo.position.set(dice.position.x, TABLE_SURFACE_Y + 0.012, dice.position.z);
 
   halo.visible = selected;
   material.opacity = selected ? 0.72 : 0;
@@ -480,6 +477,8 @@ export function DiceTable3D({
   interactionsEnabled = true,
   onPressDie,
   onPhysicsRollSettled,
+  onGestureThrowStart,
+  onGestureThrowSettled,
 }: DiceTable3DProps) {
   const animationFrameRef = useRef<number | null>(null);
 
@@ -494,9 +493,7 @@ export function DiceTable3D({
     height,
   });
 
-  const selectedDieIdsRef = useRef<Set<string>>(
-    new Set(selectedDieIds),
-  );
+  const selectedDieIdsRef = useRef<Set<string>>(new Set(selectedDieIds));
 
   const onPressDieRef = useRef(onPressDie);
 
@@ -520,15 +517,17 @@ export function DiceTable3D({
   const physicsWorldRef = useRef<Roll3DPhysicsWorld | null>(null);
   const lastFrameAtRef = useRef<number | null>(null);
   const physicsActiveRef = useRef(false);
-  const physicsRollModeRef = useRef<
-    "idle" | "adding" | "rolling" | "gesture"
-  >("idle");
+  const physicsRollModeRef = useRef<"idle" | "adding" | "rolling" | "gesture">(
+    "idle",
+  );
   const activeGestureDieIdsRef = useRef<string[]>([]);
   const physicsSettledNotifiedRef = useRef(false);
   const settleDelayTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
   const onPhysicsRollSettledRef = useRef(onPhysicsRollSettled);
+  const onGestureThrowStartRef = useRef(onGestureThrowStart);
+  const onGestureThrowSettledRef = useRef(onGestureThrowSettled);
   const activePhysicsRollIdRef = useRef(0);
   const lastHandledRollRequestIdRef = useRef(0);
   const lastHandledSkipRollRequestIdRef = useRef(0);
@@ -546,6 +545,14 @@ export function DiceTable3D({
   useEffect(() => {
     onPhysicsRollSettledRef.current = onPhysicsRollSettled;
   }, [onPhysicsRollSettled]);
+
+  useEffect(() => {
+    onGestureThrowStartRef.current = onGestureThrowStart;
+  }, [onGestureThrowStart]);
+
+  useEffect(() => {
+    onGestureThrowSettledRef.current = onGestureThrowSettled;
+  }, [onGestureThrowSettled]);
 
   useEffect(() => {
     onPressDieRef.current = onPressDie;
@@ -1332,17 +1339,14 @@ export function DiceTable3D({
     fastForwardPhysicsRollToRest();
   }, [skipRollRequestId, fastForwardPhysicsRollToRest]);
 
-  const handleTableLayout = useCallback(
-    (event: LayoutChangeEvent) => {
-      const { width, height: layoutHeight } = event.nativeEvent.layout;
+  const handleTableLayout = useCallback((event: LayoutChangeEvent) => {
+    const { width, height: layoutHeight } = event.nativeEvent.layout;
 
-      viewportRef.current = {
-        width,
-        height: layoutHeight,
-      };
-    },
-    [],
-  );
+    viewportRef.current = {
+      width,
+      height: layoutHeight,
+    };
+  }, []);
 
   const createPointerFromTableCoordinates = useCallback(
     (locationX: number, locationY: number) => {
@@ -1368,10 +1372,7 @@ export function DiceTable3D({
         return null;
       }
 
-      const pointer = createPointerFromTableCoordinates(
-        locationX,
-        locationY,
-      );
+      const pointer = createPointerFromTableCoordinates(locationX, locationY);
 
       if (!pointer) {
         return null;
@@ -1386,10 +1387,7 @@ export function DiceTable3D({
         (item) => item.mesh,
       );
 
-      const intersections = raycaster.intersectObjects(
-        diceMeshes,
-        true,
-      );
+      const intersections = raycaster.intersectObjects(diceMeshes, true);
 
       const selectedIntersection = intersections.find((intersection) => {
         const dieId = intersection.object.userData.roll3DDieId;
@@ -1397,8 +1395,7 @@ export function DiceTable3D({
         return typeof dieId === "string" && dieId.length > 0;
       });
 
-      const dieId =
-        selectedIntersection?.object.userData.roll3DDieId;
+      const dieId = selectedIntersection?.object.userData.roll3DDieId;
 
       return typeof dieId === "string" ? dieId : null;
     },
@@ -1406,20 +1403,14 @@ export function DiceTable3D({
   );
 
   const getTableWorldPoint = useCallback(
-    (
-      locationX: number,
-      locationY: number,
-    ): THREE.Vector3 | null => {
+    (locationX: number, locationY: number): THREE.Vector3 | null => {
       const camera = cameraRef.current;
 
       if (!camera) {
         return null;
       }
 
-      const pointer = createPointerFromTableCoordinates(
-        locationX,
-        locationY,
-      );
+      const pointer = createPointerFromTableCoordinates(locationX, locationY);
 
       if (!pointer) {
         return null;
@@ -1441,10 +1432,7 @@ export function DiceTable3D({
         -TABLE_SURFACE_Y,
       );
 
-      return raycaster.ray.intersectPlane(
-        tablePlane,
-        new THREE.Vector3(),
-      );
+      return raycaster.ray.intersectPlane(tablePlane, new THREE.Vector3());
     },
     [createPointerFromTableCoordinates],
   );
@@ -1508,17 +1496,15 @@ export function DiceTable3D({
       capturedAt: now,
     });
 
-    const oldestAllowedTimestamp =
-      now - GESTURE_SAMPLE_WINDOW_MS * 2;
+    const oldestAllowedTimestamp = now - GESTURE_SAMPLE_WINDOW_MS * 2;
 
-    dragState.gestureSamples =
-      dragState.gestureSamples.filter(
-        (sample) => sample.capturedAt >= oldestAllowedTimestamp,
-      );
+    dragState.gestureSamples = dragState.gestureSamples.filter(
+      (sample) => sample.capturedAt >= oldestAllowedTimestamp,
+    );
   }, []);
 
-  const calculateGestureThrowVelocity = useCallback(
-    (): Roll3DPhysicsVector3 | null => {
+  const calculateGestureThrowVelocity =
+    useCallback((): Roll3DPhysicsVector3 | null => {
       const samples = dragStateRef.current.gestureSamples;
 
       if (samples.length < 2) {
@@ -1535,9 +1521,8 @@ export function DiceTable3D({
         latestSample.capturedAt - GESTURE_SAMPLE_WINDOW_MS;
 
       const firstRelevantSample =
-        samples.find(
-          (sample) => sample.capturedAt >= minimumTimestamp,
-        ) ?? samples[0];
+        samples.find((sample) => sample.capturedAt >= minimumTimestamp) ??
+        samples[0];
 
       if (!firstRelevantSample) {
         return null;
@@ -1545,18 +1530,14 @@ export function DiceTable3D({
 
       const elapsedSeconds = Math.max(
         0.016,
-        (latestSample.capturedAt -
-          firstRelevantSample.capturedAt) /
-        1000,
+        (latestSample.capturedAt - firstRelevantSample.capturedAt) / 1000,
       );
 
       const velocityX =
-        (latestSample.point.x - firstRelevantSample.point.x) /
-        elapsedSeconds;
+        (latestSample.point.x - firstRelevantSample.point.x) / elapsedSeconds;
 
       const velocityZ =
-        (latestSample.point.z - firstRelevantSample.point.z) /
-        elapsedSeconds;
+        (latestSample.point.z - firstRelevantSample.point.z) / elapsedSeconds;
 
       const planarSpeed = Math.sqrt(
         velocityX * velocityX + velocityZ * velocityZ,
@@ -1577,16 +1558,10 @@ export function DiceTable3D({
 
       return {
         x: directionX * safePlanarSpeed,
-        y: clamp(
-          1.25 + safePlanarSpeed * 0.075,
-          1.6,
-          2.45,
-        ),
+        y: clamp(1.25 + safePlanarSpeed * 0.075, 1.6, 2.45),
         z: directionZ * safePlanarSpeed,
       };
-    },
-    [],
-  );
+    }, []);
 
   const startGesturePhysicsThrow = useCallback(
     (linearVelocity: Roll3DPhysicsVector3): boolean => {
@@ -1608,13 +1583,16 @@ export function DiceTable3D({
 
       const hasEveryGestureDie = dragState.dragDieIds.every(
         (dieId) =>
-          !!instanceById.get(dieId) &&
-          !!diceItemsRef.current.get(dieId),
+          !!instanceById.get(dieId) && !!diceItemsRef.current.get(dieId),
       );
 
       if (!hasEveryGestureDie) {
         return false;
       }
+
+      const currentGestureRollId = activePhysicsRollIdRef.current + 1;
+
+      activePhysicsRollIdRef.current = currentGestureRollId;
 
       physicsWorld.clearDice();
 
@@ -1645,37 +1623,30 @@ export function DiceTable3D({
 
         const isGestureDie = gestureDieIds.has(instance.id);
 
-        const angularVelocity: Roll3DPhysicsVector3 | undefined =
-          isGestureDie
-            ? {
+        const angularVelocity: Roll3DPhysicsVector3 | undefined = isGestureDie
+          ? {
               x: randomBetween(-18, 18),
               y: randomBetween(-24, 24),
               z: randomBetween(-18, 18),
             }
-            : undefined;
+          : undefined;
 
         physicsWorld.addDie(
           instance,
           toPhysicsTransform(item.mesh),
           isGestureDie
             ? {
-              launchMode: "gesture_throw",
-              linearVelocity: {
-                x:
-                  linearVelocity.x +
-                  randomBetween(-0.35, 0.35),
-                y:
-                  linearVelocity.y +
-                  randomBetween(-0.08, 0.2),
-                z:
-                  linearVelocity.z +
-                  randomBetween(-0.35, 0.35),
-              },
-              angularVelocity,
-            }
+                launchMode: "gesture_throw",
+                linearVelocity: {
+                  x: linearVelocity.x + randomBetween(-0.35, 0.35),
+                  y: linearVelocity.y + randomBetween(-0.08, 0.2),
+                  z: linearVelocity.z + randomBetween(-0.35, 0.35),
+                },
+                angularVelocity,
+              }
             : {
-              launchMode: "resting",
-            },
+                launchMode: "resting",
+              },
         );
       }
 
@@ -1684,6 +1655,12 @@ export function DiceTable3D({
       physicsActiveRef.current = true;
       physicsRollModeRef.current = "gesture";
       lastFrameAtRef.current = Date.now();
+
+      /**
+       * Le parent peut maintenant masquer ses contrôles sans afficher
+       * l’interface spéciale du lancer global.
+       */
+      onGestureThrowStartRef.current?.([...activeGestureDieIdsRef.current]);
 
       return true;
     },
@@ -1701,15 +1678,9 @@ export function DiceTable3D({
 
       const { locationX, locationY } = event.nativeEvent;
 
-      const touchedDieId = getDieIdAtTableCoordinates(
-        locationX,
-        locationY,
-      );
+      const touchedDieId = getDieIdAtTableCoordinates(locationX, locationY);
 
-      const startWorldPoint = getTableWorldPoint(
-        locationX,
-        locationY,
-      );
+      const startWorldPoint = getTableWorldPoint(locationX, locationY);
 
       if (!touchedDieId || !startWorldPoint) {
         dragStateRef.current = {
@@ -1726,8 +1697,7 @@ export function DiceTable3D({
         return;
       }
 
-      const touchedDieIsSelected =
-        selectedDieIdsRef.current.has(touchedDieId);
+      const touchedDieIsSelected = selectedDieIdsRef.current.has(touchedDieId);
 
       /**
        * Une sélection multiple est manipulée comme un seul ensemble.
@@ -1746,10 +1716,7 @@ export function DiceTable3D({
           continue;
         }
 
-        startPositions.set(
-          dieId,
-          item.mesh.position.clone(),
-        );
+        startPositions.set(dieId, item.mesh.position.clone());
       }
 
       dragStateRef.current = {
@@ -1792,21 +1759,17 @@ export function DiceTable3D({
           onPressDieRef.current?.(touchedDieId);
         }
 
-        pickedUpDieIdsRef.current = new Set(
-          currentDragState.dragDieIds,
-        );
+        pickedUpDieIdsRef.current = new Set(currentDragState.dragDieIds);
 
         for (const dieId of currentDragState.dragDieIds) {
           const item = diceItemsRef.current.get(dieId);
-          const startPosition =
-            currentDragState.startPositions.get(dieId);
+          const startPosition = currentDragState.startPositions.get(dieId);
 
           if (!item || !startPosition) {
             continue;
           }
 
-          item.mesh.position.y =
-            startPosition.y + PICKUP_LIFT_Y;
+          item.mesh.position.y = startPosition.y + PICKUP_LIFT_Y;
 
           item.mesh.updateMatrixWorld(true);
 
@@ -1839,10 +1802,7 @@ export function DiceTable3D({
   );
 
   const handleTableTouchMove = useCallback(
-    (
-      event: GestureResponderEvent,
-      gestureState: PanResponderGestureState,
-    ) => {
+    (event: GestureResponderEvent, gestureState: PanResponderGestureState) => {
       if (!interactionsEnabled || physicsActiveRef.current) {
         return;
       }
@@ -1858,14 +1818,10 @@ export function DiceTable3D({
       }
 
       const movementDistance = Math.sqrt(
-        gestureState.dx * gestureState.dx +
-        gestureState.dy * gestureState.dy,
+        gestureState.dx * gestureState.dx + gestureState.dy * gestureState.dy,
       );
 
-      if (
-        !dragState.hasMoved &&
-        movementDistance < DRAG_START_THRESHOLD_PX
-      ) {
+      if (!dragState.hasMoved && movementDistance < DRAG_START_THRESHOLD_PX) {
         return;
       }
 
@@ -1892,10 +1848,7 @@ export function DiceTable3D({
 
       const { locationX, locationY } = event.nativeEvent;
 
-      const currentWorldPoint = getTableWorldPoint(
-        locationX,
-        locationY,
-      );
+      const currentWorldPoint = getTableWorldPoint(locationX, locationY);
 
       if (!currentWorldPoint) {
         return;
@@ -1905,17 +1858,13 @@ export function DiceTable3D({
         recordGestureSample(currentWorldPoint);
       }
 
-      const requestedDeltaX =
-        currentWorldPoint.x - dragState.startWorldPoint.x;
+      const requestedDeltaX = currentWorldPoint.x - dragState.startWorldPoint.x;
 
-      const requestedDeltaZ =
-        currentWorldPoint.z - dragState.startWorldPoint.z;
+      const requestedDeltaZ = currentWorldPoint.z - dragState.startWorldPoint.z;
 
-      const safeX =
-        TABLE_WIDTH / 2 - DRAG_TABLE_MARGIN;
+      const safeX = TABLE_WIDTH / 2 - DRAG_TABLE_MARGIN;
 
-      const safeZ =
-        TABLE_DEPTH / 2 - DRAG_TABLE_MARGIN;
+      const safeZ = TABLE_DEPTH / 2 - DRAG_TABLE_MARGIN;
 
       /**
        * On calcule une seule translation autorisée pour toute la sélection.
@@ -1927,43 +1876,22 @@ export function DiceTable3D({
       let maximumDeltaZ = Number.POSITIVE_INFINITY;
 
       for (const startPosition of dragState.startPositions.values()) {
-        minimumDeltaX = Math.max(
-          minimumDeltaX,
-          -safeX - startPosition.x,
-        );
+        minimumDeltaX = Math.max(minimumDeltaX, -safeX - startPosition.x);
 
-        maximumDeltaX = Math.min(
-          maximumDeltaX,
-          safeX - startPosition.x,
-        );
+        maximumDeltaX = Math.min(maximumDeltaX, safeX - startPosition.x);
 
-        minimumDeltaZ = Math.max(
-          minimumDeltaZ,
-          -safeZ - startPosition.z,
-        );
+        minimumDeltaZ = Math.max(minimumDeltaZ, -safeZ - startPosition.z);
 
-        maximumDeltaZ = Math.min(
-          maximumDeltaZ,
-          safeZ - startPosition.z,
-        );
+        maximumDeltaZ = Math.min(maximumDeltaZ, safeZ - startPosition.z);
       }
 
-      const safeDeltaX = clamp(
-        requestedDeltaX,
-        minimumDeltaX,
-        maximumDeltaX,
-      );
+      const safeDeltaX = clamp(requestedDeltaX, minimumDeltaX, maximumDeltaX);
 
-      const safeDeltaZ = clamp(
-        requestedDeltaZ,
-        minimumDeltaZ,
-        maximumDeltaZ,
-      );
+      const safeDeltaZ = clamp(requestedDeltaZ, minimumDeltaZ, maximumDeltaZ);
 
       for (const dieId of dragState.dragDieIds) {
         const item = diceItemsRef.current.get(dieId);
-        const startPosition =
-          dragState.startPositions.get(dieId);
+        const startPosition = dragState.startPositions.get(dieId);
 
         if (!item || !startPosition) {
           continue;
@@ -1971,8 +1899,7 @@ export function DiceTable3D({
 
         item.mesh.position.set(
           startPosition.x + safeDeltaX,
-          startPosition.y +
-          (dragState.longPressTriggered ? PICKUP_LIFT_Y : 0),
+          startPosition.y + (dragState.longPressTriggered ? PICKUP_LIFT_Y : 0),
           startPosition.z + safeDeltaZ,
         );
 
@@ -2008,13 +1935,9 @@ export function DiceTable3D({
     const dragState = dragStateRef.current;
 
     if (dragState.longPressTriggered) {
-      const gestureVelocity =
-        calculateGestureThrowVelocity();
+      const gestureVelocity = calculateGestureThrowVelocity();
 
-      if (
-        gestureVelocity &&
-        startGesturePhysicsThrow(gestureVelocity)
-      ) {
+      if (gestureVelocity && startGesturePhysicsThrow(gestureVelocity)) {
         /**
          * Le moteur physique possède maintenant les transformations courantes.
          * On ne repose surtout pas les meshes manuellement.
@@ -2049,22 +1972,16 @@ export function DiceTable3D({
     clearLongPressTimeout();
     putPickedUpDiceBackOnTable();
     resetDragState();
-  }, [
-    clearLongPressTimeout,
-    putPickedUpDiceBackOnTable,
-    resetDragState,
-  ]);
+  }, [clearLongPressTimeout, putPickedUpDiceBackOnTable, resetDragState]);
 
   const tablePanResponder = useMemo(
     () =>
       PanResponder.create({
         onStartShouldSetPanResponder: () =>
-          interactionsEnabled &&
-          !physicsActiveRef.current,
+          interactionsEnabled && !physicsActiveRef.current,
 
         onMoveShouldSetPanResponder: () =>
-          interactionsEnabled &&
-          !physicsActiveRef.current,
+          interactionsEnabled && !physicsActiveRef.current,
 
         onPanResponderGrant: handleTableTouchStart,
         onPanResponderMove: handleTableTouchMove,
@@ -2175,15 +2092,41 @@ export function DiceTable3D({
             item.physicsActive = false;
           }
 
-          if (
-            completedMode === "adding" ||
-            completedMode === "gesture"
-          ) {
+          if (completedMode === "adding") {
             physicsWorld.clearDice();
           }
 
-          if (completedMode === "gesture") {
+          if (
+            completedMode === "gesture" &&
+            !physicsSettledNotifiedRef.current
+          ) {
+            physicsSettledNotifiedRef.current = true;
+
+            const completedGestureDieIds = [...activeGestureDieIdsRef.current];
+
             activeGestureDieIdsRef.current = [];
+
+            /**
+             * Les transformations finales sont déjà copiées dans les meshes.
+             * Les corps physiques peuvent maintenant être supprimés.
+             */
+            physicsWorld.clearDice();
+
+            const settledGestureRollId = activePhysicsRollIdRef.current;
+
+            settleDelayTimeoutRef.current = setTimeout(() => {
+              settleDelayTimeoutRef.current = null;
+
+              if (activePhysicsRollIdRef.current !== settledGestureRollId) {
+                return;
+              }
+
+              if (completedGestureDieIds.length === 0) {
+                return;
+              }
+
+              onGestureThrowSettledRef.current?.(completedGestureDieIds);
+            }, 420);
           }
 
           if (
@@ -2250,9 +2193,7 @@ export function DiceTable3D({
       />
 
       <View
-        pointerEvents={
-          interactionsEnabled ? "auto" : "none"
-        }
+        pointerEvents={interactionsEnabled ? "auto" : "none"}
         {...tablePanResponder.panHandlers}
         style={{
           position: "absolute",

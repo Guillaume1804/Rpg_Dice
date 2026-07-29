@@ -428,8 +428,9 @@ export function Roll3DLauncherSurface({
   const [currentHandBehaviorTargetKey, setCurrentHandBehaviorTargetKey] =
     useState<string | null>(null);
 
-  const [currentHandSplitTargetKey, setCurrentHandSplitTargetKey] =
-    useState<string | null>(null);
+  const [currentHandSplitTargetKey, setCurrentHandSplitTargetKey] = useState<
+    string | null
+  >(null);
 
   const currentHandQuickBehaviorConfig = useQuickBehaviorConfigModal();
 
@@ -444,23 +445,23 @@ export function Roll3DLauncherSurface({
   const currentHandSplitTargetLine = useMemo(
     () =>
       currentHandSplitTargetKey
-        ? currentHandEditLines.find(
-          (line) => line.key === currentHandSplitTargetKey,
-        ) ?? null
+        ? (currentHandEditLines.find(
+            (line) => line.key === currentHandSplitTargetKey,
+          ) ?? null)
         : null,
     [currentHandEditLines, currentHandSplitTargetKey],
   );
 
   const [isRolling, setIsRolling] = useState(false);
+  const [isGestureRolling, setIsGestureRolling] = useState(false);
+
   const [skipRollRequestId, setSkipRollRequestId] = useState(0);
   const [sceneVersion, setSceneVersion] = useState(0);
 
   const [selectedDieIds, setSelectedDieIds] = useState<string[]>([]);
 
   useEffect(() => {
-    const existingDieIds = new Set(
-      launcher.draft.dice.map((die) => die.id),
-    );
+    const existingDieIds = new Set(launcher.draft.dice.map((die) => die.id));
 
     setSelectedDieIds((current) => {
       const next = current.filter((id) => existingDieIds.has(id));
@@ -736,6 +737,7 @@ export function Roll3DLauncherSurface({
     useCallback(() => {
       return () => {
         setIsRolling(false);
+        setIsGestureRolling(false);
         setSkipRollRequestId(0);
         setPendingAdjustmentLaunch(null);
         setSelectedActionId(null);
@@ -836,10 +838,11 @@ export function Roll3DLauncherSurface({
           rulesMap,
         }),
         entries: dice.map((die) => {
-          const technicalLabel = `${die.sign === -1 ? "- " : ""}${die.qty}d${die.sides}${die.modifier !== 0
-            ? ` ${die.modifier > 0 ? "+" : "-"} ${Math.abs(die.modifier)}`
-            : ""
-            }`;
+          const technicalLabel = `${die.sign === -1 ? "- " : ""}${die.qty}d${die.sides}${
+            die.modifier !== 0
+              ? ` ${die.modifier > 0 ? "+" : "-"} ${Math.abs(die.modifier)}`
+              : ""
+          }`;
 
           const customLabel =
             typeof die.label === "string" && die.label.trim().length > 0
@@ -866,6 +869,7 @@ export function Roll3DLauncherSurface({
     }
 
     setIsRolling(false);
+    setIsGestureRolling(false);
     setSkipRollRequestId(0);
     setPendingAdjustmentLaunch(null);
     setSelectedActionId(null);
@@ -893,9 +897,7 @@ export function Roll3DLauncherSurface({
     }
 
     return (
-      launcher.draft.dice.find(
-        (die) => die.id === primarySelectedId,
-      ) ?? null
+      launcher.draft.dice.find((die) => die.id === primarySelectedId) ?? null
     );
   }, [launcher.draft.dice, selectedDieIds]);
 
@@ -917,8 +919,7 @@ export function Roll3DLauncherSurface({
     }
 
     setSelectedDieIds((current) => {
-      const isAlreadySelected =
-        current.length === 1 && current[0] === dieId;
+      const isAlreadySelected = current.length === 1 && current[0] === dieId;
 
       return isAlreadySelected ? [] : [dieId];
     });
@@ -971,13 +972,8 @@ export function Roll3DLauncherSurface({
      * leur position et leur rotation actuelles sur la table.
      */
     loadDraft(nextDraft);
-  }, [
-    launcher.draft,
-    selectedDieIds,
-    clearResult,
-    loadDraft,
-  ]);
-  
+  }, [launcher.draft, selectedDieIds, clearResult, loadDraft]);
+
   const handleSelectFreeDie = useCallback(
     (sides: Roll3DDieSides) => {
       setSelectedActionId(null);
@@ -1008,6 +1004,7 @@ export function Roll3DLauncherSurface({
 
   const handleClearDice = useCallback(() => {
     setIsRolling(false);
+    setIsGestureRolling(false);
     setSkipRollRequestId(0);
     setPendingAdjustmentLaunch(null);
     setSelectedActionId(null);
@@ -1237,9 +1234,9 @@ export function Roll3DLauncherSurface({
         return;
       }
 
-      const line = createRoll3DSavableLinesFromDraft(
-        currentHandEditDraft,
-      ).find((entry) => entry.key === lineKey);
+      const line = createRoll3DSavableLinesFromDraft(currentHandEditDraft).find(
+        (entry) => entry.key === lineKey,
+      );
 
       if (!line || line.qty <= 1) {
         return;
@@ -1309,6 +1306,7 @@ export function Roll3DLauncherSurface({
 
   const resetRoll3DTransientState = useCallback(() => {
     setIsRolling(false);
+    setIsGestureRolling(false);
     setSkipRollRequestId(0);
     setPendingAdjustmentLaunch(null);
     setSelectedActionId(null);
@@ -1833,7 +1831,7 @@ export function Roll3DLauncherSurface({
   }, [pendingAdjustmentLaunch, launcher.draft.id, launcher.diceCount]);
 
   const handleRollPress = useCallback(() => {
-    if (isRolling || pendingAdjustmentLaunch) {
+    if (isRolling || isGestureRolling || pendingAdjustmentLaunch) {
       return;
     }
 
@@ -1866,6 +1864,7 @@ export function Roll3DLauncherSurface({
     rollDice();
   }, [
     isRolling,
+    isGestureRolling,
     pendingAdjustmentLaunch,
     actionEntryAdjustment,
     launchPendingActionEntryAdjustment,
@@ -1881,14 +1880,14 @@ export function Roll3DLauncherSurface({
     setActionEntryAdjustment(null);
     setPendingAdjustmentLaunch(null);
 
-    if (isRolling || launcher.diceCount <= 0) {
+    if (isRolling || isGestureRolling || launcher.diceCount <= 0) {
       return;
     }
 
     setSelectedDieIds([]);
     setIsRolling(true);
     rollDice();
-  }, [isRolling, launcher.diceCount, rollDice]);
+  }, [isRolling, isGestureRolling, launcher.diceCount, rollDice]);
 
   const handleSaveAdjustedAction = useCallback(() => {
     if (!lastAppliedActionEntryAdjustment) {
@@ -1996,10 +1995,10 @@ export function Roll3DLauncherSurface({
       const groupRuleId =
         adjustment.behaviorParamsTarget === "group"
           ? await resolveAdjustedGroupRuleIdForSave({
-            db,
-            tableId,
-            adjustment,
-          })
+              db,
+              tableId,
+              adjustment,
+            })
           : null;
 
       const newGroupId = await createGroupFromDraft(db, {
@@ -2052,6 +2051,40 @@ export function Roll3DLauncherSurface({
     completeRollAfterPhysics();
   }, [completeRollAfterPhysics]);
 
+  const handleGestureThrowStart = useCallback(
+    (dieIds: string[]) => {
+      if (dieIds.length === 0) {
+        return;
+      }
+
+      setIsGestureRolling(true);
+
+      /**
+       * La sélection visible reste alignée sur les dés réellement lancés.
+       */
+      setSelectedDieIds(dieIds);
+
+      clearResult();
+    },
+    [clearResult],
+  );
+
+  const handleGestureThrowSettled = useCallback(
+    (dieIds: string[]) => {
+      setIsGestureRolling(false);
+
+      if (dieIds.length === 0) {
+        return;
+      }
+
+      /**
+       * Le hook construit un sous-draft contenant uniquement ces dés.
+       */
+      completeRollAfterPhysics(dieIds);
+    },
+    [completeRollAfterPhysics],
+  );
+
   const handleSkipRolling = useCallback(() => {
     if (!isRolling) {
       return;
@@ -2063,12 +2096,14 @@ export function Roll3DLauncherSurface({
   const handleCloseResult = useCallback(() => {
     clearResult();
     setIsRolling(false);
+    setIsGestureRolling(false);
     setSkipRollRequestId(0);
     setPendingAdjustmentLaunch(null);
     setLastAppliedActionEntryAdjustment(null);
   }, [clearResult]);
 
-  const shouldShowControls = !isRolling && !launcher.latestResult;
+  const shouldShowControls =
+    !isRolling && !isGestureRolling && !launcher.latestResult;
 
   const hasBlockingRoll3DOverlay =
     !!currentHandEditDraft ||
@@ -2078,9 +2113,7 @@ export function Roll3DLauncherSurface({
     showSaveAdjustedActionModal;
 
   const diceInteractionsEnabled =
-    shouldShowControls &&
-    !pendingAdjustmentLaunch &&
-    !hasBlockingRoll3DOverlay;
+    shouldShowControls && !pendingAdjustmentLaunch && !hasBlockingRoll3DOverlay;
 
   const shouldShowEmptyTableHint =
     shouldShowControls &&
@@ -2131,6 +2164,8 @@ export function Roll3DLauncherSurface({
         interactionsEnabled={diceInteractionsEnabled}
         onPressDie={handlePressTableDie}
         onPhysicsRollSettled={handlePhysicsRollSettled}
+        onGestureThrowStart={handleGestureThrowStart}
+        onGestureThrowSettled={handleGestureThrowSettled}
       />
 
       <Roll3DDieSelectionBar
@@ -2693,8 +2728,8 @@ function Roll3DAdjustedActionSaveModal({
             {adjustment.sides}
             {adjustment.modifier !== 0
               ? ` ${adjustment.modifier > 0 ? "+" : "-"} ${Math.abs(
-                adjustment.modifier,
-              )}`
+                  adjustment.modifier,
+                )}`
               : ""}
           </Text>
 
