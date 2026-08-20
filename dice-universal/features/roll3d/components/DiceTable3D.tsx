@@ -506,6 +506,15 @@ export function DiceTable3D({
 
   const selectedDieIdsRef = useRef<Set<string>>(new Set(selectedDieIds));
 
+  /**
+   * Certaines interactions survivent quelques centaines de millisecondes
+   * via setTimeout (notamment l'appui long).
+   *
+   * Une ref permet au callback différé de connaître la valeur ACTUELLE
+   * de interactionsEnabled et non celle capturée au début du toucher.
+   */
+  const interactionsEnabledRef = useRef(interactionsEnabled);
+
   const onPressDieRef = useRef(onPressDie);
 
   const dragStateRef = useRef<DiceDragState>({
@@ -540,9 +549,18 @@ export function DiceTable3D({
   const onGestureThrowStartRef = useRef(onGestureThrowStart);
   const onGestureThrowSettledRef = useRef(onGestureThrowSettled);
   const activePhysicsRollIdRef = useRef(0);
-  const lastHandledRollRequestIdRef = useRef(0);
-  const lastHandledSkipRollRequestIdRef = useRef(0);
-  const lastHandledPartialRollRequestIdRef = useRef(0);
+  /**
+   * Une scène Three peut être recréée avec des props dont les request ids
+   * sont déjà non nuls.
+   *
+   * Ils représentent alors l'historique du parent et ne doivent pas être
+   * rejoués automatiquement par la nouvelle scène.
+   */
+  const lastHandledRollRequestIdRef = useRef(rollRequestId);
+
+  const lastHandledSkipRollRequestIdRef = useRef(skipRollRequestId);
+
+  const lastHandledPartialRollRequestIdRef = useRef(partialRollRequestId);
   const skipTransitionFrameRef = useRef<number | null>(null);
 
   const clearLongPressTimeout = useCallback(() => {
@@ -569,6 +587,10 @@ export function DiceTable3D({
   useEffect(() => {
     onPressDieRef.current = onPressDie;
   }, [onPressDie]);
+
+  useEffect(() => {
+    interactionsEnabledRef.current = interactionsEnabled;
+  }, [interactionsEnabled]);
 
   useEffect(() => {
     selectedDieIdsRef.current = new Set(selectedDieIds);
@@ -717,9 +739,12 @@ export function DiceTable3D({
     [createDropStateForMesh],
   );
 
-  const startPhysicsRoll = useCallback(() => {
+  const startPhysicsRoll = useCallback((): boolean => {
     const physicsWorld = physicsWorldRef.current;
-    if (!physicsWorld) return;
+
+    if (!physicsWorld || physicsActiveRef.current) {
+      return false;
+    }
 
     const currentRollId = activePhysicsRollIdRef.current + 1;
     activePhysicsRollIdRef.current = currentRollId;
@@ -759,9 +784,17 @@ export function DiceTable3D({
       });
     }
 
+    if (physicsWorld.getDiceSnapshots().length === 0) {
+      physicsWorld.clearDice();
+      physicsRollModeRef.current = "idle";
+      return false;
+    }
+
     physicsActiveRef.current = true;
     physicsRollModeRef.current = "rolling";
     lastFrameAtRef.current = Date.now();
+
+    return true;
   }, [diceInstances]);
 
   const applyPhysicsSnapshotsToMeshes = useCallback(() => {
@@ -1369,9 +1402,31 @@ export function DiceTable3D({
     const diceItems = diceItemsRef.current;
 
     return () => {
+      /**
+       * Invalide immédiatement tous les callbacks de fin de physique
+       * qui auraient été créés par cette instance de scène.
+       */
+      activePhysicsRollIdRef.current += 1;
+
       clearLongPressTimeout();
+
       pickedUpDieIdsRef.current.clear();
       activeGestureDieIdsRef.current = [];
+
+      physicsActiveRef.current = false;
+      physicsRollModeRef.current = "idle";
+      physicsSettledNotifiedRef.current = true;
+
+      dragStateRef.current = {
+        touchedDieId: null,
+        dragDieIds: [],
+        startWorldPoint: null,
+        startPositions: new Map(),
+        hasMoved: false,
+        selectionRequested: false,
+        longPressTriggered: false,
+        gestureSamples: [],
+      };
       if (animationFrameRef.current != null) {
         cancelAnimationFrame(animationFrameRef.current);
       }
@@ -1408,6 +1463,20 @@ export function DiceTable3D({
 
     const nextIds = new Set(diceInstances.map((instance) => instance.id));
 
+    /**
+     * Un lancer partiel peut encore référencer un dé supprimé entre deux
+     * changements de draft.
+     *
+     * On nettoie immédiatement ces références sans toucher aux dés valides.
+     */
+    activeGestureDieIdsRef.current = activeGestureDieIdsRef.current.filter(
+      (id) => nextIds.has(id),
+    );
+
+    pickedUpDieIdsRef.current = new Set(
+      Array.from(pickedUpDieIdsRef.current).filter((id) => nextIds.has(id)),
+    );
+
     for (const [id, item] of diceItemsRef.current.entries()) {
       if (!nextIds.has(id)) {
         scene.remove(item.mesh);
@@ -1428,27 +1497,61 @@ export function DiceTable3D({
     }
 
     if (diceInstances.length === 0) {
+      /**
+       * Un draft vide invalide tout ancien cycle physique ou tactile.
+       */
       activePhysicsRollIdRef.current += 1;
+
       physicsWorldRef.current?.clearDice();
+
       physicsActiveRef.current = false;
       physicsRollModeRef.current = "idle";
+      physicsSettledNotifiedRef.current = true;
+
+      activeGestureDieIdsRef.current = [];
+      pickedUpDieIdsRef.current.clear();
+
+      clearLongPressTimeout();
+
+      dragStateRef.current = {
+        touchedDieId: null,
+        dragDieIds: [],
+        startWorldPoint: null,
+        startPositions: new Map(),
+        hasMoved: false,
+        selectionRequested: false,
+        longPressTriggered: false,
+        gestureSamples: [],
+      };
 
       if (settleDelayTimeoutRef.current != null) {
         clearTimeout(settleDelayTimeoutRef.current);
         settleDelayTimeoutRef.current = null;
       }
+
+      if (skipTransitionFrameRef.current != null) {
+        cancelAnimationFrame(skipTransitionFrameRef.current);
+        skipTransitionFrameRef.current = null;
+      }
     }
-  }, [diceInstances, addDiceInstanceToScene]);
+  }, [diceInstances, addDiceInstanceToScene, clearLongPressTimeout]);
 
   useEffect(() => {
-    if (rollRequestId <= 0) return;
+    if (rollRequestId <= 0) {
+      return;
+    }
 
     if (lastHandledRollRequestIdRef.current === rollRequestId) {
       return;
     }
 
+    const started = startPhysicsRoll();
+
+    if (!started) {
+      return;
+    }
+
     lastHandledRollRequestIdRef.current = rollRequestId;
-    startPhysicsRoll();
   }, [rollRequestId, startPhysicsRoll]);
 
   useEffect(() => {
@@ -1471,8 +1574,6 @@ export function DiceTable3D({
       return;
     }
 
-    lastHandledPartialRollRequestIdRef.current = partialRollRequestId;
-
     if (partialRollDieIds.length === 0) {
       return;
     }
@@ -1486,11 +1587,23 @@ export function DiceTable3D({
     const angle = Math.random() * Math.PI * 2;
     const strength = randomBetween(7.5, 11.5);
 
-    startPartialPhysicsThrow(partialRollDieIds, {
+    const started = startPartialPhysicsThrow(partialRollDieIds, {
       x: Math.cos(angle) * strength,
       y: randomBetween(1.75, 2.35),
       z: Math.sin(angle) * strength,
     });
+
+    if (!started) {
+      /**
+       * La requête n'est volontairement pas marquée comme consommée.
+       *
+       * Cela évite qu'une scène momentanément indisponible fasse perdre
+       * définitivement la relance.
+       */
+      return;
+    }
+
+    lastHandledPartialRollRequestIdRef.current = partialRollRequestId;
   }, [partialRollRequestId, partialRollDieIds, startPartialPhysicsThrow]);
 
   const handleTableLayout = useCallback((event: LayoutChangeEvent) => {
@@ -1640,6 +1753,32 @@ export function DiceTable3D({
       gestureSamples: [],
     };
   }, [clearLongPressTimeout]);
+
+  useEffect(() => {
+    if (interactionsEnabled) {
+      return;
+    }
+
+    clearLongPressTimeout();
+
+    /**
+     * Si aucune physique n'a encore pris possession des dés,
+     * une éventuelle prise tactile est proprement reposée.
+     *
+     * Si une simulation est déjà active, elle devient la source de vérité
+     * des transformations et nous ne devons surtout pas modifier les meshes.
+     */
+    if (!physicsActiveRef.current) {
+      putPickedUpDiceBackOnTable();
+    }
+
+    resetDragState();
+  }, [
+    interactionsEnabled,
+    clearLongPressTimeout,
+    putPickedUpDiceBackOnTable,
+    resetDragState,
+  ]);
 
   const recordGestureSample = useCallback((point: THREE.Vector3) => {
     const dragState = dragStateRef.current;
@@ -1810,7 +1949,8 @@ export function DiceTable3D({
         if (
           currentDragState.touchedDieId !== touchedDieId ||
           currentDragState.hasMoved ||
-          physicsActiveRef.current
+          physicsActiveRef.current ||
+          !interactionsEnabledRef.current
         ) {
           return;
         }

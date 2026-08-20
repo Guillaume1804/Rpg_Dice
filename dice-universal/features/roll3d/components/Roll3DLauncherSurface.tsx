@@ -1960,15 +1960,17 @@ export function Roll3DLauncherSurface({
       );
 
       if (validDieIds.length > 0) {
-        clearResult();
-
-        setSelectedDieIds(validDieIds);
-        setIsGestureRolling(true);
-
         /**
-         * L'incrément déclenche l'effet correspondant dans DiceTable3D.
-         * Les ids sont transmis séparément.
+         * On ne ferme pas nous-mêmes le résultat et on ne déclare pas encore
+         * le lancer actif.
+         *
+         * DiceTable3D appellera handleGestureThrowStart uniquement lorsque
+         * Cannon aura réellement accepté la relance.
+         *
+         * Ainsi, une demande impossible ne laisse jamais l'UI bloquée.
          */
+        setSelectedDieIds(validDieIds);
+
         setPartialRollRequestId((current) => current + 1);
 
         return;
@@ -1987,7 +1989,6 @@ export function Roll3DLauncherSurface({
     setIsRolling(true);
     rollDice();
   }, [
-    clearResult,
     isGestureRolling,
     isRolling,
     lastRollScope,
