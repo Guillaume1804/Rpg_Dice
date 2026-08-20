@@ -92,6 +92,15 @@ type Roll3DLauncherSurfaceProps = {
   handoffId?: string | string[];
 };
 
+type Roll3DLastRollScope =
+  | {
+      kind: "global";
+    }
+  | {
+      kind: "partial";
+      dieIds: string[];
+    };
+
 function safeParseRuleParams(paramsJson: string): Record<string, unknown> {
   try {
     const parsed = JSON.parse(paramsJson || "{}");
@@ -456,6 +465,11 @@ export function Roll3DLauncherSurface({
   const [isGestureRolling, setIsGestureRolling] = useState(false);
 
   const [skipRollRequestId, setSkipRollRequestId] = useState(0);
+
+  const [partialRollRequestId, setPartialRollRequestId] = useState(0);
+
+  const [lastRollScope, setLastRollScope] =
+    useState<Roll3DLastRollScope | null>(null);
   const [sceneVersion, setSceneVersion] = useState(0);
 
   const [selectedDieIds, setSelectedDieIds] = useState<string[]>([]);
@@ -474,6 +488,34 @@ export function Roll3DLauncherSurface({
       }
 
       return next;
+    });
+
+    /**
+     * Si la Main a changé depuis le dernier lancer partiel,
+     * on retire automatiquement les dés disparus du périmètre de relance.
+     */
+    setLastRollScope((current) => {
+      if (!current || current.kind === "global") {
+        return current;
+      }
+
+      const nextDieIds = current.dieIds.filter((id) => existingDieIds.has(id));
+
+      if (nextDieIds.length === 0) {
+        return null;
+      }
+
+      if (
+        nextDieIds.length === current.dieIds.length &&
+        nextDieIds.every((id, index) => id === current.dieIds[index])
+      ) {
+        return current;
+      }
+
+      return {
+        kind: "partial",
+        dieIds: nextDieIds,
+      };
     });
   }, [launcher.draft.dice]);
 
@@ -739,6 +781,8 @@ export function Roll3DLauncherSurface({
         setIsRolling(false);
         setIsGestureRolling(false);
         setSkipRollRequestId(0);
+        setPartialRollRequestId(0);
+        setLastRollScope(null);
         setPendingAdjustmentLaunch(null);
         setSelectedActionId(null);
         setSelectedActionEntryId(null);
@@ -871,6 +915,8 @@ export function Roll3DLauncherSurface({
     setIsRolling(false);
     setIsGestureRolling(false);
     setSkipRollRequestId(0);
+    setPartialRollRequestId(0);
+    setLastRollScope(null);
     setPendingAdjustmentLaunch(null);
     setSelectedActionId(null);
     setSelectedActionEntryId(null);
@@ -1006,6 +1052,8 @@ export function Roll3DLauncherSurface({
     setIsRolling(false);
     setIsGestureRolling(false);
     setSkipRollRequestId(0);
+    setPartialRollRequestId(0);
+    setLastRollScope(null);
     setPendingAdjustmentLaunch(null);
     setSelectedActionId(null);
     setSelectedActionEntryId(null);
@@ -1280,7 +1328,10 @@ export function Roll3DLauncherSurface({
     }
 
     setIsRolling(false);
+    setIsGestureRolling(false);
     setSkipRollRequestId(0);
+    setPartialRollRequestId(0);
+    setLastRollScope(null);
     setPendingAdjustmentLaunch(null);
     setActionEntryAdjustment(null);
     setLastAppliedActionEntryAdjustment(null);
@@ -1308,6 +1359,8 @@ export function Roll3DLauncherSurface({
     setIsRolling(false);
     setIsGestureRolling(false);
     setSkipRollRequestId(0);
+    setPartialRollRequestId(0);
+    setLastRollScope(null);
     setPendingAdjustmentLaunch(null);
     setSelectedActionId(null);
     setSelectedActionEntryId(null);
@@ -1416,7 +1469,10 @@ export function Roll3DLauncherSurface({
 
       clearResult();
       setIsRolling(false);
+      setIsGestureRolling(false);
       setSkipRollRequestId(0);
+      setPartialRollRequestId(0);
+      setLastRollScope(null);
     },
     [
       selectedProfileId,
@@ -1774,6 +1830,11 @@ export function Roll3DLauncherSurface({
     const timeoutId = setTimeout(
       () => {
         setPendingAdjustmentLaunch(null);
+
+        setLastRollScope({
+          kind: "global",
+        });
+
         setIsRolling(true);
 
         requestAnimationFrame(() => {
@@ -1859,6 +1920,9 @@ export function Roll3DLauncherSurface({
     }
 
     setLastAppliedActionEntryAdjustment(null);
+    setLastRollScope({
+      kind: "global",
+    });
     setSelectedDieIds([]);
     setIsRolling(true);
     rollDice();
@@ -1874,8 +1938,8 @@ export function Roll3DLauncherSurface({
 
   const handleRollAgain = useCallback(() => {
     /**
-     * Relancer doit toujours utiliser le draft déjà présent sur la table.
-     * Il ne doit jamais rouvrir / réutiliser une ancienne intention d’ajustement.
+     * Relancer travaille toujours sur la Main réellement présente.
+     * Une ancienne intention d'ajustement ne doit jamais être restaurée.
      */
     setActionEntryAdjustment(null);
     setPendingAdjustmentLaunch(null);
@@ -1884,10 +1948,53 @@ export function Roll3DLauncherSurface({
       return;
     }
 
+    /**
+     * Dernier lancer partiel :
+     * on relance uniquement le même sous-ensemble.
+     */
+    if (lastRollScope?.kind === "partial") {
+      const existingDieIds = new Set(launcher.draft.dice.map((die) => die.id));
+
+      const validDieIds = lastRollScope.dieIds.filter((dieId) =>
+        existingDieIds.has(dieId),
+      );
+
+      if (validDieIds.length > 0) {
+        clearResult();
+
+        setSelectedDieIds(validDieIds);
+        setIsGestureRolling(true);
+
+        /**
+         * L'incrément déclenche l'effet correspondant dans DiceTable3D.
+         * Les ids sont transmis séparément.
+         */
+        setPartialRollRequestId((current) => current + 1);
+
+        return;
+      }
+    }
+
+    /**
+     * Dernier lancer global, ou ancien périmètre partiel devenu invalide :
+     * on revient au comportement classique sur toute la Main.
+     */
+    setLastRollScope({
+      kind: "global",
+    });
+
     setSelectedDieIds([]);
     setIsRolling(true);
     rollDice();
-  }, [isRolling, isGestureRolling, launcher.diceCount, rollDice]);
+  }, [
+    clearResult,
+    isGestureRolling,
+    isRolling,
+    lastRollScope,
+    launcher.diceCount,
+    launcher.draft.dice,
+    rollDice,
+  ]);
 
   const handleSaveAdjustedAction = useCallback(() => {
     if (!lastAppliedActionEntryAdjustment) {
@@ -2057,6 +2164,11 @@ export function Roll3DLauncherSurface({
         return;
       }
 
+      setLastRollScope({
+        kind: "partial",
+        dieIds: [...dieIds],
+      });
+
       setIsGestureRolling(true);
 
       /**
@@ -2160,6 +2272,10 @@ export function Roll3DLauncherSurface({
         diceInstances={launcher.diceInstances}
         rollRequestId={launcher.rollRequestId}
         skipRollRequestId={skipRollRequestId}
+        partialRollRequestId={partialRollRequestId}
+        partialRollDieIds={
+          lastRollScope?.kind === "partial" ? lastRollScope.dieIds : []
+        }
         selectedDieIds={selectedDieIds}
         interactionsEnabled={diceInteractionsEnabled}
         onPressDie={handlePressTableDie}

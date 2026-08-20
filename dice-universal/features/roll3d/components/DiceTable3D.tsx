@@ -26,6 +26,15 @@ type DiceTable3DProps = {
   rollRequestId?: number;
   skipRollRequestId?: number;
 
+  /**
+   * Relance programmée d'un sous-ensemble déjà présent sur la table.
+   *
+   * Contrairement au lancer gestuel initial, cette relance ne dépend pas
+   * d'un mouvement du doigt : le parent fournit directement les ids.
+   */
+  partialRollRequestId?: number;
+  partialRollDieIds?: string[];
+
   selectedDieIds?: string[];
   interactionsEnabled?: boolean;
 
@@ -473,6 +482,8 @@ export function DiceTable3D({
   diceInstances = [],
   rollRequestId = 0,
   skipRollRequestId = 0,
+  partialRollRequestId = 0,
+  partialRollDieIds = [],
   selectedDieIds = [],
   interactionsEnabled = true,
   onPressDie,
@@ -531,6 +542,7 @@ export function DiceTable3D({
   const activePhysicsRollIdRef = useRef(0);
   const lastHandledRollRequestIdRef = useRef(0);
   const lastHandledSkipRollRequestIdRef = useRef(0);
+  const lastHandledPartialRollRequestIdRef = useRef(0);
   const skipTransitionFrameRef = useRef<number | null>(null);
 
   const clearLongPressTimeout = useCallback(() => {
@@ -1242,6 +1254,117 @@ export function DiceTable3D({
     createCinematicSettleTransforms,
   ]);
 
+  const startPartialPhysicsThrow = useCallback(
+    (
+      requestedDieIds: string[],
+      linearVelocity: Roll3DPhysicsVector3,
+    ): boolean => {
+      const physicsWorld = physicsWorldRef.current;
+
+      if (
+        !physicsWorld ||
+        requestedDieIds.length === 0 ||
+        physicsActiveRef.current
+      ) {
+        return false;
+      }
+
+      const instanceById = new Map(
+        diceInstances.map((instance) => [instance.id, instance]),
+      );
+
+      /**
+       * On ne conserve que les dés qui existent encore réellement dans
+       * le draft ET dans la scène Three.
+       *
+       * Cette protection devient importante pour les futures interruptions,
+       * suppressions et changements de Main.
+       */
+      const validGestureDieIds = requestedDieIds.filter(
+        (dieId) =>
+          !!instanceById.get(dieId) && !!diceItemsRef.current.get(dieId),
+      );
+
+      if (validGestureDieIds.length === 0) {
+        return false;
+      }
+
+      const gestureDieIds = new Set(validGestureDieIds);
+
+      const currentGestureRollId = activePhysicsRollIdRef.current + 1;
+
+      activePhysicsRollIdRef.current = currentGestureRollId;
+
+      physicsWorld.clearDice();
+
+      activeGestureDieIdsRef.current = [...validGestureDieIds];
+
+      physicsSettledNotifiedRef.current = false;
+
+      if (settleDelayTimeoutRef.current != null) {
+        clearTimeout(settleDelayTimeoutRef.current);
+        settleDelayTimeoutRef.current = null;
+      }
+
+      /**
+       * Tous les dés présents sur la table sont introduits dans Cannon.
+       *
+       * Les dés du sous-ensemble reçoivent l'impulsion.
+       * Les autres commencent immobiles mais peuvent être heurtés.
+       */
+      for (const instance of diceInstances) {
+        const item = diceItemsRef.current.get(instance.id);
+
+        if (!item) {
+          continue;
+        }
+
+        item.physicsActive = true;
+        item.mesh.scale.setScalar(DROP_TARGET_SCALE);
+        item.mesh.updateMatrixWorld(true);
+
+        const isGestureDie = gestureDieIds.has(instance.id);
+
+        const angularVelocity: Roll3DPhysicsVector3 | undefined = isGestureDie
+          ? {
+              x: randomBetween(-18, 18),
+              y: randomBetween(-24, 24),
+              z: randomBetween(-18, 18),
+            }
+          : undefined;
+
+        physicsWorld.addDie(
+          instance,
+          toPhysicsTransform(item.mesh),
+          isGestureDie
+            ? {
+                launchMode: "gesture_throw",
+                linearVelocity: {
+                  x: linearVelocity.x + randomBetween(-0.35, 0.35),
+                  y: linearVelocity.y + randomBetween(-0.08, 0.2),
+                  z: linearVelocity.z + randomBetween(-0.35, 0.35),
+                },
+                angularVelocity,
+              }
+            : {
+                launchMode: "resting",
+              },
+        );
+      }
+
+      pickedUpDieIdsRef.current.clear();
+
+      physicsActiveRef.current = true;
+      physicsRollModeRef.current = "gesture";
+      lastFrameAtRef.current = Date.now();
+
+      onGestureThrowStartRef.current?.([...validGestureDieIds]);
+
+      return true;
+    },
+    [diceInstances],
+  );
+
   useEffect(() => {
     const diceItems = diceItemsRef.current;
 
@@ -1338,6 +1461,37 @@ export function DiceTable3D({
     lastHandledSkipRollRequestIdRef.current = skipRollRequestId;
     fastForwardPhysicsRollToRest();
   }, [skipRollRequestId, fastForwardPhysicsRollToRest]);
+
+  useEffect(() => {
+    if (partialRollRequestId <= 0) {
+      return;
+    }
+
+    if (lastHandledPartialRollRequestIdRef.current === partialRollRequestId) {
+      return;
+    }
+
+    lastHandledPartialRollRequestIdRef.current = partialRollRequestId;
+
+    if (partialRollDieIds.length === 0) {
+      return;
+    }
+
+    /**
+     * Une relance via le bouton ne possède plus la vélocité du doigt.
+     *
+     * On crée donc une nouvelle impulsion naturelle sur la surface,
+     * suffisamment énergique pour produire une vraie relance.
+     */
+    const angle = Math.random() * Math.PI * 2;
+    const strength = randomBetween(7.5, 11.5);
+
+    startPartialPhysicsThrow(partialRollDieIds, {
+      x: Math.cos(angle) * strength,
+      y: randomBetween(1.75, 2.35),
+      z: Math.sin(angle) * strength,
+    });
+  }, [partialRollRequestId, partialRollDieIds, startPartialPhysicsThrow]);
 
   const handleTableLayout = useCallback((event: LayoutChangeEvent) => {
     const { width, height: layoutHeight } = event.nativeEvent.layout;
@@ -1565,106 +1719,15 @@ export function DiceTable3D({
 
   const startGesturePhysicsThrow = useCallback(
     (linearVelocity: Roll3DPhysicsVector3): boolean => {
-      const physicsWorld = physicsWorldRef.current;
       const dragState = dragStateRef.current;
 
-      if (
-        !physicsWorld ||
-        dragState.dragDieIds.length === 0 ||
-        physicsActiveRef.current
-      ) {
+      if (dragState.dragDieIds.length === 0) {
         return false;
       }
 
-      const gestureDieIds = new Set(dragState.dragDieIds);
-      const instanceById = new Map(
-        diceInstances.map((instance) => [instance.id, instance]),
-      );
-
-      const hasEveryGestureDie = dragState.dragDieIds.every(
-        (dieId) =>
-          !!instanceById.get(dieId) && !!diceItemsRef.current.get(dieId),
-      );
-
-      if (!hasEveryGestureDie) {
-        return false;
-      }
-
-      const currentGestureRollId = activePhysicsRollIdRef.current + 1;
-
-      activePhysicsRollIdRef.current = currentGestureRollId;
-
-      physicsWorld.clearDice();
-
-      activeGestureDieIdsRef.current = [...dragState.dragDieIds];
-      physicsSettledNotifiedRef.current = false;
-
-      if (settleDelayTimeoutRef.current != null) {
-        clearTimeout(settleDelayTimeoutRef.current);
-        settleDelayTimeoutRef.current = null;
-      }
-
-      /**
-       * Tous les dés sont placés dans le monde physique.
-       *
-       * Ceux qui ne sont pas lancés commencent immobiles, mais peuvent être
-       * heurtés et déplacés par la sélection lancée.
-       */
-      for (const instance of diceInstances) {
-        const item = diceItemsRef.current.get(instance.id);
-
-        if (!item) {
-          continue;
-        }
-
-        item.physicsActive = true;
-        item.mesh.scale.setScalar(DROP_TARGET_SCALE);
-        item.mesh.updateMatrixWorld(true);
-
-        const isGestureDie = gestureDieIds.has(instance.id);
-
-        const angularVelocity: Roll3DPhysicsVector3 | undefined = isGestureDie
-          ? {
-              x: randomBetween(-18, 18),
-              y: randomBetween(-24, 24),
-              z: randomBetween(-18, 18),
-            }
-          : undefined;
-
-        physicsWorld.addDie(
-          instance,
-          toPhysicsTransform(item.mesh),
-          isGestureDie
-            ? {
-                launchMode: "gesture_throw",
-                linearVelocity: {
-                  x: linearVelocity.x + randomBetween(-0.35, 0.35),
-                  y: linearVelocity.y + randomBetween(-0.08, 0.2),
-                  z: linearVelocity.z + randomBetween(-0.35, 0.35),
-                },
-                angularVelocity,
-              }
-            : {
-                launchMode: "resting",
-              },
-        );
-      }
-
-      pickedUpDieIdsRef.current.clear();
-
-      physicsActiveRef.current = true;
-      physicsRollModeRef.current = "gesture";
-      lastFrameAtRef.current = Date.now();
-
-      /**
-       * Le parent peut maintenant masquer ses contrôles sans afficher
-       * l’interface spéciale du lancer global.
-       */
-      onGestureThrowStartRef.current?.([...activeGestureDieIdsRef.current]);
-
-      return true;
+      return startPartialPhysicsThrow(dragState.dragDieIds, linearVelocity);
     },
-    [diceInstances],
+    [startPartialPhysicsThrow],
   );
 
   const handleTableTouchStart = useCallback(
