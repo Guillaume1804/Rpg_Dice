@@ -45,6 +45,8 @@ import {
   updateRoll3DDraftLineBehavior,
   splitRoll3DDraftLineByQuantities,
   getRoll3DDraftLineDieIds,
+  getRoll3DMergeableLineKeys,
+  mergeRoll3DDraftLineWithCompatibleLines,
   removeRoll3DDiceByIds,
 } from "../logic/roll3DDraft";
 
@@ -450,6 +452,22 @@ export function Roll3DLauncherSurface({
         : [],
     [currentHandEditDraft],
   );
+
+  const currentHandMergeableLineKeys = useMemo(() => {
+    if (!currentHandEditDraft) {
+      return [];
+    }
+
+    return currentHandEditLines
+      .filter(
+        (line) =>
+          getRoll3DMergeableLineKeys({
+            draft: currentHandEditDraft,
+            lineKey: line.key,
+          }).length > 0,
+      )
+      .map((line) => line.key);
+  }, [currentHandEditDraft, currentHandEditLines]);
 
   const currentHandSplitTargetLine = useMemo(
     () =>
@@ -1321,6 +1339,19 @@ export function Roll3DLauncherSurface({
     },
     [currentHandSplitTargetKey],
   );
+
+  const handleMergeCurrentHandLine = useCallback((lineKey: string) => {
+    setCurrentHandEditDraft((current) => {
+      if (!current) {
+        return current;
+      }
+
+      return mergeRoll3DDraftLineWithCompatibleLines({
+        draft: current,
+        lineKey,
+      });
+    });
+  }, []);
 
   const handleApplyCurrentHandEdit = useCallback(() => {
     if (!currentHandEditDraft || currentHandEditDraft.dice.length === 0) {
@@ -2449,6 +2480,7 @@ export function Roll3DLauncherSurface({
         lines={currentHandEditLines}
         diceCount={currentHandEditDraft?.dice.length ?? 0}
         maxDice={launcher.maxDice}
+        mergeableLineKeys={currentHandMergeableLineKeys}
         onClose={handleCloseCurrentHandEdit}
         onApply={handleApplyCurrentHandEdit}
         onChangeQty={handleChangeCurrentHandLineQty}
@@ -2458,6 +2490,7 @@ export function Roll3DLauncherSurface({
         onConfigureBehavior={handleConfigureCurrentHandLineBehavior}
         onClearBehavior={handleClearCurrentHandLineBehavior}
         onOpenSplitLine={handleOpenCurrentHandSplit}
+        onMergeCompatibleLines={handleMergeCurrentHandLine}
       />
 
       <Roll3DCurrentHandSplitModal

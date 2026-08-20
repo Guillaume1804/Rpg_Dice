@@ -11,6 +11,7 @@ type Roll3DCurrentHandEditSheetProps = {
   lines: Roll3DSavableDraftLine[];
   diceCount: number;
   maxDice: number;
+  mergeableLineKeys: string[];
   onClose: () => void;
   onApply: () => void;
   onChangeQty: (lineKey: string, delta: number) => void;
@@ -20,6 +21,7 @@ type Roll3DCurrentHandEditSheetProps = {
   onConfigureBehavior: (lineKey: string) => void;
   onClearBehavior: (lineKey: string) => void;
   onOpenSplitLine: (lineKey: string) => void;
+  onMergeCompatibleLines: (lineKey: string) => void;
 };
 
 function formatLineFormula(line: Roll3DSavableDraftLine) {
@@ -161,6 +163,7 @@ function CurrentHandLineCard({
   line,
   totalDiceCount,
   maxDice,
+  canMerge,
   onChangeQty,
   onChangeModifier,
   onToggleSign,
@@ -168,10 +171,12 @@ function CurrentHandLineCard({
   onConfigureBehavior,
   onClearBehavior,
   onOpenSplit,
+  onMerge,
 }: {
   line: Roll3DSavableDraftLine;
   totalDiceCount: number;
   maxDice: number;
+  canMerge: boolean;
   onChangeQty: (delta: number) => void;
   onChangeModifier: (delta: number) => void;
   onToggleSign: () => void;
@@ -179,6 +184,7 @@ function CurrentHandLineCard({
   onConfigureBehavior: () => void;
   onClearBehavior: () => void;
   onOpenSplit: () => void;
+  onMerge: () => void;
 }) {
   const premium = usePremiumTheme();
 
@@ -343,6 +349,45 @@ function CurrentHandLineCard({
         </Pressable>
       ) : null}
 
+      {canMerge ? (
+        <Pressable
+          onPress={onMerge}
+          style={({ pressed }) => ({
+            opacity: pressed ? 0.76 : 1,
+            transform: [
+              {
+                scale: pressed ? premium.animation.pressScale : 1,
+              },
+            ],
+          })}
+        >
+          <View
+            style={{
+              minHeight: 40,
+              borderRadius: premium.radius.pill,
+              borderWidth: 1,
+              borderColor: "rgba(136, 211, 154, 0.28)",
+              backgroundColor: "rgba(136, 211, 154, 0.09)",
+              alignItems: "center",
+              justifyContent: "center",
+              paddingHorizontal: 12,
+            }}
+          >
+            <Text
+              style={{
+                color: premium.colors.state.success,
+                fontSize: 10,
+                fontWeight: "900",
+                textTransform: "uppercase",
+                letterSpacing: 0.65,
+              }}
+            >
+              Fusionner les lignes compatibles
+            </Text>
+          </View>
+        </Pressable>
+      ) : null}
+
       <View style={{ gap: 7 }}>
         <Text
           style={{
@@ -488,6 +533,7 @@ export function Roll3DCurrentHandEditSheet({
   lines,
   diceCount,
   maxDice,
+  mergeableLineKeys,
   onClose,
   onApply,
   onChangeQty,
@@ -497,6 +543,7 @@ export function Roll3DCurrentHandEditSheet({
   onConfigureBehavior,
   onClearBehavior,
   onOpenSplitLine,
+  onMergeCompatibleLines,
 }: Roll3DCurrentHandEditSheetProps) {
   const premium = usePremiumTheme();
   const insets = useSafeAreaInsets();
@@ -627,6 +674,7 @@ export function Roll3DCurrentHandEditSheet({
                 line={line}
                 totalDiceCount={diceCount}
                 maxDice={maxDice}
+                canMerge={mergeableLineKeys.includes(line.key)}
                 onChangeQty={(delta) => onChangeQty(line.key, delta)}
                 onChangeModifier={(delta) => onChangeModifier(line.key, delta)}
                 onToggleSign={() => onToggleSign(line.key)}
@@ -634,6 +682,7 @@ export function Roll3DCurrentHandEditSheet({
                 onConfigureBehavior={() => onConfigureBehavior(line.key)}
                 onClearBehavior={() => onClearBehavior(line.key)}
                 onOpenSplit={() => onOpenSplitLine(line.key)}
+                onMerge={() => onMergeCompatibleLines(line.key)}
               />
             ))}
           </ScrollView>

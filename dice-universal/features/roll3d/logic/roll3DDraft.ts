@@ -76,8 +76,7 @@ export function createRoll3DDieInstance(
   return {
     id: createRoll3DId("roll-3d-die"),
     rollEntryId,
-    preserveRollEntryGrouping:
-      options.preserveRollEntryGrouping ?? false,
+    preserveRollEntryGrouping: options.preserveRollEntryGrouping ?? false,
     sides,
     createdAt: Date.now(),
     sign: options.sign ?? 1,
@@ -198,9 +197,7 @@ function getRoll3DSavableLineLabel(die: Roll3DDieInstance): string | null {
   return entryLabel;
 }
 
-export function getRoll3DSavableLineKey(
-  die: Roll3DDieInstance,
-): string {
+export function getRoll3DSavableLineKey(die: Roll3DDieInstance): string {
   const behaviorId = die.behavior?.id ?? "no-rule";
   const label = getRoll3DSavableLineLabel(die) ?? "no-label";
 
@@ -275,9 +272,7 @@ export function getRoll3DDraftLineDieIds(params: {
   draft: Roll3DDraft;
   dieId: string;
 }): string[] {
-  const selectedDie = params.draft.dice.find(
-    (die) => die.id === params.dieId,
-  );
+  const selectedDie = params.draft.dice.find((die) => die.id === params.dieId);
 
   if (!selectedDie) {
     return [];
@@ -286,9 +281,7 @@ export function getRoll3DDraftLineDieIds(params: {
   const selectedLineKey = getRoll3DSavableLineKey(selectedDie);
 
   return params.draft.dice
-    .filter(
-      (die) => getRoll3DSavableLineKey(die) === selectedLineKey,
-    )
+    .filter((die) => getRoll3DSavableLineKey(die) === selectedLineKey)
     .map((die) => die.id);
 }
 
@@ -354,13 +347,11 @@ export function updateRoll3DDraftLine(params: {
          * quand sa quantité augmente.
          */
         rollEntryId:
-          prototype.source === "free" &&
-            !prototype.preserveRollEntryGrouping
+          prototype.source === "free" && !prototype.preserveRollEntryGrouping
             ? undefined
             : prototype.rollEntryId,
 
-        preserveRollEntryGrouping:
-          prototype.preserveRollEntryGrouping ?? false,
+        preserveRollEntryGrouping: prototype.preserveRollEntryGrouping ?? false,
 
         sign: nextSign,
         modifier: nextModifier,
@@ -417,9 +408,7 @@ export function removeRoll3DDiceByIds(params: {
 
   const idsToRemove = new Set(params.dieIds);
 
-  const nextDice = params.draft.dice.filter(
-    (die) => !idsToRemove.has(die.id),
-  );
+  const nextDice = params.draft.dice.filter((die) => !idsToRemove.has(die.id));
 
   if (nextDice.length === params.draft.dice.length) {
     return params.draft;
@@ -429,8 +418,7 @@ export function removeRoll3DDiceByIds(params: {
     ...params.draft,
     updatedAt: Date.now(),
     dice: nextDice,
-    groupBehavior:
-      nextDice.length > 0 ? params.draft.groupBehavior : null,
+    groupBehavior: nextDice.length > 0 ? params.draft.groupBehavior : null,
   };
 }
 
@@ -455,6 +443,182 @@ function areRoll3DBehaviorRefsEqual(
     current.rule.name === next.rule.name &&
     current.rule.params_json === next.rule.params_json
   );
+}
+
+function areRoll3DSerializableValuesEqual(
+  current: unknown,
+  next: unknown,
+): boolean {
+  return JSON.stringify(current ?? null) === JSON.stringify(next ?? null);
+}
+
+function areRoll3DDiceMergeCompatible(
+  current: Roll3DDieInstance,
+  next: Roll3DDieInstance,
+): boolean {
+  return (
+    current.sides === next.sides &&
+    current.sign === next.sign &&
+    current.modifier === next.modifier &&
+    current.source === next.source &&
+    areRoll3DBehaviorRefsEqual(current.behavior, next.behavior) &&
+    areRoll3DSerializableValuesEqual(
+      current.rollEntryMeta,
+      next.rollEntryMeta,
+    ) &&
+    areRoll3DSerializableValuesEqual(current.valueSources, next.valueSources)
+  );
+}
+
+function getRoll3DDraftLineDice(
+  draft: Roll3DDraft,
+  lineKey: string,
+): Roll3DDieInstance[] {
+  return draft.dice.filter((die) => getRoll3DSavableLineKey(die) === lineKey);
+}
+
+export function getRoll3DMergeableLineKeys(params: {
+  draft: Roll3DDraft;
+  lineKey: string;
+}): string[] {
+  const targetDice = getRoll3DDraftLineDice(params.draft, params.lineKey);
+
+  const prototype = targetDice[0];
+
+  if (!prototype || targetDice.length === 0) {
+    return [];
+  }
+
+  /**
+   * Sécurité :
+   * la ligne cible elle-même doit être homogène avant que nous acceptions
+   * de fusionner quoi que ce soit avec elle.
+   */
+  const targetLineIsConsistent = targetDice.every((die) =>
+    areRoll3DDiceMergeCompatible(prototype, die),
+  );
+
+  if (!targetLineIsConsistent) {
+    return [];
+  }
+
+  const candidateLineKeys = new Set<string>();
+
+  for (const die of params.draft.dice) {
+    const candidateLineKey = getRoll3DSavableLineKey(die);
+
+    if (candidateLineKey === params.lineKey) {
+      continue;
+    }
+
+    candidateLineKeys.add(candidateLineKey);
+  }
+
+  const mergeableLineKeys: string[] = [];
+
+  for (const candidateLineKey of candidateLineKeys) {
+    const candidateDice = getRoll3DDraftLineDice(
+      params.draft,
+      candidateLineKey,
+    );
+
+    if (candidateDice.length === 0) {
+      continue;
+    }
+
+    const candidateIsCompatible = candidateDice.every((die) =>
+      areRoll3DDiceMergeCompatible(prototype, die),
+    );
+
+    if (candidateIsCompatible) {
+      mergeableLineKeys.push(candidateLineKey);
+    }
+  }
+
+  return mergeableLineKeys;
+}
+
+export function mergeRoll3DDraftLineWithCompatibleLines(params: {
+  draft: Roll3DDraft;
+  lineKey: string;
+}): Roll3DDraft {
+  const targetDice = getRoll3DDraftLineDice(params.draft, params.lineKey);
+
+  const prototype = targetDice[0];
+
+  if (!prototype) {
+    return params.draft;
+  }
+
+  const mergeableLineKeys = getRoll3DMergeableLineKeys(params);
+
+  if (mergeableLineKeys.length === 0) {
+    return params.draft;
+  }
+
+  const mergeableLineKeySet = new Set(mergeableLineKeys);
+
+  const mergedDice: Roll3DDieInstance[] = [
+    ...targetDice,
+    ...params.draft.dice.filter((die) =>
+      mergeableLineKeySet.has(getRoll3DSavableLineKey(die)),
+    ),
+  ].map((die) => ({
+    ...die,
+
+    /**
+     * Tous les dés fusionnés récupèrent l'identité logique
+     * de la ligne sur laquelle l'utilisateur a demandé la fusion.
+     */
+    rollEntryId: prototype.rollEntryId,
+
+    /**
+     * La fusion est volontaire.
+     *
+     * On marque donc explicitement cette nouvelle ligne comme préservée
+     * afin qu'elle ne recommence pas à fusionner automatiquement avec
+     * de futurs dés libres similaires.
+     */
+    preserveRollEntryGrouping: true,
+  }));
+
+  const allMergedLineKeys = new Set([params.lineKey, ...mergeableLineKeys]);
+
+  const nextDice: Roll3DDieInstance[] = [];
+  let mergedLineInserted = false;
+
+  for (const die of params.draft.dice) {
+    const currentLineKey = getRoll3DSavableLineKey(die);
+
+    /**
+     * La nouvelle ligne fusionnée reste à la position de la ligne
+     * explicitement choisie par l'utilisateur.
+     */
+    if (currentLineKey === params.lineKey) {
+      if (!mergedLineInserted) {
+        nextDice.push(...mergedDice);
+        mergedLineInserted = true;
+      }
+
+      continue;
+    }
+
+    if (allMergedLineKeys.has(currentLineKey)) {
+      continue;
+    }
+
+    nextDice.push(die);
+  }
+
+  if (!mergedLineInserted) {
+    return params.draft;
+  }
+
+  return {
+    ...params.draft,
+    updatedAt: Date.now(),
+    dice: nextDice,
+  };
 }
 
 export function updateRoll3DDraftLineBehavior(params: {
