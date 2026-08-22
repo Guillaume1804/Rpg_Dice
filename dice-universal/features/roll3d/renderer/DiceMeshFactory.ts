@@ -8,6 +8,8 @@ import type {
   Roll3DDieSkinId,
 } from "../types";
 
+import { createRoll3DDieGeometry } from "../geometry/Roll3DDieGeometry";
+
 type CreateDiceMeshParams = {
   sides: Roll3DDieSides;
   skinId?: Roll3DDieSkinId;
@@ -60,91 +62,6 @@ function getSkinColors(skinId: Roll3DDieSkinId): DiceSkinColors {
   }
 }
 
-/**
- * Géométrie custom pour d10.
- *
- * Objectif :
- * - silhouette de dé décimal : deux pointes + ceinture centrale.
- * - plus proche d’un vrai d10 que ConeGeometry.
- *
- * Ce n’est pas encore le modèle final gravé/chiffré,
- * mais c’est une base correcte pour le renderer 3D V1.
- */
-function createD10Geometry(radius = 0.92, height = 1.72): THREE.BufferGeometry {
-  /**
-   * D10 propre en bipyramide pentagonale :
-   * - 1 pointe haute
-   * - 1 pointe basse
-   * - 5 sommets autour de l’équateur
-   * - 10 faces triangulaires nettes
-   *
-   * Avantage immédiat :
-   * aucune face n’est divisée en deux triangles visibles,
-   * donc plus d’arête parasite au milieu des faces.
-   */
-  const vertices: number[] = [];
-  const indices: number[] = [];
-
-  const topIndex = 0;
-  const bottomIndex = 1;
-  const ringStart = 2;
-  const ringCount = 5;
-
-  vertices.push(0, height / 2, 0);
-  vertices.push(0, -height / 2, 0);
-
-  for (let i = 0; i < ringCount; i++) {
-    const angle = (i / ringCount) * Math.PI * 2 + Math.PI / 5;
-
-    vertices.push(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
-  }
-
-  for (let i = 0; i < ringCount; i++) {
-    const current = ringStart + i;
-    const next = ringStart + ((i + 1) % ringCount);
-
-    indices.push(topIndex, current, next);
-    indices.push(bottomIndex, next, current);
-  }
-
-  const geometry = new THREE.BufferGeometry();
-
-  geometry.setAttribute(
-    "position",
-    new THREE.Float32BufferAttribute(vertices, 3),
-  );
-
-  geometry.setIndex(indices);
-  geometry.computeVertexNormals();
-
-  return geometry;
-}
-
-function createGeometryForSides(sides: Exclude<Roll3DDieSides, 100>) {
-  switch (sides) {
-    case 4:
-      return new THREE.TetrahedronGeometry(0.82, 0);
-
-    case 6:
-      return new THREE.BoxGeometry(1.18, 1.18, 1.18, 2, 2, 2);
-
-    case 8:
-      return new THREE.OctahedronGeometry(0.92, 0);
-
-    case 10:
-      return createD10Geometry(0.88, 1.58);
-
-    case 12:
-      return new THREE.DodecahedronGeometry(0.9, 0);
-
-    case 20:
-      return new THREE.IcosahedronGeometry(0.92, 0);
-
-    default:
-      return new THREE.BoxGeometry(1.18, 1.18, 1.18);
-  }
-}
-
 function createSingleDiceMesh(params: {
   sides: Exclude<Roll3DDieSides, 100>;
   skinId: Roll3DDieSkinId;
@@ -155,7 +72,7 @@ function createSingleDiceMesh(params: {
   const group = new THREE.Group();
   group.name = `d${sides}`;
 
-  const geometry = createGeometryForSides(sides);
+  const geometry = createRoll3DDieGeometry(sides);
 
   const material = new THREE.MeshStandardMaterial({
     color: colors.body,

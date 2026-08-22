@@ -482,6 +482,8 @@ export function Roll3DLauncherSurface({
   const [isRolling, setIsRolling] = useState(false);
   const [isGestureRolling, setIsGestureRolling] = useState(false);
 
+  const [isTablePhysicsBusy, setIsTablePhysicsBusy] = useState(false);
+
   const [skipRollRequestId, setSkipRollRequestId] = useState(0);
 
   const [partialRollRequestId, setPartialRollRequestId] = useState(0);
@@ -796,6 +798,7 @@ export function Roll3DLauncherSurface({
   useFocusEffect(
     useCallback(() => {
       return () => {
+        setIsTablePhysicsBusy(false);
         setIsRolling(false);
         setIsGestureRolling(false);
         setSkipRollRequestId(0);
@@ -930,6 +933,7 @@ export function Roll3DLauncherSurface({
       return;
     }
 
+    setIsTablePhysicsBusy(false);
     setIsRolling(false);
     setIsGestureRolling(false);
     setSkipRollRequestId(0);
@@ -1067,6 +1071,7 @@ export function Roll3DLauncherSurface({
   );
 
   const handleClearDice = useCallback(() => {
+    setIsTablePhysicsBusy(false);
     setIsRolling(false);
     setIsGestureRolling(false);
     setSkipRollRequestId(0);
@@ -1358,6 +1363,7 @@ export function Roll3DLauncherSurface({
       return;
     }
 
+    setIsTablePhysicsBusy(false);
     setIsRolling(false);
     setIsGestureRolling(false);
     setSkipRollRequestId(0);
@@ -1387,6 +1393,7 @@ export function Roll3DLauncherSurface({
   ]);
 
   const resetRoll3DTransientState = useCallback(() => {
+    setIsTablePhysicsBusy(false);
     setIsRolling(false);
     setIsGestureRolling(false);
     setSkipRollRequestId(0);
@@ -1504,6 +1511,7 @@ export function Roll3DLauncherSurface({
       setSkipRollRequestId(0);
       setPartialRollRequestId(0);
       setLastRollScope(null);
+      setIsTablePhysicsBusy(false);
     },
     [
       selectedProfileId,
@@ -1538,6 +1546,7 @@ export function Roll3DLauncherSurface({
         return;
       }
 
+      setIsTablePhysicsBusy(false);
       setIsRolling(false);
       setSkipRollRequestId(0);
       setPendingAdjustmentLaunch(null);
@@ -1577,6 +1586,7 @@ export function Roll3DLauncherSurface({
         return;
       }
 
+      setIsTablePhysicsBusy(false);
       setIsRolling(false);
       setSkipRollRequestId(0);
       setPendingAdjustmentLaunch(null);
@@ -1774,7 +1784,13 @@ export function Roll3DLauncherSurface({
   }, []);
 
   const launchPendingActionEntryAdjustment = useCallback(() => {
-    if (!actionEntryAdjustment || isRolling || pendingAdjustmentLaunch) {
+    if (
+      !actionEntryAdjustment ||
+      isRolling ||
+      isGestureRolling ||
+      isTablePhysicsBusy ||
+      pendingAdjustmentLaunch
+    ) {
       return false;
     }
 
@@ -1791,6 +1807,7 @@ export function Roll3DLauncherSurface({
       groupBehavior: entryDraft.groupBehavior,
     });
 
+    setIsTablePhysicsBusy(false);
     setIsRolling(false);
     setSkipRollRequestId(0);
     setSelectedActionId(actionEntryAdjustment.actionId);
@@ -1826,14 +1843,21 @@ export function Roll3DLauncherSurface({
     });
 
     return true;
-  }, [actionEntryAdjustment, isRolling, pendingAdjustmentLaunch, loadDraft]);
+  }, [
+    actionEntryAdjustment,
+    isRolling,
+    isGestureRolling,
+    isTablePhysicsBusy,
+    pendingAdjustmentLaunch,
+    loadDraft,
+  ]);
 
   useEffect(() => {
     if (!pendingAdjustmentLaunch) {
       return;
     }
 
-    if (isRolling) {
+    if (isRolling || isTablePhysicsBusy) {
       return;
     }
 
@@ -1883,6 +1907,7 @@ export function Roll3DLauncherSurface({
   }, [
     pendingAdjustmentLaunch,
     isRolling,
+    isTablePhysicsBusy,
     launcher.draft.id,
     launcher.diceCount,
     rollDice,
@@ -1923,7 +1948,12 @@ export function Roll3DLauncherSurface({
   }, [pendingAdjustmentLaunch, launcher.draft.id, launcher.diceCount]);
 
   const handleRollPress = useCallback(() => {
-    if (isRolling || isGestureRolling || pendingAdjustmentLaunch) {
+    if (
+      isRolling ||
+      isGestureRolling ||
+      isTablePhysicsBusy ||
+      pendingAdjustmentLaunch
+    ) {
       return;
     }
 
@@ -1960,6 +1990,7 @@ export function Roll3DLauncherSurface({
   }, [
     isRolling,
     isGestureRolling,
+    isTablePhysicsBusy,
     pendingAdjustmentLaunch,
     actionEntryAdjustment,
     launchPendingActionEntryAdjustment,
@@ -1975,7 +2006,12 @@ export function Roll3DLauncherSurface({
     setActionEntryAdjustment(null);
     setPendingAdjustmentLaunch(null);
 
-    if (isRolling || isGestureRolling || launcher.diceCount <= 0) {
+    if (
+      isRolling ||
+      isGestureRolling ||
+      isTablePhysicsBusy ||
+      launcher.diceCount <= 0
+    ) {
       return;
     }
 
@@ -2020,6 +2056,7 @@ export function Roll3DLauncherSurface({
     setIsRolling(true);
     rollDice();
   }, [
+    isTablePhysicsBusy,
     isGestureRolling,
     isRolling,
     lastRollScope,
@@ -2257,7 +2294,10 @@ export function Roll3DLauncherSurface({
     showSaveAdjustedActionModal;
 
   const diceInteractionsEnabled =
-    shouldShowControls && !pendingAdjustmentLaunch && !hasBlockingRoll3DOverlay;
+    shouldShowControls &&
+    !isTablePhysicsBusy &&
+    !pendingAdjustmentLaunch &&
+    !hasBlockingRoll3DOverlay;
 
   const shouldShowEmptyTableHint =
     shouldShowControls &&
@@ -2314,6 +2354,7 @@ export function Roll3DLauncherSurface({
         onPhysicsRollSettled={handlePhysicsRollSettled}
         onGestureThrowStart={handleGestureThrowStart}
         onGestureThrowSettled={handleGestureThrowSettled}
+        onPhysicsBusyChange={setIsTablePhysicsBusy}
       />
 
       <Roll3DDieSelectionBar
@@ -2454,7 +2495,12 @@ export function Roll3DLauncherSurface({
           >
             <Roll3DRollButton
               compact
-              disabled={isRolling || !!pendingAdjustmentLaunch}
+              disabled={
+                isRolling ||
+                isGestureRolling ||
+                isTablePhysicsBusy ||
+                !!pendingAdjustmentLaunch
+              }
               diceCount={effectiveDiceCount}
               onPress={handleRollPress}
             />
