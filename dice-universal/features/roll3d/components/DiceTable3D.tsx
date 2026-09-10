@@ -1,5 +1,3 @@
-// dice-universal/features/roll3d/components/DiceTable3D.tsx
-
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   PanResponder,
@@ -12,60 +10,42 @@ import { GLView, type ExpoWebGLRenderingContext } from "expo-gl";
 import { Renderer } from "expo-three";
 import * as THREE from "three";
 
-import { createDiceMesh } from "../renderer/DiceMeshFactory";
+import {
+  ROLL3D_DRAG_TABLE_MARGIN,
+  ROLL3D_TABLE,
+} from "../config/Roll3DTableConfig";
 import {
   getRoll3DSupportFace,
   getRoll3DTopFace,
   ROLL3D_DIE_SCALE,
 } from "../geometry/Roll3DDieGeometry";
 import { Roll3DPhysicsWorld } from "../physics/Roll3DPhysicsWorld";
-import type { Roll3DDieInstance } from "../types";
 import type {
   Roll3DPhysicsTransform,
   Roll3DPhysicsVector3,
 } from "../physics/Roll3DPhysicsTypes";
+import { createDiceMesh } from "../renderer/DiceMeshFactory";
+import type { Roll3DDieInstance } from "../types";
 
 type DiceTable3DProps = {
   height?: number;
   diceInstances?: Roll3DDieInstance[];
   rollRequestId?: number;
   skipRollRequestId?: number;
-
-  /**
-   * Relance programmée d'un sous-ensemble déjà présent sur la table.
-   *
-   * Contrairement au lancer gestuel initial, cette relance ne dépend pas
-   * d'un mouvement du doigt : le parent fournit directement les ids.
-   */
   partialRollRequestId?: number;
   partialRollDieIds?: string[];
-
   selectedDieIds?: string[];
   interactionsEnabled?: boolean;
-
   onPressDie?: (dieId: string | null) => void;
-
-  /**
-   * Lancer global déclenché par le bouton principal.
-   */
   onPhysicsRollSettled?: () => void;
-
-  /**
-   * Cycle spécifique d’un lancer gestuel partiel.
-   */
   onGestureThrowStart?: (dieIds: string[]) => void;
   onGestureThrowSettled?: (dieIds: string[]) => void;
-  /**
-   * Informe le parent qu'une simulation physique possède actuellement
-   * les dés : chute initiale, lancer global ou lancer gestuel.
-   */
   onPhysicsBusyChange?: (busy: boolean) => void;
 };
 
 type DiceDropState = {
   startPosition: THREE.Vector3;
   targetPosition: THREE.Vector3;
-
   startRotation: THREE.Euler;
   targetRotation: THREE.Euler;
 };
@@ -96,223 +76,33 @@ type DiceGestureSample = {
 type DiceDragState = {
   touchedDieId: string | null;
   dragDieIds: string[];
-
   startWorldPoint: THREE.Vector3 | null;
   startPositions: Map<string, THREE.Vector3>;
-
   hasMoved: boolean;
   selectionRequested: boolean;
   longPressTriggered: boolean;
-
-  /**
-   * Historique récent du mouvement, utilisé pour calculer la direction
-   * et la vitesse au moment du relâchement.
-   */
   gestureSamples: DiceGestureSample[];
 };
 
-/**
- * Scène cible :
- * le smartphone est une ouverture vue du dessus.
- * La table est le fond du téléphone.
- * Les dés tombent dans cette "boîte/table" intérieure.
- */
-const TABLE_SURFACE_Y = -1.15;
-
-const TABLE_WIDTH = 5.8;
-const TABLE_DEPTH = 8.4;
-const TABLE_WALL_HEIGHT = 0.46;
-const TABLE_WALL_THICKNESS = 0.12;
+const {
+  surfaceY: TABLE_SURFACE_Y,
+  width: TABLE_WIDTH,
+  depth: TABLE_DEPTH,
+  wallHeight: TABLE_WALL_HEIGHT,
+  wallThickness: TABLE_WALL_THICKNESS,
+} = ROLL3D_TABLE;
 
 const DROP_START_Y = 3.2;
-
 const TARGET_X_RANGE = 1.45;
 const TARGET_Z_RANGE = 2.25;
-
-/**
- * Un léger mouvement du doigt ne doit pas transformer un simple toucher
- * en déplacement.
- */
 const DRAG_START_THRESHOLD_PX = 7;
-
-/**
- * Marge intérieure empêchant le centre d’un dé d’atteindre les murs.
- * Les véritables collisions physiques seront améliorées plus tard.
- */
-const DRAG_TABLE_MARGIN = 0.46;
-
-/**
- * Durée avant qu’un toucher immobile soit considéré comme une prise en main.
- */
+const DRAG_TABLE_MARGIN = ROLL3D_DRAG_TABLE_MARGIN;
 const PICKUP_LONG_PRESS_DELAY_MS = 360;
-
-/**
- * Élévation visuelle temporaire d’un dé pris en main.
- *
- * Cette valeur est volontairement modeste : le dé doit sembler soulevé,
- * sans quitter visuellement la zone de manipulation.
- */
 const PICKUP_LIFT_Y = 0.24;
-
-/**
- * Seuls les derniers instants du mouvement sont utilisés.
- * Cela rend le lancer sensible au geste de relâchement plutôt qu’à toute
- * la trajectoire depuis le début de la prise en main.
- */
 const GESTURE_SAMPLE_WINDOW_MS = 140;
-
-/**
- * Vitesse minimale sur le plan de la table pour déclencher un lancer.
- * En dessous, les dés sont simplement reposés.
- */
 const GESTURE_THROW_MIN_SPEED = 2.2;
-
-/**
- * Limites de sécurité de l’impulsion envoyée à cannon-es.
- */
 const GESTURE_THROW_MIN_STRENGTH = 4.8;
 const GESTURE_THROW_MAX_STRENGTH = 13.5;
-
-/**
- * Critères provisoires de repos physique propre.
- *
- * Les valeurs viennent des mesures réelles de 4.0C :
- *
- * repos correct :
- * - d4  : supportAlign 1.0000 / gap 1.3333
- * - d10 : supportAlign 1.0000 / gap 0.3800
- * - d20 : supportAlign 1.0000 / gap 0.2546
- *
- * repos ambigu observé :
- * - d20 : supportAlign 0.9514 / gap 0.0369
- *
- * On garde volontairement une marge confortable plutôt que d'exiger
- * une orientation mathématiquement parfaite.
- */
-const STABLE_SUPPORT_MIN_ALIGNMENT = 0.985;
-const STABLE_SUPPORT_MIN_CONFIDENCE_GAP = 0.08;
-
-/**
- * Protection contre une boucle infinie dans un cas physique exceptionnel.
- *
- * Après plusieurs tentatives, on préfère accepter le repos plutôt que
- * bloquer définitivement l'interface.
- */
-const MAX_UNSTABLE_SETTLE_RETRIES = 4;
-
-/**
- * Distance libre maximale entre le bord approximatif d'un dé
- * et une paroi pour considérer que celle-ci peut participer
- * à son repos ambigu.
- *
- * On reste volontairement assez proche du mur :
- * un dé au centre de la table ne doit jamais recevoir
- * de correction directionnelle.
- */
-const WALL_AWARE_UNSTABLE_DISTANCE = 0.24;
-
-/**
- * Rayon horizontal approximatif utilisé uniquement pour déterminer
- * si un dé est suffisamment proche d'une paroi pour que celle-ci
- * puisse participer à un repos artificiellement stable.
- *
- * Ce n'est PAS un collider et cette valeur n'influence pas Cannon.
- */
-function getApproximateDieHorizontalRadius(sides: number): number {
-  switch (sides) {
-    case 4:
-      return 0.34;
-
-    case 6:
-      return 0.34;
-
-    case 8:
-      return 0.36;
-
-    case 10:
-      return 0.37;
-
-    case 12:
-      return 0.4;
-
-    case 20:
-      return 0.4;
-
-    case 100:
-    default:
-      return 0.46;
-  }
-}
-
-/**
- * Si le dé est proche d'une ou plusieurs parois, renvoie une direction
- * horizontale pointant vers l'intérieur de la table.
- *
- * Exemple :
- *
- * mur gauche
- * │
- * │  ◇  → direction +X
- *
- * Dans un coin, les deux contributions sont combinées :
- *
- * coin haut-gauche
- * ◇
- *   ↘ direction +X / +Z
- */
-function getWallEscapeDirection(params: {
-  sides: number;
-  position: THREE.Vector3;
-}): Roll3DPhysicsVector3 | null {
-  const { sides, position } = params;
-
-  const radius = getApproximateDieHorizontalRadius(sides);
-
-  const minimumX = -TABLE_WIDTH / 2;
-
-  const maximumX = TABLE_WIDTH / 2;
-
-  const minimumZ = -TABLE_DEPTH / 2;
-
-  const maximumZ = TABLE_DEPTH / 2;
-
-  const leftClearance = position.x - minimumX - radius;
-
-  const rightClearance = maximumX - position.x - radius;
-
-  const topClearance = position.z - minimumZ - radius;
-
-  const bottomClearance = maximumZ - position.z - radius;
-
-  let directionX = 0;
-  let directionZ = 0;
-
-  if (leftClearance <= WALL_AWARE_UNSTABLE_DISTANCE) {
-    directionX += 1;
-  }
-
-  if (rightClearance <= WALL_AWARE_UNSTABLE_DISTANCE) {
-    directionX -= 1;
-  }
-
-  if (topClearance <= WALL_AWARE_UNSTABLE_DISTANCE) {
-    directionZ += 1;
-  }
-
-  if (bottomClearance <= WALL_AWARE_UNSTABLE_DISTANCE) {
-    directionZ -= 1;
-  }
-
-  if (directionX === 0 && directionZ === 0) {
-    return null;
-  }
-
-  return {
-    x: directionX,
-    y: 0,
-    z: directionZ,
-  };
-}
 
 function disposeObject3D(object: THREE.Object3D) {
   object.traverse((child) => {
@@ -367,18 +157,10 @@ function createRandomTargetXZ() {
   };
 }
 
-/**
- * Départ presque au-dessus de la position finale.
- * Ça donne une chute droite vue du dessus.
- */
 function createDropStartPosition(targetX: number, targetZ: number) {
   return new THREE.Vector3(targetX * 0.15, DROP_START_Y, targetZ * 0.15);
 }
 
-/**
- * Calcule la bonne hauteur finale pour que le dé repose sur la table,
- * peu importe sa forme : d4, d6, d10, d100...
- */
 function computeRestingPosition(params: {
   dice: THREE.Group;
   x: number;
@@ -394,9 +176,7 @@ function computeRestingPosition(params: {
   dice.updateMatrixWorld(true);
 
   const box = new THREE.Box3().setFromObject(dice);
-  const bottomY = box.min.y;
-
-  return new THREE.Vector3(x, TABLE_SURFACE_Y - bottomY, z);
+  return new THREE.Vector3(x, TABLE_SURFACE_Y - box.min.y, z);
 }
 
 function toPhysicsTransform(mesh: THREE.Object3D): Roll3DPhysicsTransform {
@@ -435,29 +215,22 @@ function applyPhysicsTransform(
   );
 }
 
+/**
+ * Diagnostic uniquement : aucune orientation n'est corrigée ici.
+ */
 function logSettledDiceOrientation(params: {
   diceInstances: Roll3DDieInstance[];
   diceItems: Map<string, DiceSceneItem>;
 }) {
-  if (!__DEV__) {
-    return;
-  }
+  if (!__DEV__) return;
 
   const { diceInstances, diceItems } = params;
 
   for (const instance of diceInstances) {
-    /**
-     * Architecture provisoire jusqu'à 4.0H.
-     */
-    if (instance.sides === 100) {
-      continue;
-    }
+    if (instance.sides === 100) continue;
 
     const item = diceItems.get(instance.id);
-
-    if (!item) {
-      continue;
-    }
+    if (!item) continue;
 
     const topFace = getRoll3DTopFace({
       sides: instance.sides,
@@ -479,65 +252,6 @@ function logSettledDiceOrientation(params: {
         `supportGap=${supportFace.confidenceGap.toFixed(4)}`,
     );
   }
-}
-
-function getUnstableSettledDieIds(params: {
-  diceInstances: Roll3DDieInstance[];
-  diceItems: Map<string, DiceSceneItem>;
-  retryCounts: Map<string, number>;
-}): string[] {
-  const { diceInstances, diceItems, retryCounts } = params;
-
-  const unstableDieIds: string[] = [];
-
-  for (const instance of diceInstances) {
-    /**
-     * Le d100 reste exclu jusqu'à sa refonte 4.0H.
-     */
-    if (instance.sides === 100) {
-      continue;
-    }
-
-    const item = diceItems.get(instance.id);
-
-    if (!item) {
-      continue;
-    }
-
-    const supportFace = getRoll3DSupportFace({
-      sides: instance.sides,
-      quaternion: item.mesh.quaternion,
-    });
-
-    const hasStableAlignment =
-      supportFace.alignment >= STABLE_SUPPORT_MIN_ALIGNMENT;
-
-    const hasClearSupportFace =
-      supportFace.confidenceGap >= STABLE_SUPPORT_MIN_CONFIDENCE_GAP;
-
-    if (hasStableAlignment && hasClearSupportFace) {
-      continue;
-    }
-
-    const retryCount = retryCounts.get(instance.id) ?? 0;
-
-    if (retryCount >= MAX_UNSTABLE_SETTLE_RETRIES) {
-      if (__DEV__) {
-        console.warn(
-          `[Roll3D] accepting unresolved rest d${instance.sides} | ` +
-            `supportAlign=${supportFace.alignment.toFixed(4)} ` +
-            `supportGap=${supportFace.confidenceGap.toFixed(4)} ` +
-            `retries=${retryCount}`,
-        );
-      }
-
-      continue;
-    }
-
-    unstableDieIds.push(instance.id);
-  }
-
-  return unstableDieIds;
 }
 
 function createInteriorTable() {
@@ -616,13 +330,11 @@ function createInteriorTable() {
   const borderGeometry = new THREE.EdgesGeometry(
     new THREE.BoxGeometry(TABLE_WIDTH, 0.04, TABLE_DEPTH),
   );
-
   const borderMaterial = new THREE.LineBasicMaterial({
     color: "#E8C878",
     transparent: true,
     opacity: 0.22,
   });
-
   const border = new THREE.LineSegments(borderGeometry, borderMaterial);
   border.name = "phone-tray-subtle-border";
   border.position.set(0, TABLE_SURFACE_Y + 0.03, 0);
@@ -650,26 +362,15 @@ function createContactShadow() {
 }
 
 function getSelectionHaloRadius(sides: number) {
-  if (sides === 100) {
-    return 0.58;
-  }
-
-  if (sides === 20 || sides === 12) {
-    return 0.48;
-  }
-
-  if (sides === 10 || sides === 8) {
-    return 0.44;
-  }
-
+  if (sides === 100) return 0.58;
+  if (sides === 20 || sides === 12) return 0.48;
+  if (sides === 10 || sides === 8) return 0.44;
   return 0.41;
 }
 
 function createSelectionHalo(sides: number) {
   const radius = getSelectionHaloRadius(sides);
-
   const geometry = new THREE.RingGeometry(radius * 0.72, radius, 48);
-
   const material = new THREE.MeshBasicMaterial({
     color: "#E8C878",
     transparent: true,
@@ -680,7 +381,6 @@ function createSelectionHalo(sides: number) {
   });
 
   const halo = new THREE.Mesh(geometry, material);
-
   halo.name = "dice-selection-halo";
   halo.rotation.x = -Math.PI / 2;
   halo.position.set(0, TABLE_SURFACE_Y + 0.012, 0);
@@ -699,7 +399,6 @@ function updateSelectionHalo(params: {
   const material = halo.material as THREE.MeshBasicMaterial;
 
   halo.position.set(dice.position.x, TABLE_SURFACE_Y + 0.012, dice.position.z);
-
   halo.visible = selected;
   material.opacity = selected ? 0.72 : 0;
 }
@@ -711,7 +410,6 @@ function updateContactShadow(params: {
   visible: boolean;
 }) {
   const { shadow, dice, progress, visible } = params;
-
   const material = shadow.material as THREE.MeshBasicMaterial;
 
   shadow.visible = visible;
@@ -748,41 +446,15 @@ export function DiceTable3D({
   onPhysicsBusyChange,
 }: DiceTable3DProps) {
   const animationFrameRef = useRef<number | null>(null);
-
   const sceneRef = useRef<THREE.Scene | null>(null);
   const diceItemsRef = useRef<Map<string, DiceSceneItem>>(new Map());
-
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const raycasterRef = useRef(new THREE.Raycaster());
-
-  const viewportRef = useRef<DiceTableViewport>({
-    width: 0,
-    height,
-  });
-
-  /**
-   * La boucle Three.js créée par GLView survit aux rerenders React.
-   *
-   * Elle ne doit donc pas utiliser directement `diceInstances`, car elle
-   * conserverait la valeur capturée lors de la création du contexte GL.
-   *
-   * Cette ref expose en permanence la Main réellement actuelle.
-   */
+  const viewportRef = useRef<DiceTableViewport>({ width: 0, height });
   const diceInstancesRef = useRef<Roll3DDieInstance[]>(diceInstances);
-
   const selectedDieIdsRef = useRef<Set<string>>(new Set(selectedDieIds));
-
-  /**
-   * Certaines interactions survivent quelques centaines de millisecondes
-   * via setTimeout (notamment l'appui long).
-   *
-   * Une ref permet au callback différé de connaître la valeur ACTUELLE
-   * de interactionsEnabled et non celle capturée au début du toucher.
-   */
   const interactionsEnabledRef = useRef(interactionsEnabled);
-
   const onPressDieRef = useRef(onPressDie);
-
   const dragStateRef = useRef<DiceDragState>({
     touchedDieId: null,
     dragDieIds: [],
@@ -793,22 +465,13 @@ export function DiceTable3D({
     longPressTriggered: false,
     gestureSamples: [],
   });
-
   const longPressTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
-
   const pickedUpDieIdsRef = useRef<Set<string>>(new Set());
-
   const physicsWorldRef = useRef<Roll3DPhysicsWorld | null>(null);
   const lastFrameAtRef = useRef<number | null>(null);
   const physicsActiveRef = useRef(false);
-
-  /**
-   * Nombre de corrections anti-tranche déjà tentées pour chaque dé
-   * pendant le cycle physique courant.
-   */
-  const unstableSettleRetryCountRef = useRef<Map<string, number>>(new Map());
   const physicsRollModeRef = useRef<"idle" | "adding" | "rolling" | "gesture">(
     "idle",
   );
@@ -821,47 +484,21 @@ export function DiceTable3D({
   const onGestureThrowStartRef = useRef(onGestureThrowStart);
   const onGestureThrowSettledRef = useRef(onGestureThrowSettled);
   const activePhysicsRollIdRef = useRef(0);
-  /**
-   * Une scène Three peut être recréée avec des props dont les request ids
-   * sont déjà non nuls.
-   *
-   * Ils représentent alors l'historique du parent et ne doivent pas être
-   * rejoués automatiquement par la nouvelle scène.
-   */
   const lastHandledRollRequestIdRef = useRef(rollRequestId);
-
   const lastHandledSkipRollRequestIdRef = useRef(skipRollRequestId);
-
   const lastHandledPartialRollRequestIdRef = useRef(partialRollRequestId);
   const skipTransitionFrameRef = useRef<number | null>(null);
-
   const onPhysicsBusyChangeRef = useRef(onPhysicsBusyChange);
 
   const clearLongPressTimeout = useCallback(() => {
-    if (longPressTimeoutRef.current == null) {
-      return;
-    }
-
+    if (longPressTimeoutRef.current == null) return;
     clearTimeout(longPressTimeoutRef.current);
     longPressTimeoutRef.current = null;
   }, []);
 
-  /**
-   * Source unique de vérité pour l'état "physique occupée".
-   *
-   * La ref reste utilisée par les callbacks temps réel afin d'éviter
-   * un rendu React à chaque lecture.
-   *
-   * Le callback parent sert uniquement à synchroniser l'interface :
-   * par exemple désactiver Lancer pendant la chute initiale d'un dé.
-   */
   const setPhysicsBusy = useCallback((busy: boolean) => {
-    if (physicsActiveRef.current === busy) {
-      return;
-    }
-
+    if (physicsActiveRef.current === busy) return;
     physicsActiveRef.current = busy;
-
     onPhysicsBusyChangeRef.current?.(busy);
   }, []);
 
@@ -909,7 +546,6 @@ export function DiceTable3D({
     (mesh: THREE.Group): DiceDropState => {
       const targetXZ = createRandomTargetXZ();
       const targetRotation = createRandomRotation();
-
       const targetPosition = computeRestingPosition({
         dice: mesh,
         x: targetXZ.x,
@@ -917,27 +553,53 @@ export function DiceTable3D({
         rotation: targetRotation,
         scale: ROLL3D_DIE_SCALE,
       });
-
       const startPosition = createDropStartPosition(
         targetPosition.x,
         targetPosition.z,
       );
-
       const startRotation = new THREE.Euler(
         randomBetween(-Math.PI, Math.PI),
         randomBetween(-Math.PI, Math.PI),
         randomBetween(-Math.PI, Math.PI),
       );
 
-      return {
-        startPosition,
-        targetPosition,
-        startRotation,
-        targetRotation,
-      };
+      return { startPosition, targetPosition, startRotation, targetRotation };
     },
     [],
   );
+
+  /**
+   * Recrée le monde dynamique à partir de TOUS les dés visibles.
+   *
+   * Le nouveau dé tombe ; tous les dés déjà présents sont réintroduits comme
+   * rigid bodies resting. Ils peuvent ainsi être réellement percutés pendant
+   * la chute, au lieu de rester des meshes Three "fantômes".
+   */
+  const rebuildPhysicsForAddedDie = useCallback((addedDieId: string) => {
+    const physicsWorld = physicsWorldRef.current;
+    if (!physicsWorld) return false;
+
+    physicsWorld.clearDice();
+
+    for (const currentInstance of diceInstancesRef.current) {
+      const currentItem = diceItemsRef.current.get(currentInstance.id);
+      if (!currentItem) continue;
+
+      currentItem.physicsActive = true;
+      currentItem.mesh.scale.setScalar(ROLL3D_DIE_SCALE);
+      currentItem.mesh.updateMatrixWorld(true);
+
+      physicsWorld.addDie(
+        currentInstance,
+        toPhysicsTransform(currentItem.mesh),
+        {
+          launchMode: currentInstance.id === addedDieId ? "drop" : "resting",
+        },
+      );
+    }
+
+    return physicsWorld.getDiceSnapshots().length > 0;
+  }, []);
 
   const addDiceInstanceToScene = useCallback(
     (scene: THREE.Scene, instance: Roll3DDieInstance, animate = true) => {
@@ -947,18 +609,14 @@ export function DiceTable3D({
         sides: instance.sides,
         skinId: "graphite_default",
       });
-
       const shadow = createContactShadow();
-
       const selectionHalo = createSelectionHalo(instance.sides);
-
       const dropState = createDropStateForMesh(mesh);
 
       if (animate) {
         mesh.position.copy(dropState.startPosition);
         mesh.rotation.copy(dropState.startRotation);
         mesh.scale.setScalar(ROLL3D_DIE_SCALE);
-
         updateContactShadow({
           shadow,
           dice: mesh,
@@ -969,35 +627,17 @@ export function DiceTable3D({
         mesh.position.copy(dropState.targetPosition);
         mesh.rotation.copy(dropState.targetRotation);
         mesh.scale.setScalar(ROLL3D_DIE_SCALE);
-
-        updateContactShadow({
-          shadow,
-          dice: mesh,
-          progress: 1,
-          visible: true,
-        });
+        updateContactShadow({ shadow, dice: mesh, progress: 1, visible: true });
       }
 
       scene.add(shadow);
       scene.add(selectionHalo);
       scene.add(mesh);
 
-      /**
-       * Le raycaster touche les sous-meshes qui composent visuellement le dé,
-       * pas nécessairement le THREE.Group parent.
-       *
-       * On inscrit donc l’identifiant logique du dé sur chaque objet enfant
-       * afin de retrouver le bon Roll3DDieInstance lors d’un toucher.
-       */
       mesh.traverse((child) => {
         child.userData.roll3DDieId = instance.id;
       });
 
-      /**
-       * Le halo est créé séparément du dé.
-       * On le positionne immédiatement afin qu’il soit prêt même si le dé
-       * était déjà sélectionné au moment du montage de la scène.
-       */
       updateSelectionHalo({
         halo: selectionHalo,
         dice: mesh,
@@ -1012,50 +652,23 @@ export function DiceTable3D({
         physicsActive: animate,
       });
 
-      if (animate) {
-        const physicsWorld = physicsWorldRef.current;
+      if (!animate) return;
 
-        if (physicsWorld) {
-          /**
-           * Lorsqu’aucune simulation n’est en cours, les éventuels anciens corps
-           * physiques ne doivent pas être réutilisés pour un nouvel ajout.
-           *
-           * Les meshes déjà posés restent dans la scène à leur position actuelle.
-           * Seuls les nouveaux dés sont réintroduits dans la physique.
-           */
-          if (physicsRollModeRef.current === "idle") {
-            physicsWorld.clearDice();
-          }
-
-          unstableSettleRetryCountRef.current.delete(instance.id);
-
-          physicsWorld.addDie(instance, toPhysicsTransform(mesh), {
-            launchMode: "drop",
-          });
-
-          setPhysicsBusy(true);
-          physicsRollModeRef.current = "adding";
-          lastFrameAtRef.current = Date.now();
-        }
+      if (rebuildPhysicsForAddedDie(instance.id)) {
+        setPhysicsBusy(true);
+        physicsRollModeRef.current = "adding";
+        lastFrameAtRef.current = Date.now();
       }
     },
-    [createDropStateForMesh, setPhysicsBusy],
+    [createDropStateForMesh, rebuildPhysicsForAddedDie, setPhysicsBusy],
   );
 
   const startPhysicsRoll = useCallback((): boolean => {
     const physicsWorld = physicsWorldRef.current;
+    if (!physicsWorld || physicsActiveRef.current) return false;
 
-    if (!physicsWorld || physicsActiveRef.current) {
-      return false;
-    }
-
-    const currentRollId = activePhysicsRollIdRef.current + 1;
-    activePhysicsRollIdRef.current = currentRollId;
-
+    activePhysicsRollIdRef.current += 1;
     physicsWorld.clearDice();
-
-    unstableSettleRetryCountRef.current.clear();
-
     physicsSettledNotifiedRef.current = false;
 
     if (settleDelayTimeoutRef.current != null) {
@@ -1063,17 +676,11 @@ export function DiceTable3D({
       settleDelayTimeoutRef.current = null;
     }
 
-    for (const instance of diceInstances) {
+    for (const instance of diceInstancesRef.current) {
       const item = diceItemsRef.current.get(instance.id);
       if (!item) continue;
 
-      /**
-       * 2.0H :
-       * Le lancer repart depuis la position actuelle du dé sur la table.
-       * On ne le replace plus en hauteur.
-       */
       item.physicsActive = true;
-
       item.mesh.scale.setScalar(ROLL3D_DIE_SCALE);
       item.mesh.updateMatrixWorld(true);
 
@@ -1098,9 +705,8 @@ export function DiceTable3D({
     setPhysicsBusy(true);
     physicsRollModeRef.current = "rolling";
     lastFrameAtRef.current = Date.now();
-
     return true;
-  }, [diceInstances, setPhysicsBusy]);
+  }, [setPhysicsBusy]);
 
   const applyPhysicsSnapshotsToMeshes = useCallback(() => {
     const physicsWorld = physicsWorldRef.current;
@@ -1114,23 +720,19 @@ export function DiceTable3D({
       if (!item) continue;
 
       applyPhysicsTransform(item.mesh, snapshot.transform);
-
       updateContactShadow({
         shadow: item.shadow,
         dice: item.mesh,
         progress: 1,
         visible: true,
       });
-
       updateSelectionHalo({
         halo: item.selectionHalo,
         dice: item.mesh,
         selected: selectedDieIdsRef.current.has(snapshot.id),
       });
 
-      if (!snapshot.sleeping) {
-        allSleeping = false;
-      }
+      if (!snapshot.sleeping) allSleeping = false;
     }
 
     return allSleeping;
@@ -1138,14 +740,12 @@ export function DiceTable3D({
 
   const captureCurrentDiceTransforms = useCallback(() => {
     const transforms = new Map<string, DiceVisualTransform>();
-
     for (const [id, item] of diceItemsRef.current.entries()) {
       transforms.set(id, {
         position: item.mesh.position.clone(),
         quaternion: item.mesh.quaternion.clone(),
       });
     }
-
     return transforms;
   }, []);
 
@@ -1153,12 +753,7 @@ export function DiceTable3D({
     const transforms = new Map<string, DiceVisualTransform>();
     const items = Array.from(diceItemsRef.current.entries());
 
-    type PlacedTarget = {
-      x: number;
-      z: number;
-      radius: number;
-    };
-
+    type PlacedTarget = { x: number; z: number; radius: number };
     const placedTargets: PlacedTarget[] = [];
 
     function getVisualCollisionRadius(sides: number) {
@@ -1178,7 +773,6 @@ export function DiceTable3D({
       maxZ: number;
     }) {
       const { radius, minX, maxX, minZ, maxZ } = params;
-
       let x = params.x;
       let z = params.z;
 
@@ -1189,101 +783,64 @@ export function DiceTable3D({
           const dx = x - placed.x;
           const dz = z - placed.z;
           const distance = Math.sqrt(dx * dx + dz * dz);
-
           const minimumDistance = radius + placed.radius + 0.045;
-
-          if (distance >= minimumDistance) {
-            continue;
-          }
+          if (distance >= minimumDistance) continue;
 
           const angle =
             distance > 0.001
               ? Math.atan2(dz, dx)
               : randomBetween(0, Math.PI * 2);
-
           const push = minimumDistance - distance;
-
           x += Math.cos(angle) * push * 0.62;
           z += Math.sin(angle) * push * 0.62;
-
           x = clamp(x, minX, maxX);
           z = clamp(z, minZ, maxZ);
-
           moved = true;
         }
 
-        if (!moved) {
-          break;
-        }
+        if (!moved) break;
       }
 
       return { x, z };
     }
 
-    if (items.length === 0) {
-      return transforms;
-    }
+    if (items.length === 0) return transforms;
 
     const instanceById = new Map(
-      diceInstances.map((instance) => [instance.id, instance]),
+      diceInstancesRef.current.map((instance) => [instance.id, instance]),
     );
-
     const diceTypeOrder = [4, 6, 8, 10, 12, 20, 100] as const;
-
     const groupedItems = diceTypeOrder
-      .map((sides) => {
-        const groupItems = items.filter(([id]) => {
-          const instance = instanceById.get(id);
-          return instance?.sides === sides;
-        });
-
-        return {
-          sides,
-          items: groupItems,
-        };
-      })
+      .map((sides) => ({
+        sides,
+        items: items.filter(([id]) => instanceById.get(id)?.sides === sides),
+      }))
       .filter((group) => group.items.length > 0);
 
     const groupCount = groupedItems.length;
+    if (groupCount === 0) return transforms;
 
-    if (groupCount === 0) {
-      return transforms;
-    }
-
-    /**
-     * Zone visible utile.
-     * On évite volontairement le bas de la table, car les contrôles flottants
-     * reviennent après fermeture du résultat.
-     */
     const safeX = TABLE_WIDTH / 2 - 0.72;
     const safeTopZ = -TABLE_DEPTH / 2 + 0.92;
     const safeBottomZ = TABLE_DEPTH / 2 - 2.15;
 
-    type Anchor = {
-      x: number;
-      z: number;
-    };
+    type Anchor = { x: number; z: number };
 
     function getClusterAnchors(count: number): Anchor[] {
       const minZ = safeTopZ;
       const maxZ = safeBottomZ;
       const midZ = (minZ + maxZ) / 2;
-
       const topZ = minZ + (maxZ - minZ) * 0.2;
       const centerZ = midZ;
       const bottomZ = minZ + (maxZ - minZ) * 0.8;
 
-      if (count <= 1) {
-        return [{ x: 0, z: centerZ }];
-      }
-
+      if (count <= 1) return [{ x: 0, z: centerZ }];
       if (count === 2) {
         return [
           { x: -safeX * 0.58, z: centerZ },
           { x: safeX * 0.58, z: centerZ },
         ];
       }
-
       if (count === 3) {
         return [
           { x: 0, z: topZ },
@@ -1291,7 +848,6 @@ export function DiceTable3D({
           { x: safeX * 0.62, z: bottomZ },
         ];
       }
-
       if (count === 4) {
         return [
           { x: -safeX * 0.62, z: topZ },
@@ -1300,7 +856,6 @@ export function DiceTable3D({
           { x: safeX * 0.62, z: bottomZ },
         ];
       }
-
       if (count === 5) {
         return [
           { x: -safeX * 0.62, z: topZ },
@@ -1310,7 +865,6 @@ export function DiceTable3D({
           { x: safeX * 0.62, z: bottomZ },
         ];
       }
-
       if (count === 6) {
         return [
           { x: -safeX * 0.62, z: topZ },
@@ -1321,7 +875,6 @@ export function DiceTable3D({
           { x: safeX * 0.62, z: bottomZ },
         ];
       }
-
       return [
         { x: -safeX * 0.56, z: topZ },
         { x: safeX * 0.56, z: topZ },
@@ -1339,7 +892,6 @@ export function DiceTable3D({
       sides: number;
     }) {
       const { index, count, sides } = params;
-
       if (count <= 1) {
         return {
           x: randomBetween(-0.035, 0.035),
@@ -1347,19 +899,9 @@ export function DiceTable3D({
         };
       }
 
-      /**
-       * Rayon compact : les dés du même type doivent vraiment former un tas.
-       * On augmente légèrement selon le nombre, mais on reste serré.
-       */
       const baseRadius =
         sides === 100 ? 0.34 : sides === 20 || sides === 12 ? 0.3 : 0.26;
-
       const radiusStep = count >= 10 ? 0.115 : count >= 6 ? 0.13 : 0.145;
-
-      /**
-       * Spirale naturelle autour de l'ancre.
-       * C'est beaucoup plus proche d'un tas trié qu'une grille.
-       */
       const goldenAngle = Math.PI * (3 - Math.sqrt(5));
       const ringRadius = baseRadius + Math.sqrt(index) * radiusStep;
       const angle = index * goldenAngle;
@@ -1374,19 +916,12 @@ export function DiceTable3D({
 
     groupedItems.forEach((group, groupIndex) => {
       const anchor = anchors[groupIndex] ?? { x: 0, z: 0 };
-
-      /**
-       * On trie uniquement pour que la transition reste lisible.
-       * Les dés d'un même type vont tous vers le même tas.
-       */
       const sortedGroupItems = [...group.items].sort((a, b) => {
         const meshA = a[1].mesh;
         const meshB = b[1].mesh;
-
         if (Math.abs(meshA.position.z - meshB.position.z) > 0.2) {
           return meshA.position.z - meshB.position.z;
         }
-
         return meshA.position.x - meshB.position.x;
       });
 
@@ -1396,16 +931,13 @@ export function DiceTable3D({
           count: sortedGroupItems.length,
           sides: group.sides,
         });
-
         const visualRadius = getVisualCollisionRadius(group.sides);
-
         const initialTargetX = clamp(anchor.x + offset.x, -safeX, safeX);
         const initialTargetZ = clamp(
           anchor.z + offset.z,
           safeTopZ,
           safeBottomZ,
         );
-
         const resolvedTarget = resolveClusterCollision({
           x: initialTargetX,
           z: initialTargetZ,
@@ -1415,24 +947,15 @@ export function DiceTable3D({
           minZ: safeTopZ,
           maxZ: safeBottomZ,
         });
-
         const targetX = resolvedTarget.x;
         const targetZ = resolvedTarget.z;
 
-        placedTargets.push({
-          x: targetX,
-          z: targetZ,
-          radius: visualRadius,
-        });
+        placedTargets.push({ x: targetX, z: targetZ, radius: visualRadius });
 
         const finalRotation = createRandomRotation();
         const finalQuaternion = new THREE.Quaternion().setFromEuler(
           finalRotation,
         );
-
-        /**
-         * Calcul de hauteur de repos sans laisser le mesh muté.
-         */
         const originalPosition = item.mesh.position.clone();
         const originalQuaternion = item.mesh.quaternion.clone();
         const originalScale = item.mesh.scale.clone();
@@ -1458,7 +981,7 @@ export function DiceTable3D({
     });
 
     return transforms;
-  }, [diceInstances]);
+  }, []);
 
   const animateDiceToFinalTransforms = useCallback(
     (
@@ -1482,7 +1005,6 @@ export function DiceTable3D({
         for (const [id, finalTransform] of finalTransforms.entries()) {
           const item = diceItemsRef.current.get(id);
           const startTransform = startTransforms.get(id);
-
           if (!item || !startTransform) continue;
 
           item.mesh.position.lerpVectors(
@@ -1490,7 +1012,6 @@ export function DiceTable3D({
             finalTransform.position,
             easedProgress,
           );
-
           item.mesh.quaternion
             .copy(startTransform.quaternion)
             .slerp(finalTransform.quaternion, easedProgress);
@@ -1518,17 +1039,14 @@ export function DiceTable3D({
         for (const [id, finalTransform] of finalTransforms.entries()) {
           const item = diceItemsRef.current.get(id);
           if (!item) continue;
-
           item.mesh.position.copy(finalTransform.position);
           item.mesh.quaternion.copy(finalTransform.quaternion);
-
           updateContactShadow({
             shadow: item.shadow,
             dice: item.mesh,
             progress: 1,
             visible: true,
           });
-
           updateSelectionHalo({
             halo: item.selectionHalo,
             dice: item.mesh,
@@ -1546,10 +1064,7 @@ export function DiceTable3D({
 
   const fastForwardPhysicsRollToRest = useCallback(() => {
     const physicsWorld = physicsWorldRef.current;
-
-    if (!physicsWorld || physicsRollModeRef.current !== "rolling") {
-      return;
-    }
+    if (!physicsWorld || physicsRollModeRef.current !== "rolling") return;
 
     activePhysicsRollIdRef.current += 1;
 
@@ -1557,18 +1072,11 @@ export function DiceTable3D({
       clearTimeout(settleDelayTimeoutRef.current);
       settleDelayTimeoutRef.current = null;
     }
-
     if (skipTransitionFrameRef.current != null) {
       cancelAnimationFrame(skipTransitionFrameRef.current);
       skipTransitionFrameRef.current = null;
     }
 
-    /**
-     * Stratégie pérenne :
-     * le tap ne tente plus de finir toute la physique.
-     * Il déclenche une transition cinématique stable, beaucoup plus fluide
-     * avec un grand nombre de dés.
-     */
     const startTransforms = captureCurrentDiceTransforms();
     const finalTransforms = createCinematicSettleTransforms();
 
@@ -1577,12 +1085,10 @@ export function DiceTable3D({
     physicsSettledNotifiedRef.current = true;
     lastFrameAtRef.current = Date.now();
 
-    for (const item of diceItemsRef.current.values()) {
+    for (const item of diceItemsRef.current.values())
       item.physicsActive = false;
-    }
 
     physicsWorld.clearDice();
-    unstableSettleRetryCountRef.current.clear();
 
     animateDiceToFinalTransforms(startTransforms, finalTransforms, () => {
       onPhysicsRollSettledRef.current?.();
@@ -1600,7 +1106,6 @@ export function DiceTable3D({
       linearVelocity: Roll3DPhysicsVector3,
     ): boolean => {
       const physicsWorld = physicsWorldRef.current;
-
       if (
         !physicsWorld ||
         requestedDieIds.length === 0 ||
@@ -1609,38 +1114,20 @@ export function DiceTable3D({
         return false;
       }
 
+      const currentDiceInstances = diceInstancesRef.current;
       const instanceById = new Map(
-        diceInstances.map((instance) => [instance.id, instance]),
+        currentDiceInstances.map((instance) => [instance.id, instance]),
       );
-
-      /**
-       * On ne conserve que les dés qui existent encore réellement dans
-       * le draft ET dans la scène Three.
-       *
-       * Cette protection devient importante pour les futures interruptions,
-       * suppressions et changements de Main.
-       */
       const validGestureDieIds = requestedDieIds.filter(
         (dieId) =>
           !!instanceById.get(dieId) && !!diceItemsRef.current.get(dieId),
       );
-
-      if (validGestureDieIds.length === 0) {
-        return false;
-      }
+      if (validGestureDieIds.length === 0) return false;
 
       const gestureDieIds = new Set(validGestureDieIds);
-
-      const currentGestureRollId = activePhysicsRollIdRef.current + 1;
-
-      activePhysicsRollIdRef.current = currentGestureRollId;
-
+      activePhysicsRollIdRef.current += 1;
       physicsWorld.clearDice();
-
-      unstableSettleRetryCountRef.current.clear();
-
       activeGestureDieIdsRef.current = [...validGestureDieIds];
-
       physicsSettledNotifiedRef.current = false;
 
       if (settleDelayTimeoutRef.current != null) {
@@ -1648,25 +1135,15 @@ export function DiceTable3D({
         settleDelayTimeoutRef.current = null;
       }
 
-      /**
-       * Tous les dés présents sur la table sont introduits dans Cannon.
-       *
-       * Les dés du sous-ensemble reçoivent l'impulsion.
-       * Les autres commencent immobiles mais peuvent être heurtés.
-       */
-      for (const instance of diceInstances) {
+      for (const instance of currentDiceInstances) {
         const item = diceItemsRef.current.get(instance.id);
-
-        if (!item) {
-          continue;
-        }
+        if (!item) continue;
 
         item.physicsActive = true;
         item.mesh.scale.setScalar(ROLL3D_DIE_SCALE);
         item.mesh.updateMatrixWorld(true);
 
         const isGestureDie = gestureDieIds.has(instance.id);
-
         const angularVelocity: Roll3DPhysicsVector3 | undefined = isGestureDie
           ? {
               x: randomBetween(-18, 18),
@@ -1688,50 +1165,31 @@ export function DiceTable3D({
                 },
                 angularVelocity,
               }
-            : {
-                launchMode: "resting",
-              },
+            : { launchMode: "resting" },
         );
       }
 
       pickedUpDieIdsRef.current.clear();
-
       setPhysicsBusy(true);
       physicsRollModeRef.current = "gesture";
       lastFrameAtRef.current = Date.now();
-
       onGestureThrowStartRef.current?.([...validGestureDieIds]);
-
       return true;
     },
-    [diceInstances, setPhysicsBusy],
+    [setPhysicsBusy],
   );
 
   useEffect(() => {
     const diceItems = diceItemsRef.current;
 
     return () => {
-      /**
-       * Invalide immédiatement tous les callbacks de fin de physique
-       * qui auraient été créés par cette instance de scène.
-       */
       activePhysicsRollIdRef.current += 1;
-
       clearLongPressTimeout();
-
       pickedUpDieIdsRef.current.clear();
       activeGestureDieIdsRef.current = [];
-
-      /**
-       * Au démontage, on nettoie directement la ref locale.
-       *
-       * Le parent gère lui-même ses resets lors d'un changement de scène,
-       * de Table, de Profil ou de Main.
-       */
       physicsActiveRef.current = false;
       physicsRollModeRef.current = "idle";
       physicsSettledNotifiedRef.current = true;
-
       dragStateRef.current = {
         touchedDieId: null,
         dragDieIds: [],
@@ -1742,22 +1200,19 @@ export function DiceTable3D({
         longPressTriggered: false,
         gestureSamples: [],
       };
-      if (animationFrameRef.current != null) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
 
+      if (animationFrameRef.current != null)
+        cancelAnimationFrame(animationFrameRef.current);
       if (skipTransitionFrameRef.current != null) {
         cancelAnimationFrame(skipTransitionFrameRef.current);
         skipTransitionFrameRef.current = null;
       }
-
       if (settleDelayTimeoutRef.current != null) {
         clearTimeout(settleDelayTimeoutRef.current);
         settleDelayTimeoutRef.current = null;
       }
 
       physicsWorldRef.current?.reset();
-
       sceneRef.current = null;
       cameraRef.current = null;
       physicsWorldRef.current = null;
@@ -1767,7 +1222,6 @@ export function DiceTable3D({
         disposeObject3D(item.shadow);
         disposeObject3D(item.selectionHalo);
       }
-
       diceItems.clear();
     };
   }, [clearLongPressTimeout]);
@@ -1777,34 +1231,23 @@ export function DiceTable3D({
     if (!scene) return;
 
     const nextIds = new Set(diceInstances.map((instance) => instance.id));
-
-    /**
-     * Un lancer partiel peut encore référencer un dé supprimé entre deux
-     * changements de draft.
-     *
-     * On nettoie immédiatement ces références sans toucher aux dés valides.
-     */
     activeGestureDieIdsRef.current = activeGestureDieIdsRef.current.filter(
       (id) => nextIds.has(id),
     );
-
     pickedUpDieIdsRef.current = new Set(
       Array.from(pickedUpDieIdsRef.current).filter((id) => nextIds.has(id)),
     );
 
     for (const [id, item] of diceItemsRef.current.entries()) {
-      if (!nextIds.has(id)) {
-        scene.remove(item.mesh);
-        scene.remove(item.shadow);
-        scene.remove(item.selectionHalo);
-
-        disposeObject3D(item.mesh);
-        disposeObject3D(item.shadow);
-        disposeObject3D(item.selectionHalo);
-
-        diceItemsRef.current.delete(id);
-        physicsWorldRef.current?.removeDie(id);
-      }
+      if (nextIds.has(id)) continue;
+      scene.remove(item.mesh);
+      scene.remove(item.shadow);
+      scene.remove(item.selectionHalo);
+      disposeObject3D(item.mesh);
+      disposeObject3D(item.shadow);
+      disposeObject3D(item.selectionHalo);
+      diceItemsRef.current.delete(id);
+      physicsWorldRef.current?.removeDie(id);
     }
 
     for (const instance of diceInstances) {
@@ -1812,26 +1255,14 @@ export function DiceTable3D({
     }
 
     if (diceInstances.length === 0) {
-      /**
-       * Un draft vide invalide tout ancien cycle physique ou tactile.
-       */
       activePhysicsRollIdRef.current += 1;
-
       physicsWorldRef.current?.clearDice();
-
-      unstableSettleRetryCountRef.current.clear();
-
       setPhysicsBusy(false);
       physicsRollModeRef.current = "idle";
       physicsSettledNotifiedRef.current = true;
-
       activeGestureDieIdsRef.current = [];
       pickedUpDieIdsRef.current.clear();
-
-      unstableSettleRetryCountRef.current.clear();
-
       clearLongPressTimeout();
-
       dragStateRef.current = {
         touchedDieId: null,
         dragDieIds: [],
@@ -1847,7 +1278,6 @@ export function DiceTable3D({
         clearTimeout(settleDelayTimeoutRef.current);
         settleDelayTimeoutRef.current = null;
       }
-
       if (skipTransitionFrameRef.current != null) {
         cancelAnimationFrame(skipTransitionFrameRef.current);
         skipTransitionFrameRef.current = null;
@@ -1861,92 +1291,52 @@ export function DiceTable3D({
   ]);
 
   useEffect(() => {
-    if (rollRequestId <= 0) {
+    if (
+      rollRequestId <= 0 ||
+      lastHandledRollRequestIdRef.current === rollRequestId
+    )
       return;
-    }
-
-    if (lastHandledRollRequestIdRef.current === rollRequestId) {
-      return;
-    }
-
     const started = startPhysicsRoll();
-
-    if (!started) {
-      return;
-    }
-
+    if (!started) return;
     lastHandledRollRequestIdRef.current = rollRequestId;
   }, [rollRequestId, startPhysicsRoll]);
 
   useEffect(() => {
-    if (skipRollRequestId <= 0) return;
-
-    if (lastHandledSkipRollRequestIdRef.current === skipRollRequestId) {
+    if (
+      skipRollRequestId <= 0 ||
+      lastHandledSkipRollRequestIdRef.current === skipRollRequestId
+    )
       return;
-    }
-
     lastHandledSkipRollRequestIdRef.current = skipRollRequestId;
     fastForwardPhysicsRollToRest();
   }, [skipRollRequestId, fastForwardPhysicsRollToRest]);
 
   useEffect(() => {
-    if (partialRollRequestId <= 0) {
+    if (partialRollRequestId <= 0) return;
+    if (lastHandledPartialRollRequestIdRef.current === partialRollRequestId)
       return;
-    }
+    if (partialRollDieIds.length === 0) return;
 
-    if (lastHandledPartialRollRequestIdRef.current === partialRollRequestId) {
-      return;
-    }
-
-    if (partialRollDieIds.length === 0) {
-      return;
-    }
-
-    /**
-     * Une relance via le bouton ne possède plus la vélocité du doigt.
-     *
-     * On crée donc une nouvelle impulsion naturelle sur la surface,
-     * suffisamment énergique pour produire une vraie relance.
-     */
     const angle = Math.random() * Math.PI * 2;
     const strength = randomBetween(7.5, 11.5);
-
     const started = startPartialPhysicsThrow(partialRollDieIds, {
       x: Math.cos(angle) * strength,
       y: randomBetween(1.75, 2.35),
       z: Math.sin(angle) * strength,
     });
-
-    if (!started) {
-      /**
-       * La requête n'est volontairement pas marquée comme consommée.
-       *
-       * Cela évite qu'une scène momentanément indisponible fasse perdre
-       * définitivement la relance.
-       */
-      return;
-    }
-
+    if (!started) return;
     lastHandledPartialRollRequestIdRef.current = partialRollRequestId;
   }, [partialRollRequestId, partialRollDieIds, startPartialPhysicsThrow]);
 
   const handleTableLayout = useCallback((event: LayoutChangeEvent) => {
     const { width, height: layoutHeight } = event.nativeEvent.layout;
-
-    viewportRef.current = {
-      width,
-      height: layoutHeight,
-    };
+    viewportRef.current = { width, height: layoutHeight };
   }, []);
 
   const createPointerFromTableCoordinates = useCallback(
     (locationX: number, locationY: number) => {
       const viewport = viewportRef.current;
-
-      if (viewport.width <= 0 || viewport.height <= 0) {
-        return null;
-      }
-
+      if (viewport.width <= 0 || viewport.height <= 0) return null;
       return new THREE.Vector2(
         (locationX / viewport.width) * 2 - 1,
         -((locationY / viewport.height) * 2 - 1),
@@ -1958,36 +1348,22 @@ export function DiceTable3D({
   const getDieIdAtTableCoordinates = useCallback(
     (locationX: number, locationY: number): string | null => {
       const camera = cameraRef.current;
-
-      if (!camera) {
-        return null;
-      }
-
+      if (!camera) return null;
       const pointer = createPointerFromTableCoordinates(locationX, locationY);
-
-      if (!pointer) {
-        return null;
-      }
+      if (!pointer) return null;
 
       const raycaster = raycasterRef.current;
-
       raycaster.setFromCamera(pointer, camera);
-
       const diceMeshes = Array.from(
         diceItemsRef.current.values(),
         (item) => item.mesh,
       );
-
       const intersections = raycaster.intersectObjects(diceMeshes, true);
-
       const selectedIntersection = intersections.find((intersection) => {
         const dieId = intersection.object.userData.roll3DDieId;
-
         return typeof dieId === "string" && dieId.length > 0;
       });
-
       const dieId = selectedIntersection?.object.userData.roll3DDieId;
-
       return typeof dieId === "string" ? dieId : null;
     },
     [createPointerFromTableCoordinates],
@@ -1996,33 +1372,15 @@ export function DiceTable3D({
   const getTableWorldPoint = useCallback(
     (locationX: number, locationY: number): THREE.Vector3 | null => {
       const camera = cameraRef.current;
-
-      if (!camera) {
-        return null;
-      }
-
+      if (!camera) return null;
       const pointer = createPointerFromTableCoordinates(locationX, locationY);
-
-      if (!pointer) {
-        return null;
-      }
-
+      if (!pointer) return null;
       const raycaster = raycasterRef.current;
-
       raycaster.setFromCamera(pointer, camera);
-
-      /**
-       * Plan horizontal correspondant à la surface de la table.
-       *
-       * Pour un plan y = TABLE_SURFACE_Y :
-       * normal = (0, 1, 0)
-       * constante = -TABLE_SURFACE_Y
-       */
       const tablePlane = new THREE.Plane(
         new THREE.Vector3(0, 1, 0),
         -TABLE_SURFACE_Y,
       );
-
       return raycaster.ray.intersectPlane(tablePlane, new THREE.Vector3());
     },
     [createPointerFromTableCoordinates],
@@ -2030,42 +1388,29 @@ export function DiceTable3D({
 
   const putPickedUpDiceBackOnTable = useCallback(() => {
     const dragState = dragStateRef.current;
-
     for (const dieId of pickedUpDieIdsRef.current) {
       const item = diceItemsRef.current.get(dieId);
       const startPosition = dragState.startPositions.get(dieId);
-
-      if (!item || !startPosition) {
-        continue;
-      }
-
-      /**
-       * On conserve les coordonnées x/z éventuellement modifiées pendant
-       * le glissement, mais on remet le dé à sa hauteur de repos initiale.
-       */
+      if (!item || !startPosition) continue;
       item.mesh.position.y = startPosition.y;
       item.mesh.updateMatrixWorld(true);
-
       updateContactShadow({
         shadow: item.shadow,
         dice: item.mesh,
         progress: 1,
         visible: true,
       });
-
       updateSelectionHalo({
         halo: item.selectionHalo,
         dice: item.mesh,
         selected: selectedDieIdsRef.current.has(dieId),
       });
     }
-
     pickedUpDieIdsRef.current.clear();
   }, []);
 
   const resetDragState = useCallback(() => {
     clearLongPressTimeout();
-
     dragStateRef.current = {
       touchedDieId: null,
       dragDieIds: [],
@@ -2079,23 +1424,9 @@ export function DiceTable3D({
   }, [clearLongPressTimeout]);
 
   useEffect(() => {
-    if (interactionsEnabled) {
-      return;
-    }
-
+    if (interactionsEnabled) return;
     clearLongPressTimeout();
-
-    /**
-     * Si aucune physique n'a encore pris possession des dés,
-     * une éventuelle prise tactile est proprement reposée.
-     *
-     * Si une simulation est déjà active, elle devient la source de vérité
-     * des transformations et nous ne devons surtout pas modifier les meshes.
-     */
-    if (!physicsActiveRef.current) {
-      putPickedUpDiceBackOnTable();
-    }
-
+    if (!physicsActiveRef.current) putPickedUpDiceBackOnTable();
     resetDragState();
   }, [
     interactionsEnabled,
@@ -2107,14 +1438,8 @@ export function DiceTable3D({
   const recordGestureSample = useCallback((point: THREE.Vector3) => {
     const dragState = dragStateRef.current;
     const now = Date.now();
-
-    dragState.gestureSamples.push({
-      point: point.clone(),
-      capturedAt: now,
-    });
-
+    dragState.gestureSamples.push({ point: point.clone(), capturedAt: now });
     const oldestAllowedTimestamp = now - GESTURE_SAMPLE_WINDOW_MS * 2;
-
     dragState.gestureSamples = dragState.gestureSamples.filter(
       (sample) => sample.capturedAt >= oldestAllowedTimestamp,
     );
@@ -2123,53 +1448,34 @@ export function DiceTable3D({
   const calculateGestureThrowVelocity =
     useCallback((): Roll3DPhysicsVector3 | null => {
       const samples = dragStateRef.current.gestureSamples;
-
-      if (samples.length < 2) {
-        return null;
-      }
-
+      if (samples.length < 2) return null;
       const latestSample = samples[samples.length - 1];
-
-      if (!latestSample) {
-        return null;
-      }
-
+      if (!latestSample) return null;
       const minimumTimestamp =
         latestSample.capturedAt - GESTURE_SAMPLE_WINDOW_MS;
-
       const firstRelevantSample =
         samples.find((sample) => sample.capturedAt >= minimumTimestamp) ??
         samples[0];
-
-      if (!firstRelevantSample) {
-        return null;
-      }
+      if (!firstRelevantSample) return null;
 
       const elapsedSeconds = Math.max(
         0.016,
         (latestSample.capturedAt - firstRelevantSample.capturedAt) / 1000,
       );
-
       const velocityX =
         (latestSample.point.x - firstRelevantSample.point.x) / elapsedSeconds;
-
       const velocityZ =
         (latestSample.point.z - firstRelevantSample.point.z) / elapsedSeconds;
-
       const planarSpeed = Math.sqrt(
         velocityX * velocityX + velocityZ * velocityZ,
       );
-
-      if (planarSpeed < GESTURE_THROW_MIN_SPEED) {
-        return null;
-      }
+      if (planarSpeed < GESTURE_THROW_MIN_SPEED) return null;
 
       const safePlanarSpeed = clamp(
         planarSpeed,
         GESTURE_THROW_MIN_STRENGTH,
         GESTURE_THROW_MAX_STRENGTH,
       );
-
       const directionX = velocityX / planarSpeed;
       const directionZ = velocityZ / planarSpeed;
 
@@ -2183,11 +1489,7 @@ export function DiceTable3D({
   const startGesturePhysicsThrow = useCallback(
     (linearVelocity: Roll3DPhysicsVector3): boolean => {
       const dragState = dragStateRef.current;
-
-      if (dragState.dragDieIds.length === 0) {
-        return false;
-      }
-
+      if (dragState.dragDieIds.length === 0) return false;
       return startPartialPhysicsThrow(dragState.dragDieIds, linearVelocity);
     },
     [startPartialPhysicsThrow],
@@ -2196,16 +1498,13 @@ export function DiceTable3D({
   const handleTableTouchStart = useCallback(
     (event: GestureResponderEvent) => {
       clearLongPressTimeout();
-
       if (!interactionsEnabled || physicsActiveRef.current) {
         resetDragState();
         return;
       }
 
       const { locationX, locationY } = event.nativeEvent;
-
       const touchedDieId = getDieIdAtTableCoordinates(locationX, locationY);
-
       const startWorldPoint = getTableWorldPoint(locationX, locationY);
 
       if (!touchedDieId || !startWorldPoint) {
@@ -2219,30 +1518,18 @@ export function DiceTable3D({
           longPressTriggered: false,
           gestureSamples: [],
         };
-
         return;
       }
 
       const touchedDieIsSelected = selectedDieIdsRef.current.has(touchedDieId);
-
-      /**
-       * Une sélection multiple est manipulée comme un seul ensemble.
-       * Un dé extérieur à la sélection devient une prise individuelle.
-       */
       const dragDieIds = touchedDieIsSelected
         ? Array.from(selectedDieIdsRef.current)
         : [touchedDieId];
-
       const startPositions = new Map<string, THREE.Vector3>();
 
       for (const dieId of dragDieIds) {
         const item = diceItemsRef.current.get(dieId);
-
-        if (!item) {
-          continue;
-        }
-
-        startPositions.set(dieId, item.mesh.position.clone());
+        if (item) startPositions.set(dieId, item.mesh.position.clone());
       }
 
       dragStateRef.current = {
@@ -2254,22 +1541,14 @@ export function DiceTable3D({
         selectionRequested: touchedDieIsSelected,
         longPressTriggered: false,
         gestureSamples: [
-          {
-            point: startWorldPoint.clone(),
-            capturedAt: Date.now(),
-          },
+          { point: startWorldPoint.clone(), capturedAt: Date.now() },
         ],
       };
 
       longPressTimeoutRef.current = setTimeout(() => {
         longPressTimeoutRef.current = null;
-
         const currentDragState = dragStateRef.current;
 
-        /**
-         * Le doigt peut avoir été relâché, déplacé ou remplacé par une nouvelle
-         * interaction avant l’expiration du délai.
-         */
         if (
           currentDragState.touchedDieId !== touchedDieId ||
           currentDragState.hasMoved ||
@@ -2280,7 +1559,6 @@ export function DiceTable3D({
         }
 
         currentDragState.longPressTriggered = true;
-
         if (!currentDragState.selectionRequested) {
           currentDragState.selectionRequested = true;
           onPressDieRef.current?.(touchedDieId);
@@ -2291,26 +1569,15 @@ export function DiceTable3D({
         for (const dieId of currentDragState.dragDieIds) {
           const item = diceItemsRef.current.get(dieId);
           const startPosition = currentDragState.startPositions.get(dieId);
-
-          if (!item || !startPosition) {
-            continue;
-          }
-
+          if (!item || !startPosition) continue;
           item.mesh.position.y = startPosition.y + PICKUP_LIFT_Y;
-
           item.mesh.updateMatrixWorld(true);
-
-          /**
-           * L’ombre reste sur la table alors que le dé s’élève.
-           * Elle donne un premier retour de profondeur, encore provisoire.
-           */
           updateContactShadow({
             shadow: item.shadow,
             dice: item.mesh,
             progress: 0.72,
             visible: true,
           });
-
           updateSelectionHalo({
             halo: item.selectionHalo,
             dice: item.mesh,
@@ -2330,73 +1597,40 @@ export function DiceTable3D({
 
   const handleTableTouchMove = useCallback(
     (event: GestureResponderEvent, gestureState: PanResponderGestureState) => {
-      if (!interactionsEnabled || physicsActiveRef.current) {
-        return;
-      }
-
+      if (!interactionsEnabled || physicsActiveRef.current) return;
       const dragState = dragStateRef.current;
-
       if (
         !dragState.touchedDieId ||
         !dragState.startWorldPoint ||
         dragState.dragDieIds.length === 0
-      ) {
+      )
         return;
-      }
 
       const movementDistance = Math.sqrt(
         gestureState.dx * gestureState.dx + gestureState.dy * gestureState.dy,
       );
-
-      if (!dragState.hasMoved && movementDistance < DRAG_START_THRESHOLD_PX) {
+      if (!dragState.hasMoved && movementDistance < DRAG_START_THRESHOLD_PX)
         return;
-      }
 
       if (!dragState.hasMoved) {
         dragState.hasMoved = true;
-
-        /**
-         * Si l’appui long n’a pas encore été déclenché, le mouvement devient
-         * un glissement ordinaire et annule le minuteur de prise en main.
-         */
-        if (!dragState.longPressTriggered) {
-          clearLongPressTimeout();
-        }
+        if (!dragState.longPressTriggered) clearLongPressTimeout();
       }
 
-      /**
-       * Lorsqu’on commence à déplacer un dé qui n’était pas sélectionné,
-       * il devient la nouvelle sélection principale.
-       */
       if (!dragState.selectionRequested) {
         dragState.selectionRequested = true;
         onPressDieRef.current?.(dragState.touchedDieId);
       }
 
       const { locationX, locationY } = event.nativeEvent;
-
       const currentWorldPoint = getTableWorldPoint(locationX, locationY);
-
-      if (!currentWorldPoint) {
-        return;
-      }
-
-      if (dragState.longPressTriggered) {
-        recordGestureSample(currentWorldPoint);
-      }
+      if (!currentWorldPoint) return;
+      if (dragState.longPressTriggered) recordGestureSample(currentWorldPoint);
 
       const requestedDeltaX = currentWorldPoint.x - dragState.startWorldPoint.x;
-
       const requestedDeltaZ = currentWorldPoint.z - dragState.startWorldPoint.z;
-
       const safeX = TABLE_WIDTH / 2 - DRAG_TABLE_MARGIN;
-
       const safeZ = TABLE_DEPTH / 2 - DRAG_TABLE_MARGIN;
-
-      /**
-       * On calcule une seule translation autorisée pour toute la sélection.
-       * Cela permet de conserver parfaitement les écarts entre les dés.
-       */
       let minimumDeltaX = Number.NEGATIVE_INFINITY;
       let maximumDeltaX = Number.POSITIVE_INFINITY;
       let minimumDeltaZ = Number.NEGATIVE_INFINITY;
@@ -2404,41 +1638,31 @@ export function DiceTable3D({
 
       for (const startPosition of dragState.startPositions.values()) {
         minimumDeltaX = Math.max(minimumDeltaX, -safeX - startPosition.x);
-
         maximumDeltaX = Math.min(maximumDeltaX, safeX - startPosition.x);
-
         minimumDeltaZ = Math.max(minimumDeltaZ, -safeZ - startPosition.z);
-
         maximumDeltaZ = Math.min(maximumDeltaZ, safeZ - startPosition.z);
       }
 
       const safeDeltaX = clamp(requestedDeltaX, minimumDeltaX, maximumDeltaX);
-
       const safeDeltaZ = clamp(requestedDeltaZ, minimumDeltaZ, maximumDeltaZ);
 
       for (const dieId of dragState.dragDieIds) {
         const item = diceItemsRef.current.get(dieId);
         const startPosition = dragState.startPositions.get(dieId);
-
-        if (!item || !startPosition) {
-          continue;
-        }
+        if (!item || !startPosition) continue;
 
         item.mesh.position.set(
           startPosition.x + safeDeltaX,
           startPosition.y + (dragState.longPressTriggered ? PICKUP_LIFT_Y : 0),
           startPosition.z + safeDeltaZ,
         );
-
         item.mesh.updateMatrixWorld(true);
-
         updateContactShadow({
           shadow: item.shadow,
           dice: item.mesh,
           progress: 1,
           visible: true,
         });
-
         updateSelectionHalo({
           halo: item.selectionHalo,
           dice: item.mesh,
@@ -2458,34 +1682,20 @@ export function DiceTable3D({
 
   const handleTableTouchEnd = useCallback(() => {
     clearLongPressTimeout();
-
     const dragState = dragStateRef.current;
 
     if (dragState.longPressTriggered) {
       const gestureVelocity = calculateGestureThrowVelocity();
-
       if (gestureVelocity && startGesturePhysicsThrow(gestureVelocity)) {
-        /**
-         * Le moteur physique possède maintenant les transformations courantes.
-         * On ne repose surtout pas les meshes manuellement.
-         */
         resetDragState();
         return;
       }
-
-      /**
-       * Geste trop lent ou incomplet :
-       * la prise en main se termine par une simple repose.
-       */
       putPickedUpDiceBackOnTable();
       resetDragState();
       return;
     }
 
-    if (!dragState.hasMoved) {
-      onPressDieRef.current?.(dragState.touchedDieId);
-    }
-
+    if (!dragState.hasMoved) onPressDieRef.current?.(dragState.touchedDieId);
     resetDragState();
   }, [
     calculateGestureThrowVelocity,
@@ -2506,15 +1716,12 @@ export function DiceTable3D({
       PanResponder.create({
         onStartShouldSetPanResponder: () =>
           interactionsEnabled && !physicsActiveRef.current,
-
         onMoveShouldSetPanResponder: () =>
           interactionsEnabled && !physicsActiveRef.current,
-
         onPanResponderGrant: handleTableTouchStart,
         onPanResponderMove: handleTableTouchMove,
         onPanResponderRelease: handleTableTouchEnd,
         onPanResponderTerminate: handleTableTouchCancel,
-
         onPanResponderTerminationRequest: () => true,
       }),
     [
@@ -2525,47 +1732,32 @@ export function DiceTable3D({
       interactionsEnabled,
     ],
   );
+
   function handleContextCreate(gl: ExpoWebGLRenderingContext) {
     const { drawingBufferWidth: width, drawingBufferHeight: bufferHeight } = gl;
-
     const scene = new THREE.Scene();
     scene.background = new THREE.Color("#050713");
-
     sceneRef.current = scene;
     physicsWorldRef.current = new Roll3DPhysicsWorld();
 
     const cameraFov = 42;
     const cameraAspect = width / bufferHeight;
-
-    /**
-     * On cadre surtout la largeur pour que les murs latéraux restent visibles,
-     * puis on accepte que la profondeur dépasse légèrement visuellement.
-     * Les murs physiques restent plus hauts et plus grands pour empêcher les dés
-     * de sortir de la table.
-     */
     const widthMargin = 1.06;
     const depthMargin = 0.82;
-
     const camera = new THREE.PerspectiveCamera(
       cameraFov,
       cameraAspect,
       0.1,
       100,
     );
-
     cameraRef.current = camera;
-
     const fovRadians = THREE.MathUtils.degToRad(cameraFov);
-
     const distanceForWidth =
       (TABLE_WIDTH * widthMargin) /
       (2 * Math.tan(fovRadians / 2) * cameraAspect);
-
     const distanceForDepth =
       (TABLE_DEPTH * depthMargin) / (2 * Math.tan(fovRadians / 2));
-
     const cameraDistance = Math.max(distanceForWidth, distanceForDepth * 0.88);
-
     camera.position.set(0, TABLE_SURFACE_Y + cameraDistance, 0.22);
     camera.lookAt(0, TABLE_SURFACE_Y, 0);
 
@@ -2575,177 +1767,86 @@ export function DiceTable3D({
 
     const ambientLight = new THREE.AmbientLight("#F1D28A", 0.38);
     scene.add(ambientLight);
-
     const keyLight = new THREE.DirectionalLight("#FFFFFF", 1.35);
     keyLight.position.set(2.2, 5.8, 2.6);
     scene.add(keyLight);
-
     const rimLight = new THREE.DirectionalLight("#7C5CFF", 0.75);
     rimLight.position.set(-3.2, 3.8, -2.8);
     scene.add(rimLight);
+    scene.add(createInteriorTable());
 
-    const table = createInteriorTable();
-    scene.add(table);
-
-    /**
-     * Si des dés existent déjà côté React au moment où GLView se monte,
-     * on les ajoute sans animation initiale pour éviter un double drop au chargement.
-     */
-    for (const instance of diceInstances) {
+    for (const instance of diceInstancesRef.current) {
       addDiceInstanceToScene(scene, instance, false);
     }
 
     const render = () => {
       const now = Date.now();
       const previousFrameAt = lastFrameAtRef.current ?? now;
-      const deltaSeconds = Math.min(0.04, (now - previousFrameAt) / 1000);
-
+      const deltaSeconds = Math.min(
+        0.04,
+        Math.max(0, (now - previousFrameAt) / 1000),
+      );
       lastFrameAtRef.current = now;
-
       const physicsWorld = physicsWorldRef.current;
 
       if (physicsWorld && physicsActiveRef.current) {
         physicsWorld.step(deltaSeconds);
-
         const allSleeping = applyPhysicsSnapshotsToMeshes();
 
         if (allSleeping) {
           const currentDiceInstances = diceInstancesRef.current;
+          const completedMode = physicsRollModeRef.current;
 
-          const unstableDieIds = getUnstableSettledDieIds({
+          if (__DEV__) {
+            console.warn("[Roll3D] ALL DICE PHYSICALLY SLEEPING");
+          }
+
+          logSettledDiceOrientation({
             diceInstances: currentDiceInstances,
             diceItems: diceItemsRef.current,
-            retryCounts: unstableSettleRetryCountRef.current,
           });
 
-          if (unstableDieIds.length > 0) {
-            /**
-             * Cannon voulait terminer la simulation alors qu'au moins un dé
-             * repose encore dans une orientation ambiguë.
-             *
-             * On réveille uniquement ces dés et on laisse le moteur continuer.
-             */
-            for (const dieId of unstableDieIds) {
-              const previousRetryCount =
-                unstableSettleRetryCountRef.current.get(dieId) ?? 0;
+          setPhysicsBusy(false);
+          physicsRollModeRef.current = "idle";
 
-              const instance = currentDiceInstances.find(
-                (candidate) => candidate.id === dieId,
-              );
+          for (const item of diceItemsRef.current.values())
+            item.physicsActive = false;
 
-              const item = diceItemsRef.current.get(dieId);
+          if (completedMode === "adding") {
+            physicsWorld.clearDice();
+          }
 
-              const wallEscapeDirection =
-                instance && item
-                  ? getWallEscapeDirection({
-                      sides: instance.sides,
-                      position: item.mesh.position,
-                    })
-                  : null;
+          if (
+            completedMode === "gesture" &&
+            !physicsSettledNotifiedRef.current
+          ) {
+            physicsSettledNotifiedRef.current = true;
+            const completedGestureDieIds = [...activeGestureDieIdsRef.current];
+            activeGestureDieIdsRef.current = [];
+            physicsWorld.clearDice();
+            const settledGestureRollId = activePhysicsRollIdRef.current;
 
-              if (__DEV__ && wallEscapeDirection) {
-                console.warn(
-                  `[Roll3D] wall-aware unstable rest d${instance?.sides ?? "?"} | ` +
-                    `directionX=${wallEscapeDirection.x.toFixed(2)} ` +
-                    `directionZ=${wallEscapeDirection.z.toFixed(2)} ` +
-                    `retry=${previousRetryCount + 1}`,
-                );
-              }
+            settleDelayTimeoutRef.current = setTimeout(() => {
+              settleDelayTimeoutRef.current = null;
+              if (activePhysicsRollIdRef.current !== settledGestureRollId)
+                return;
+              if (completedGestureDieIds.length === 0) return;
+              onGestureThrowSettledRef.current?.(completedGestureDieIds);
+            }, 420);
+          }
 
-              const nudged = physicsWorld.nudgeDieOffUnstableRest(
-                dieId,
-                wallEscapeDirection
-                  ? {
-                      preferredHorizontalDirection: wallEscapeDirection,
-                    }
-                  : undefined,
-              );
+          if (
+            completedMode === "rolling" &&
+            !physicsSettledNotifiedRef.current
+          ) {
+            physicsSettledNotifiedRef.current = true;
+            const settledRollId = activePhysicsRollIdRef.current;
 
-              if (!nudged) {
-                continue;
-              }
-
-              unstableSettleRetryCountRef.current.set(
-                dieId,
-                previousRetryCount + 1,
-              );
-            }
-
-            lastFrameAtRef.current = Date.now();
-          } else {
-            console.warn("[Roll3D] ALL DICE STABLY SLEEPING");
-
-            const completedMode = physicsRollModeRef.current;
-
-            logSettledDiceOrientation({
-              diceInstances: currentDiceInstances,
-              diceItems: diceItemsRef.current,
-            });
-
-            setPhysicsBusy(false);
-            physicsRollModeRef.current = "idle";
-
-            for (const item of diceItemsRef.current.values()) {
-              item.physicsActive = false;
-            }
-
-            if (completedMode === "adding") {
-              physicsWorld.clearDice();
-            }
-
-            if (
-              completedMode === "gesture" &&
-              !physicsSettledNotifiedRef.current
-            ) {
-              physicsSettledNotifiedRef.current = true;
-
-              const completedGestureDieIds = [
-                ...activeGestureDieIdsRef.current,
-              ];
-
-              activeGestureDieIdsRef.current = [];
-
-              /**
-               * Les transformations finales sont déjà copiées dans les meshes.
-               * Les corps physiques peuvent maintenant être supprimés.
-               */
-              physicsWorld.clearDice();
-
-              const settledGestureRollId = activePhysicsRollIdRef.current;
-
-              settleDelayTimeoutRef.current = setTimeout(() => {
-                settleDelayTimeoutRef.current = null;
-
-                if (activePhysicsRollIdRef.current !== settledGestureRollId) {
-                  return;
-                }
-
-                if (completedGestureDieIds.length === 0) {
-                  return;
-                }
-
-                onGestureThrowSettledRef.current?.(completedGestureDieIds);
-              }, 420);
-            }
-
-            if (
-              completedMode === "rolling" &&
-              !physicsSettledNotifiedRef.current
-            ) {
-              physicsSettledNotifiedRef.current = true;
-
-              const settledRollId = activePhysicsRollIdRef.current;
-
-              settleDelayTimeoutRef.current = setTimeout(() => {
-                settleDelayTimeoutRef.current = null;
-
-                if (activePhysicsRollIdRef.current !== settledRollId) {
-                  return;
-                }
-
-                onPhysicsRollSettledRef.current?.();
-              }, 700);
-            }
+            settleDelayTimeoutRef.current = setTimeout(() => {
+              settleDelayTimeoutRef.current = null;
+              if (activePhysicsRollIdRef.current !== settledRollId) return;
+              onPhysicsRollSettledRef.current?.();
+            }, 700);
           }
         }
       } else {
@@ -2756,7 +1857,6 @@ export function DiceTable3D({
             progress: 1,
             visible: true,
           });
-
           updateSelectionHalo({
             halo: item.selectionHalo,
             dice: item.mesh,
@@ -2767,7 +1867,6 @@ export function DiceTable3D({
 
       renderer.render(scene, camera);
       gl.endFrameEXP();
-
       animationFrameRef.current = requestAnimationFrame(render);
     };
 
@@ -2785,13 +1884,7 @@ export function DiceTable3D({
         backgroundColor: "#050713",
       }}
     >
-      <GLView
-        style={{
-          flex: 1,
-        }}
-        onContextCreate={handleContextCreate}
-      />
-
+      <GLView style={{ flex: 1 }} onContextCreate={handleContextCreate} />
       <View
         pointerEvents={interactionsEnabled ? "auto" : "none"}
         {...tablePanResponder.panHandlers}

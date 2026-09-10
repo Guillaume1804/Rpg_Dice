@@ -1,5 +1,3 @@
-// dice-universal/features/roll3d/physics/Roll3DPhysicsTypes.ts
-
 import type { Roll3DDieInstance } from "../types";
 
 export type Roll3DPhysicsBodyKind = "floor" | "wall" | "die";
@@ -38,7 +36,7 @@ export type Roll3DPhysicsAddDieOptions = {
 
   /**
    * Vitesses personnalisées utilisées principalement par le lancer gestuel.
-   * Lorsqu’elles sont absentes, Roll3DPhysicsWorld génère ses valeurs normales.
+   * Lorsqu'elles sont absentes, Roll3DPhysicsWorld génère ses valeurs normales.
    */
   linearVelocity?: Roll3DPhysicsVector3;
   angularVelocity?: Roll3DPhysicsVector3;
@@ -58,6 +56,27 @@ export type Roll3DPhysicsTransform = {
 
 export type Roll3DPhysicsDieSnapshot = {
   id: Roll3DPhysicsBodyId;
+
+  /**
+   * Transform destiné au rendu.
+   *
+   * Il peut provenir des transforms interpolés de Cannon afin de découpler
+   * visuellement le framerate graphique du timestep physique fixe.
+   */
   transform: Roll3DPhysicsTransform;
+
+  /**
+   * État de sommeil natif Cannon.
+   *
+   * Physics V2 ne force plus artificiellement cet état : il sert pour
+   * l'instant à savoir quand un cycle physique brut est terminé.
+   */
   sleeping: boolean;
+};
+
+export type Roll3DPhysicsProfile = {
+  solveMs: number;
+  broadphaseMs: number;
+  narrowphaseMs: number;
+  integrateMs: number;
 };

@@ -1,58 +1,63 @@
-// dice-universal/features/roll3d/physics/Roll3DPhysicsWorld.ts
-
 import * as CANNON from "cannon-es";
 
-import type {
-  Roll3DPhysicsAddDieOptions,
-  Roll3DPhysicsDieSnapshot,
-  Roll3DPhysicsLaunchMode,
-  Roll3DPhysicsTransform,
-  Roll3DPhysicsVector3,
-} from "./Roll3DPhysicsTypes";
-
-import type { Roll3DDieInstance, Roll3DDieSides } from "../types";
-
+import { ROLL3D_TABLE } from "../config/Roll3DTableConfig";
 import {
   getRoll3DDieConvexGeometryData,
   ROLL3D_DIE_SCALE,
   type Roll3DPhysicalDieSides,
 } from "../geometry/Roll3DDieGeometry";
+import type { Roll3DDieInstance, Roll3DDieSides } from "../types";
+import type {
+  Roll3DPhysicsAddDieOptions,
+  Roll3DPhysicsDieSnapshot,
+  Roll3DPhysicsLaunchMode,
+  Roll3DPhysicsProfile,
+  Roll3DPhysicsTransform,
+  Roll3DPhysicsVector3,
+} from "./Roll3DPhysicsTypes";
 
 /**
  * Le d6 visuel mesure 1.18 unité locale de côté.
- * Cette demi-extension utilise la même échelle que le mesh Three.js.
+ * Cette demi-extension utilise exactement la même échelle que le mesh Three.js.
  */
 const D6_HALF_EXTENT = (1.18 * ROLL3D_DIE_SCALE) / 2;
 
+/**
+ * Physics V2 baseline.
+ *
+ * Ces valeurs sont volontairement explicites et peu nombreuses.
+ * Elles constituent un point de départ mesurable, pas une calibration finale.
+ */
 const PHYSICS_TIME_STEP = 1 / 60;
 const PHYSICS_MAX_SUB_STEPS = 3;
+const PHYSICS_MAX_FRAME_DELTA = 0.05;
+
+const SOLVER_ITERATIONS = 12;
+const SOLVER_TOLERANCE = 0.001;
+
+const CONTACT_EQUATION_STIFFNESS = 1e8;
+const CONTACT_EQUATION_RELAXATION = 4;
+const FRICTION_EQUATION_STIFFNESS = 1e8;
+const FRICTION_EQUATION_RELAXATION = 4;
 
 /**
- * Détection Dice Universal d'un corps physiquement devenu calme.
+ * On conserve provisoirement les coefficients matériaux issus du dernier état
+ * testé. La V2 change d'abord les fondations : géométrie de table, solveur,
+ * contacts, interpolation et lifecycle des corps.
  *
- * Le sleep natif de cannon-es est une optimisation du moteur et ne doit
- * pas être notre seule définition produit de "le lancer est terminé".
- *
- * Ces seuils servent uniquement à sortir des micro-oscillations
- * numériques persistantes, notamment sur les polyèdres comme le d20.
+ * Ils seront calibrés ensuite dans le Physics Lab, une variable à la fois.
  */
-const MOTION_SETTLE_MAX_LINEAR_SPEED = 0.14;
-const MOTION_SETTLE_MAX_ANGULAR_SPEED = 0.22;
+const FLOOR_FRICTION = 0.42;
+const FLOOR_RESTITUTION = 0.16;
+const WALL_FRICTION = 0.22;
+const WALL_RESTITUTION = 0.48;
+const DICE_FRICTION = 0.62;
+const DICE_RESTITUTION = 0.1;
 
-/**
- * Le corps doit rester sous les deux seuils pendant cette durée continue.
- *
- * On évite ainsi de stopper un dé simplement parce qu'il traverse
- * momentanément une phase de faible vitesse pendant un vrai roulement.
- */
-const MOTION_SETTLE_REQUIRED_SECONDS = 0.22;
-
-const TABLE_SURFACE_Y = -1.15;
-
-const TABLE_WIDTH = 5.8;
-const TABLE_DEPTH = 8.4;
-const TABLE_WALL_HEIGHT = 4.8;
-const TABLE_WALL_THICKNESS = 0.18;
+const DIE_LINEAR_DAMPING = 0.045;
+const DIE_ANGULAR_DAMPING = 0.065;
+const DIE_SLEEP_SPEED_LIMIT = 0.1;
+const DIE_SLEEP_TIME_LIMIT = 0.8;
 
 const FLOOR_ID = "roll-3d-physics-floor";
 
@@ -78,6 +83,12 @@ function createCannonQuaternion(
   );
 }
 
+/**
+ * Transform physique autoritaire du body.
+ *
+ * À utiliser lorsqu'on veut réinjecter un état Cannon dans une nouvelle
+ * simulation ou raisonner sur la position physique exacte.
+ */
 function toPhysicsTransform(body: CANNON.Body): Roll3DPhysicsTransform {
   return {
     position: {
@@ -94,6 +105,32 @@ function toPhysicsTransform(body: CANNON.Body): Roll3DPhysicsTransform {
   };
 }
 
+/**
+ * Transform destiné au renderer Three.js.
+ *
+ * Quand World.step(fixedStep, delta, maxSubSteps) est utilisé, Cannon calcule
+ * des transforms interpolés entre deux états physiques. Les exploiter évite
+ * de rendre directement les marches discrètes du timestep 60 Hz.
+ */
+function toRenderTransform(body: CANNON.Body): Roll3DPhysicsTransform {
+  const position = body.interpolatedPosition ?? body.position;
+  const quaternion = body.interpolatedQuaternion ?? body.quaternion;
+
+  return {
+    position: {
+      x: position.x,
+      y: position.y,
+      z: position.z,
+    },
+    quaternion: {
+      x: quaternion.x,
+      y: quaternion.y,
+      z: quaternion.z,
+      w: quaternion.w,
+    },
+  };
+}
+
 function createConvexDieShape(
   sides: Roll3DPhysicalDieSides,
 ): CANNON.ConvexPolyhedron {
@@ -103,7 +140,6 @@ function createConvexDieShape(
     vertices: geometry.vertices.map(
       (vertex) => new CANNON.Vec3(vertex.x, vertex.y, vertex.z),
     ),
-
     faces: geometry.faces.map((face) => [...face]),
   });
 }
@@ -111,10 +147,8 @@ function createConvexDieShape(
 function createDieShape(sides: Roll3DDieSides): CANNON.Shape {
   /**
    * Le d6 est exactement cubique.
-   *
-   * CANNON.Box est plus simple, plus rapide
-   * et numériquement plus stable qu'un ConvexPolyhedron
-   * représentant la même forme.
+   * CANNON.Box est plus simple et numériquement plus stable qu'un convex
+   * polyhedron équivalent.
    */
   if (sides === 6) {
     return new CANNON.Box(
@@ -123,7 +157,7 @@ function createDieShape(sides: Roll3DDieSides): CANNON.Shape {
   }
 
   /**
-   * D100 provisoire jusqu'à 4.0H.
+   * D100 provisoire jusqu'à sa refonte dédiée.
    */
   if (sides === 100) {
     return new CANNON.Box(new CANNON.Vec3(0.42, 0.22, 0.23));
@@ -138,6 +172,12 @@ function createInitialVelocity(mode: Roll3DPhysicsLaunchMode) {
   }
 
   if (mode === "surface_roll") {
+    /**
+     * Modèle historique conservé temporairement pour que la V2 puisse être
+     * comparée à comportement de lancer identique.
+     *
+     * La corrélation direction/spin sera refondue dans l'étape dédiée.
+     */
     const angle = Math.random() * Math.PI * 2;
     const strength = 9 + Math.random() * 5;
 
@@ -150,8 +190,8 @@ function createInitialVelocity(mode: Roll3DPhysicsLaunchMode) {
 
   if (mode === "gesture_throw") {
     /**
-     * Valeur de secours uniquement.
-     * Un vrai lancer gestuel fournit normalement sa vitesse personnalisée.
+     * Valeur de secours uniquement. Un vrai lancer gestuel fournit
+     * normalement sa vélocité depuis DiceTable3D.
      */
     return new CANNON.Vec3(0, 1.8, -4.5);
   }
@@ -191,17 +231,30 @@ function createInitialAngularVelocity(mode: Roll3DPhysicsLaunchMode) {
   );
 }
 
+function applyContactQuality(
+  contactMaterial: CANNON.ContactMaterial,
+): CANNON.ContactMaterial {
+  contactMaterial.contactEquationStiffness = CONTACT_EQUATION_STIFFNESS;
+  contactMaterial.contactEquationRelaxation = CONTACT_EQUATION_RELAXATION;
+  contactMaterial.frictionEquationStiffness = FRICTION_EQUATION_STIFFNESS;
+  contactMaterial.frictionEquationRelaxation = FRICTION_EQUATION_RELAXATION;
+
+  return contactMaterial;
+}
+
 /**
- * Monde physique Roll3D.
+ * Monde physique Roll3D — Physics V2 baseline.
  *
- * Rôle :
- * - isoler cannon-es
- * - gérer gravité, sol, murs et corps de dés
- * - fournir des snapshots exploitables par Three.js
+ * Responsabilités :
+ * - isoler cannon-es ;
+ * - gérer gravité, solveur, contacts, sol, murs et corps de dés ;
+ * - fournir à Three.js des snapshots interpolés ;
+ * - conserver une simulation physique brute, sans correction d'orientation.
  *
  * Important :
- * le moteur physique sert au rendu.
- * Le résultat officiel reste calculé par le moteur Dice Universal.
+ * - Cannon sert à la simulation/rendu physique ;
+ * - le résultat JDR officiel reste hors de ce fichier ;
+ * - aucun nudge, teleport ou sleep forcé n'est effectué ici.
  */
 export class Roll3DPhysicsWorld {
   private readonly world: CANNON.World;
@@ -210,29 +263,8 @@ export class Roll3DPhysicsWorld {
   private readonly staticBodies = new Map<string, CANNON.Body>();
   private readonly diceBodies = new Map<string, CANNON.Body>();
 
-  /**
-   * Temps continu pendant lequel chaque dé est resté sous les seuils
-   * de mouvement définis par Dice Universal.
-   *
-   * Cette donnée appartient uniquement à la simulation en cours.
-   */
-  private readonly calmDurationByDieId = new Map<string, number>();
-
-  /**
-   * Le sol et les parois n'ont volontairement pas le même comportement.
-   *
-   * Sol :
-   * - davantage d'accroche ;
-   * - peu de rebond.
-   *
-   * Parois :
-   * - moins d'accroche ;
-   * - davantage de restitution pour renvoyer le dé dans la table.
-   */
   private readonly floorMaterial = new CANNON.Material("roll3d-floor");
-
   private readonly wallMaterial = new CANNON.Material("roll3d-wall");
-
   private readonly diceMaterial = new CANNON.Material("roll3d-dice");
 
   constructor() {
@@ -241,95 +273,63 @@ export class Roll3DPhysicsWorld {
     });
 
     /**
-     * Les dés polyédriques peuvent produire plusieurs points de contact
-     * simultanés lorsqu'une face retombe sur la table.
-     *
-     * Sans réduction, cannon-es peut créer plusieurs contraintes de friction
-     * pour le même couple dé/sol, ce qui peut freiner excessivement la
-     * translation et surtout le roulement lors d'une retombée.
-     *
-     * Le mode friction reduction regroupe ces contacts afin d'obtenir
-     * une réponse tangentielle plus cohérente.
+     * Le solveur est maintenant explicite : les futures mesures seront donc
+     * reproductibles et ne dépendront plus silencieusement des defaults.
      */
-    this.world.narrowphase.enableFrictionReduction = true;
+    const solver = new CANNON.GSSolver();
+    solver.iterations = SOLVER_ITERATIONS;
+    solver.tolerance = SOLVER_TOLERANCE;
+    this.world.solver = solver;
 
     this.world.allowSleep = true;
 
-    this.world.defaultContactMaterial.friction = 0.68;
-    this.world.defaultContactMaterial.restitution = 0.12;
-
     /**
-     * Contact avec le tapis :
-     * on conserve volontairement les valeurs qui ont donné
-     * les bons résultats de stabilisation pendant 4.0B–4.0D.
+     * Physics V2 repart sans friction reduction. Cette optimisation change la
+     * manière dont les contacts tangents sont agrégés et avait produit un
+     * glissement artificiel dans nos essais. Elle pourra être benchmarkée plus
+     * tard dans le Physics Lab au lieu d'être activée par défaut.
      */
-    const diceFloorContact = new CANNON.ContactMaterial(
-      this.diceMaterial,
-      this.floorMaterial,
-      {
-        /**
-         * Suffisamment de friction pour convertir une partie du déplacement
-         * en roulement, sans absorber brutalement la vitesse tangentielle
-         * lors d'une retombée après rebond.
-         */
-        friction: 0.42,
+    this.world.narrowphase.enableFrictionReduction = false;
 
-        /**
-         * Le tapis reste peu rebondissant verticalement.
-         */
-        restitution: 0.16,
-      },
+    this.world.defaultContactMaterial.friction = 0.3;
+    this.world.defaultContactMaterial.restitution = 0;
+    this.world.defaultContactMaterial.contactEquationStiffness =
+      CONTACT_EQUATION_STIFFNESS;
+    this.world.defaultContactMaterial.contactEquationRelaxation =
+      CONTACT_EQUATION_RELAXATION;
+    this.world.defaultContactMaterial.frictionEquationStiffness =
+      FRICTION_EQUATION_STIFFNESS;
+    this.world.defaultContactMaterial.frictionEquationRelaxation =
+      FRICTION_EQUATION_RELAXATION;
+
+    const diceFloorContact = applyContactQuality(
+      new CANNON.ContactMaterial(this.diceMaterial, this.floorMaterial, {
+        friction: FLOOR_FRICTION,
+        restitution: FLOOR_RESTITUTION,
+      }),
     );
 
-    /**
-     * Contact avec les parois :
-     *
-     * friction nettement inférieure au sol afin d'éviter qu'un dé
-     * soit immédiatement "absorbé" par le bord ;
-     *
-     * restitution supérieure afin que l'impact produise un vrai
-     * changement de trajectoire vers l'intérieur de la piste.
-     *
-     * Ce n'est pas un mur élastique : le rebond reste modéré.
-     */
-    const diceWallContact = new CANNON.ContactMaterial(
-      this.diceMaterial,
-      this.wallMaterial,
-      {
-        /**
-         * Les parois doivent principalement rediriger le lancer,
-         * pas absorber brutalement son énergie.
-         *
-         * Une friction assez faible permet de conserver la composante
-         * tangentielle du mouvement lors de l'impact.
-         */
-        friction: 0.22,
-
-        /**
-         * Restitution nettement supérieure au premier réglage.
-         *
-         * Le dé doit repartir après un choc franc contre une paroi,
-         * tout en restant suffisamment amorti pour ne pas transformer
-         * la table en flipper.
-         */
-        restitution: 0.48,
-      },
+    const diceWallContact = applyContactQuality(
+      new CANNON.ContactMaterial(this.diceMaterial, this.wallMaterial, {
+        friction: WALL_FRICTION,
+        restitution: WALL_RESTITUTION,
+      }),
     );
 
-    const diceDiceContact = new CANNON.ContactMaterial(
-      this.diceMaterial,
-      this.diceMaterial,
-      {
-        friction: 0.62,
-        restitution: 0.1,
-      },
+    const diceDiceContact = applyContactQuality(
+      new CANNON.ContactMaterial(this.diceMaterial, this.diceMaterial, {
+        friction: DICE_FRICTION,
+        restitution: DICE_RESTITUTION,
+      }),
     );
 
     this.world.addContactMaterial(diceFloorContact);
-
     this.world.addContactMaterial(diceWallContact);
-
     this.world.addContactMaterial(diceDiceContact);
+
+    if (__DEV__) {
+      this.world.doProfiling = true;
+    }
 
     this.createStaticTableBodies();
   }
@@ -341,10 +341,9 @@ export class Roll3DPhysicsWorld {
 
     this.diceBodies.clear();
     this.diceSnapshots.clear();
-    this.calmDurationByDieId.clear();
 
     /**
-     * On conserve sol + murs : ils appartiennent à la table physique.
+     * Le sol et les murs restent dans le monde : ils appartiennent à la table.
      */
   }
 
@@ -353,32 +352,9 @@ export class Roll3DPhysicsWorld {
     transform: Roll3DPhysicsTransform,
     options: Roll3DPhysicsAddDieOptions = {},
   ) {
-    /**
-     * Si un corps existe déjà pour ce dé, on le remplace proprement.
-     */
     this.removeDie(instance.id);
 
-    this.calmDurationByDieId.delete(instance.id);
-
     const launchMode = options.launchMode ?? "drop";
-
-    /**
-     * Les critères de sommeil dépendent du contexte physique.
-     *
-     * Une chute initiale / un corps remis au repos doit pouvoir être
-     * considéré comme stable malgré les micro-oscillations numériques
-     * des polyèdres complexes comme le d20.
-     *
-     * Pendant un vrai lancer, on demande davantage de calme avant
-     * d'autoriser Cannon à figer le corps afin de conserver les derniers
-     * roulements perceptibles.
-     */
-    const isActiveThrow =
-      launchMode === "surface_roll" || launchMode === "gesture_throw";
-
-    const sleepSpeedLimit = isActiveThrow ? 0.145 : 0.16;
-
-    const sleepTimeLimit = isActiveThrow ? 0.36 : 0.3;
 
     const body = new CANNON.Body({
       mass: this.getDieMass(instance.sides),
@@ -386,26 +362,11 @@ export class Roll3DPhysicsWorld {
       position: createCannonVec3(transform.position),
       quaternion: createCannonQuaternion(transform.quaternion),
       shape: createDieShape(instance.sides),
-
-      /**
-       * Le moteur doit conserver l'énergie du lancer suffisamment longtemps
-       * pour que celle-ci soit dissipée principalement par les collisions,
-       * les rebonds et le roulement physique.
-       *
-       * Les anciennes valeurs 0.18 / 0.22 amortissaient artificiellement
-       * translation et rotation pendant toute la simulation.
-       */
-      linearDamping: 0.045,
-      angularDamping: 0.065,
-
+      linearDamping: DIE_LINEAR_DAMPING,
+      angularDamping: DIE_ANGULAR_DAMPING,
       allowSleep: true,
-
-      /**
-       * Un dé ne doit pas être considéré comme presque arrêté alors
-       * qu'il possède encore un roulis perceptible.
-       */
-      sleepSpeedLimit,
-      sleepTimeLimit,
+      sleepSpeedLimit: DIE_SLEEP_SPEED_LIMIT,
+      sleepTimeLimit: DIE_SLEEP_TIME_LIMIT,
     });
 
     const initialVelocity = options.linearVelocity
@@ -420,9 +381,8 @@ export class Roll3DPhysicsWorld {
     body.angularVelocity.copy(initialAngularVelocity);
 
     /**
-     * Les corps "resting" participent aux collisions.
-     * Ils peuvent donc être poussés par les dés lancés, même s’ils commencent
-     * avec une vitesse nulle.
+     * Les corps resting restent dynamiques : ils peuvent donc être percutés et
+     * déplacés naturellement par un dé lancé.
      */
     body.wakeUp();
 
@@ -445,7 +405,6 @@ export class Roll3DPhysicsWorld {
     }
 
     this.diceSnapshots.delete(id);
-    this.calmDurationByDieId.delete(id);
   }
 
   clearDice() {
@@ -455,18 +414,19 @@ export class Roll3DPhysicsWorld {
 
     this.diceBodies.clear();
     this.diceSnapshots.clear();
-    this.calmDurationByDieId.clear();
   }
 
   step(deltaSeconds: number) {
-    this.world.step(PHYSICS_TIME_STEP, deltaSeconds, PHYSICS_MAX_SUB_STEPS);
-
     /**
-     * Après le step Cannon, Dice Universal regarde si certains corps
-     * sont visuellement devenus immobiles même si Cannon refuse encore
-     * de les considérer comme SLEEPING.
+     * Un freeze JS/React Native ponctuel ne doit pas injecter brutalement une
+     * énorme durée dans la simulation.
      */
-    this.updateMotionSettling(deltaSeconds);
+    const safeDeltaSeconds = Math.min(
+      Math.max(deltaSeconds, 0),
+      PHYSICS_MAX_FRAME_DELTA,
+    );
+
+    this.world.step(PHYSICS_TIME_STEP, safeDeltaSeconds, PHYSICS_MAX_SUB_STEPS);
 
     this.updateSnapshotsFromBodies();
   }
@@ -476,217 +436,44 @@ export class Roll3DPhysicsWorld {
   }
 
   /**
-   * Réveille légèrement un dé qui s'est endormi dans une position ambiguë.
-   *
-   * Important :
-   * - aucune orientation finale n'est imposée ;
-   * - aucune face cible n'est connue ici ;
-   * - on redonne simplement assez d'énergie au corps pour qu'il quitte
-   *   naturellement une arête ou un sommet instable.
+   * Prépare l'intégration du futur Physics Lab sans exposer directement
+   * l'instance Cannon au reste de l'application.
    */
-  nudgeDieOffUnstableRest(
-    id: string,
-    options?: {
-      /**
-       * Direction horizontale privilégiée.
-       *
-       * Utilisée notamment lorsqu'un dé est coincé contre une paroi :
-       * DiceTable3D peut alors demander au corps de revenir légèrement
-       * vers l'intérieur de la table.
-       */
-      preferredHorizontalDirection?: Roll3DPhysicsVector3;
-    },
-  ): boolean {
-    const body = this.diceBodies.get(id);
-
-    if (!body) {
-      return false;
+  getProfile(): Roll3DPhysicsProfile {
+    if (!this.world.doProfiling) {
+      return {
+        solveMs: 0,
+        broadphaseMs: 0,
+        narrowphaseMs: 0,
+        integrateMs: 0,
+      };
     }
 
-    this.calmDurationByDieId.delete(id);
-
-    const preferredDirection = options?.preferredHorizontalDirection;
-
-    let horizontalX: number;
-    let horizontalZ: number;
-
-    if (preferredDirection) {
-      const horizontalLength = Math.sqrt(
-        preferredDirection.x * preferredDirection.x +
-          preferredDirection.z * preferredDirection.z,
-      );
-
-      if (horizontalLength > 0.0001) {
-        horizontalX = preferredDirection.x / horizontalLength;
-
-        horizontalZ = preferredDirection.z / horizontalLength;
-      } else {
-        horizontalX = (Math.random() - 0.5) * 0.8;
-
-        horizontalZ = (Math.random() - 0.5) * 0.8;
-      }
-    } else {
-      horizontalX = (Math.random() - 0.5) * 0.8;
-
-      horizontalZ = (Math.random() - 0.5) * 0.8;
-    }
-
-    /**
-     * Petit soulèvement :
-     * juste assez pour libérer un contact sol/arête/mur
-     * que le solveur aurait considéré comme stable.
-     */
-    body.velocity.y = Math.max(
-      body.velocity.y,
-      preferredDirection ? 0.22 : 0.16,
-    );
-
-    if (preferredDirection) {
-      /**
-       * Lorsqu'un dé repose à la fois contre le sol et une paroi,
-       * une simple vitesse peut être absorbée par la friction/contact
-       * avant que le corps ait réellement quitté le mur.
-       *
-       * On effectue donc d'abord un très léger désencastrement
-       * vers l'intérieur de la table.
-       *
-       * Ce déplacement :
-       * - ne choisit aucune face ;
-       * - ne dépend d'aucun résultat ;
-       * - sert uniquement à casser le contact numérique avec la paroi.
-       */
-      const wallSeparationDistance = 0.045;
-
-      body.position.x += horizontalX * wallSeparationDistance;
-
-      body.position.z += horizontalZ * wallSeparationDistance;
-
-      /**
-       * cannon-es doit recalculer l'AABB après ce petit déplacement direct.
-       */
-      body.aabbNeedsUpdate = true;
-
-      /**
-       * On conserve ensuite une petite vitesse vers l'intérieur
-       * afin que le dé ne revienne pas immédiatement contre le mur.
-       */
-      body.velocity.x += horizontalX * 0.82;
-
-      body.velocity.z += horizontalZ * 0.82;
-    }
-
-    /**
-     * Le couple provoque le dernier basculement nécessaire.
-     *
-     * La rotation reste liée à la direction horizontale :
-     * le dé roule donc globalement dans le même sens que son déplacement.
-     */
-    body.angularVelocity.x += horizontalZ * 2.4;
-
-    body.angularVelocity.z -= horizontalX * 2.4;
-
-    body.angularVelocity.y += (Math.random() - 0.5) * 0.5;
-
-    body.wakeUp();
-
-    return true;
-  }
-
-  /**
-   * Détection applicative du repos physique.
-   *
-   * cannon-es peut maintenir certains polyèdres dans un état de
-   * micro-oscillation extrêmement faible pendant longtemps.
-   *
-   * Pour Dice Universal, ce mouvement n'a plus d'intérêt visuel ni
-   * physique une fois qu'il reste sous des seuils très faibles pendant
-   * une durée continue.
-   *
-   * Important :
-   * cette fonction ne décide PAS qu'une orientation est valide.
-   *
-   * Elle dit uniquement :
-   * "ce corps ne possède plus de mouvement significatif".
-   *
-   * La validation de la face de support dans DiceTable3D reste ensuite
-   * responsable de détecter une éventuelle tranche et de réveiller
-   * le corps si nécessaire.
-   */
-  private updateMotionSettling(deltaSeconds: number) {
-    for (const [id, body] of this.diceBodies.entries()) {
-      /**
-       * Rien à faire pour un corps que Cannon considère déjà endormi.
-       */
-      if (body.sleepState === CANNON.Body.SLEEPING) {
-        this.calmDurationByDieId.delete(id);
-        continue;
-      }
-
-      const linearSpeed = body.velocity.length();
-
-      const angularSpeed = body.angularVelocity.length();
-
-      const hasLowLinearMotion = linearSpeed <= MOTION_SETTLE_MAX_LINEAR_SPEED;
-
-      const hasLowAngularMotion =
-        angularSpeed <= MOTION_SETTLE_MAX_ANGULAR_SPEED;
-
-      /**
-       * Le dé possède encore un mouvement significatif :
-       * toute période de calme précédente est annulée.
-       */
-      if (!hasLowLinearMotion || !hasLowAngularMotion) {
-        this.calmDurationByDieId.delete(id);
-        continue;
-      }
-
-      const previousCalmDuration = this.calmDurationByDieId.get(id) ?? 0;
-
-      const nextCalmDuration = previousCalmDuration + Math.max(deltaSeconds, 0);
-
-      if (nextCalmDuration < MOTION_SETTLE_REQUIRED_SECONDS) {
-        this.calmDurationByDieId.set(id, nextCalmDuration);
-
-        continue;
-      }
-
-      /**
-       * À ce stade le mouvement est resté négligeable suffisamment
-       * longtemps pour être considéré terminé côté expérience utilisateur.
-       *
-       * On supprime les résidus numériques avant de dormir le corps afin
-       * d'éviter qu'il reparte immédiatement avec une ancienne vélocité
-       * lors d'un wakeUp ultérieur.
-       */
-      body.velocity.set(0, 0, 0);
-      body.angularVelocity.set(0, 0, 0);
-
-      body.sleep();
-
-      this.calmDurationByDieId.delete(id);
-
-      if (__DEV__) {
-        console.warn(
-          `[Roll3D] motion-settled | ` +
-            `id=${id} | ` +
-            `linear=${linearSpeed.toFixed(4)} | ` +
-            `angular=${angularSpeed.toFixed(4)}`,
-        );
-      }
-    }
+    return {
+      solveMs: this.world.profile.solve,
+      broadphaseMs: this.world.profile.broadphase,
+      narrowphaseMs: this.world.profile.narrowphase,
+      integrateMs: this.world.profile.integrate,
+    };
   }
 
   private updateSnapshotsFromBodies() {
     for (const [id, body] of this.diceBodies.entries()) {
       this.diceSnapshots.set(id, {
         id,
-        transform: toPhysicsTransform(body),
+        transform:
+          body.sleepState === CANNON.Body.SLEEPING
+            ? toPhysicsTransform(body)
+            : toRenderTransform(body),
         sleeping: body.sleepState === CANNON.Body.SLEEPING,
       });
     }
   }
 
   private getDieMass(sides: Roll3DDieSides) {
+    /**
+     * Baseline conservée avant l'étape "masse par volume".
+     */
     if (sides === 100) {
       return 1.25;
     }
@@ -699,79 +486,47 @@ export class Roll3DPhysicsWorld {
   }
 
   private createStaticTableBodies() {
+    const { surfaceY, width, depth, wallHeight, wallThickness } = ROLL3D_TABLE;
+
     this.addStaticBody({
       id: FLOOR_ID,
-      position: new CANNON.Vec3(0, TABLE_SURFACE_Y - 0.03, 0),
-      shape: new CANNON.Box(
-        new CANNON.Vec3(TABLE_WIDTH / 2, 0.03, TABLE_DEPTH / 2),
-      ),
+      position: new CANNON.Vec3(0, surfaceY - 0.03, 0),
+      shape: new CANNON.Box(new CANNON.Vec3(width / 2, 0.03, depth / 2)),
       material: this.floorMaterial,
     });
 
     this.addStaticBody({
       id: WALL_IDS.left,
-      position: new CANNON.Vec3(
-        -TABLE_WIDTH / 2,
-        TABLE_SURFACE_Y + TABLE_WALL_HEIGHT / 2,
-        0,
-      ),
+      position: new CANNON.Vec3(-width / 2, surfaceY + wallHeight / 2, 0),
       shape: new CANNON.Box(
-        new CANNON.Vec3(
-          TABLE_WALL_THICKNESS / 2,
-          TABLE_WALL_HEIGHT / 2,
-          TABLE_DEPTH / 2,
-        ),
+        new CANNON.Vec3(wallThickness / 2, wallHeight / 2, depth / 2),
       ),
       material: this.wallMaterial,
     });
 
     this.addStaticBody({
       id: WALL_IDS.right,
-      position: new CANNON.Vec3(
-        TABLE_WIDTH / 2,
-        TABLE_SURFACE_Y + TABLE_WALL_HEIGHT / 2,
-        0,
-      ),
+      position: new CANNON.Vec3(width / 2, surfaceY + wallHeight / 2, 0),
       shape: new CANNON.Box(
-        new CANNON.Vec3(
-          TABLE_WALL_THICKNESS / 2,
-          TABLE_WALL_HEIGHT / 2,
-          TABLE_DEPTH / 2,
-        ),
+        new CANNON.Vec3(wallThickness / 2, wallHeight / 2, depth / 2),
       ),
       material: this.wallMaterial,
     });
 
     this.addStaticBody({
       id: WALL_IDS.top,
-      position: new CANNON.Vec3(
-        0,
-        TABLE_SURFACE_Y + TABLE_WALL_HEIGHT / 2,
-        -TABLE_DEPTH / 2,
-      ),
+      position: new CANNON.Vec3(0, surfaceY + wallHeight / 2, -depth / 2),
       shape: new CANNON.Box(
-        new CANNON.Vec3(
-          TABLE_WIDTH / 2,
-          TABLE_WALL_HEIGHT / 2,
-          TABLE_WALL_THICKNESS / 2,
-        ),
+        new CANNON.Vec3(width / 2, wallHeight / 2, wallThickness / 2),
       ),
       material: this.wallMaterial,
     });
 
     this.addStaticBody({
       id: WALL_IDS.bottom,
-      position: new CANNON.Vec3(
-        0,
-        TABLE_SURFACE_Y + TABLE_WALL_HEIGHT / 2,
-        TABLE_DEPTH / 2,
-      ),
+      position: new CANNON.Vec3(0, surfaceY + wallHeight / 2, depth / 2),
       shape: new CANNON.Box(
-        new CANNON.Vec3(
-          TABLE_WIDTH / 2,
-          TABLE_WALL_HEIGHT / 2,
-          TABLE_WALL_THICKNESS / 2,
-        ),
+        new CANNON.Vec3(width / 2, wallHeight / 2, wallThickness / 2),
       ),
       material: this.wallMaterial,
     });
