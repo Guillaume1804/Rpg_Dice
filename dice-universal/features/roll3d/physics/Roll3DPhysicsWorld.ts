@@ -166,33 +166,87 @@ function createDieShape(sides: Roll3DDieSides): CANNON.Shape {
   return createConvexDieShape(sides);
 }
 
-function createInitialVelocity(mode: Roll3DPhysicsLaunchMode) {
+function createInitialVelocity(
+  mode: Roll3DPhysicsLaunchMode,
+  position: Roll3DPhysicsVector3,
+) {
   if (mode === "resting") {
     return new CANNON.Vec3(0, 0, 0);
   }
 
   if (mode === "surface_roll") {
     /**
-     * Modèle historique conservé temporairement pour que la V2 puisse être
-     * comparée à comportement de lancer identique.
+     * Le lancer automatique vise maintenant une zone sûre de la table
+     * au lieu de choisir une direction totalement aléatoire.
      *
-     * La corrélation direction/spin sera refondue dans l'étape dédiée.
+     * Le but n'est pas de forcer une trajectoire précise :
+     * on donne simplement au dé une direction générale cohérente avec
+     * l'espace disponible autour de lui.
      */
-    const angle = Math.random() * Math.PI * 2;
+    const safeHalfWidth = ROLL3D_TABLE.width / 2 - 0.85;
+    const safeHalfDepth = ROLL3D_TABLE.depth / 2 - 0.95;
+
+    /**
+     * Cible volontairement aléatoire à l'intérieur de la table.
+     *
+     * Un dé proche du bord sera donc naturellement dirigé vers l'intérieur,
+     * tandis qu'un dé proche du centre conservera davantage de variété.
+     */
+    const targetX = (Math.random() * 2 - 1) * safeHalfWidth * 0.72;
+
+    const targetZ = (Math.random() * 2 - 1) * safeHalfDepth * 0.72;
+
+    let directionX = targetX - position.x;
+    let directionZ = targetZ - position.z;
+
+    const directionLength = Math.sqrt(
+      directionX * directionX + directionZ * directionZ,
+    );
+
+    /**
+     * Cas extrêmement improbable où la cible tombe presque exactement
+     * sur la position actuelle.
+     */
+    if (directionLength < 0.001) {
+      const fallbackAngle = Math.random() * Math.PI * 2;
+
+      directionX = Math.cos(fallbackAngle);
+      directionZ = Math.sin(fallbackAngle);
+    } else {
+      directionX /= directionLength;
+      directionZ /= directionLength;
+    }
+
+    /**
+     * Petite dispersion angulaire pour éviter que tous les dés convergent
+     * mécaniquement vers la même zone.
+     */
+    const dispersionAngle = (Math.random() - 0.5) * 0.5;
+
+    const cos = Math.cos(dispersionAngle);
+    const sin = Math.sin(dispersionAngle);
+
+    const dispersedDirectionX = directionX * cos - directionZ * sin;
+
+    const dispersedDirectionZ = directionX * sin + directionZ * cos;
+
+    /**
+     * La plage historique 9–14 était disproportionnée par rapport
+     * aux dimensions réelles 5.8 × 8.4 de la table.
+     *
+     * Cette première baseline reste énergique mais réduit fortement
+     * les traversées complètes de plateau en une fraction de seconde.
+     */
     const strength = 9 + Math.random() * 5;
 
     return new CANNON.Vec3(
-      Math.cos(angle) * strength,
-      0.22 + Math.random() * 0.26,
-      Math.sin(angle) * strength,
+      dispersedDirectionX * strength,
+      0.16 + Math.random() * 0.16,
+      dispersedDirectionZ * strength,
     );
   }
 
   if (mode === "gesture_throw") {
-    /**
-     * Valeur de secours uniquement. Un vrai lancer gestuel fournit
-     * normalement sa vélocité depuis DiceTable3D.
-     */
     return new CANNON.Vec3(0, 1.8, -4.5);
   }
 
@@ -210,9 +264,9 @@ function createInitialAngularVelocity(mode: Roll3DPhysicsLaunchMode) {
 
   if (mode === "surface_roll") {
     return new CANNON.Vec3(
-      (Math.random() - 0.5) * 26,
-      (Math.random() - 0.5) * 31,
-      (Math.random() - 0.5) * 26,
+      (Math.random() - 0.5) * 18,
+      (Math.random() - 0.5) * 20,
+      (Math.random() - 0.5) * 18,
     );
   }
 
@@ -371,7 +425,7 @@ export class Roll3DPhysicsWorld {
 
     const initialVelocity = options.linearVelocity
       ? createCannonVec3(options.linearVelocity)
-      : createInitialVelocity(launchMode);
+      : createInitialVelocity(launchMode, transform.position);
 
     const initialAngularVelocity = options.angularVelocity
       ? createCannonVec3(options.angularVelocity)

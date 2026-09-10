@@ -1,10 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import {
-  PanResponder,
   View,
   type GestureResponderEvent,
   type LayoutChangeEvent,
-  type PanResponderGestureState,
 } from "react-native";
 import { GLView, type ExpoWebGLRenderingContext } from "expo-gl";
 import { createRoll3DRenderer } from "../renderer/createRoll3DRenderer";
@@ -76,7 +74,19 @@ type DiceGestureSample = {
 type DiceDragState = {
   touchedDieId: string | null;
   dragDieIds: string[];
+
   startWorldPoint: THREE.Vector3 | null;
+
+  /**
+   * Position initiale du doigt dans le repère écran du View.
+   *
+   * Elle remplace gestureState.dx/dy de PanResponder.
+   */
+  startTouchPoint: {
+    x: number;
+    y: number;
+  } | null;
+
   startPositions: Map<string, THREE.Vector3>;
   hasMoved: boolean;
   selectionRequested: boolean;
@@ -459,6 +469,7 @@ export function DiceTable3D({
     touchedDieId: null,
     dragDieIds: [],
     startWorldPoint: null,
+    startTouchPoint: null,
     startPositions: new Map(),
     hasMoved: false,
     selectionRequested: false,
@@ -1194,6 +1205,7 @@ export function DiceTable3D({
         touchedDieId: null,
         dragDieIds: [],
         startWorldPoint: null,
+        startTouchPoint: null,
         startPositions: new Map(),
         hasMoved: false,
         selectionRequested: false,
@@ -1267,6 +1279,7 @@ export function DiceTable3D({
         touchedDieId: null,
         dragDieIds: [],
         startWorldPoint: null,
+        startTouchPoint: null,
         startPositions: new Map(),
         hasMoved: false,
         selectionRequested: false,
@@ -1317,12 +1330,64 @@ export function DiceTable3D({
       return;
     if (partialRollDieIds.length === 0) return;
 
-    const angle = Math.random() * Math.PI * 2;
+    /**
+     * Relance programmée :
+     * on vise globalement le centre utile de la table plutôt qu'une direction
+     * complètement aléatoire susceptible de projeter immédiatement les dés dehors.
+     */
+    const requestedItems = partialRollDieIds
+      .map((dieId) => diceItemsRef.current.get(dieId))
+      .filter((item): item is DiceSceneItem => item != null);
+
+    if (requestedItems.length === 0) {
+      return;
+    }
+
+    const averagePosition = requestedItems.reduce(
+      (accumulator, item) => {
+        accumulator.x += item.mesh.position.x;
+        accumulator.z += item.mesh.position.z;
+
+        return accumulator;
+      },
+      { x: 0, z: 0 },
+    );
+
+    averagePosition.x /= requestedItems.length;
+    averagePosition.z /= requestedItems.length;
+
+    let directionX = -averagePosition.x;
+    let directionZ = -averagePosition.z;
+
+    const directionLength = Math.sqrt(
+      directionX * directionX + directionZ * directionZ,
+    );
+
+    if (directionLength < 0.2) {
+      const angle = Math.random() * Math.PI * 2;
+
+      directionX = Math.cos(angle);
+      directionZ = Math.sin(angle);
+    } else {
+      directionX /= directionLength;
+      directionZ /= directionLength;
+    }
+
+    const dispersionAngle = randomBetween(-0.28, 0.28);
+
+    const cos = Math.cos(dispersionAngle);
+    const sin = Math.sin(dispersionAngle);
+
+    const finalDirectionX = directionX * cos - directionZ * sin;
+
+    const finalDirectionZ = directionX * sin + directionZ * cos;
+
     const strength = randomBetween(7.5, 11.5);
+
     const started = startPartialPhysicsThrow(partialRollDieIds, {
-      x: Math.cos(angle) * strength,
+      x: finalDirectionX * strength,
       y: randomBetween(1.75, 2.35),
-      z: Math.sin(angle) * strength,
+      z: finalDirectionZ * strength,
     });
     if (!started) return;
     lastHandledPartialRollRequestIdRef.current = partialRollRequestId;
@@ -1415,6 +1480,7 @@ export function DiceTable3D({
       touchedDieId: null,
       dragDieIds: [],
       startWorldPoint: null,
+      startTouchPoint: null,
       startPositions: new Map(),
       hasMoved: false,
       selectionRequested: false,
@@ -1512,6 +1578,10 @@ export function DiceTable3D({
           touchedDieId: null,
           dragDieIds: [],
           startWorldPoint,
+          startTouchPoint: {
+            x: locationX,
+            y: locationY,
+          },
           startPositions: new Map(),
           hasMoved: false,
           selectionRequested: false,
@@ -1536,6 +1606,10 @@ export function DiceTable3D({
         touchedDieId,
         dragDieIds,
         startWorldPoint,
+        startTouchPoint: {
+          x: locationX,
+          y: locationY,
+        },
         startPositions,
         hasMoved: false,
         selectionRequested: touchedDieIsSelected,
@@ -1596,7 +1670,7 @@ export function DiceTable3D({
   );
 
   const handleTableTouchMove = useCallback(
-    (event: GestureResponderEvent, gestureState: PanResponderGestureState) => {
+    (event: GestureResponderEvent) => {
       if (!interactionsEnabled || physicsActiveRef.current) return;
       const dragState = dragStateRef.current;
       if (
@@ -1606,11 +1680,24 @@ export function DiceTable3D({
       )
         return;
 
-      const movementDistance = Math.sqrt(
-        gestureState.dx * gestureState.dx + gestureState.dy * gestureState.dy,
-      );
-      if (!dragState.hasMoved && movementDistance < DRAG_START_THRESHOLD_PX)
+      const startTouchPoint = dragState.startTouchPoint;
+
+      if (!startTouchPoint) {
         return;
+      }
+
+      const { locationX, locationY } = event.nativeEvent;
+
+      const movementX = locationX - startTouchPoint.x;
+      const movementY = locationY - startTouchPoint.y;
+
+      const movementDistance = Math.sqrt(
+        movementX * movementX + movementY * movementY,
+      );
+
+      if (!dragState.hasMoved && movementDistance < DRAG_START_THRESHOLD_PX) {
+        return;
+      }
 
       if (!dragState.hasMoved) {
         dragState.hasMoved = true;
@@ -1622,7 +1709,6 @@ export function DiceTable3D({
         onPressDieRef.current?.(dragState.touchedDieId);
       }
 
-      const { locationX, locationY } = event.nativeEvent;
       const currentWorldPoint = getTableWorldPoint(locationX, locationY);
       if (!currentWorldPoint) return;
       if (dragState.longPressTriggered) recordGestureSample(currentWorldPoint);
@@ -1710,28 +1796,6 @@ export function DiceTable3D({
     putPickedUpDiceBackOnTable();
     resetDragState();
   }, [clearLongPressTimeout, putPickedUpDiceBackOnTable, resetDragState]);
-
-  const tablePanResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () =>
-          interactionsEnabled && !physicsActiveRef.current,
-        onMoveShouldSetPanResponder: () =>
-          interactionsEnabled && !physicsActiveRef.current,
-        onPanResponderGrant: handleTableTouchStart,
-        onPanResponderMove: handleTableTouchMove,
-        onPanResponderRelease: handleTableTouchEnd,
-        onPanResponderTerminate: handleTableTouchCancel,
-        onPanResponderTerminationRequest: () => true,
-      }),
-    [
-      handleTableTouchCancel,
-      handleTableTouchEnd,
-      handleTableTouchMove,
-      handleTableTouchStart,
-      interactionsEnabled,
-    ],
-  );
 
   function handleContextCreate(gl: ExpoWebGLRenderingContext) {
     const { drawingBufferWidth: width, drawingBufferHeight: bufferHeight } = gl;
@@ -1887,7 +1951,13 @@ export function DiceTable3D({
       <GLView style={{ flex: 1 }} onContextCreate={handleContextCreate} />
       <View
         pointerEvents={interactionsEnabled ? "auto" : "none"}
-        {...tablePanResponder.panHandlers}
+        onStartShouldSetResponder={() => interactionsEnabled}
+        onMoveShouldSetResponder={() => interactionsEnabled}
+        onResponderGrant={handleTableTouchStart}
+        onResponderMove={handleTableTouchMove}
+        onResponderRelease={handleTableTouchEnd}
+        onResponderTerminate={handleTableTouchCancel}
+        onResponderTerminationRequest={() => true}
         style={{
           position: "absolute",
           top: 0,

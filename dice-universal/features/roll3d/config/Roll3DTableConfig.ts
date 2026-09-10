@@ -13,8 +13,21 @@ export const ROLL3D_TABLE = {
   surfaceY: -1.15,
   width: 5.8,
   depth: 8.4,
-  wallHeight: 0.46,
-  wallThickness: 0.12,
+
+  /**
+   * La bordure doit être suffisamment haute pour réellement contenir
+   * les dés, notamment le d20 dont le diamètre visuel est proche de 0.74.
+   *
+   * Cette hauteur reste volontairement visible : aucune collision invisible
+   * ne doit participer au lancer normal.
+   */
+  wallHeight: 0.95,
+
+  /**
+   * Une bordure légèrement plus épaisse donne également un contact physique
+   * plus crédible lorsqu'un dé la frappe avec de la rotation.
+   */
+  wallThickness: 0.16,
 } as const;
 
 /**
