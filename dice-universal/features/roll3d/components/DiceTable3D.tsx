@@ -7,7 +7,7 @@ import {
   type PanResponderGestureState,
 } from "react-native";
 import { GLView, type ExpoWebGLRenderingContext } from "expo-gl";
-import { Renderer } from "expo-three";
+import { createRoll3DRenderer } from "../renderer/createRoll3DRenderer";
 import * as THREE from "three";
 
 import {
@@ -1761,7 +1761,7 @@ export function DiceTable3D({
     camera.position.set(0, TABLE_SURFACE_Y + cameraDistance, 0.22);
     camera.lookAt(0, TABLE_SURFACE_Y, 0);
 
-    const renderer = new Renderer({ gl });
+    const renderer = createRoll3DRenderer(gl);
     renderer.setSize(width, bufferHeight);
     renderer.setClearColor("#050713");
 
