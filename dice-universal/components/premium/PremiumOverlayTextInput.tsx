@@ -34,12 +34,6 @@ export function PremiumOverlayTextInput({
   const [draftValue, setDraftValue] = useState(value);
 
   useEffect(() => {
-    if (!overlayVisible) {
-      setDraftValue(value);
-    }
-  }, [value, overlayVisible]);
-
-  useEffect(() => {
     if (!autoFocus) return;
 
     const timer = setTimeout(() => {

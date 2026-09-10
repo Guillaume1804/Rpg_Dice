@@ -9,7 +9,7 @@ import {
   Modal,
   TextInput,
 } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect } from "expo-router/react-navigation";
 import { useRouter } from "expo-router";
 import { useDb } from "../data/db/DbProvider";
 import { useActiveTable } from "../data/state/ActiveTableProvider";
@@ -42,7 +42,7 @@ export default function TablesScreen() {
   const { setActiveTableId, activeTableId, clearActiveTableId } =
     useActiveTable();
 
-  const { revision, notifyDataChanged } = useDataRefresh();
+  const { notifyDataChanged } = useDataRefresh();
 
   const [tables, setTables] = useState<TableListItem[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -136,7 +136,7 @@ export default function TablesScreen() {
       return () => {
         isActive = false;
       };
-    }, [db, revision]),
+    }, [db]),
   );
 
   const activeTable =

@@ -176,7 +176,6 @@ export function PremiumKeyboardInputOverlay({
 
   useEffect(() => {
     if (!visible) {
-      setKeyboardHeight(0);
       return;
     }
 
@@ -216,8 +215,12 @@ export function PremiumKeyboardInputOverlay({
     onConfirm();
   }
 
+  const effectiveKeyboardHeight = visible ? keyboardHeight : 0;
+
   const keyboardTop =
-    keyboardHeight > 0 ? windowHeight - keyboardHeight : windowHeight;
+    effectiveKeyboardHeight > 0
+      ? windowHeight - effectiveKeyboardHeight
+      : windowHeight;
 
   const minTop = Math.max(insets.top + premium.spacing.lg, 64);
 
